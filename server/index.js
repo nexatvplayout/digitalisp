@@ -44,7 +44,7 @@ app.use((_req, res, next) => { res.set('X-Content-Type-Options', 'nosniff'); nex
 
 if (config.platform.canonicalHost) {
   const canon = config.platform.canonicalHost;
-  app.use((req, res, next) => (req.hostname === canon.replace(/^www./, '') ? res.redirect(301, `https://${canon}${req.originalUrl}`) : next()));
+  app.use((req, res, next) => (req.hostname === canon.replace(/^www\./, '') ? res.redirect(301, `https://${canon}${req.originalUrl}`) : next()));
 }
 
 app.get('/healthz', (_req, res) => res.json({ ok: true, uptime: Math.round((Date.now() - bootedAt) / 1000) }));

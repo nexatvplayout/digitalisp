@@ -44,6 +44,8 @@ export const config = {
     host: (process.env.PLATFORM_HOST || '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/[/:].*$/, ''),
     // endereço público (https) que as telas e os links usam; vazio = o Host do pedido
     publicUrl: (process.env.PLATFORM_PUBLIC_URL || '').replace(/\/$/, ''),
+    // endereço principal (ex.: www.digitalisp.com.br): o mesmo endereço sem www é redirecionado para ele
+    canonicalHost: (process.env.CANONICAL_HOST || '').trim().toLowerCase(),
   },
 
   dataDir,
