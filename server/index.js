@@ -246,16 +246,35 @@ const ASSET_VER = Date.now().toString(36);
 const longCache = { maxAge: '30d', immutable: true };
 app.use(`/_v/${ASSET_VER}/admin`, express.static(pub('admin'), longCache));
 app.use(`/_v/${ASSET_VER}/shared`, express.static(pub('shared'), longCache));
-app.use('/_v/:ver', (_req, res) => res.status(404).set('Cache-Control', 'no-store').end()); // versão antiga: recarregue
-// todos os módulos do painel pedidos de uma vez (modulepreload): sem isso o navegador descobre um import de cada vez, e
-// pelo túnel cada volta custa ~100 ms (40 arquivos em fila = segundos). Com a versão no endereço, ficam guardados 30 dias
+// O painel em POUCOS arquivos: os ~50 módulos juntados na subida (esbuild-wasm, puro JS) em ~8 pedaços, em
+// DATA_DIR/painel/<versão>/. Pelo túnel, muitos pedidos ao mesmo tempo travavam alguns por segundos (22/11: 40 arquivos
+// chegaram a 11 s); com 8, não. Se a junção falhar, o painel segue com os módulos soltos, todos pedidos de uma vez.
 const jsDe = (dir, base) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? jsDe(path.join(dir, e.name), `${base}${e.name}/`) : e.name.endsWith('.js') ? [`${base}${e.name}`] : []));
-const preloads = [...jsDe(pub('admin'), `/_v/${ASSET_VER}/admin/`), ...jsDe(pub('shared'), `/_v/${ASSET_VER}/shared/`)]
+let bundle = null; // [nomes dos arquivos] da versão juntada
+if (process.env.PANEL_BUNDLE !== '0') {
+  const outdir = path.join(config.dataDir, 'painel', ASSET_VER);
+  try {
+    const esbuild = await import('esbuild-wasm');
+    const r = await esbuild.build({
+      entryPoints: [pub('admin/main.js')], bundle: true, format: 'esm', splitting: true, minify: true, outdir,
+      external: ['/vendor/*'], metafile: true, logLevel: 'silent', target: ['es2020'],
+    });
+    fs.copyFileSync(pub('shared/municipios-ibge.json'), path.join(outdir, 'municipios-ibge.json')); // uf-city.js busca ao lado dele
+    bundle = Object.keys(r.metafile.outputs).filter((k) => k.endsWith('.js')).map((k) => path.basename(k));
+    app.use(`/_v/${ASSET_VER}/painel`, express.static(outdir, longCache));
+    // as versões antigas juntadas saem (fica só a atual)
+    for (const d of fs.readdirSync(path.dirname(outdir))) if (d !== ASSET_VER) fs.rmSync(path.join(path.dirname(outdir), d), { recursive: true, force: true });
+    console.log(`[painel] ${bundle.length} arquivos juntados em ${outdir}`);
+  } catch (err) { bundle = null; console.warn(`[painel] sem a junção dos módulos (${err.message}); seguem soltos`); }
+}
+const preloads = (bundle ? bundle.map((n) => `/_v/${ASSET_VER}/painel/${n}`) : [...jsDe(pub('admin'), `/_v/${ASSET_VER}/admin/`), ...jsDe(pub('shared'), `/_v/${ASSET_VER}/shared/`)])
   .map((u) => `  <link rel="modulepreload" href="${u}">`).join('\n');
-const panelHtml = fs.readFileSync(pub('admin/index.html'), 'utf8')
+let panelHtml = fs.readFileSync(pub('admin/index.html'), 'utf8')
   .replace(/(href|src)="(?!\/|https?:)([^"]+\.(?:css|js))"/g, `$1="/_v/${ASSET_VER}/admin/$2"`)
   .replace(/(href|src)="\/shared\//g, `$1="/_v/${ASSET_VER}/shared/`)
   .replace('</head>', `${preloads}\n</head>`);
+if (bundle) panelHtml = panelHtml.replace(`src="/_v/${ASSET_VER}/admin/main.js"`, `src="/_v/${ASSET_VER}/painel/main.js"`);
+app.use('/_v/:ver', (_req, res) => res.status(404).set('Cache-Control', 'no-store').end()); // versão antiga: recarregue
 const sendPanel = (_req, res) => res.set({ 'Cache-Control': 'no-cache', 'Content-Type': 'text/html; charset=utf-8' }).send(panelHtml);
 app.get(['/c/:slug', '/c/:slug/'], sendPanel); // a entrada do cliente final, com a marca da revenda
 for (const door of ['/admin', '/superadmin']) {
