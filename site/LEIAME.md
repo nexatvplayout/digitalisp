@@ -45,7 +45,7 @@ O contato é só pelo WhatsApp **(21) 99908-9151**, pelo link `https://wa.me/552
   Nada é enviado a servidor nenhum.
 
 Para trocar o número: substitua `5521999089151` (5 lugares, incluindo a variável `WHATSAPP` do script) e o texto
-`(21) 99908-9151` (2 lugares) em `index.html`.
+`(21) 99908-9151` (3 lugares, um deles no rótulo de acessibilidade do botão flutuante) em `index.html`.
 
 ## O que falta do dono
 
