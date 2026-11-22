@@ -56,6 +56,21 @@ CREATE TABLE IF NOT EXISTS media (
   status    TEXT NOT NULL DEFAULT 'ready',
   censura   INTEGER NOT NULL DEFAULT 0
 );
+-- endereço estruturado do cliente final (unidade): o texto, a latitude e a longitude seguem em telas_offices
+CREATE TABLE IF NOT EXISTS isp_unidade_endereco (
+  office_id      ${big} PRIMARY KEY REFERENCES telas_offices(id) ON DELETE CASCADE,
+  tenant_id      ${big} NOT NULL,
+  cep            TEXT NOT NULL DEFAULT '',
+  rua            TEXT NOT NULL DEFAULT '',
+  numero         TEXT NOT NULL DEFAULT '',
+  complemento    TEXT NOT NULL DEFAULT '',
+  bairro         TEXT NOT NULL DEFAULT '',
+  uf             TEXT NOT NULL DEFAULT '',
+  municipio      TEXT NOT NULL DEFAULT '',
+  municipio_ibge ${big},
+  precisao       TEXT,
+  updated_at     ${big} NOT NULL DEFAULT 0
+);
 CREATE UNIQUE INDEX IF NOT EXISTS isp_faturas_ref ON isp_faturas(tenant_id, referencia);
 CREATE INDEX IF NOT EXISTS isp_faturas_status ON isp_faturas(status, vencimento);
 `;

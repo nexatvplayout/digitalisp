@@ -17,6 +17,7 @@ import { clientIp } from './clientip.js';
 import { clock } from './ntp.js';
 import { mountPlataforma } from './plataforma.js';
 import { mountGuia } from './guia.js';
+import { mountEnderecos } from './enderecos.js';
 import { createTvcorp } from './tvcorp.js';
 import { createTvcorpDados, FILE_RE as TVC_FILE_RE } from './tvcorp-dados.js';
 import { createTelas } from './telas.js';
@@ -182,6 +183,7 @@ telas = createTelas({
   offlineImages: graphicsFiles('telasimg-'),
 });
 telas.mount(app, { needs });
+mountEnderecos(app, { needs, ah, geocodeAddress: telasGeocoder.find }); // CEP, ponto no mapa e endereço da unidade (server/enderecos.js)
 tvcorp.mount(app, { needs });
 const tvcorpApiKey = ah(async (req, res, next) => {
   const tok = /^Bearer ([A-Za-z0-9_-]{32,64})$/.exec(req.get('authorization') || '')?.[1];
