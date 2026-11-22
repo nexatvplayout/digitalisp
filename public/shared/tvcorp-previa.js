@@ -131,7 +131,12 @@ export function itemPreview(it = {}, opts = {}) {
     case 'birthdays': {
       const ppl = (it.people || []).slice(0, 8);
       return box('tvc-it-bday', h('div', 'tvc-it-t', it.title || 'Aniversariantes'),
-        ppl.length ? h('ul', 'tvc-it-list', ppl.map((p) => h('li', '', h('b', '', p.name), ` · ${pad2(p.day)}/${pad2(p.month)}${p.sector ? ` · ${p.sector}` : ''}`))) : h('div', 'tvc-it-x', 'Ninguém faz aniversário nestes dias'));
+        ppl.length ? h('ul', 'tvc-it-list tvc-it-people', ppl.map((p) => {
+          // a foto (só com a autorização) ou as iniciais num círculo, como na TV
+          let av;
+          if (p.photo) { av = h('img', 'tvc-av'); av.src = p.photo; av.alt = ''; } else av = h('span', 'tvc-av tvc-av-ini', String(p.name || '').split(/s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase());
+          return h('li', '', av, h('span', '', h('b', '', p.name), ` · ${pad2(p.day)}/${pad2(p.month)}${p.sector ? ` · ${p.sector}` : ''}`));
+        })) : h('div', 'tvc-it-x', 'Ninguém faz aniversário nestes dias'));
     }
     case 'kpi': return box(`tvc-it-kpi b-${it.band || 'none'}`, h('div', 'tvc-it-t', it.name || 'Indicador'), h('div', 'tvc-it-big', `${numText(it.value)}${it.unit ? ` ${it.unit}` : ''}`),
       it.target != null ? h('div', 'tvc-it-x', `Meta: ${numText(it.target)}${it.unit ? ` ${it.unit}` : ''}`) : null, it.target != null ? goalBar(it.value, it.target, it.band) : null);
