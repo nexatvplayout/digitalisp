@@ -3,6 +3,8 @@
 //   /superadmin/  equipe da plataforma DIGITAL ISP (www.digitalisp.com.br/superadmin leva para cá)
 // A revenda vê "Telas e conteúdo" (views/tvcorp.js, herdada da TV Corporativa do NEXA); a equipe da plataforma vê as revendas.
 import { $, $$, el, state, api, toast, guard, on, store } from './lib.js';
+import { ligarMascaras } from './mascaras.js';
+ligarMascaras(); // CPF, CNPJ, telefone e CEP com a pontuação padrão em todo o painel
 // as telas e o conteúdo (uns 40 arquivos) só carregam depois da entrada: a tela de login abre na hora
 let tvcorpMod = null;
 const tvcorp = async () => (tvcorpMod ||= (await import('./views/tvcorp.js')).default);
