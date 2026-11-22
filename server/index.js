@@ -194,8 +194,10 @@ app.get('/graphics/:name', ah(async (req, res) => {
 }));
 app.use('/marca', express.static(path.join(config.root, 'marca'), { maxAge: '1h' }));
 // o painel tem duas portas: /admin/ (revendas) e /superadmin/ (equipe da plataforma); main.js vê a porta pelo endereço
-app.use('/admin', express.static(pub('admin')));
-app.use('/superadmin', express.static(pub('admin')));
+// em produção o navegador guarda os arquivos do painel por 10 min (depois confere pelo ETag): menos idas ao servidor
+const panelAge = config.production ? '10m' : 0;
+app.use('/admin', express.static(pub('admin'), { maxAge: panelAge }));
+app.use('/superadmin', express.static(pub('admin'), { maxAge: panelAge }));
 const cacheAge = config.production ? '5m' : 0; // em desenvolvimento, sempre o arquivo novo
 app.use('/shared', express.static(pub('shared'), { maxAge: cacheAge }));
 app.use('/tvcorp', express.static(pub('tvcorp'), { maxAge: cacheAge }));

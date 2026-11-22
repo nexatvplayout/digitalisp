@@ -3,7 +3,9 @@
 //   /superadmin/  equipe da plataforma DIGITAL ISP (www.digitalisp.com.br/superadmin leva para cá)
 // A revenda vê "Telas e conteúdo" (views/tvcorp.js, herdada da TV Corporativa do NEXA); a equipe da plataforma vê as revendas.
 import { $, $$, el, state, api, toast, guard, on, store } from './lib.js';
-import tvcorp from './views/tvcorp.js';
+// as telas e o conteúdo (uns 40 arquivos) só carregam depois da entrada: a tela de login abre na hora
+let tvcorpMod = null;
+const tvcorp = async () => (tvcorpMod ||= (await import('./views/tvcorp.js')).default);
 
 // a porta decide quem entra; cada uma guarda a própria sessão (dá para ter as duas abertas em abas diferentes)
 const KIND = location.pathname === '/superadmin' || location.pathname.startsWith('/superadmin/') ? 'plataforma' : 'revenda';
@@ -50,7 +52,7 @@ on('logout', () => { state.token = null; store.set(TOKEN_KEY, null); showLogin('
 
 /* ------------------------------------------------------------------ telas do painel */
 const VIEWS = {
-  tvcorp: { area: 'revenda', load: (sub) => tvcorp.load(sub), leave: () => tvcorp.leave?.() },
+  tvcorp: { area: 'revenda', load: async (sub) => (await tvcorp()).load(sub), leave: () => tvcorpMod?.leave?.() },
   revendas: { area: 'plataforma', load: () => paintRevendas() },
   conta: { area: null, load: () => paintConta() },
 };
