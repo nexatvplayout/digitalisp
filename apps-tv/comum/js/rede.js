@@ -28,7 +28,7 @@
           try { json = x.responseText ? JSON.parse(x.responseText) : null; } catch (e) { json = null; }
           var data = Date.parse(x.getResponseHeader('Date') || '');
           if (json && typeof json.now === 'number') data = json.now;
-          ok({ status: x.status, json: json, horaServidor: isFinite(data) ? data : null });
+          ok({ status: x.status, json: json, texto: String(x.responseText || '').slice(0, 200), horaServidor: isFinite(data) ? data : null });
         };
         x.onerror = function () { var e = new Error('sem conexão com o servidor'); e.semRede = true; falha(e); };
         x.ontimeout = function () { var e = new Error('o servidor não respondeu'); e.semRede = true; falha(e); };
@@ -38,7 +38,8 @@
 
     function exigir(r, aceitos) {
       if (aceitos.indexOf(r.status) >= 0) return r;
-      var e = new Error((r.json && r.json.error) || ('Erro ' + r.status));
+      // a mensagem inteira: o `error` do JSON ou, sem JSON, o começo do corpo (página de erro de proxy etc.)
+      var e = new Error((r.json && r.json.error) || (r.texto ? r.texto.replace(/\s+/g, ' ').trim() : '') || ('Erro ' + r.status));
       e.status = r.status;
       e.codigo = r.json && r.json.code;
       throw e;

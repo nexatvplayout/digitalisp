@@ -255,3 +255,38 @@ test('linha de diagnóstico: versão, servidor sem https, plataforma, modo e o �
   assert.equal(l, 'v' + N.VERSAO + ' · painel.digitalisp.com.br · tizen · chave (pair 404) · erro: ativar: HTTP 404 Chave');
   assert.match(N.linhaDiagnostico({}), /erro: nenhum$/);
 });
+
+// ---------------------------------------------------------------- campo da chave (1.0.2)
+
+test('chave digitada: traço automático depois do 4º, maiúsculas, até 8', () => {
+  let c = '';
+  const digitar = (texto) => { const r = N.editarChave(c, texto); c = r.chars; return r; };
+  assert.equal(digitar('a').texto, 'A');
+  assert.equal(digitar('ABcd').texto, 'ABCD-');
+  assert.equal(digitar('ABCD-e').texto, 'ABCD-E');
+  assert.equal(digitar('ABCD-EFGH').texto, 'ABCD-EFGH');
+  assert.equal(digitar('ABCD-EFGHJ').texto, 'ABCD-EFGH', 'no máximo 8');
+  assert.equal(c, 'ABCDEFGH');
+});
+
+test('chave digitada: os 8 juntos, colados, com espaço, hífen ou minúsculas', () => {
+  for (const t of ['ABCDEFGH', 'abcdefgh', ' abcd efgh ', 'AB-CD-EF-GH', 'abcd\tefgh']) {
+    const r = N.editarChave('', t);
+    assert.equal(r.texto, 'ABCD-EFGH', JSON.stringify(t));
+    assert.equal(N.normalizarChave(r.chars), 'ABCD-EFGH');
+  }
+});
+
+test('chave digitada: 0, 1, I e O ficam de fora e avisam', () => {
+  const r = N.editarChave('', 'AB0C1DIO');
+  assert.equal(r.chars, 'ABCD');
+  assert.equal(r.confuso, true);
+  assert.equal(N.editarChave('', 'ABCD').confuso, false);
+});
+
+test('chave digitada: apagar o traço automático apaga o caractere antes dele', () => {
+  // o campo mostrava "ABCD-" e a pessoa apagou o traço: sobra "ABCD", que viraria "ABCD-" de novo
+  assert.equal(N.editarChave('ABCD', 'ABCD').texto, 'ABC');
+  // apagar normal no meio do texto
+  assert.equal(N.editarChave('ABCDE', 'ABCD-').texto, 'ABCD-');
+});

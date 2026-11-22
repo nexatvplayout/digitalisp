@@ -175,19 +175,53 @@
     $('cad-texto').textContent = 'Digite a chave de ativação que aparece no painel (XXXX-XXXX).';
     diag();
     var campo = $('cad-chave');
+    var chars = '', enviando = false, ultimaEnviada = null;
     campo.hidden = false;
     campo.value = '';
     campo.focus();
-    campo.onkeydown = function (ev) {
-      if (ev.keyCode !== 13) return;
-      var k = N.normalizarChave(campo.value);
-      if (!k) { $('cad-texto').textContent = 'A chave tem 8 caracteres e não usa 0, 1, I nem O.'; return; }
-      $('cad-texto').textContent = 'Conferindo…';
-      a.ativar(k, dev).then(function (r) { campo.hidden = true; erro(null); ativado(r.json); }, function (e) {
-        erro('ativar: ' + (e.status ? 'HTTP ' + e.status + ' ' : '') + e.message);
-        $('cad-texto').textContent = e.status === 404 ? 'Chave inexistente, usada ou vencida.' : (e.semRede ? 'Sem internet.' : e.message);
-      });
+
+    // traço automático, maiúsculas, só o alfabeto da chave, até 8 (o teclado da TV pode mandar espaço, minúscula…)
+    campo.oninput = function () {
+      var r = N.editarChave(chars, campo.value);
+      chars = r.chars;
+      if (campo.value !== r.texto) {
+        campo.value = r.texto;
+        try { campo.setSelectionRange(r.texto.length, r.texto.length); } catch (e) { /* TV sem seleção */ }
+      }
+      $('cad-texto').textContent = r.confuso ? 'A chave não usa 0, 1, I nem O: confira o que está no painel.'
+        : (chars.length === 8 ? 'Conferindo…' : 'Digite a chave de ativação que aparece no painel (XXXX-XXXX).');
+      // com os 8 caracteres a chave vai sozinha: não depende do Enter/Concluído de cada teclado
+      if (chars.length === 8 && chars !== ultimaEnviada) enviar();
     };
+    campo.onkeydown = function (ev) {
+      // Enter, o "Concluído" do teclado da Samsung (65376) e o OK do controle
+      if (ev.keyCode === 13 || ev.keyCode === 65376) enviar(true);
+    };
+    campo.onchange = function () { if (chars.length === 8 && chars !== ultimaEnviada) enviar(); };
+
+    function enviar(pedido) {
+      if (enviando) return;
+      var k = N.normalizarChave(chars);
+      if (!k) {
+        if (pedido) $('cad-texto').textContent = 'A chave tem 8 caracteres (faltam ' + (8 - chars.length) + ').';
+        return;
+      }
+      enviando = true;
+      ultimaEnviada = chars;
+      $('cad-texto').textContent = 'Conferindo ' + k + '…';
+      a.ativar(k, dev).then(function (r) {
+        if (!r.json || !r.json.token) throw new Error('resposta 200 sem token: ' + (r.texto || '').slice(0, 120));
+        campo.hidden = true;
+        erro(null);
+        ativado(r.json);
+      }).catch(function (e) {
+        enviando = false;
+        erro('ativar ' + k + ': ' + (e.status ? 'HTTP ' + e.status + (e.codigo ? ' [' + e.codigo + ']' : '') + ' ' : (e.semRede ? 'sem conexão ' : '')) + e.message);
+        $('cad-texto').textContent = e.status === 404 ? 'Chave ' + k + ' inexistente, usada ou vencida.'
+          : e.status === 429 ? 'Muitas tentativas. Espere alguns minutos.' : (e.semRede ? 'Sem internet.' : e.message);
+        campo.focus();
+      });
+    }
   }
 
   // ------------------------------------------------------------------ ciclo com o servidor
@@ -399,6 +433,8 @@
   var seq = [];
   function teclas(ev) {
     var k = P.tecla(ev);
+    // dentro do campo da chave, Backspace/Esc são do campo (apagar), não o "Voltar" do app
+    if (ev.target && ev.target.tagName === 'INPUT' && (ev.keyCode === 8 || ev.keyCode === 27 || ev.keyCode === 13 || ev.keyCode === 65376)) return;
     if (k === 'BACK') { ev.preventDefault(); if (!$('diag').hidden) $('diag').hidden = true; return; } // não sai do app
     if (!k) return;
     // tela da chave: OK no controle traz o teclado da TV de volta para o campo

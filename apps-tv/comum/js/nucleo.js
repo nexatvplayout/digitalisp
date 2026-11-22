@@ -12,7 +12,7 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  var VERSAO = '1.0.1';
+  var VERSAO = '1.0.2';
   var TZ_PADRAO = 'America/Sao_Paulo';
   var SHA = /^[0-9a-f]{64}$/;
   var DIA = /^\d{4}-\d{2}-\d{2}$/;
@@ -467,6 +467,25 @@
     return out.length === 8 ? out.slice(0, 4) + '-' + out.slice(4) : null;
   }
 
+  /**
+   * O campo da chave mudou (teclado da TV, colar): devolve { chars, texto, confuso }. `chars` só tem caracteres do
+   * alfabeto, em maiúsculas, até 8; `texto` é o que o campo mostra, com o traço automático depois do 4º ("ABCD-E").
+   * 0, 1, I e O saem (`confuso` = veio algum). Se a mudança foi só apagar o traço automático, apaga também o caractere
+   * antes dele (senão o traço voltaria e o apagar ficaria preso), como no Android.
+   */
+  function editarChave(anteriores, texto) {
+    var s = String(texto || '').toUpperCase(), chars = '', confuso = false;
+    for (var i = 0; i < s.length; i++) {
+      if (ALFABETO.indexOf(s[i]) >= 0) { if (chars.length < 8) chars += s[i]; }
+      else if ('01IO'.indexOf(s[i]) >= 0) confuso = true;
+    }
+    var ant = String(anteriores || '');
+    if (chars === ant && ant.length >= 4 && s.length < formatarChave(ant).length) chars = chars.slice(0, -1);
+    return { chars: chars, texto: formatarChave(chars), confuso: confuso };
+  }
+
+  function formatarChave(chars) { return chars.length < 4 ? chars : chars.slice(0, 4) + '-' + chars.slice(4); }
+
   // ------------------------------------------------------------------ sinal de vida e exibição
 
   /** Acumula a exibição (contrato §4.3: `plays`), por dia; o app só zera depois do 200 do sinal de vida. */
@@ -540,7 +559,7 @@
   function linhaDiagnostico(d) {
     var srv = String(d.servidor || '—').replace(/^https?:\/\//, '').replace(/\/+$/, '');
     var partes = ['v' + VERSAO, srv, d.plataforma || '', d.modo || ''];
-    partes.push('erro: ' + (d.erro ? umaLinha(String(d.erro), 140) : 'nenhum'));
+    partes.push('erro: ' + (d.erro ? umaLinha(String(d.erro), 300) : 'nenhum'));
     return partes.filter(Boolean).join(' · ');
   }
 
@@ -554,7 +573,7 @@
     cabe: cabe, bytesDe: bytesDe,
     horaLocal: horaLocal, blocoAtivo: blocoAtivo, escolherBloco: escolherBloco, itemVale: itemVale,
     proximaVirada: proximaVirada, telaLigada: telaLigada, diferencaRelogio: diferencaRelogio,
-    normalizarChave: normalizarChave,
+    normalizarChave: normalizarChave, editarChave: editarChave,
     contarExibicao: contarExibicao, loteExibicao: loteExibicao, baixarLote: baixarLote, corpoSinal: corpoSinal,
     espera: espera, camadaSemConteudo: camadaSemConteudo, linhaDiagnostico: linhaDiagnostico
   };
