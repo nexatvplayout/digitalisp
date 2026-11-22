@@ -38,6 +38,7 @@
   <div id="app" hidden>
     <nav class="side" aria-label="Menu">
       <div class="brand"><img src="/marca/svg/logo-horizontal-fundo-escuro.svg" alt="DIGITAL ISP" width="160" height="40"></div>
+      <a href="#guia" data-view="guia"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5z"/><path d="m8.5 9 1.5 1.5L13 7.5M8.5 15l1.5 1.5 3-3"/></svg>Primeiros passos<span class="badge" id="guiaBadge" hidden></span></a>
       <div class="sep" data-area="revenda">Telas</div>
       <a href="#tvcorp" data-view="tvcorp" data-area="revenda"><svg viewBox="0 0 24 24"><rect x="2.5" y="4" width="19" height="12.5" rx="1.5"/><path d="M8 20.5h8M12 16.5v4M6 8h5v5H6zM14 8h4M14 11h4M14 14h2"/></svg>Telas e conteúdo</a>
       <div class="sep" data-area="plataforma">Plataforma</div>
@@ -53,6 +54,11 @@
       </div>
     </nav>
     <main>
+      <div class="gd-faixa" id="guiaBar" role="status" hidden></div>
+      <section class="view" id="view-guia" hidden>
+        <header class="head"><h2>Primeiros passos</h2></header>
+        <section id="gdPanel"></section>
+      </section>
       <section class="view" id="view-tvcorp" hidden>
         <header class="head"><h2>Telas e conteúdo</h2></header>
         <section class="tc" id="tcPanel" aria-label="Telas e conteúdo"></section>

@@ -10,12 +10,13 @@ import { Readable } from 'node:stream';
 import { config } from './config.js';
 import { db } from './db.js';
 import * as access from './auth.js';
-import { needs, signedIn } from './auth.js';
+import { needs, signedIn, needsPlatform } from './auth.js';
 import * as tenancy from './tenancy.js';
 import { storage, readInput, isUrl } from './storage.js';
 import { clientIp } from './clientip.js';
 import { clock } from './ntp.js';
 import { mountPlataforma } from './plataforma.js';
+import { mountGuia } from './guia.js';
 import { createTvcorp } from './tvcorp.js';
 import { createTvcorpDados, FILE_RE as TVC_FILE_RE } from './tvcorp-dados.js';
 import { createTelas } from './telas.js';
@@ -120,6 +121,7 @@ app.post('/api/me/logout', ah(async (req, res) => {
 }));
 
 mountPlataforma(app);
+mountGuia(app, { needs, signedIn, needsPlatform, ah }); // configuração guiada (server/guia.js)
 
 /* ------------------------------------------------------------------ telas e TV Corporativa */
 const publicOrigin = (req) => config.platform.publicUrl || `${req.protocol}://${req.get('host')}`;

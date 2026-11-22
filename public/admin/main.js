@@ -50,7 +50,9 @@ $('#logout').addEventListener('click', logout);
 on('logout', () => { state.token = null; store.set(TOKEN_KEY, null); showLogin('Sessão expirada. Entre novamente.'); });
 
 /* ------------------------------------------------------------------ telas do painel */
+const guiaMod = () => import('./views/guia.js');
 const VIEWS = {
+  guia: { area: null, load: async () => (await guiaMod()).paintGuia($('#gdPanel'), S.kind, { onChange: faixaGuia }) },
   tvcorp: { area: 'revenda', load: async (sub) => (await tvcorp()).load(sub), leave: () => tvcorpMod?.leave?.() },
   revendas: { area: 'plataforma', load: async () => (await plat()).paintRevendas($('#rvPanel')) },
   planos: { area: 'plataforma', load: async () => (await plat()).paintPlanos($('#plPanel')) },
@@ -69,6 +71,23 @@ async function route() {
   for (const k of Object.keys(VIEWS)) $(`#view-${k}`).hidden = k !== v;
   for (const a of $$('.side a[data-view]')) a.classList.toggle('on', a.dataset.view === v);
   await guard(VIEWS[v].load)(sub);
+  faixaGuia();
+}
+
+/* a faixa do topo enquanto a configuração obrigatória não terminou: o próximo passo, a um clique */
+let guiaUlt = null;
+async function faixaGuia() {
+  const bar = $('#guiaBar');
+  try { guiaUlt = await api(S.kind === 'plataforma' ? '/api/platform/guia' : '/api/guia'); } catch { bar.hidden = true; return; }
+  const prox = guiaUlt.steps.find((s) => s.obrigatorio && !s.feito);
+  $('#guiaBadge').textContent = guiaUlt.completo ? '' : `${guiaUlt.feitos}/${guiaUlt.total}`;
+  $('#guiaBadge').hidden = guiaUlt.completo;
+  if (!prox || S.view === 'guia') { bar.hidden = true; return; }
+  bar.replaceChildren(
+    el('span', {}, el('b', { text: `Configuração: ${guiaUlt.feitos} de ${guiaUlt.total}. ` }), `Próximo passo: ${prox.titulo}.`),
+    el('a', { class: 'btn small primary', href: prox.ir && prox.id !== 'dados' && S.view !== prox.ir.slice(1).split('/')[0] ? prox.ir : '#guia', text: 'Continuar' }),
+    el('a', { class: 'btn small', href: '#guia', text: 'Ver todos os passos' }));
+  bar.hidden = false;
 }
 window.addEventListener('hashchange', route);
 
@@ -86,6 +105,10 @@ async function start() {
   $('#login').hidden = true;
   $('#app').hidden = false;
   if (state.me.mustChange) { location.hash = '#conta'; toast('Troque a senha inicial antes de continuar.'); }
+  else if (!location.hash) {
+    const g = await api(S.kind === 'plataforma' ? '/api/platform/guia' : '/api/guia').catch(() => null);
+    if (g && !g.completo) location.hash = '#guia';
+  }
   await route();
 }
 

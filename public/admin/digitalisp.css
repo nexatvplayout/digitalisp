@@ -100,3 +100,30 @@ button.primary:hover { background: var(--c-accent-hover); }
 .pl-mod, .pl-active { font: inherit; font-size: .88rem; letter-spacing: normal; text-transform: none; color: var(--c-fg); }
 .pl-mod b { font-weight: 600; }
 .pl-mod small { font-size: .78rem; }
+
+/* configuração guiada (views/guia.js) */
+.gd-faixa { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: -6px 0 16px; padding: 10px 14px; border-radius: 10px; background: rgba(13, 128, 255, .14); border: 1px solid rgba(13, 128, 255, .4); }
+.gd-faixa > span { flex: 1 1 240px; }
+.gd-head { display: grid; gap: 10px; }
+.gd-head h3 { margin: 0; }
+.gd-head p { margin: 4px 0 0; }
+.gd-bar { height: 8px; border-radius: 999px; background: var(--c-panel-3); overflow: hidden; }
+.gd-bar > span { display: block; height: 100%; background: linear-gradient(90deg, var(--brand-blue), var(--brand-cyan)); }
+.gd-list { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 10px; }
+.gd-step { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 12px; padding: 14px; border-radius: 12px; border: 1px solid var(--c-line); background: var(--c-panel); }
+.gd-step.atual { border-color: var(--brand-blue); box-shadow: 0 0 0 1px var(--brand-blue); }
+.gd-step.travado { opacity: .55; }
+.gd-num { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; background: var(--c-panel-3); color: var(--c-fg-2); }
+.gd-step.feito .gd-num { background: var(--brand-cyan); color: #04212a; }
+.gd-step.atual .gd-num { background: var(--brand-blue); color: #fff; }
+.gd-body { display: grid; gap: 6px; min-width: 0; }
+.gd-body p { margin: 0; }
+.gd-title { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.gd-tag { font-size: .72rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--c-panel-3); color: var(--c-dim); }
+.gd-tag.feito { background: rgba(20, 196, 204, .16); color: #5fe3e9; }
+.gd-tag.atual, .gd-tag.aberto { background: rgba(13, 128, 255, .18); color: #7fb8ff; }
+.gd-falta { color: #f5c55c; font-size: .86rem; }
+.gd-acts { display: flex; gap: 8px; }
+.gd-form { display: grid; gap: 10px; margin-top: 6px; }
+a.btn { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+#guiaBadge { margin-left: auto; }
