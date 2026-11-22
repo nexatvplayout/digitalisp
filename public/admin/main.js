@@ -21,7 +21,7 @@ function showLogin(msg = '') {
   err.hidden = !msg; err.textContent = msg;
   const f = $('#loginForm');
   $('#loginKind').textContent = KIND === 'plataforma' ? 'Equipe da plataforma' : 'Painel da revenda';
-  $('#fldTenant').hidden = KIND !== 'revenda';
+  $('#fldUser').firstChild.textContent = KIND === 'plataforma' ? 'Usuário' : 'E-mail';
   (f.username.value ? f.password : f.username).focus();
 }
 $('#loginForm').addEventListener('submit', async (e) => {
@@ -29,7 +29,6 @@ $('#loginForm').addEventListener('submit', async (e) => {
   const f = e.currentTarget;
   const kind = KIND;
   const body = { username: f.username.value.trim(), password: f.password.value };
-  if (kind === 'revenda' && f.tenant.value.trim()) body.tenant = f.tenant.value.trim().toLowerCase();
   try {
     const r = await api(kind === 'plataforma' ? '/api/platform/login' : '/api/admin/login', { method: 'POST', body });
     state.token = r.token; S.kind = kind;

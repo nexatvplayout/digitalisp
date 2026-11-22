@@ -71,9 +71,14 @@ app.post('/api/admin/login', ah(async (req, res) => {
   const recent = (fails.get(ip) || []).filter((t) => Date.now() - t < 10 * 60 * 1000);
   if (recent.length >= 20) return res.status(429).json({ error: 'Muitas tentativas. Aguarde alguns minutos.' });
   try {
+    // a revenda entra pelo e-mail (o usuário é único na plataforma inteira): a revenda é a do próprio usuário.
+    // "tenant" (identificador) ainda é aceito para scripts; sem usuário conhecido, vale o endereço (domínio da revenda)
+    const username = String(req.body?.username || config.adminUser).trim().toLowerCase().slice(0, 64);
     const slug = String(req.body?.tenant ?? '').trim().toLowerCase();
-    const tenant = slug ? await tenancy.getTenantBySlug(slug) : await tenancy.resolveTenant(req, { ignoreGiven: true });
-    res.json(await access.login(req.body?.username || config.adminUser, req.body?.password, ip, { tenant }));
+    const owner = slug ? null : await db.get('SELECT tenant_id FROM users WHERE username = ? AND tenant_id IS NOT NULL', [username]);
+    const tenant = slug ? await tenancy.getTenantBySlug(slug)
+      : owner ? await tenancy.getTenant(Number(owner.tenant_id)) : await tenancy.resolveTenant(req, { ignoreGiven: true });
+    res.json(await access.login(username, req.body?.password, ip, { tenant }));
   } catch (err) {
     if (err.status === 401) fails.set(ip, [...recent, Date.now()]);
     throw err;

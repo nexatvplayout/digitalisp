@@ -24,11 +24,8 @@
     <form class="login-card" id="loginForm" autocomplete="on">
       <img class="login-logo" src="/marca/svg/logo-horizontal-fundo-escuro.svg" alt="DIGITAL ISP" width="220" height="56">
       <p class="login-kind" id="loginKind"></p>
-      <label class="fld" id="fldTenant">Identificador da revenda
-        <input name="tenant" autocomplete="organization" placeholder="ex.: meuprovedor (vazio = endereço deste painel)">
-      </label>
-      <label class="fld">Usuário
-        <input name="username" autocomplete="username" required>
+      <label class="fld" id="fldUser">E-mail
+        <input name="username" autocomplete="username" inputmode="email" required>
       </label>
       <label class="fld">Senha
         <input name="password" type="password" autocomplete="current-password" required>
