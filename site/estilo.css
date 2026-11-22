@@ -156,8 +156,6 @@ section[id] { scroll-margin-top: 72px; }
 .lista-check strong { color: #fff; }
 
 /* Contato */
-.contato-dados { color: var(--texto-suave); }
-.contato-dados span { font-family: ui-monospace, Consolas, monospace; background: #FFF4D6; color: #6B4A00; padding: 2px 6px; border-radius: 6px; }
 .formulario {
   background: var(--fundo-claro); border: 1px solid var(--borda); border-radius: var(--raio); padding: 28px;
   display: grid; gap: 16px;
@@ -207,3 +205,21 @@ textarea { resize: vertical; }
   .formulario { padding: 20px; }
   .acoes .botao { flex: 1 1 auto; text-align: center; }
 }
+
+/* WhatsApp */
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.botao-whats { display: inline-flex; align-items: center; gap: 8px; }
+.icone-whats { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
+.icone-whats .preenchido, .whats-flutuante .preenchido { fill: currentColor; stroke: none; }
+.rodape-whats { color: #fff; font-weight: 600; text-decoration: none; border-bottom: 1px solid rgba(255,255,255,.35); }
+.rodape-whats:hover { border-bottom-color: var(--ciano); color: var(--ciano); }
+.whats-flutuante {
+  position: fixed; right: 20px; bottom: 20px; z-index: 60;
+  display: grid; place-items: center; width: 58px; height: 58px; border-radius: 50%;
+  background: #15A34A; color: #fff; box-shadow: 0 6px 20px rgba(6, 23, 58, .3);
+  transition: transform .15s, background .15s;
+}
+.whats-flutuante:hover { background: #108A3D; transform: scale(1.06); }
+.whats-flutuante svg { width: 30px; height: 30px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
+@media (prefers-reduced-motion: reduce) { .whats-flutuante { transition: none; } .whats-flutuante:hover { transform: none; } }
+@media (max-width: 560px) { .whats-flutuante { right: 14px; bottom: 14px; width: 54px; height: 54px; } .rodape { padding-bottom: 84px; } }

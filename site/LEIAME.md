@@ -34,15 +34,23 @@ npx wrangler pages deploy site --project-name digitalisp-site
 
 Outras opções que funcionam do mesmo jeito: GitHub Pages, Netlify, ou qualquer servidor que entregue arquivos.
 
+## Contato (WhatsApp)
+
+O contato é só pelo WhatsApp **(21) 99908-9151**, pelo link `https://wa.me/5521999089151` com o texto pronto
+"Olá! Quero saber mais sobre o DIGITAL ISP". Ele aparece:
+
+- no botão "Contato" do topo, no botão da seção Contato e no rodapé (todos abrem em nova aba);
+- no botão verde flutuante, no canto de baixo da tela;
+- no formulário: "Enviar pelo WhatsApp" abre o WhatsApp com os dados preenchidos já escritos na mensagem.
+  Nada é enviado a servidor nenhum.
+
+Para trocar o número: substitua `5521999089151` (5 lugares, incluindo a variável `WHATSAPP` do script) e o texto
+`(21) 99908-9151` (2 lugares) em `index.html`.
+
 ## O que falta do dono
 
-1. **Contato** — procure por `CONTATO_A_DEFINIR` em `index.html` (aparece 3 vezes, uma delas num comentário do script):
-   - no texto "E-mail e telefone" da seção Contato;
-   - na variável `EMAIL_CONTATO` do script. Enquanto não tiver um e-mail com `@`, o botão Enviar só mostra
-     "O canal de contato ainda está sendo definido". Com o e-mail preenchido, o botão abre o programa de e-mail do
-     visitante com a mensagem pronta (mailto). Se preferir receber sem depender do programa de e-mail, depois dá para
-     trocar por um envio para o servidor do DIGITAL ISP.
-   - Definir também se haverá telefone/WhatsApp público.
+1. **E-mail e telefone fixo**: ainda não foram passados, então o site mostra só o WhatsApp. Quando houver,
+   dá para acrescentar na seção Contato e no rodapé.
 2. **Revisar as promessas do texto.** O site descreve o que está em `docs/FUNCIONALIDADES.md`; parte ainda não está
    pronta no sistema. Confira se pode anunciar já:
    - aviso quando uma tela cai e venda de espaço para anunciantes (mídia indoor);
