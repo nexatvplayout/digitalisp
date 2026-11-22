@@ -46,7 +46,28 @@
       <a href="#rv-cobrancas" data-view="rv-cobrancas" data-area="revenda"><svg viewBox="0 0 24 24"><rect x="2.5" y="5.5" width="19" height="13" rx="2"/><path d="M2.5 10h19M6 15h4"/></svg>Cobranças</a>
       <a href="#rv-telas" data-view="rv-telas" data-area="revenda"><svg viewBox="0 0 24 24"><path d="M12 21s-6.5-6.2-6.5-11a6.5 6.5 0 0 1 13 0c0 4.8-6.5 11-6.5 11Z"/><circle cx="12" cy="10" r="2.5"/></svg>Telas e mapa</a>
       <div class="sep" data-area="revenda cliente">Telas</div>
-      <a href="#tvcorp" data-view="tvcorp" data-area="revenda cliente"><svg viewBox="0 0 24 24"><rect x="2.5" y="4" width="19" height="12.5" rx="1.5"/><path d="M8 20.5h8M12 16.5v4M6 8h5v5H6zM14 8h4M14 11h4M14 14h2"/></svg>Telas e conteúdo</a>
+      <a href="#tvcorp/resumo" data-view="tvcorp" data-sub="resumo" data-area="revenda cliente" class="side-sub">Resumo das telas</a>
+      <a href="#tvcorp/telas" data-view="tvcorp" data-sub="telas" data-area="revenda cliente" class="side-sub">Telas</a>
+      <a href="#tvcorp/unidades" data-view="tvcorp" data-sub="unidades" data-area="revenda cliente" class="side-sub">Unidades e grupos</a>
+      <a href="#tvcorp/comandos" data-view="tvcorp" data-sub="comandos" data-area="revenda cliente" class="side-sub">Comandos</a>
+      <a href="#tvcorp/instalar" data-view="tvcorp" data-sub="instalar" data-area="revenda cliente" class="side-sub">Instalar o aplicativo</a>
+      <div class="sep" data-area="revenda cliente">Conteúdo</div>
+      <a href="#tvcorp/midias" data-view="tvcorp" data-sub="midias" data-area="revenda cliente" class="side-sub">Mídias</a>
+      <a href="#tvcorp/aovivo" data-view="tvcorp" data-sub="aovivo" data-area="revenda cliente" class="side-sub">Ao vivo (HLS)</a>
+      <a href="#tvcorp/playlists" data-view="tvcorp" data-sub="playlists" data-area="revenda cliente" class="side-sub">Playlists</a>
+      <a href="#tvcorp/layouts" data-view="tvcorp" data-sub="layouts" data-area="revenda cliente" class="side-sub">Layouts</a>
+      <a href="#tvcorp/grade" data-view="tvcorp" data-sub="grade" data-area="revenda cliente" class="side-sub">Grade</a>
+      <div class="sep" data-area="revenda cliente">Dados e avisos</div>
+      <a href="#tvcorp/dados" data-view="tvcorp" data-sub="dados" data-area="revenda cliente" class="side-sub">Notícias e dados</a>
+      <a href="#tvcorp/indicadores" data-view="tvcorp" data-sub="indicadores" data-area="revenda cliente" class="side-sub">Indicadores</a>
+      <a href="#tvcorp/rh" data-view="tvcorp" data-sub="rh" data-area="revenda cliente" class="side-sub">RH</a>
+      <a href="#tvcorp/barras" data-view="tvcorp" data-sub="barras" data-area="revenda cliente" class="side-sub">Barras e blocos</a>
+      <a href="#tvcorp/alertas" data-view="tvcorp" data-sub="alertas" data-area="revenda cliente" class="side-sub">Alertas</a>
+      <a href="#tvcorp/aprovacoes" data-view="tvcorp" data-sub="aprovacoes" data-area="revenda cliente" class="side-sub">Aprovações</a>
+      <a href="#tvcorp/celular" data-view="tvcorp" data-sub="celular" data-area="revenda cliente" class="side-sub">Celular</a>
+      <div class="sep" data-area="revenda cliente">Relatórios e ajustes</div>
+      <a href="#tvcorp/relatorios" data-view="tvcorp" data-sub="relatorios" data-area="revenda cliente" class="side-sub">Relatórios</a>
+      <a href="#tvcorp/config" data-view="tvcorp" data-sub="config" data-area="revenda cliente" class="side-sub">Configurações</a>
       <div class="sep" data-area="plataforma">Plataforma</div>
       <a href="#mapa" data-view="mapa" data-area="plataforma"><svg viewBox="0 0 24 24"><path d="M12 21s-6.5-6.2-6.5-11a6.5 6.5 0 0 1 13 0c0 4.8-6.5 11-6.5 11Z"/><circle cx="12" cy="10" r="2.5"/></svg>Mapa do Brasil</a>
       <a href="#revendas" data-view="revendas" data-area="plataforma"><svg viewBox="0 0 24 24"><path d="M3 20V9l9-5 9 5v11"/><path d="M8 20v-6h8v6"/></svg>Revendas</a>
@@ -60,6 +81,7 @@
       </div>
     </nav>
     <main>
+      <nav class="abas" id="abas" aria-label="Janelas abertas" hidden></nav>
       <div class="gd-faixa gd-entrou" id="entrouComo" role="status" hidden></div>
       <div class="gd-faixa" id="guiaBar" role="status" hidden></div>
       <section class="view" id="view-rv-resumo" hidden><header class="head"><h2>Resumo</h2></header><section id="rrPanel"></section></section>

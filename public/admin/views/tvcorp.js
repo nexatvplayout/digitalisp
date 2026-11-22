@@ -111,6 +111,8 @@ async function paint() {
     class: `cg-tab${P.tab === t.id ? ' on' : ''}`, role: 'tab', type: 'button', 'aria-selected': String(P.tab === t.id), text: t.label, onclick: () => { location.hash = `#tvcorp/${t.id}`; },
   })));
   const box = el('div', { class: 'pf-box tc-box', id: 'tcBox' });
+  // as abas ficam no menu lateral do painel (main.js); aqui só o conteúdo da aba
+  bar.hidden = true;
   put(root, T.demo ? demoBanner() : null, bar, box);
   const seq = ++P.seq;
   put(box, note('Carregando…'));

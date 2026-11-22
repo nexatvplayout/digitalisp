@@ -144,3 +144,16 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
 .kpi.ok b { color: #5fe3e9; } .kpi.warn b { color: #f5c55c; }
 .rv-acesso { margin-top: 16px; border-color: var(--brand-cyan); }
 .tc-sub { margin: 4px 0 0; font-size: .86rem; }
+
+/* menu lateral: as telas da TV Corporativa como itens (sem ícone), rolando quando não cabem */
+.side { overflow-y: auto; }
+.side a.side-sub { padding: 6px 10px 6px 14px; font-size: .9rem; }
+.side .sep { margin-top: 12px; }
+/* as janelas abertas no topo */
+.abas { display: flex; gap: 4px; flex-wrap: wrap; margin: -6px 0 14px; padding-bottom: 8px; border-bottom: 1px solid var(--c-line); }
+.aba { display: inline-flex; align-items: center; border: 1px solid var(--c-line); border-radius: 8px 8px 0 0; background: var(--c-panel); }
+.aba a { padding: 6px 4px 6px 12px; color: var(--c-dim); text-decoration: none; font-size: .86rem; white-space: nowrap; }
+.aba.on { border-color: var(--brand-blue); background: var(--c-panel-2); }
+.aba.on a { color: var(--c-fg); font-weight: 600; }
+.aba-x { border: 0; background: transparent; color: var(--c-dim); padding: 4px 8px; cursor: pointer; font-size: 1rem; line-height: 1; }
+.aba-x:hover { color: #ff8a80; }

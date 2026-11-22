@@ -83,9 +83,37 @@ async function route() {
   if (S.view && S.view !== v) VIEWS[S.view].leave?.();
   S.view = v;
   for (const k of Object.keys(VIEWS)) $(`#view-${k}`).hidden = k !== v;
-  for (const a of $$('.side a[data-view]')) a.classList.toggle('on', a.dataset.view === v);
+  for (const a of $$('.side a[data-view]')) a.classList.toggle('on', a.dataset.view === v && (!a.dataset.sub || a.dataset.sub === (sub || 'resumo')));
+  abrirAba(v, sub);
   await guard(VIEWS[v].load)(sub);
   faixaGuia();
+}
+
+/* as janelas abertas viram abas no topo (como num navegador): clicar volta para ela, o × fecha. Guardadas na aba do navegador */
+const ABAS_KEY = `disp.abas.${KIND}`;
+let abas = (() => { try { return JSON.parse(sessionStorage.getItem(ABAS_KEY) || '[]'); } catch { return []; } })();
+const salvarAbas = () => sessionStorage.setItem(ABAS_KEY, JSON.stringify(abas.slice(-12)));
+function rotulo(hash) {
+  const a = [...$$('.side a[href]')].find((x) => x.getAttribute('href') === hash && !x.hidden);
+  return (a?.textContent || '').replace(/\d+\/\d+$/, '').trim() || hash.slice(1);
+}
+function abrirAba(v, sub) {
+  const hash = `#${v}${v === 'tvcorp' ? `/${sub || 'resumo'}` : ''}`;
+  if (!abas.includes(hash)) abas.push(hash);
+  if (abas.length > 12) abas = abas.slice(-12);
+  salvarAbas();
+  desenharAbas(hash);
+  if (v === 'tvcorp') { const t = document.querySelector('#view-tvcorp .head h2'); if (t) t.textContent = rotulo(hash); }
+}
+function desenharAbas(ativa) {
+  const bar = $('#abas');
+  bar.replaceChildren(...abas.map((h) => el('span', { class: `aba${h === ativa ? ' on' : ''}` },
+    el('a', { href: h, text: rotulo(h), 'aria-current': h === ativa ? 'page' : null }),
+    el('button', { type: 'button', class: 'aba-x', 'aria-label': `Fechar ${rotulo(h)}`, text: '×', onclick: () => {
+      const i = abas.indexOf(h); abas.splice(i, 1); salvarAbas();
+      if (h === ativa) location.hash = abas[Math.max(0, i - 1)] || `#${firstView()}`; else desenharAbas(ativa);
+    } }))));
+  bar.hidden = !abas.length;
 }
 
 /* a faixa do topo enquanto a configuração obrigatória não terminou: o próximo passo, a um clique */
