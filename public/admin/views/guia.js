@@ -3,6 +3,7 @@
 // levam à aba certa do painel, e a faixa do topo (main.js) traz de volta para o próximo passo.
 import { el, api, toast, guard } from '../lib.js';
 import { ufCityPicker } from '../../shared/uf-city.js';
+import { ligarCep } from '../cep.js';
 
 const fmtDoc = (d) => (d && d.length === 14 ? `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}` : d || '');
 const fmtPhone = (p) => { const d = String(p || '').replace(/\D/g, ''); return d.length >= 10 ? `(${d.slice(0, 2)}) ${d.slice(2, -4)}-${d.slice(-4)}` : p || ''; };
@@ -74,6 +75,7 @@ function dadosForm(done) {
         place.ufField, place.cityField),
       el('p', { class: 'dim small', text: '* obrigatório. Telefone ou WhatsApp: pelo menos um.' }),
       el('div', { class: 'rv-actions' }, el('button', { class: 'primary', type: 'submit', text: 'Salvar e continuar' })));
+    ligarCep({ cep: f.elements.zip, rua: f.elements.street, bairro: f.elements.district, numero: f.elements.number, place });
     f.onsubmit = guard(async (e) => {
       e.preventDefault();
       if (!f.reportValidity()) return;

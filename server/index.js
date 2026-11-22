@@ -193,7 +193,7 @@ telas = createTelas({
 // limite de telas (plano do cliente e plano da revenda) antes de gerar a chave de uma tela nova
 app.post(['/api/tvcorp/rede/keys', '/api/prefeitura/keys'], needs('tvcorp.manage', 'prefeitura.manage'), ah(async (req, _res, next) => { await assertNovaTela(req.tenantId); next(); }));
 telas.mount(app, { needs });
-mountEnderecos(app, { needs, ah, geocodeAddress: telasGeocoder.find }); // CEP, ponto no mapa e endereço da unidade (server/enderecos.js)
+mountEnderecos(app, { needs, signedIn, ah, geocodeAddress: telasGeocoder.find }); // CEP, ponto no mapa e endereço da unidade (server/enderecos.js)
 tvcorp.mount(app, { needs });
 const tvcorpApiKey = ah(async (req, res, next) => {
   const tok = /^Bearer ([A-Za-z0-9_-]{32,64})$/.exec(req.get('authorization') || '')?.[1];

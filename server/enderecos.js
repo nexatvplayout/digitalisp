@@ -18,8 +18,9 @@ const UF_NOME = { AC: 'Acre', AL: 'Alagoas', AP: 'Amapá', AM: 'Amazonas', BA: '
 
 const cepCache = new Map();
 
-export function mountEnderecos(app, { needs, ah, geocodeAddress }) {
-  app.get('/api/cep/:cep', needs('tvcorp.manage'), ah(async (req, res) => {
+export function mountEnderecos(app, { needs, signedIn, ah, geocodeAddress }) {
+  // o CEP serve a todos os cadastros (plataforma, revenda e cliente): só pede alguém logado
+  app.get('/api/cep/:cep', signedIn, ah(async (req, res) => {
     const cep = digits(req.params.cep);
     if (cep.length !== 8) throw fail(400, 'CEP com 8 dígitos.');
     let r = cepCache.get(cep);

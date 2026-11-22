@@ -4,6 +4,7 @@ import { $, el, api, toast, guard } from '../lib.js';
 import { ufCityPicker } from '../../shared/uf-city.js';
 import * as CAT from '../../shared/funcionalidades.js';
 import { createMap } from '../telas-mapa.js';
+import { ligarCep } from '../cep.js';
 
 const brl = (c) => (c == null ? '—' : (Number(c) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
 const toCents = (v) => { const s = String(v ?? '').trim().replace(/\./g, '').replace(',', '.'); if (!s) return null; const n = Math.round(Number(s) * 100); return Number.isFinite(n) ? n : NaN; };
@@ -86,6 +87,7 @@ function revendaForm(t, plans, done) {
     field('Observações', el('textarea', { name: 'notes', rows: 2, maxlength: 1000, text: t?.notes || '' }), { full: true }),
     el('div', { class: 'rv-actions' }, el('button', { class: 'primary', type: 'submit', text: editing ? 'Salvar' : 'Cadastrar revenda' })),
     el('div', { class: 'rv-out' }));
+  ligarCep({ cep: f.elements.zip, rua: f.elements.street, bairro: f.elements.district, numero: f.elements.number, place });
   f.addEventListener('submit', guard(async (e) => {
     e.preventDefault();
     const v = Object.fromEntries(new FormData(f));
