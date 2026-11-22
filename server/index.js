@@ -201,11 +201,13 @@ app.use('/marca', express.static(path.join(config.root, 'marca'), { maxAge: '1h'
 // o painel tem duas portas: /admin/ (revendas) e /superadmin/ (equipe da plataforma); main.js vê a porta pelo endereço
 // o navegador sempre confere os arquivos do painel pelo ETag (304 quando não mudou): uma atualização nunca deixa a página
 // nova com o código velho guardado (22/11: o botão Entrar não fazia nada com o main.js antigo no cache)
-const panelAge = 0;
-app.use('/admin', express.static(pub('admin'), { maxAge: panelAge }));
-app.use('/superadmin', express.static(pub('admin'), { maxAge: panelAge }));
+// "no-cache" explícito: a Cloudflare troca um max-age=0 pelo TTL do navegador dela (4 h), mas respeita o no-cache
+const noCache = (res) => res.setHeader('Cache-Control', 'no-cache');
+const panelStatic = express.static(pub('admin'), { setHeaders: noCache });
+app.use('/admin', panelStatic);
+app.use('/superadmin', panelStatic);
 const cacheAge = config.production ? '5m' : 0; // em desenvolvimento, sempre o arquivo novo
-app.use('/shared', express.static(pub('shared'), { maxAge: cacheAge }));
+app.use('/shared', express.static(pub('shared'), { setHeaders: noCache }));
 app.use('/tvcorp', express.static(pub('tvcorp'), { maxAge: cacheAge }));
 // o site institucional (site/) na raiz: www.digitalisp.com.br vem deste servidor pelo túnel, com o painel em /admin e /superadmin
 app.use(express.static(path.join(config.root, 'site'), { maxAge: cacheAge, index: 'index.html' }));
