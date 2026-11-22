@@ -61,6 +61,15 @@ app.use('/api/telas', (req, res, next) => {
   next();
 });
 app.use((_req, res, next) => { res.set('X-Content-Type-Options', 'nosniff'); next(); });
+// pedido lento (mais de 400 ms) vai para o log: "[lento] GET /api/tvcorp 1234 ms" (o sinal de vida das telas fica de fora)
+app.use((req, res, next) => {
+  const t0 = process.hrtime.bigint();
+  res.on('finish', () => {
+    const ms = Number(process.hrtime.bigint() - t0) / 1e6;
+    if (ms > 400 && !req.path.startsWith('/api/telas/')) console.log(`[lento] ${req.method} ${req.originalUrl.split('?')[0]} ${res.statusCode} ${Math.round(ms)} ms`);
+  });
+  next();
+});
 
 if (config.platform.canonicalHost) {
   const canon = config.platform.canonicalHost;
