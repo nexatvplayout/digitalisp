@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <title>Controle das telas da repartição</title>
+  <link rel="stylesheet" href="/shared/telas-previa.css">
+  <link rel="stylesheet" href="/reparticao/reparticao.css">
+</head>
+<body>
+  <a class="r-skip" href="#panels">Pular para o conteúdo</a>
+  <!-- a barra do topo: a repartição, quantas telas estão no ar, a hora, quem entrou e Sair -->
+  <header class="r-bar" id="bar" hidden>
+    <span class="r-brand">NEXA Telas</span>
+    <span class="r-bar-office"><b id="officeName"></b><span class="r-bar-type" id="officeType"></span></span>
+    <span class="r-bar-telas" id="barTelas"><span class="r-dot" id="barDot" aria-hidden="true"></span><span id="barCount"></span></span>
+    <span class="r-bar-clock" id="clock" aria-label="Hora"></span>
+    <span class="r-bar-who" id="who" hidden></span>
+    <!-- o botão de pânico (silencioso): segure por 2 segundos; avisa a Segurança e não aparece em tela nenhuma -->
+    <button type="button" class="r-btn small r-panic" id="panic" hidden aria-describedby="panicNote">Pânico</button>
+    <span class="r-bar-who" id="panicNote" role="status" aria-live="polite"></span>
+    <button type="button" class="r-btn small" id="logout">Sair</button>
+  </header>
+
+  <main class="r">
+    <!-- entrada: o usuário e a senha do painel desta repartição -->
+    <form id="login" class="r-card r-login" novalidate>
+      <span class="r-brand">NEXA Telas</span>
+      <h1>Painel da repartição</h1>
+      <p class="r-dim">Entre com o usuário e a senha que a prefeitura criou para você nesta repartição.</p>
+      <label class="r-field"><span>Usuário</span>
+        <input type="text" id="username" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="64" aria-describedby="userHelp">
+      </label>
+      <p class="r-dim" id="userHelp">Se a prefeitura passou só uma senha (sem usuário), deixe o usuário em branco.</p>
+      <label class="r-field"><span>Senha</span>
+        <input type="password" id="password" autocomplete="current-password" maxlength="72" required>
+      </label>
+      <p class="r-err" id="loginErr" role="alert" hidden></p>
+      <button type="submit" class="r-btn primary big" id="loginBtn">Entrar</button>
+    </form>
+
+    <div id="app" hidden>
+      <!-- as faixas de aviso: só aparecem quando valem -->
+      <p class="r-banner" id="electoral" role="note" hidden></p>
+      <section class="r-banner r-approval" id="approvalBox" aria-labelledby="approvalTitle" hidden>
+        <h2 id="approvalTitle">Aguardando a SECOM</h2>
+        <p class="r-dim" id="approvalNote"></p>
+        <ul class="r-list" id="requests"></ul>
+      </section>
+      <p class="r-err" id="appErr" role="alert" hidden></p>
+      <p class="r-ok" id="appOk" role="status" hidden></p>
+
+      <!-- as abas: uma por função, na ordem do uso diário (o tipo da repartição e os módulos ligados decidem quais) -->
+      <div class="r-tabs" id="tabs" role="tablist" aria-label="Funções desta repartição"></div>
+      <p class="r-dim" id="noTabs" hidden>O seu usuário só alcança a chamada de senha, e ela está desligada nesta repartição. Fale com a prefeitura.</p>
+      <div id="panels"></div>
+    </div>
+  </main>
+  <script type="module" src="/reparticao/reparticao.js"></script>
+</body>
+</html>

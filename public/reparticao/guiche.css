@@ -1,0 +1,4 @@
+/* NEXA Telas · a página do guichê (/reparticao/<token>/guiche): uma coluna só, botões grandes. O resto vem de reparticao.css. */
+.g { max-width: 620px; }
+.g .r-now-code { font-size: clamp(3.4rem, 16vw, 6rem); }
+.g #hDesk { font-size: 1.2rem; }

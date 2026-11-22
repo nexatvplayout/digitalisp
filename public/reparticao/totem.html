@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <title>Retire a sua senha</title>
+  <link rel="stylesheet" href="/reparticao/totem.css">
+</head>
+<body>
+  <main class="t" id="totem">
+    <header class="t-head">
+      <span class="t-office" id="office"></span>
+      <span class="t-clock" id="clock" aria-hidden="true"></span>
+    </header>
+
+    <!-- escolha da fila -->
+    <section class="t-pick" id="pick" aria-labelledby="hPick">
+      <h1 id="hPick">Toque para retirar a sua senha</h1>
+      <div class="t-services" id="services"></div>
+      <p class="t-note" id="note" role="status" aria-live="polite"></p>
+    </section>
+
+    <!-- atendimento prioritário (só nas filas que têm) -->
+    <section class="t-prio" id="prio" hidden aria-labelledby="hPrio">
+      <h1 id="hPrio"></h1>
+      <div class="t-services">
+        <button type="button" class="t-btn" id="prio0"><b>Atendimento normal</b></button>
+        <button type="button" class="t-btn prio" id="prio1"><b>Prioritário</b><small>60 anos ou mais, gestantes, pessoas com deficiência, lactantes e pessoas com criança de colo</small></button>
+        <button type="button" class="t-btn prio" id="prio2"><b>80 anos ou mais</b></button>
+      </div>
+      <button type="button" class="t-back" id="back">Voltar</button>
+    </section>
+
+    <!-- a senha emitida, grande, por 8 segundos (e o papel, se a impressão estiver ligada) -->
+    <section class="t-ticket" id="ticket" hidden aria-live="assertive">
+      <p class="t-ticket-label">Sua senha</p>
+      <p class="t-ticket-code" id="code"></p>
+      <p class="t-ticket-service" id="service"></p>
+      <p class="t-ticket-hint">Aguarde: a senha vai aparecer na tela com o guichê.</p>
+      <button type="button" class="t-back" id="reprint" hidden>Imprimir a senha</button>
+    </section>
+  </main>
+
+  <!-- o papel da senha (só aparece na impressão) -->
+  <div class="t-print" id="print" aria-hidden="true">
+    <p class="p-office" id="pOffice"></p>
+    <p class="p-code" id="pCode"></p>
+    <p class="p-service" id="pService"></p>
+    <p class="p-when" id="pWhen"></p>
+    <div class="p-qr" id="pQr"></div>
+    <p class="p-hint" id="pQrHint" hidden>Acompanhe pelo celular: aponte a câmera (vale só hoje).</p>
+    <p class="p-hint">Aguarde a chamada na tela.</p>
+  </div>
+  <script type="module" src="/reparticao/totem.js"></script>
+</body>
+</html>

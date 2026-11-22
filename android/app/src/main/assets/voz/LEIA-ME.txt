@@ -1,0 +1,2 @@
+Vozes da chamada de senha geradas por inteligência artificial (OpenAI gpt-4o-mini-tts: ash, onyx, coral, nova).
+Geradas por android-telas/voz/gerar.mjs. O app avisa em Ajustes que a voz é gerada por IA.

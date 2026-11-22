@@ -1,0 +1,6 @@
+# Perfil de compilação (22/11): o app inteiro e o tocador são compilados antes no aparelho (não ficam esperando o JIT),
+# para as telas, as setas e os teclados responderem na hora numa TV box fraca. Instalado pelo androidx.profileinstaller.
+HSPLbr/com/nexatv/telas/**->**(**)**
+Lbr/com/nexatv/telas/**;
+HSPLandroidx/media3/**->**(**)**
+Landroidx/media3/**;

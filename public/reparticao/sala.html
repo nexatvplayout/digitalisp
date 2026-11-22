@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <title>Sala</title>
+  <link rel="stylesheet" href="/reparticao/reparticao.css">
+  <link rel="stylesheet" href="/reparticao/sala.css">
+</head>
+<body>
+  <header class="r-bar">
+    <span class="r-brand">NEXA Telas · Sala</span>
+    <span class="r-bar-office"><b id="room"></b><span class="r-bar-type" id="office"></span></span>
+    <span class="r-state" id="state" aria-live="polite"></span>
+    <span class="r-bar-clock" id="clock" aria-label="Hora"></span>
+  </header>
+  <main class="r s">
+    <p class="r-err" id="err" role="alert" hidden></p>
+    <p class="r-ok" id="ok" role="status" hidden></p>
+    <!-- o paciente desta sala e o botão grande -->
+    <section class="r-card" id="now" aria-labelledby="hNow" hidden>
+      <h1 id="hNow" class="s-h">Paciente desta sala</h1>
+      <div class="r-now"><p class="r-now-code" id="code" aria-live="polite">—</p><p class="r-now-info" id="info"></p></div>
+      <p class="s-step" id="callNote" aria-live="polite" hidden></p>
+      <!-- 1. chamar -->
+      <button type="button" class="r-btn primary big s-call" id="call">Chamar paciente</button>
+      <!-- 2. chamado: chegou? -->
+      <div class="s-group" id="stepCalled" hidden>
+        <button type="button" class="r-btn primary big s-call" id="arrive">Paciente chegou</button>
+        <div class="r-btns">
+          <button type="button" class="r-btn" id="repeat">Chamar de novo</button>
+          <button type="button" class="r-btn" id="noshow">Não compareceu</button>
+        </div>
+      </div>
+      <!-- 3. em atendimento: encaminhar ou finalizar -->
+      <div class="s-group" id="stepServing" hidden>
+        <button type="button" class="r-btn big s-call" id="next" hidden>Encaminhar para a próxima etapa</button>
+        <button type="button" class="r-btn big s-call" id="finish">Finalizar</button>
+      </div>
+      <details class="s-more" id="more" hidden>
+        <summary>Encaminhar para outra fila ou voltar à fila</summary>
+        <div class="r-row end">
+          <label class="r-field"><span>Encaminhar para</span><select id="forwardTo"></select></label>
+          <button type="button" class="r-btn" id="forward">Encaminhar</button>
+        </div>
+        <button type="button" class="r-btn" id="requeue">Voltar à fila (no lugar de antes)</button>
+      </details>
+      <div class="r-btns s-group-row" id="stateRow">
+        <button type="button" class="r-btn" id="available">Disponível</button>
+        <button type="button" class="r-btn" id="pause">Pausa</button>
+      </div>
+    </section>
+    <!-- pedido de apoio -->
+    <section class="r-card" id="supportBox" aria-labelledby="hSup" hidden>
+      <h2 id="hSup">Preciso de</h2>
+      <div class="r-support" id="kinds"></div>
+      <ul class="r-list" id="mine"></ul>
+    </section>
+    <!-- quem espera nas filas desta sala (só a senha e a cor, sem nomes) -->
+    <section class="r-card" id="queueBox" aria-labelledby="hQueue" hidden>
+      <h2 id="hQueue">Esperando, na ordem de chamada</h2>
+      <ul class="r-list" id="queue"></ul>
+      <p class="r-dim" id="queueEmpty">Ninguém esperando.</p>
+    </section>
+    <p class="r-dim">Este endereço só chama e dá andamento ao paciente desta sala. Não emite senha e não abre o painel da repartição.</p>
+  </main>
+  <script type="module" src="/reparticao/sala.js"></script>
+</body>
+</html>

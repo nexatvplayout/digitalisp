@@ -1,0 +1,457 @@
+# token	texto falado	formas escritas que casam (sem acento, minúsculas); gerado por android-telas/voz/gerar.mjs
+senha	Senha	
+senha_a	Senha á	
+senha_b	Senha bê	
+senha_c	Senha cê	
+senha_d	Senha dê	
+senha_e	Senha é	
+senha_f	Senha éfe	
+senha_g	Senha gê	
+senha_h	Senha agá	
+senha_i	Senha í	
+senha_j	Senha jota	
+senha_k	Senha cá	
+senha_l	Senha éle	
+senha_m	Senha ême	
+senha_n	Senha êne	
+senha_o	Senha ó	
+senha_p	Senha pê	
+senha_q	Senha quê	
+senha_r	Senha érre	
+senha_s	Senha ésse	
+senha_t	Senha tê	
+senha_u	Senha u	
+senha_v	Senha vê	
+senha_w	Senha dáblio	
+senha_x	Senha xis	
+senha_y	Senha ípsilon	
+senha_z	Senha zê	
+l_a	á	
+l_b	bê	
+l_c	cê	
+l_d	dê	
+l_e	é	
+l_f	éfe	
+l_g	gê	
+l_h	agá	
+l_i	í	
+l_j	jota	
+l_k	cá	
+l_l	éle	
+l_m	ême	
+l_n	êne	
+l_o	ó	
+l_p	pê	
+l_q	quê	
+l_r	érre	
+l_s	ésse	
+l_t	tê	
+l_u	u	
+l_v	vê	
+l_w	dáblio	
+l_x	xis	
+l_y	ípsilon	
+l_z	zê	
+dm_0	zero	
+dm_1	um	
+dm_2	dois	
+dm_3	três	
+dm_4	quatro	
+dm_5	cinco	
+dm_6	seis	
+dm_7	sete	
+dm_8	oito	
+dm_9	nove	
+df_0	zero	
+df_1	um	
+df_2	dois	
+df_3	três	
+df_4	quatro	
+df_5	cinco	
+df_6	seis	
+df_7	sete	
+df_8	oito	
+df_9	nove	
+n_0	zero	
+n_1	um	
+n_2	dois	
+n_3	três	
+n_4	quatro	
+n_5	cinco	
+n_6	seis	
+n_7	sete	
+n_8	oito	
+n_9	nove	
+n_10	dez	
+n_11	onze	
+n_12	doze	
+n_13	treze	
+n_14	quatorze	
+n_15	quinze	
+n_16	dezesseis	
+n_17	dezessete	
+n_18	dezoito	
+n_19	dezenove	
+n_20	vinte	
+n_21	vinte e um	
+n_22	vinte e dois	
+n_23	vinte e três	
+n_24	vinte e quatro	
+n_25	vinte e cinco	
+n_26	vinte e seis	
+n_27	vinte e sete	
+n_28	vinte e oito	
+n_29	vinte e nove	
+n_30	trinta	
+n_31	trinta e um	
+n_32	trinta e dois	
+n_33	trinta e três	
+n_34	trinta e quatro	
+n_35	trinta e cinco	
+n_36	trinta e seis	
+n_37	trinta e sete	
+n_38	trinta e oito	
+n_39	trinta e nove	
+n_40	quarenta	
+n_41	quarenta e um	
+n_42	quarenta e dois	
+n_43	quarenta e três	
+n_44	quarenta e quatro	
+n_45	quarenta e cinco	
+n_46	quarenta e seis	
+n_47	quarenta e sete	
+n_48	quarenta e oito	
+n_49	quarenta e nove	
+n_50	cinquenta	
+n_51	cinquenta e um	
+n_52	cinquenta e dois	
+n_53	cinquenta e três	
+n_54	cinquenta e quatro	
+n_55	cinquenta e cinco	
+n_56	cinquenta e seis	
+n_57	cinquenta e sete	
+n_58	cinquenta e oito	
+n_59	cinquenta e nove	
+n_60	sessenta	
+n_61	sessenta e um	
+n_62	sessenta e dois	
+n_63	sessenta e três	
+n_64	sessenta e quatro	
+n_65	sessenta e cinco	
+n_66	sessenta e seis	
+n_67	sessenta e sete	
+n_68	sessenta e oito	
+n_69	sessenta e nove	
+n_70	setenta	
+n_71	setenta e um	
+n_72	setenta e dois	
+n_73	setenta e três	
+n_74	setenta e quatro	
+n_75	setenta e cinco	
+n_76	setenta e seis	
+n_77	setenta e sete	
+n_78	setenta e oito	
+n_79	setenta e nove	
+n_80	oitenta	
+n_81	oitenta e um	
+n_82	oitenta e dois	
+n_83	oitenta e três	
+n_84	oitenta e quatro	
+n_85	oitenta e cinco	
+n_86	oitenta e seis	
+n_87	oitenta e sete	
+n_88	oitenta e oito	
+n_89	oitenta e nove	
+n_90	noventa	
+n_91	noventa e um	
+n_92	noventa e dois	
+n_93	noventa e três	
+n_94	noventa e quatro	
+n_95	noventa e cinco	
+n_96	noventa e seis	
+n_97	noventa e sete	
+n_98	noventa e oito	
+n_99	noventa e nove	
+guiche	guichê	guiche
+consultorio	consultório	consultorio,consult
+sala	sala	sala
+salas	salas	salas
+mesa	mesa	mesa
+caixa	caixa	caixa
+box	box	box
+baia	baia	baia
+balcao	balcão	balcao
+posto	posto	posto
+setor	setor	setor
+triagem	triagem	triagem
+classificacao	classificação	classificacao
+risco	risco	risco
+medicacao	medicação	medicacao
+raio_x	raio-xis	raio-x,raio x,raiox,rx,raio-xis
+exame	exame	exame
+exames	exames	exames
+reavaliacao	reavaliação	reavaliacao
+recepcao	recepção	recepcao
+atendimento	atendimento	atendimento
+cadastro	cadastro	cadastro
+laboratorio	laboratório	laboratorio,lab
+coleta	coleta	coleta
+curativo	curativo	curativo
+curativos	curativos	curativos
+sutura	sutura	sutura
+vacina	vacina	vacina
+vacinacao	vacinação	vacinacao
+odontologia	odontologia	odontologia
+dentista	dentista	dentista
+enfermagem	enfermagem	enfermagem
+emergencia	emergência	emergencia
+urgencia	urgência	urgencia
+pediatria	pediatria	pediatria
+ortopedia	ortopedia	ortopedia
+ginecologia	ginecologia	ginecologia
+clinica	clínica	clinica
+clinico	clínico	clinico
+geral	geral	geral
+medico	médico	medico
+medica	médica	medica
+observacao	observação	observacao
+ultrassom	ultrassom	ultrassom,ultrasom
+eletrocardiograma	eletrocardiograma	eletrocardiograma
+ecg	é cê gê	ecg
+tomografia	tomografia	tomografia
+farmacia	farmácia	farmacia
+servico	serviço	servico
+social	social	social
+assistente	assistente	assistente
+leito	leito	leito
+andar	andar	andar
+terreo	térreo	terreo
+bloco	bloco	bloco
+ala	ala	ala
+porta	porta	porta
+entrada	entrada	entrada
+saida	saída	saida
+agendamento	agendamento	agendamento
+marcacao	marcação	marcacao
+protocolo	protocolo	protocolo
+tesouraria	tesouraria	tesouraria
+ouvidoria	ouvidoria	ouvidoria
+secretaria	secretaria	secretaria
+informacoes	informações	informacoes
+informacao	informação	informacao
+acolhimento	acolhimento	acolhimento
+isolamento	isolamento	isolamento
+inalacao	inalação	inalacao
+nebulizacao	nebulização	nebulizacao
+hidratacao	hidratação	hidratacao
+repouso	repouso	repouso
+procedimento	procedimento	procedimento
+procedimentos	procedimentos	procedimentos
+cirurgia	cirurgia	cirurgia
+pequena	pequena	pequena
+pequenas	pequenas	pequenas
+vermelha	vermelha	vermelha
+amarela	amarela	amarela
+verde	verde	verde
+azul	azul	azul
+laranja	laranja	laranja
+adulto	adulto	adulto
+infantil	infantil	infantil
+preferencial	preferencial	preferencial
+numero	número	numero,nº,n.º,no.
+de	de	de
+do	do	do
+da	da	da
+dos	dos	dos
+das	das	das
+e	e	e
+ao	ao	ao
+dr	doutor	dr,dr.
+dra	doutora	dra,dra.
+doutor	doutor	doutor
+doutora	doutora	doutora
+atendente	atendente	atendente
+psicologia	psicologia	psicologia
+nutricao	nutrição	nutricao
+fisioterapia	fisioterapia	fisioterapia
+cardiologia	cardiologia	cardiologia
+c_guiche_1	Guichê um	
+c_guiche_2	Guichê dois	
+c_guiche_3	Guichê três	
+c_guiche_4	Guichê quatro	
+c_guiche_5	Guichê cinco	
+c_guiche_6	Guichê seis	
+c_guiche_7	Guichê sete	
+c_guiche_8	Guichê oito	
+c_guiche_9	Guichê nove	
+c_guiche_10	Guichê dez	
+c_guiche_11	Guichê onze	
+c_guiche_12	Guichê doze	
+c_guiche_13	Guichê treze	
+c_guiche_14	Guichê quatorze	
+c_guiche_15	Guichê quinze	
+c_guiche_16	Guichê dezesseis	
+c_guiche_17	Guichê dezessete	
+c_guiche_18	Guichê dezoito	
+c_guiche_19	Guichê dezenove	
+c_guiche_20	Guichê vinte	
+c_guiche_21	Guichê vinte e um	
+c_guiche_22	Guichê vinte e dois	
+c_guiche_23	Guichê vinte e três	
+c_guiche_24	Guichê vinte e quatro	
+c_guiche_25	Guichê vinte e cinco	
+c_guiche_26	Guichê vinte e seis	
+c_guiche_27	Guichê vinte e sete	
+c_guiche_28	Guichê vinte e oito	
+c_guiche_29	Guichê vinte e nove	
+c_guiche_30	Guichê trinta	
+c_consultorio_1	Consultório um	
+c_consultorio_2	Consultório dois	
+c_consultorio_3	Consultório três	
+c_consultorio_4	Consultório quatro	
+c_consultorio_5	Consultório cinco	
+c_consultorio_6	Consultório seis	
+c_consultorio_7	Consultório sete	
+c_consultorio_8	Consultório oito	
+c_consultorio_9	Consultório nove	
+c_consultorio_10	Consultório dez	
+c_consultorio_11	Consultório onze	
+c_consultorio_12	Consultório doze	
+c_consultorio_13	Consultório treze	
+c_consultorio_14	Consultório quatorze	
+c_consultorio_15	Consultório quinze	
+c_consultorio_16	Consultório dezesseis	
+c_consultorio_17	Consultório dezessete	
+c_consultorio_18	Consultório dezoito	
+c_consultorio_19	Consultório dezenove	
+c_consultorio_20	Consultório vinte	
+c_consultorio_21	Consultório vinte e um	
+c_consultorio_22	Consultório vinte e dois	
+c_consultorio_23	Consultório vinte e três	
+c_consultorio_24	Consultório vinte e quatro	
+c_consultorio_25	Consultório vinte e cinco	
+c_consultorio_26	Consultório vinte e seis	
+c_consultorio_27	Consultório vinte e sete	
+c_consultorio_28	Consultório vinte e oito	
+c_consultorio_29	Consultório vinte e nove	
+c_consultorio_30	Consultório trinta	
+c_sala_1	Sala um	
+c_sala_2	Sala dois	
+c_sala_3	Sala três	
+c_sala_4	Sala quatro	
+c_sala_5	Sala cinco	
+c_sala_6	Sala seis	
+c_sala_7	Sala sete	
+c_sala_8	Sala oito	
+c_sala_9	Sala nove	
+c_sala_10	Sala dez	
+c_sala_11	Sala onze	
+c_sala_12	Sala doze	
+c_sala_13	Sala treze	
+c_sala_14	Sala quatorze	
+c_sala_15	Sala quinze	
+c_sala_16	Sala dezesseis	
+c_sala_17	Sala dezessete	
+c_sala_18	Sala dezoito	
+c_sala_19	Sala dezenove	
+c_sala_20	Sala vinte	
+c_sala_21	Sala vinte e um	
+c_sala_22	Sala vinte e dois	
+c_sala_23	Sala vinte e três	
+c_sala_24	Sala vinte e quatro	
+c_sala_25	Sala vinte e cinco	
+c_sala_26	Sala vinte e seis	
+c_sala_27	Sala vinte e sete	
+c_sala_28	Sala vinte e oito	
+c_sala_29	Sala vinte e nove	
+c_sala_30	Sala trinta	
+c_mesa_1	Mesa um	
+c_mesa_2	Mesa dois	
+c_mesa_3	Mesa três	
+c_mesa_4	Mesa quatro	
+c_mesa_5	Mesa cinco	
+c_mesa_6	Mesa seis	
+c_mesa_7	Mesa sete	
+c_mesa_8	Mesa oito	
+c_mesa_9	Mesa nove	
+c_mesa_10	Mesa dez	
+c_mesa_11	Mesa onze	
+c_mesa_12	Mesa doze	
+c_mesa_13	Mesa treze	
+c_mesa_14	Mesa quatorze	
+c_mesa_15	Mesa quinze	
+c_mesa_16	Mesa dezesseis	
+c_mesa_17	Mesa dezessete	
+c_mesa_18	Mesa dezoito	
+c_mesa_19	Mesa dezenove	
+c_mesa_20	Mesa vinte	
+c_mesa_21	Mesa vinte e um	
+c_mesa_22	Mesa vinte e dois	
+c_mesa_23	Mesa vinte e três	
+c_mesa_24	Mesa vinte e quatro	
+c_mesa_25	Mesa vinte e cinco	
+c_mesa_26	Mesa vinte e seis	
+c_mesa_27	Mesa vinte e sete	
+c_mesa_28	Mesa vinte e oito	
+c_mesa_29	Mesa vinte e nove	
+c_mesa_30	Mesa trinta	
+c_caixa_1	Caixa um	
+c_caixa_2	Caixa dois	
+c_caixa_3	Caixa três	
+c_caixa_4	Caixa quatro	
+c_caixa_5	Caixa cinco	
+c_caixa_6	Caixa seis	
+c_caixa_7	Caixa sete	
+c_caixa_8	Caixa oito	
+c_caixa_9	Caixa nove	
+c_caixa_10	Caixa dez	
+c_caixa_11	Caixa onze	
+c_caixa_12	Caixa doze	
+c_caixa_13	Caixa treze	
+c_caixa_14	Caixa quatorze	
+c_caixa_15	Caixa quinze	
+c_caixa_16	Caixa dezesseis	
+c_caixa_17	Caixa dezessete	
+c_caixa_18	Caixa dezoito	
+c_caixa_19	Caixa dezenove	
+c_caixa_20	Caixa vinte	
+c_caixa_21	Caixa vinte e um	
+c_caixa_22	Caixa vinte e dois	
+c_caixa_23	Caixa vinte e três	
+c_caixa_24	Caixa vinte e quatro	
+c_caixa_25	Caixa vinte e cinco	
+c_caixa_26	Caixa vinte e seis	
+c_caixa_27	Caixa vinte e sete	
+c_caixa_28	Caixa vinte e oito	
+c_caixa_29	Caixa vinte e nove	
+c_caixa_30	Caixa trinta	
+c_leito_1	Leito um	
+c_leito_2	Leito dois	
+c_leito_3	Leito três	
+c_leito_4	Leito quatro	
+c_leito_5	Leito cinco	
+c_leito_6	Leito seis	
+c_leito_7	Leito sete	
+c_leito_8	Leito oito	
+c_leito_9	Leito nove	
+c_leito_10	Leito dez	
+c_leito_11	Leito onze	
+c_leito_12	Leito doze	
+c_leito_13	Leito treze	
+c_leito_14	Leito quatorze	
+c_leito_15	Leito quinze	
+c_leito_16	Leito dezesseis	
+c_leito_17	Leito dezessete	
+c_leito_18	Leito dezoito	
+c_leito_19	Leito dezenove	
+c_leito_20	Leito vinte	
+c_leito_21	Leito vinte e um	
+c_leito_22	Leito vinte e dois	
+c_leito_23	Leito vinte e três	
+c_leito_24	Leito vinte e quatro	
+c_leito_25	Leito vinte e cinco	
+c_leito_26	Leito vinte e seis	
+c_leito_27	Leito vinte e sete	
+c_leito_28	Leito vinte e oito	
+c_leito_29	Leito vinte e nove	
+c_leito_30	Leito trinta	

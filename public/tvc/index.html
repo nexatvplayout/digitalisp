@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#0f172a">
+  <title>Comunicação da empresa</title>
+  <link rel="stylesheet" href="/tvc/tvc.css">
+</head>
+<body>
+  <header class="t-bar">
+    <span class="t-brand">Comunicação da empresa</span>
+    <b class="t-name" id="name"></b>
+  </header>
+  <nav class="t-tabs" aria-label="Seções">
+    <button type="button" class="t-tab on" data-tab="avisos" aria-pressed="true">Avisos</button>
+    <button type="button" class="t-tab" data-tab="pessoas" aria-pressed="false">Pessoas</button>
+    <button type="button" class="t-tab" data-tab="agenda" aria-pressed="false">Agenda</button>
+    <button type="button" class="t-tab" data-tab="enviar" aria-pressed="false">Enviar</button>
+  </nav>
+  <main class="t">
+    <p class="t-err" id="err" role="alert" hidden></p>
+    <p class="t-ok" id="ok" role="status" hidden></p>
+
+    <section class="t-sec" id="tab-avisos" aria-labelledby="hAvisos">
+      <h1 id="hAvisos">Comunicados</h1>
+      <div class="t-card t-me" id="me">
+        <p class="t-dim" id="meText">Alguns comunicados pedem que você toque em <b>Li</b>. Para isso, diga o seu nome ou a matrícula (fica só neste celular).</p>
+        <form id="whoForm" class="t-row">
+          <label class="t-field"><span>Nome ou matrícula</span><input type="text" id="who" maxlength="60" autocomplete="name"></label>
+          <button type="submit" class="t-btn">Salvar</button>
+        </form>
+      </div>
+      <ul class="t-list" id="posts"></ul>
+      <p class="t-dim" id="noPosts" hidden>Nenhum comunicado em vigor.</p>
+    </section>
+
+    <section class="t-sec" id="tab-pessoas" aria-labelledby="hPessoas" hidden>
+      <h1 id="hPessoas">Aniversariantes da semana</h1>
+      <ul class="t-list t-people" id="birthdays"></ul>
+      <p class="t-dim" id="noBirthdays" hidden>Ninguém faz aniversário nesta semana.</p>
+      <h2 id="hTenure">Tempo de casa</h2>
+      <ul class="t-list t-people" id="tenure"></ul>
+      <p class="t-dim" id="noTenure" hidden>Nenhum aniversário de empresa nesta semana.</p>
+      <h2 id="hWelcome">Boas-vindas</h2>
+      <ul class="t-list t-people" id="welcome"></ul>
+      <p class="t-dim" id="noWelcome" hidden>Ninguém chegou nos últimos dias.</p>
+    </section>
+
+    <section class="t-sec" id="tab-agenda" aria-labelledby="hAgenda" hidden>
+      <h1 id="hAgenda">Agenda</h1>
+      <div id="safety"></div>
+      <h2>Eventos</h2>
+      <ul class="t-list" id="events"></ul>
+      <p class="t-dim" id="noEvents" hidden>Nenhum evento marcado.</p>
+      <h2>Cardápio de hoje</h2>
+      <div id="menu"></div>
+      <p class="t-dim" id="noMenu" hidden>O cardápio de hoje não foi publicado.</p>
+      <h2>Datas</h2>
+      <p class="t-dim" id="campaigns" hidden></p>
+      <ul class="t-list" id="dates"></ul>
+    </section>
+
+    <section class="t-sec" id="tab-enviar" aria-labelledby="hEnviar" hidden>
+      <h1 id="hEnviar">Enviar uma sugestão</h1>
+      <p class="t-dim">Sugestões, ideias de conteúdo para as telas ou respostas de pesquisa. Vão para a equipe de comunicação, que lê antes de publicar qualquer coisa.</p>
+      <form id="suggestForm" class="t-card">
+        <label class="t-field"><span>Tipo</span><select id="kind"></select></label>
+        <label class="t-field"><span>Texto</span><textarea id="text" maxlength="500" rows="5" required></textarea><small class="t-dim" id="count">0 de 500</small></label>
+        <label class="t-check"><input type="checkbox" id="anon" checked><span>Enviar sem o meu nome</span></label>
+        <label class="t-field" id="nameBox" hidden><span>Seu nome</span><input type="text" id="sname" maxlength="60" autocomplete="name"></label>
+        <label class="t-field"><span>Foto (opcional, até 5 MB)</span><input type="file" id="photo" accept="image/jpeg,image/png,image/webp"></label>
+        <button type="submit" class="t-btn primary">Enviar</button>
+      </form>
+    </section>
+  </main>
+  <script type="module" src="/tvc/tvc.js"></script>
+</body>
+</html>

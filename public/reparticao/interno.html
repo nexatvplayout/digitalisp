@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#0f172a">
+  <title>Comunicação interna</title>
+  <link rel="stylesheet" href="/reparticao/reparticao.css">
+  <link rel="stylesheet" href="/interno/interno.css">
+</head>
+<body class="in-page">
+  <header class="r-bar">
+    <span class="r-brand">NEXA Telas · Equipe</span>
+    <span class="r-bar-office"><b id="office"></b><span class="r-bar-type" id="sector"></span></span>
+  </header>
+  <!-- o código de emergência em vigor: por cima de tudo, na cor do código -->
+  <section class="in-code" id="code" role="alert" aria-live="assertive" hidden>
+    <p class="in-code-label" id="codeLabel"></p>
+    <p class="in-code-meaning" id="codeMeaning"></p>
+    <p class="in-code-place" id="codePlace"></p>
+    <p class="in-code-time" id="codeTime"></p>
+    <button type="button" class="r-btn in-code-close" id="codeClose" hidden>Encerrar este código</button>
+    <p class="in-code-more" id="codeMore"></p>
+  </section>
+  <main class="r in">
+    <p class="r-err" id="err" role="alert" hidden></p>
+    <p class="r-ok" id="ok" role="status" hidden></p>
+    <!-- 1ª vez: o nome ou a matrícula (fica só neste aparelho) -->
+    <section class="r-card" id="who" aria-labelledby="hWho" hidden>
+      <h1 id="hWho">Quem é você?</h1>
+      <p class="r-dim">Escreva o seu nome ou a sua matrícula. Fica guardado só neste celular, para marcar os avisos que você leu.</p>
+      <form id="whoForm" class="r-row">
+        <label class="r-field"><span>Nome ou matrícula</span><input type="text" id="reader" maxlength="60" autocomplete="name" required></label>
+        <button type="submit" class="r-btn primary">Continuar</button>
+      </form>
+    </section>
+    <section class="r-card" id="me" hidden>
+      <p class="in-me"><span>Você: <b id="meName"></b></span> <button type="button" class="r-btn small" id="change">Trocar</button></p>
+      <p class="r-dim" id="unknown" hidden>Este nome não está na lista do setor. A leitura é registrada assim mesmo; confira com a direção se está escrito como na lista.</p>
+      <button type="button" class="r-btn" id="sound">Ativar o alerta sonoro dos códigos</button>
+      <p class="r-dim" id="soundNote">Deixe esta página aberta: os códigos de emergência aparecem aqui na hora, com som e vibração.</p>
+    </section>
+    <section class="r-card" id="fireBox" aria-labelledby="hFire" hidden>
+      <h2 id="hFire">Disparar um código</h2>
+      <label class="r-field"><span>Local (setor, sala, leito)</span><input type="text" id="place" maxlength="80" placeholder="Ex.: Observação, leito 4" autocomplete="off"></label>
+      <div class="in-fire" id="fire"></div>
+      <p class="r-dim">Toque no código e confirme. Ele aparece nas telas internas e nos celulares da equipe. Nunca escreva o nome de paciente.</p>
+    </section>
+    <section class="r-card" aria-labelledby="hNotices">
+      <h2 id="hNotices">Avisos do setor</h2>
+      <ul class="in-list" id="notices"></ul>
+      <p class="r-dim" id="empty" hidden>Nenhum aviso em vigor.</p>
+    </section>
+  </main>
+  <script type="module" src="/interno/interno.js"></script>
+</body>
+</html>

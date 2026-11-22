@@ -1,0 +1,43 @@
+/* NEXA Telas · totem de senhas (public/reparticao/totem.html): tela de toque na entrada. Botões grandes, alto contraste. */
+:root { color-scheme: dark; --bg: #0e1622; --card: #18243a; --ink: #f2f6fb; --dim: #a9b6c8; --line: #2b3b57; --accent: #2f7de1; --prio: #d9822b; }
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 400 20px/1.35 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; -webkit-tap-highlight-color: transparent; user-select: none; overflow: hidden; }
+.t { display: flex; flex-direction: column; height: 100%; padding: clamp(12px, 3vmin, 32px); gap: clamp(12px, 3vmin, 28px); }
+.t-head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; color: var(--dim); font-size: clamp(18px, 3vmin, 30px); }
+.t-office { color: var(--ink); font-weight: 600; }
+.t section { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: clamp(14px, 3vmin, 32px); min-height: 0; }
+.t section[hidden] { display: none; }
+.t h1 { margin: 0; font-size: clamp(26px, 5.5vmin, 60px); font-weight: 700; text-align: center; }
+.t-services { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: clamp(12px, 2.5vmin, 28px); width: 100%; max-width: 1400px; overflow: auto; }
+.t-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: clamp(110px, 22vmin, 240px); padding: 18px 22px; border: 3px solid var(--line); border-radius: 22px; background: var(--card); color: var(--ink); font: inherit; cursor: pointer; text-align: center; }
+.t-btn b { font-size: clamp(24px, 5vmin, 52px); font-weight: 700; line-height: 1.15; }
+.t-btn small { font-size: clamp(15px, 2.4vmin, 24px); color: var(--dim); }
+.t-btn:active { background: var(--accent); border-color: var(--accent); }
+.t-btn:focus-visible, .t-back:focus-visible { outline: 4px solid #fff; outline-offset: 3px; }
+.t-btn.prio { border-color: var(--prio); }
+.t-btn.prio:active { background: var(--prio); }
+.t-back { padding: 16px 40px; border: 2px solid var(--line); border-radius: 16px; background: transparent; color: var(--ink); font: inherit; font-size: clamp(20px, 3vmin, 30px); cursor: pointer; }
+.t-note { min-height: 1.4em; margin: 0; color: #ffd28a; font-size: clamp(18px, 3vmin, 28px); text-align: center; }
+.t-ticket-label { margin: 0; color: var(--dim); font-size: clamp(24px, 5vmin, 48px); }
+.t-ticket-code { margin: 0; font-size: clamp(110px, 34vmin, 420px); font-weight: 800; line-height: 1; letter-spacing: .02em; font-variant-numeric: tabular-nums; }
+.t-ticket.prio .t-ticket-code { color: #ffb561; }
+.t-ticket-service { margin: 0; font-size: clamp(24px, 5vmin, 54px); font-weight: 600; text-align: center; }
+.t-ticket-hint { margin: 0; color: var(--dim); font-size: clamp(18px, 3vmin, 30px); text-align: center; }
+.t-print { display: none; }
+@media (prefers-reduced-motion: no-preference) { .t-ticket:not([hidden]) .t-ticket-code { animation: t-in .25s ease-out; } }
+@keyframes t-in { from { transform: scale(.85); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* o papel da senha: só ele sai na impressão (bobina de 58 ou 80 mm ou folha comum) */
+@media print {
+  @page { margin: 4mm; }
+  html, body { height: auto; background: #fff; color: #000; overflow: visible; }
+  .t { display: none !important; }
+  .t-print { display: block; width: 72mm; max-width: 100%; margin: 0 auto; text-align: center; font-family: system-ui, Arial, sans-serif; color: #000; }
+  .t-print p { margin: 0 0 2mm; }
+  .p-office { font-size: 12pt; font-weight: 600; }
+  .p-code { font-size: 44pt; font-weight: 800; line-height: 1.05; }
+  .p-service { font-size: 13pt; }
+  .p-when, .p-hint { font-size: 9pt; }
+  .p-qr svg { width: 34mm; height: 34mm; display: block; margin: 1mm auto 2mm; }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "digital-isp",
+  "version": "0.1.0",
+  "description": "DIGITAL ISP: digital signage para revenda (plataforma, revendas, clientes e telas)",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=22.5"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "test": "node --test \"test/*.test.js\""
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1147.0",
+    "@aws-sdk/lib-storage": "^3.1147.0",
+    "@aws-sdk/s3-request-presigner": "^3.1147.0",
+    "express": "^4.21.2",
+    "pg": "^8.23.1"
+  }
+}

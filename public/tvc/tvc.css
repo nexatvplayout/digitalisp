@@ -1,0 +1,50 @@
+/* TV Corporativa · a página do celular do funcionário (/tvc/<token>). Feita para 375 px de largura; cresce até 640 px. */
+:root { color-scheme: light dark; --bg: #f5f7fb; --card: #fff; --fg: #0f172a; --dim: #5b6475; --line: rgba(100, 116, 139, .3); --accent: #1d4ed8; --ok: #15803d; --bad: #b91c1c; }
+@media (prefers-color-scheme: dark) { :root { --bg: #0b1220; --card: #111a2e; --fg: #e5e9f2; --dim: #9aa4b8; --line: rgba(148, 163, 184, .25); --accent: #60a5fa; --ok: #4ade80; --bad: #f87171; } }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-text-size-adjust: 100%; }
+.t-bar { position: sticky; top: 0; z-index: 10; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; padding: 12px 16px calc(10px); padding-top: max(12px, env(safe-area-inset-top)); background: #0f172a; color: #fff; }
+.t-brand { font-size: .8rem; letter-spacing: .04em; text-transform: uppercase; opacity: .8; }
+.t-name { font-size: 1.05rem; }
+.t-tabs { position: sticky; top: 46px; z-index: 9; display: grid; grid-template-columns: repeat(4, 1fr); background: var(--card); border-bottom: 1px solid var(--line); }
+.t-tab { appearance: none; border: 0; background: none; color: var(--dim); font: inherit; font-weight: 600; padding: 12px 4px; min-height: 48px; border-bottom: 3px solid transparent; cursor: pointer; }
+.t-tab.on { color: var(--accent); border-bottom-color: var(--accent); }
+.t { max-width: 640px; margin: 0 auto; padding: 12px 14px 48px; }
+h1 { font-size: 1.3rem; margin: 8px 0 12px; }
+h2 { font-size: 1.05rem; margin: 22px 0 10px; }
+h3 { font-size: 1.1rem; margin: 4px 0 6px; overflow-wrap: anywhere; }
+p { margin: 0 0 6px; overflow-wrap: anywhere; }
+.t-dim { color: var(--dim); }
+.t-err, .t-ok { border-radius: 10px; padding: 10px 12px; margin: 0 0 12px; font-weight: 600; }
+.t-err { background: rgba(185, 28, 28, .12); color: var(--bad); }
+.t-ok { background: rgba(21, 128, 61, .12); color: var(--ok); }
+.t-card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: 0 0 12px; }
+.t-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.t-list > .t-card { margin: 0; display: grid; gap: 2px; }
+.t-post { border-left: 6px solid var(--accent); }
+.t-post.read { border-left-color: var(--ok); }
+.t-kind { text-transform: uppercase; letter-spacing: .04em; font-size: .78rem; font-weight: 700; color: var(--dim); }
+.t-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; }
+.t-done { color: var(--ok); font-weight: 700; }
+.t-link { color: var(--accent); font-weight: 600; }
+.t-btn { appearance: none; border: 1px solid var(--line); background: var(--card); color: var(--fg); font: inherit; font-weight: 600; border-radius: 10px; padding: 10px 16px; min-height: 44px; cursor: pointer; }
+.t-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; min-width: 96px; }
+.t-btn:disabled { opacity: .5; }
+.t-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; }
+.t-row .t-field { flex: 1 1 180px; }
+.t-field { display: grid; gap: 4px; margin: 0 0 10px; }
+.t-field span { font-weight: 600; font-size: .92rem; }
+.t-field input, .t-field select, .t-field textarea { width: 100%; font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; min-height: 44px; }
+.t-field textarea { resize: vertical; }
+.t-check { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; min-height: 44px; }
+.t-check input { width: 22px; height: 22px; }
+.t-people { gap: 8px; }
+.t-person { display: grid; grid-template-columns: 44px 1fr; grid-template-rows: auto auto; column-gap: 10px; align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; }
+.t-person.today { border-color: var(--accent); }
+.t-ini { grid-row: span 2; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 700; }
+.t-pn { font-weight: 700; }
+.t-safety { display: grid; justify-items: center; text-align: center; }
+.t-big { font-size: 3rem; line-height: 1.1; color: var(--ok); }
+.t-menu { margin: 6px 0 0; padding-left: 20px; }
+.t-date { display: grid; grid-template-columns: 52px 1fr; column-gap: 8px; align-items: baseline; border-bottom: 1px solid var(--line); padding: 6px 0; }
+.t-date small { grid-column: 2; }

@@ -1,0 +1,98 @@
+/* TV Corporativa · a prévia do layout por zonas e dos slides (public/shared/tvcorp-previa.js). Tudo por classe: a página
+   da unidade tem CSP estrita (sem estilo inline). Os tamanhos de letra usam a caixa de cada zona (cqw/cqh), para o mesmo
+   slide ficar certo grande (editor) e pequeno (dentro da zona). */
+.tvc-previa { width: 100%; max-width: 560px; background: #05070b; border: 1px solid #252b36; border-radius: 6px; overflow: hidden; }
+.tvc-previa.port { max-width: 240px; }
+.tvc-svg { display: block; width: 100%; height: auto; }
+.tvc-fig { margin: 0; }
+.tvc-fig figcaption { font-size: 12px; color: #8b93a3; margin-top: 4px; }
+
+/* fundo e tema (as cores de THEME_COLORS) */
+.tvc-bg { fill: #0b1220; }
+.tvc-bg.th-light { fill: #eef2f7; }
+.tvc-zone .tvc-zb { fill: none; stroke: rgba(255, 255, 255, 0.18); stroke-width: 0.35; }
+.tvc-zone.sel .tvc-zb { stroke: #f5b31c; stroke-width: 0.9; }
+.tvc-zone[role="button"] { cursor: pointer; }
+.tvc-zone[role="button"]:focus { outline: none; }
+.tvc-zone[role="button"]:focus .tvc-zb { stroke: #4f8fd6; stroke-width: 0.9; }
+.tvc-zl { font: 600 2.6px/1 "IBM Plex Mono", Consolas, monospace; fill: #f5b31c; paint-order: stroke; stroke: rgba(0, 0, 0, 0.75); stroke-width: 0.5px; pointer-events: none; }
+.tvc-z { width: 100%; height: 100%; container-type: size; overflow: hidden; font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif; }
+.tvc-z > * { width: 100%; height: 100%; box-sizing: border-box; }
+
+.th-azul { --tc: #1d4ed8; } .th-verde { --tc: #15803d; } .th-petroleo { --tc: #0f766e; } .th-vinho { --tc: #9f1239; }
+.th-roxo { --tc: #6d28d9; } .th-laranja { --tc: #c2410c; } .th-grafite { --tc: #334155; }
+[class*="th-"] { --tbg: #0f172a; --tfg: #f8fafc; --tdim: #cbd5e1; }
+[class*="th-"].th-light { --tbg: #ffffff; --tfg: #0f172a; --tdim: #475569; }
+
+/* zonas que não são playlist */
+.tvc-z-video { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2cqh; background: linear-gradient(135deg, #1e293b, #0b1220); color: #e2e8f0; font-size: min(7cqh, 4.5cqw); }
+.tvc-live { background: #d92d20; color: #fff; font-weight: 700; padding: 0.3em 0.7em; border-radius: 0.3em; font-size: 0.8em; letter-spacing: 0.08em; }
+.tvc-z-empty { display: flex; align-items: center; justify-content: center; background: var(--tbg); color: var(--tdim); font-size: min(9cqh, 7cqw); border: 1px dashed rgba(148, 163, 184, 0.4); }
+.tvc-z-ticker { display: flex; align-items: center; gap: 2cqw; background: var(--tc); color: #fff; padding: 0 2cqw; font-size: 38cqh; white-space: nowrap; }
+.tvc-z-ticker b { background: rgba(0, 0, 0, 0.25); padding: 0 1cqw; }
+.tvc-z-ticker span { overflow: hidden; text-overflow: ellipsis; }
+.tvc-z-clock, .tvc-z-weather, .tvc-z-queue, .tvc-z-logo, .tvc-z-qr { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2cqh; background: var(--tbg); color: var(--tfg); text-align: center; padding: 4cqh 4cqw; }
+.tvc-z-clock b, .tvc-z-weather b, .tvc-z-queue b { font-size: min(26cqh, 24cqw); line-height: 1; }
+.tvc-z-clock span, .tvc-z-weather span, .tvc-z-queue span, .tvc-z-logo span, .tvc-z-qr span { font-size: min(9cqh, 9cqw); color: var(--tdim); }
+.tvc-z-queue b { color: var(--tc); }
+.tvc-z-logo img { max-width: 90%; max-height: 80%; object-fit: contain; }
+.tvc-z-qrc, .tvc-z-qrph { width: min(60cqh, 60cqw); height: min(60cqh, 60cqw); }
+.tvc-z-qrph { background: repeating-linear-gradient(45deg, #fff 0 4%, #111 4% 8%); }
+
+/* slides */
+.tvc-sl { position: relative; display: flex; align-items: center; gap: 4cqw; width: 100%; aspect-ratio: 16 / 9; container-type: inline-size; box-sizing: border-box; padding: 3.38cqw 6cqw; overflow: hidden;
+  background: linear-gradient(135deg, var(--tc) 0%, var(--tbg) 70%); color: var(--tfg); font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif; border-radius: 4px; }
+.tvc-z .tvc-sl { aspect-ratio: auto; border-radius: 0; }
+.tvc-sl.th-light { background: linear-gradient(135deg, #ffffff 55%, var(--tc) 160%); }
+.tvc-sl-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1.69cqw; }
+.tvc-sl-t { font-weight: 700; font-size: 6.19cqw; line-height: 1.1; }
+.tvc-sl-x { font-size: 3.94cqw; line-height: 1.3; color: var(--tdim); }
+.tvc-sl-x.dim { opacity: 0.7; }
+.tvc-sl-tag { align-self: flex-start; font-size: 2.81cqw; font-weight: 700; letter-spacing: 0.1em; background: var(--tc); color: #fff; padding: 0.3em 0.8em; border-radius: 0.3em; }
+.tvc-sl.th-light .tvc-sl-tag { color: #fff; }
+.tvc-sl-list { margin: 0; padding-left: 1.2em; font-size: 3.66cqw; line-height: 1.35; }
+.tvc-sl-qrc { width: 15.75cqw; height: 15.75cqw; flex: none; border-radius: 4px; }
+.tvc-sl-side { flex: none; width: 21.38cqw; height: 21.38cqw; border-radius: 50%; overflow: hidden; background: rgba(255, 255, 255, 0.15); display: flex; align-items: center; justify-content: center; }
+.tvc-sl-ini { font-size: 7.88cqw; font-weight: 700; }
+.tvc-sl-img { width: 100%; height: 100%; object-fit: cover; }
+.tvc-sl-name { font-size: 5.06cqw; font-weight: 600; color: var(--tfg); }
+.tvc-sl-count { flex: none; display: flex; flex-direction: column; align-items: center; background: rgba(0, 0, 0, 0.25); border-radius: 6px; padding: 1.69cqw 4cqw; }
+.tvc-sl-count b { font-size: 13.5cqw; line-height: 1; }
+.tvc-sl-count span, .tvc-sl-count small { font-size: 3.38cqw; }
+.tvc-sl-big { font-size: 14.62cqw; font-weight: 700; line-height: 1; }
+.tvc-sl-imagem-com-legenda { padding: 0; flex-direction: column; justify-content: flex-end; }
+.tvc-sl-imagem-com-legenda .tvc-sl-img { position: absolute; inset: 0; }
+.tvc-sl-noimg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--tdim); font-size: 4.5cqw; }
+.tvc-sl-cap { position: relative; width: 100%; box-sizing: border-box; padding: 1.69cqw 4cqw; background: rgba(0, 0, 0, 0.6); color: #fff; font-size: 3.94cqw; }
+.b-ok { --band: #16a34a; } .b-warn { --band: #f59e0b; } .b-bad { --band: #dc2626; } .b-none { --band: #64748b; }
+.tvc-sl-big.b-ok, .tvc-sl-big.b-warn, .tvc-sl-big.b-bad { color: var(--band); }
+.tvc-bar { width: 100%; height: 2.81cqw; min-height: 4px; }
+.tvc-bar-bg { fill: rgba(148, 163, 184, 0.3); }
+.tvc-bar-fg { fill: var(--band, #64748b); }
+
+/* itens automáticos */
+.tvc-it { display: flex; flex-direction: column; justify-content: center; gap: 1.69cqw; width: 100%; height: 100%; box-sizing: border-box; padding: 2.81cqw 5cqw; background: var(--tbg); color: var(--tfg); container-type: inline-size; font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif; overflow: hidden; }
+.tvc-it-t { font-weight: 700; font-size: 5.62cqw; color: var(--tfg); border-left: 0.35em solid var(--tc); padding-left: 0.4em; }
+.tvc-it-big { font-size: 15.75cqw; font-weight: 700; line-height: 1; }
+.tvc-it-kpi .tvc-it-big { color: var(--band); }
+.tvc-it-x { font-size: 4.5cqw; color: var(--tdim); }
+.tvc-it-list { margin: 0; padding-left: 1.1em; font-size: 4.22cqw; line-height: 1.35; }
+.tvc-it-list small { display: block; color: var(--tdim); font-size: 0.8em; }
+.tvc-it-list .up { color: #16a34a; } .tvc-it-list .down { color: #dc2626; }
+.tvc-it-credit { font-size: 3.38cqw; color: var(--tdim); }
+.tvc-it-image { padding: 0; }
+.tvc-it-img { width: 100%; height: 100%; object-fit: cover; }
+.tvc-it-empty { align-items: center; color: var(--tdim); }
+.tvc-it-image { position: relative; justify-content: flex-end; }
+.tvc-it-image .tvc-it-img { position: absolute; inset: 0; }
+
+/* artes de fundo da biblioteca (public/tvcorp/arte/, desenhadas no projeto) */
+.tvc-sl.tvc-art { background-size: cover; background-position: center; }
+.tvc-sl.tvc-art-ondas { background-image: url(/tvcorp/arte/ondas.svg); }
+.tvc-sl.tvc-art-geometrico { background-image: url(/tvcorp/arte/geometrico.svg); }
+.tvc-sl.tvc-art-aniversario { background-image: url(/tvcorp/arte/aniversario.svg); }
+.tvc-sl.tvc-art-seguranca { background-image: url(/tvcorp/arte/seguranca.svg); }
+.tvc-sl.tvc-art-fim-de-ano { background-image: url(/tvcorp/arte/fim-de-ano.svg); }
+.tvc-sl.tvc-art-conquista { background-image: url(/tvcorp/arte/conquista.svg); }
+.tvc-sl.tvc-art-evento { background-image: url(/tvcorp/arte/evento.svg); }
+.tvc-sl.tvc-art-saude { background-image: url(/tvcorp/arte/saude.svg); --tfg: #0f172a; --tdim: #334155; }

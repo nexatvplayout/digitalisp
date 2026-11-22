@@ -1,0 +1,16 @@
+/* NEXA Telas · a página do acompanhante (/senha/<token>): uma coluna, letras grandes, sem nada de fora. */
+:root { color-scheme: light; --fg: #10141c; --dim: #5b6474; --accent: #b45309; --ok: #15803d; }
+html, body { margin: 0; background: #f6f5f1; color: var(--fg); font: 18px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.a { max-width: 480px; margin: 0 auto; padding: max(20px, env(safe-area-inset-top)) 18px 28px; text-align: center; display: grid; gap: 8px; }
+.a p { margin: 0; }
+.a-office { font-weight: 700; color: var(--dim); }
+.a-label { text-transform: uppercase; letter-spacing: .1em; font-size: .8rem; color: var(--dim); margin-top: 10px; }
+.a-code { font-size: clamp(3.6rem, 24vw, 6rem); font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.a-status { font-size: 1.15rem; font-weight: 700; }
+.a-called { font-size: 1.6rem; font-weight: 800; color: #fff; background: var(--ok); border-radius: 14px; padding: 16px; }
+.a-line { color: var(--dim); }
+.a-est { background: #fff; border: 1px solid #e3e0d8; border-radius: 12px; padding: 10px; color: var(--fg); }
+.a-err { color: #b91c1c; font-weight: 700; }
+.a-foot { font-size: .8rem; color: var(--dim); margin-top: 18px; }
+.a-risk { display: inline-block; width: 14px; height: 14px; border-radius: 3px; margin-right: 6px; vertical-align: -2px; }
+.a-risk.rk-vermelho { background: #d92d20; } .a-risk.rk-laranja { background: #f08c00; } .a-risk.rk-amarelo { background: #e6b800; } .a-risk.rk-verde { background: #2f9e44; } .a-risk.rk-azul { background: #1c7ed6; }

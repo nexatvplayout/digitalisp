@@ -1,0 +1,15 @@
+/* NEXA Telas · a página da sala (/reparticao/<token>/sala): celular primeiro, uma coluna, botões grandes. O resto vem de reparticao.css. */
+.s { max-width: 560px; margin: 0 auto; padding: 12px; display: grid; gap: 12px; }
+.s .s-h { font-size: 1.05rem; margin: 0; }
+.s .r-now-code { font-size: clamp(3.4rem, 22vw, 6rem); }
+.s .s-call { min-height: 72px; font-size: 1.4rem; }
+.s .r-btns .r-btn { min-height: 52px; }
+.s .s-more summary { cursor: pointer; color: var(--dim); padding: 6px 0; }
+.s .s-more { display: grid; gap: 10px; }
+.s .s-group { display: grid; gap: 10px; }
+.s .s-group[hidden], .s .s-group-row[hidden],.s .s-call[hidden], .s .s-step[hidden], .s .s-more[hidden] { display: none; }
+.s .s-step { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--card-2); font-size: 1.05rem; }
+.s .s-step.wait { border-left: 4px solid var(--warn, #e0a100); }
+.s .s-step.in { border-left: 4px solid var(--ok, #2e9e5b); }
+.s .s-pick { display: flex; flex-wrap: wrap; gap: 6px; grid-column: 1 / -1; }
+@media (max-width: 420px) { .s .r-btns .r-btn { flex: 1 1 100%; } }

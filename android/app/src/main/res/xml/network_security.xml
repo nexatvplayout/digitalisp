@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  A configuração de rede do Android é fixa (não muda em tempo de execução), e o modo avulso aceita um endereço
+  http:// digitado por quem instala. Por isso o HTTP puro fica liberado aqui e quem decide de verdade é o código
+  (core/Urls): a API só fala https (http só em build de depuração, para localhost e 10.x), e o vídeo só aceita
+  http no modo avulso.
+-->
+<network-security-config xmlns:tools="http://schemas.android.com/tools">
+    <base-config cleartextTrafficPermitted="true" tools:ignore="InsecureBaseConfiguration">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

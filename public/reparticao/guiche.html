@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <title>Guichê</title>
+  <link rel="stylesheet" href="/reparticao/reparticao.css">
+  <link rel="stylesheet" href="/reparticao/guiche.css">
+</head>
+<body>
+  <header class="r-bar">
+    <span class="r-brand">NEXA Telas · Guichê</span>
+    <span class="r-bar-office"><b id="office"></b><span class="r-bar-type" id="title"></span></span>
+    <span class="r-bar-telas" id="waiting" aria-live="polite"></span>
+    <span class="r-bar-clock" id="clock" aria-label="Hora"></span>
+  </header>
+  <main class="r g">
+    <p class="r-err" id="err" role="alert" hidden></p>
+    <p class="r-ok" id="ok" role="status" hidden></p>
+    <!-- a tela do atendente: só o que ele usa o dia todo -->
+    <section class="r-card" id="desk" aria-labelledby="hDesk" hidden>
+      <h1 id="hDesk">Este guichê</h1>
+      <div class="r-row">
+        <label class="r-field"><span>Este guichê</span><input type="text" id="deskName" maxlength="30" placeholder="Ex.: Guichê 3" autocomplete="off"></label>
+        <label class="r-field"><span>Chamar de</span><select id="from"></select></label>
+      </div>
+      <div class="r-now"><p class="r-now-code" id="code" aria-live="polite">—</p><p class="r-now-info" id="info"></p></div>
+      <button type="button" class="r-btn primary big" id="call">Chamar próxima</button>
+      <div class="r-btns">
+        <button type="button" class="r-btn" id="repeat">Chamar novamente</button>
+        <button type="button" class="r-btn" id="requeue">Voltar à fila</button>
+        <button type="button" class="r-btn" id="noshow">Não compareceu</button>
+        <button type="button" class="r-btn primary" id="finish">Finalizar</button>
+      </div>
+      <div class="r-row end">
+        <label class="r-field"><span>Encaminhar para</span><select id="forwardTo"></select></label>
+        <button type="button" class="r-btn" id="forward">Encaminhar</button>
+      </div>
+      <p class="r-dim">Este endereço só chama e dá andamento à senha. Não emite senha, não escreve avisos nem alertas.</p>
+    </section>
+    <!-- quem espera, na ordem de chamada e com o motivo; "Chamar esta" chama fora da ordem (fica no log da repartição) -->
+    <section class="r-card" id="queueBox" aria-labelledby="hQueue" hidden>
+      <h2 id="hQueue">Esperando, na ordem de chamada</h2>
+      <ul class="r-list" id="queue"></ul>
+      <p class="r-dim" id="queueEmpty">Ninguém esperando.</p>
+    </section>
+  </main>
+  <script type="module" src="/reparticao/guiche.js"></script>
+</body>
+</html>

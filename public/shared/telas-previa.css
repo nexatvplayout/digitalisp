@@ -1,0 +1,206 @@
+/* NEXA Telas · a prévia "Como aparece na TV" (public/shared/telas-previa.js). A tela é escura nos dois temas, como o
+   aparelho; as medidas são em cqw (a largura da própria prévia), então ela encolhe e cresce inteira. Sem nada de fora. */
+.tv-previa-fig { margin: 0; display: grid; gap: 6px; min-width: 0; }
+.tv-previa-fig figcaption { font-size: .82rem; opacity: .75; }
+.tv-previa { --tvbg: #0a0e16; --tvpanel: #131a27; --tvline: #263146; --tvtxt: #f2f5fa; --tvdim: #9fb0c8; --tvacc: #f4b63a;
+  container-type: inline-size; position: relative; aspect-ratio: 16 / 9; width: 100%; background: var(--tvbg); color: var(--tvtxt); border: 3px solid #05070b; border-radius: 8px;
+  overflow: hidden; display: grid; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.2; text-align: left; }
+.tv-previa.up { aspect-ratio: 9 / 16; max-width: 250px; }
+.tv-previa > * { min-width: 0; min-height: 0; }
+.tv-previa.l-ticker { grid-template-rows: 1fr auto; }
+.tv-previa.l-side { grid-template-columns: 71% 29%; }
+.tv-previa.l-lbar { grid-template-columns: 71% 29%; grid-template-rows: 1fr auto; }
+.tv-previa.l-lbar .tk, .tv-previa.l-lbar > .mb { grid-column: 1 / -1; }
+.tv-previa.l-queue { grid-template-columns: 60% 40%; }
+.tv-previa.l-portrait { grid-template-rows: auto 1fr auto; }
+.tv-previa .vid { position: relative; background: linear-gradient(135deg, #1b3a66 0%, #0f2038 55%, #0b1626 100%); display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 1cqw; padding: 3cqw; text-align: center; }
+.tv-previa.l-portrait .vid { aspect-ratio: 16 / 9; }
+.tv-previa .vid .ch { position: absolute; top: 2cqw; left: 2.4cqw; font: 600 1.9cqw/1 ui-monospace, Consolas, monospace; letter-spacing: .06em; display: flex; gap: 1.2cqw; align-items: center; }
+.tv-previa .vid .live { background: #d92d20; color: #fff; padding: .6cqw 1.1cqw; border-radius: .6cqw; }
+.tv-previa .vid .pt { font-weight: 800; font-size: 5.2cqw; line-height: 1.05; }
+.tv-previa .vid .ps { font-size: 2.4cqw; color: var(--tvdim); }
+.tv-previa .vid.small .pt { font-size: 3cqw; } .tv-previa .vid.small .ps { font-size: 1.7cqw; } .tv-previa .vid.small .ch { font-size: 1.4cqw; }
+.tv-previa.up .vid .pt { font-size: 9cqw; } .tv-previa.up .vid .ps { font-size: 4.4cqw; } .tv-previa.up .vid .ch { font-size: 3.4cqw; }
+.tv-previa .tk { background: var(--tvacc); color: #1a1405; display: flex; align-items: center; gap: 1.6cqw; padding: 1.3cqw 2cqw; font-weight: 600; font-size: 2.3cqw; white-space: nowrap; overflow: hidden; }
+.tv-previa .tk b { background: #1a1405; color: var(--tvacc); padding: .6cqw 1.2cqw; border-radius: .5cqw; font: 600 1.7cqw/1 ui-monospace, Consolas, monospace; letter-spacing: .06em; flex: none; }
+.tv-previa .tk .tkt { overflow: hidden; text-overflow: ellipsis; }
+.tv-previa.up .tk { font-size: 4.2cqw; padding: 2.4cqw 3cqw; } .tv-previa.up .tk b { font-size: 3cqw; }
+.tv-previa .sd { background: var(--tvpanel); border-left: 1px solid var(--tvline); padding: 2cqw; display: flex; flex-direction: column; gap: 1.6cqw; overflow: hidden; }
+.tv-previa.l-portrait .sd { border-left: 0; border-top: 1px solid var(--tvline); padding: 4cqw; gap: 3cqw; }
+.tv-previa .sd .st { font-weight: 700; font-size: 2cqw; line-height: 1.15; }
+.tv-previa .sd .ck { font-weight: 800; font-size: 4.6cqw; line-height: 1; font-variant-numeric: tabular-nums; }
+.tv-previa .sd .sm { font-size: 1.6cqw; color: var(--tvdim); line-height: 1.25; }
+.tv-previa .sd .cd { background: #0d131e; border: 1px solid var(--tvline); border-radius: 1cqw; padding: 1.4cqw; display: flex; flex-direction: column; gap: .7cqw; }
+.tv-previa .sd .cd .ct { font-weight: 700; font-size: 1.7cqw; line-height: 1.1; color: var(--tvacc); }
+.tv-previa .sd .cd .cl { font-size: 1.6cqw; line-height: 1.25; overflow-wrap: anywhere; }
+.tv-previa .sd .cd .cl.dim { color: var(--tvdim); }
+.tv-previa .sd .sn { background: var(--tvacc); color: #1a1405; border-radius: 1cqw; padding: 1.2cqw; text-align: center; }
+.tv-previa .sd .sn .sc { font-weight: 800; font-size: 5cqw; line-height: 1; } .tv-previa .sd .sn .sg { font-weight: 600; font-size: 1.8cqw; }
+.tv-previa .sd .qr { width: 9cqw; height: 9cqw; background: repeating-conic-gradient(#fff 0 25%, #0a0e16 0 50%) 0 0 / 2.25cqw 2.25cqw; border: .6cqw solid #fff; border-radius: .6cqw; }
+.tv-previa.up .sd .st { font-size: 5cqw; } .tv-previa.up .sd .ck { font-size: 11cqw; } .tv-previa.up .sd .sm { font-size: 3.6cqw; }
+.tv-previa.up .sd .cd { padding: 3cqw; gap: 1.6cqw; border-radius: 2cqw; } .tv-previa.up .sd .cd .ct { font-size: 4.2cqw; } .tv-previa.up .sd .cd .cl { font-size: 3.8cqw; }
+.tv-previa.up .sd .sn .sc { font-size: 11cqw; } .tv-previa.up .sd .sn .sg { font-size: 4cqw; }
+.tv-previa .qp { padding: 2.4cqw; display: flex; flex-direction: column; gap: 1.6cqw; background: var(--tvbg); }
+.tv-previa .qp .qt { font-weight: 700; font-size: 2.2cqw; line-height: 1; color: var(--tvdim); text-transform: uppercase; letter-spacing: .05em; }
+.tv-previa .qp .qn { background: var(--tvacc); color: #1a1405; border-radius: 1.4cqw; padding: 2cqw; display: flex; align-items: baseline; justify-content: space-between; gap: 2cqw; }
+.tv-previa .qp .qn .qc { font-weight: 800; font-size: 10cqw; line-height: 1; } .tv-previa .qp .qn .qg { font-weight: 700; font-size: 3.2cqw; line-height: 1.1; text-align: right; }
+.tv-previa .qp .ql { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1cqw; }
+.tv-previa .qp .ql span { background: var(--tvpanel); border: 1px solid var(--tvline); border-radius: .8cqw; padding: 1cqw .4cqw; text-align: center; font-weight: 700; font-size: 2.1cqw; line-height: 1; }
+.tv-previa .qp .qr2 { display: flex; flex-wrap: wrap; gap: 1cqw; align-items: center; font-size: 1.8cqw; color: var(--tvdim); }
+.tv-previa .qp .qr2 i { font-style: normal; display: inline-flex; align-items: center; gap: .5cqw; color: var(--tvtxt); font-weight: 600; }
+.tv-previa .qp .qr2 i::before { content: ''; width: 1.6cqw; height: 1.6cqw; border-radius: .3cqw; background: var(--tvdim); }
+.tv-previa .rk-vermelho::before { background: #d92d20 !important; } .tv-previa .rk-laranja::before { background: #f08c00 !important; } .tv-previa .rk-amarelo::before { background: #e6b800 !important; }
+.tv-previa .rk-verde::before { background: #2f9e44 !important; } .tv-previa .rk-azul::before { background: #1c7ed6 !important; }
+.tv-previa .qs { display: grid; grid-template-rows: auto 1fr; }
+.tv-previa .qs .vid { aspect-ratio: 16 / 9; }
+.tv-previa .al { display: flex; flex-direction: column; justify-content: center; gap: 2cqw; padding: 6cqw; background: #b3261e; color: #fff; }
+.tv-previa .al.lv-warn { background: #b7791f; } .tv-previa .al.lv-info { background: #1f5fbf; }
+.tv-previa .al .ah { font: 600 2.2cqw/1 ui-monospace, Consolas, monospace; letter-spacing: .1em; }
+.tv-previa .al .at { font-weight: 800; font-size: 7cqw; line-height: 1.02; text-wrap: balance; overflow-wrap: anywhere; }
+.tv-previa .al .ax { font-size: 3cqw; line-height: 1.3; max-width: 30em; white-space: pre-line; overflow-wrap: anywhere; }
+.tv-previa .al .af { font-size: 2cqw; opacity: .85; }
+.tv-previa.up .al .at { font-size: 11cqw; } .tv-previa.up .al .ax { font-size: 5cqw; } .tv-previa.up .al .ah, .tv-previa.up .al .af { font-size: 3.4cqw; }
+/* pessoa desaparecida (contrato §8.2): a tela cheia (a foto inteira de um lado, o texto do outro) e a faixa */
+.tv-previa .ms { display: grid; grid-template-columns: 42% 58%; grid-template-rows: minmax(0, 1fr); background: #101623; min-height: 0; }
+.tv-previa.up .ms { grid-template-columns: 1fr; grid-template-rows: 46% 54%; }
+.tv-previa .ms .mph { width: 100%; height: 100%; object-fit: contain; background: #05070b; min-height: 0; }
+.tv-previa .ms .mtx { display: flex; flex-direction: column; gap: 1cqw; padding: 2.6cqw; min-width: 0; min-height: 0; overflow: hidden; }
+.tv-previa .ms .mh { align-self: flex-start; background: #d92d20; color: #fff; font-weight: 800; font-size: 2.4cqw; letter-spacing: .06em; padding: .8cqw 1.4cqw; border-radius: .6cqw; }
+.tv-previa .ms .mn { font-weight: 800; font-size: 5cqw; line-height: 1.02; overflow-wrap: anywhere; }
+.tv-previa .ms .ma { font-weight: 700; font-size: 3.2cqw; color: var(--tvacc); }
+.tv-previa .ms .ml { font-size: 2cqw; line-height: 1.25; color: #dfe6f2; overflow-wrap: anywhere; }
+.tv-previa .ms .mc { margin-top: auto; background: var(--tvacc); color: #1a1405; font-weight: 800; font-size: 3cqw; padding: 1.2cqw 1.8cqw; border-radius: .8cqw; text-align: center; }
+.tv-previa.up .ms .mh { font-size: 4.4cqw; } .tv-previa.up .ms .mn { font-size: 10cqw; } .tv-previa.up .ms .ma { font-size: 5.6cqw; } .tv-previa.up .ms .ml { font-size: 4cqw; } .tv-previa.up .ms .mc { font-size: 5cqw; }
+.tv-previa .mb { background: #b3261e; color: #fff; display: flex; align-items: center; gap: 1.6cqw; padding: 1cqw 2cqw; font-size: 2.3cqw; font-weight: 600; white-space: nowrap; overflow: hidden; }
+.tv-previa .mb b { background: #fff; color: #b3261e; padding: .6cqw 1.2cqw; border-radius: .5cqw; font-size: 1.7cqw; letter-spacing: .06em; flex: none; }
+.tv-previa .mb .mbp { width: 6cqw; height: 6cqw; object-fit: cover; border-radius: .6cqw; background: #05070b; flex: none; }
+.tv-previa .mb .mbn { font-weight: 800; overflow: hidden; text-overflow: ellipsis; }
+.tv-previa .mb .mbc { margin-left: auto; background: var(--tvacc); color: #1a1405; padding: .6cqw 1.2cqw; border-radius: .5cqw; font-weight: 800; flex: none; }
+.tv-previa.up .mb { font-size: 4cqw; flex-wrap: wrap; white-space: normal; } .tv-previa.up .mb b { font-size: 3cqw; } .tv-previa.up .mb .mbp { width: 12cqw; height: 12cqw; }
+.tv-previa .mbo { position: absolute; left: 0; right: 0; bottom: 0; }
+/* o QR code de contato imediato (contrato §11): na tela cheia, junto do contato no rodapé; na faixa, na ponta direita */
+.tv-previa .ms .mfoot { margin-top: auto; display: flex; align-items: flex-end; gap: 2cqw; }
+.tv-previa .ms .mfoot .mc { margin-top: 0; flex: 1 1 auto; }
+.tv-previa .ms .mqr { display: flex; flex-direction: column; align-items: center; gap: .6cqw; flex: none; width: 15cqw; }
+.tv-previa .ms .mqr .qrc { width: 11cqw; height: 11cqw; border-radius: .6cqw; }
+.tv-previa .ms .mql { font-size: 1.5cqw; line-height: 1.15; text-align: center; color: #dfe6f2; }
+.tv-previa.up .ms .mfoot { flex-direction: column; align-items: stretch; }
+.tv-previa.up .ms .mqr { width: auto; flex-direction: row; } .tv-previa.up .ms .mqr .qrc { width: 26cqw; height: 26cqw; } .tv-previa.up .ms .mql { font-size: 3.4cqw; text-align: left; }
+.tv-previa .mb .mbq { width: 6cqw; height: 6cqw; flex: none; border-radius: .4cqw; }
+.tv-previa.up .mb .mbq { width: 14cqw; height: 14cqw; }
+/* a silhueta desenhada (caso sem foto) */
+.tv-previa .sil { position: relative; background: #1a2233; overflow: hidden; }
+.tv-previa .sil .sil-h { position: absolute; left: 50%; top: 22%; width: 26%; aspect-ratio: 1; transform: translateX(-50%); border-radius: 50%; background: #55627a; }
+.tv-previa .sil .sil-b { position: absolute; left: 50%; top: 56%; width: 60%; height: 60%; transform: translateX(-50%); border-radius: 46% 46% 0 0; background: #55627a; }
+
+/* chamada de senha (15/11, do dono): no painel "queue", a última chamada no cartão grande e, à direita, "Últimas chamadas" com
+   cada anterior numa caixa; quem está em atendimento também em caixas. Na coluna lateral, a senha atual e até 3 anteriores. */
+.tv-previa .qp .qrow { display: grid; grid-template-columns: 1.5fr 1fr; gap: 1.6cqw; min-height: 0; }
+.tv-previa .qp .qn { flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.tv-previa .qp .qn .qg { text-align: center; }
+.tv-previa .qp .qlc { display: flex; flex-direction: column; gap: .8cqw; min-width: 0; }
+.tv-previa .qp .qsv { display: flex; flex-wrap: wrap; align-items: center; gap: .8cqw; }
+.tv-previa .qp .qmore { font-size: 1.6cqw; color: var(--tvdim); }
+.tv-previa .qb { position: relative; background: var(--tvpanel); border: 1px solid var(--tvline); border-radius: .8cqw; padding: .7cqw 1cqw .7cqw 1.4cqw; display: flex; flex-direction: column; gap: .2cqw; min-width: 0; overflow: hidden; }
+.tv-previa .qb.rk::after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: .6cqw; background: var(--tvdim); }
+.tv-previa .qb.rk-vermelho::after { background: #d92d20; } .tv-previa .qb.rk-laranja::after { background: #f97316; } .tv-previa .qb.rk-amarelo::after { background: #facc15; }
+.tv-previa .qb.rk-verde::after { background: #16a34a; } .tv-previa .qb.rk-azul::after { background: #2563eb; }
+.tv-previa .qb.rk::before { content: none; }
+.tv-previa .qb .qbt { font-weight: 800; font-size: 2.6cqw; line-height: 1; white-space: nowrap; }
+.tv-previa .qb .qbd { font-size: 1.5cqw; color: var(--tvdim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tv-previa .qb .qbh { font-size: 1.3cqw; color: var(--tvdim); }
+.tv-previa .qb .qbk { font-size: 1.2cqw; font-weight: 700; letter-spacing: .05em; color: var(--tvdim); }
+.tv-previa .qb.sm { padding: .4cqw .8cqw .4cqw 1.2cqw; } .tv-previa .qb.sm .qbt { font-size: 1.8cqw; } .tv-previa .qb.sm .qbd { font-size: 1.2cqw; }
+.tv-previa .qb.row { flex-direction: row; align-items: baseline; gap: 1cqw; } .tv-previa .qb.row .qbd { margin-left: auto; }
+.tv-previa .sd .snl { display: flex; flex-direction: column; gap: .6cqw; }
+.tv-previa .sd .snt { font-size: 1.4cqw; color: var(--tvdim); text-transform: uppercase; letter-spacing: .05em; }
+.tv-previa .sd .snb { background: #0d131e; border: 1px solid var(--tvline); border-radius: .6cqw; padding: .5cqw; text-align: center; font-weight: 800; font-size: 2.2cqw; }
+.tv-previa.up .sd .snt { font-size: 3cqw; } .tv-previa.up .sd .snb { font-size: 4.4cqw; }
+/* a cor do risco como fundo (contrato §13): texto escuro onde o branco não passa de 4,5 de contraste */
+.tv-previa .rkbg-vermelho { background: #d92d20 !important; color: #fff !important; } .tv-previa .rkbg-azul { background: #2563eb !important; color: #fff !important; }
+.tv-previa .rkbg-laranja { background: #f97316 !important; color: #1a1a1a !important; } .tv-previa .rkbg-amarelo { background: #facc15 !important; color: #1a1a1a !important; }
+.tv-previa .rkbg-verde { background: #16a34a !important; color: #1a1a1a !important; }
+.tv-previa [class*="rkbg-"] * { color: inherit !important; }
+
+/* os painéis de senha do §15: o tema (a cor principal --qa e o claro/escuro) por classe */
+.tv-previa.qx { --qa: #1d4ed8; --qbg: #0a0e16; --qpanel: #131a27; --qtxt: #f2f5fa; --qdim: #9fb0c8; --qline: #263146; background: var(--qbg); color: var(--qtxt); gap: 1cqw; padding: 1cqw; }
+.tv-previa.qx.th-verde { --qa: #15803d; } .tv-previa.qx.th-petroleo { --qa: #0f766e; } .tv-previa.qx.th-vinho { --qa: #9f1239; }
+.tv-previa.qx.th-roxo { --qa: #6d28d9; } .tv-previa.qx.th-laranja { --qa: #c2410c; } .tv-previa.qx.th-grafite { --qa: #334155; }
+.tv-previa.qx.th-light { --qbg: #eef2f7; --qpanel: #ffffff; --qtxt: #111827; --qdim: #4b5563; --qline: #cbd5e1; }
+.tv-previa.qx { --tvpanel: var(--qpanel); --tvline: var(--qline); --tvdim: var(--qdim); --tvtxt: var(--qtxt); }
+.tv-previa.qx .vid { border-radius: .8cqw; }
+.tv-previa.qx .qt { font-weight: 700; font-size: 1.6cqw; color: var(--qdim); text-transform: uppercase; letter-spacing: .06em; }
+.tv-previa.qx .qhd { grid-column: 1 / -1; background: var(--qa); color: #fff; border-radius: .8cqw; display: flex; align-items: center; justify-content: space-between; padding: 1cqw 1.6cqw; }
+.tv-previa.qx .qhn { font-weight: 800; font-size: 2.4cqw; line-height: 1.1; }
+.tv-previa.qx .qclk { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.1; }
+.tv-previa.qx .qclk b { font-size: 2.6cqw; font-variant-numeric: tabular-nums; } .tv-previa.qx .qclk span { font-size: 1.3cqw; opacity: .85; }
+.tv-previa.qx .qcur { background: var(--qa); color: #fff; border-radius: 1cqw; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 1.4cqw; gap: .6cqw; min-height: 0; }
+.tv-previa.qx .qk { font-weight: 800; font-size: 1.8cqw; letter-spacing: .08em; }
+.tv-previa.qx .qct { font-weight: 900; font-size: 9cqw; line-height: 1; white-space: nowrap; }
+.tv-previa.qx .qcd { font-weight: 700; font-size: 2.8cqw; line-height: 1.1; }
+.tv-previa.qx .qcx { font-size: 1.5cqw; opacity: .9; }
+.tv-previa.qx .qcards { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 1cqw; }
+.tv-previa.qx .qstrip { grid-column: 1 / -1; display: flex; flex-direction: column; gap: .6cqw; }
+.tv-previa.qx .qfoot { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 1cqw; }
+.tv-previa.qx .qfoot .tk { border-radius: .6cqw; } .tv-previa.qx .qfoot .qclk { background: var(--qa); color: #fff; padding: .6cqw 1.2cqw; border-radius: .6cqw; }
+.tv-previa.qx .qfoot2 { grid-column: 1 / -1; background: var(--qa); color: #fff; border-radius: .6cqw; display: flex; justify-content: space-between; align-items: center; padding: .8cqw 1.6cqw; font-size: 1.8cqw; font-weight: 700; }
+.tv-previa.qx .qfoot2 .qclk { flex-direction: row; gap: 1.2cqw; align-items: baseline; }
+.tv-previa.qx .qtab { display: flex; flex-direction: column; gap: .5cqw; min-height: 0; }
+.tv-previa.qx .qtr { position: relative; display: grid; grid-template-columns: 1fr 1.3fr; gap: 1cqw; background: var(--qpanel); border: 1px solid var(--qline); border-radius: .6cqw; padding: .8cqw 1.4cqw; font-size: 2.2cqw; font-weight: 700; overflow: hidden; white-space: nowrap; }
+.tv-previa.qx .qtr.qth { background: var(--qa); color: #fff; font-size: 1.5cqw; letter-spacing: .08em; border: 0; }
+.tv-previa.qx .qtr.qtnow { background: var(--qa); color: #fff; font-size: 3.4cqw; }
+.tv-previa.qx .qtr.rk::after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: .6cqw; background: var(--qdim); }
+.tv-previa.qx .qtr.rk-vermelho::after { background: #d92d20; } .tv-previa.qx .qtr.rk-laranja::after { background: #f97316; } .tv-previa.qx .qtr.rk-amarelo::after { background: #facc15; }
+.tv-previa.qx .qtr.rk-verde::after { background: #16a34a; } .tv-previa.qx .qtr.rk-azul::after { background: #2563eb; }
+.tv-previa.qx .qtr.rk::before { content: none; }
+/* A: vídeo + tabela + texto rolante */
+.tv-previa.l-queue-table { grid-template-columns: 64% 1fr; grid-template-rows: 1fr auto; }
+/* B (com o H): senha gigante + tabela, sem vídeo */
+.tv-previa.l-queue-big { grid-template-columns: 58% 1fr; }
+.tv-previa.qx .qbig { display: flex; flex-direction: column; gap: .8cqw; min-height: 0; }
+.tv-previa.qx .qbig .qk { text-align: center; background: var(--qpanel); border: 1px solid var(--qline); border-radius: .6cqw; padding: .8cqw; font-size: 2.6cqw; }
+.tv-previa.qx .qlab { font-weight: 800; font-size: 1.6cqw; color: var(--qdim); letter-spacing: .1em; }
+.tv-previa.qx .qbb { background: var(--qa); color: #fff; border-radius: 1cqw; text-align: center; font-weight: 900; font-size: 11cqw; line-height: 1.1; flex: 1; display: flex; align-items: center; justify-content: center; }
+.tv-previa.qx .qbb.qbbd { font-size: 4.6cqw; flex: .6; background: var(--qpanel); color: var(--qtxt); border: 1px solid var(--qline); }
+/* C: cabeçalho, vídeo + senha, cartões */
+.tv-previa.l-queue-cards { grid-template-rows: auto 1fr auto; }
+.tv-previa.qx .qmid { display: grid; grid-template-columns: 58% 1fr; gap: 1cqw; min-height: 0; }
+.tv-previa.qx .qmid > * { min-height: 0; min-width: 0; }
+/* D: cabeçalho, cartão grande + lista e canal */
+.tv-previa.l-queue-header { grid-template-rows: auto 1fr; }
+.tv-previa.qx .qcol { display: flex; flex-direction: column; gap: .6cqw; min-height: 0; }
+.tv-previa.qx .qcol .vid { flex: 1; min-height: 0; }
+/* E: faixas rotuladas, coluna à esquerda */
+.tv-previa.l-queue-info { grid-template-columns: 28% 1fr; }
+.tv-previa.qx .qleft { background: var(--qpanel); border: 1px solid var(--qline); border-radius: .8cqw; padding: 1.2cqw; display: flex; flex-direction: column; gap: 1cqw; min-height: 0; }
+.tv-previa.qx .qleft .qclk { align-items: flex-start; } .tv-previa.qx .qleft .vid { margin-top: auto; aspect-ratio: 16 / 9; }
+.tv-previa.qx .qbands { display: flex; flex-direction: column; gap: .8cqw; min-height: 0; }
+.tv-previa.qx .qband { display: grid; grid-template-columns: 26% 1fr; align-items: center; background: var(--qpanel); border: 1px solid var(--qline); border-radius: .8cqw; overflow: hidden; }
+.tv-previa.qx .qband .qbl { background: var(--qa); color: #fff; align-self: stretch; display: flex; align-items: center; padding: 0 1.2cqw; font-weight: 800; font-size: 1.6cqw; letter-spacing: .06em; }
+.tv-previa.qx .qband .qbv { padding: .8cqw 1.4cqw; font-size: 3.2cqw; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tv-previa.qx .qband .qbv.big { font-size: 8cqw; font-weight: 900; }
+.tv-previa.qx .qband[class*="rkbg-"] .qbl { background: rgba(0, 0, 0, .18); }
+/* F: mosaico */
+.tv-previa.l-queue-mosaic { grid-template-rows: 1fr auto auto; }
+.tv-previa.l-queue-mosaic .qmid { grid-template-columns: 60% 1fr; }
+/* G: duas filas */
+.tv-previa.l-queue-duo { grid-template-rows: auto 1fr auto; }
+.tv-previa.qx .qduo { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 1cqw; min-height: 0; }
+.tv-previa.qx .qhalf { border-radius: 1cqw; background: var(--qpanel); border: .4cqw solid var(--sv); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .6cqw; text-align: center; min-height: 0; }
+.tv-previa.qx .qhalf .qsn { background: var(--sv); color: #fff; font-weight: 800; font-size: 2cqw; padding: .5cqw 1.4cqw; border-radius: .6cqw; text-transform: uppercase; }
+.tv-previa.qx .qhalf .qct { font-size: 8cqw; }
+/* I: vídeo + grade por fila */
+.tv-previa.l-queue-grid { grid-template-columns: 45% 1fr; grid-template-rows: 1fr auto; }
+.tv-previa.qx .qgrid { display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: 1fr; gap: .7cqw; min-height: 0; }
+.tv-previa.qx .qcell { background: var(--sv); color: #fff; border-radius: .7cqw; padding: .5cqw 1cqw; display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto; column-gap: 1cqw; align-items: center; min-height: 0; overflow: hidden; }
+.tv-previa.qx .qcell .qsn { grid-column: 1 / -1; font-size: 1.3cqw; font-weight: 700; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tv-previa.qx .qcell .qcv { font-size: 2.6cqw; font-weight: 900; } .tv-previa.qx .qcell .qcd { font-size: 1.3cqw; text-align: right; }
+.tv-previa.qx .sv-0 { --sv: #2563eb; } .tv-previa.qx .sv-1 { --sv: #16a34a; } .tv-previa.qx .sv-2 { --sv: #d97706; } .tv-previa.qx .sv-3 { --sv: #9333ea; }
+.tv-previa.qx .sv-4 { --sv: #dc2626; } .tv-previa.qx .sv-5 { --sv: #0891b2; } .tv-previa.qx .sv-6 { --sv: #db2777; } .tv-previa.qx .sv-7 { --sv: #4d7c0f; }
+/* J: últimas chamadas à esquerda, chamada atual + vídeo à direita, texto rolante */
+.tv-previa.l-queue-list { grid-template-columns: 32% 1fr; grid-template-rows: 1fr auto; }
+.tv-previa.qx .qleft .qb { flex: none; }
+.tv-previa.qx .qright { display: grid; grid-template-rows: auto 1fr; gap: 1cqw; min-height: 0; }
+.tv-previa.qx .qbar { background: var(--qa); color: #fff; border-radius: .8cqw; display: flex; align-items: center; justify-content: space-between; gap: 1.4cqw; padding: .8cqw 1.6cqw; }
+.tv-previa.qx .qbar .qct { font-size: 5.4cqw; }.tv-previa.qx .qbands .qband { flex: 1 1 0; } .tv-previa.qx .qbands .qband:first-child { flex-grow: 1.7; }
+.tv-previa.qx .qleft .vid .pt { font-size: 2.2cqw; } .tv-previa.qx .qleft .vid .ps { display: none; } .tv-previa.qx .qleft .vid .ch { font-size: 1.1cqw; }.tv-previa.qx .vid { color: #f2f5fa; } .tv-previa.qx .vid .ps { color: #9fb0c8; }

@@ -1,0 +1,58 @@
+# Passagem: como continuar o DIGITAL ISP
+
+Criado em 22/11/2026 pela sessão coordenadora do NEXA Broadcast. Daqui para frente, este projeto tem **sessão própria**.
+Não mexa no repositório do NEXA Broadcast (`C:\Projetos\nexatvplayout`), e o NEXA Broadcast não mexe aqui.
+
+## De onde veio o código
+
+- Copiado do NEXA Broadcast no commit **c51d2469** (main, 22/11/2026), **sem o histórico** e sem vínculo de git.
+- O que foi copiado, arquivo por arquivo: `docs/origem-nexa/arquivos-copiados.txt`.
+  - Servidor: as telas (`server/telas*.js`), a TV Corporativa (`server/tvcorp*.js`), os esquemas do banco, e a base de
+    que eles dependem (login e permissões `authcore.js`, clientes `tenancy.js`, banco `db.js`, armazenamento R2
+    `storage.js`, funcionalidades por plano, limite de pedidos, fuso).
+  - Painel: as abas da TV Corporativa (`public/admin/views/tvcorp*.js`), as páginas da repartição, do celular
+    (`public/tvc/`) e as artes.
+  - App: o NEXA Telas 1.3.1 inteiro (`android/`), com as vozes da chamada.
+  - Testes: `test/telas*` e `test/tvcorp*`.
+- **Não roda ainda.** Falta o `server/index.js` próprio, e o painel ainda depende da casca do NEXA Broadcast
+  (`public/admin/index.html` e `main.js`, que não vieram).
+
+## Decisões do dono (22/11/2026)
+
+1. **Totalmente independente** do NEXA Broadcast. A ligação opcional é tocar o HLS de um canal do NEXA Broadcast numa zona.
+2. **Nasce para ser revendido.** Os planos são definidos principalmente pelo **número de telas**. Os níveis:
+   - plataforma;
+   - revenda: o gestor de telas, que cadastra os clientes dele e cria os planos desses clientes;
+   - cliente final: uma ou mais telas, em grupos.
+3. **Links de controle** por cliente final, um ou mais, para subir campanhas e mensagens. Cada tela ou grupo é
+   independente por cliente final.
+4. **5.000 templates** por tipo de comércio, empresa e indústria; **dezenas de layouts**.
+5. **Offline total:** a tela baixa o conteúdo e roda sem internet; atualiza quando volta.
+6. **Mapa** de todas as telas com o estado (no ar, fora, etc.) e gestão remota, para a revenda e para o cliente dela.
+7. **App Android** com as mesmas características do NEXA Telas (abre sozinho ao ligar, quiosque, vigia, atualização
+   automática). Depois: **apps Samsung e LG** e um **instalador pelo celular** (instala na TV por fora da loja).
+8. **Site** simples e objetivo em www.digitalisp.com.br, sem preços até o dono definir.
+9. GitHub: o dono já criou o repositório. **Falta o endereço** para ligar o remoto (`git remote add origin ...`).
+
+## Primeiros passos
+
+1. Ligar o remoto do GitHub e subir o `main`.
+2. Fazer o sistema subir sozinho:
+   - `server/index.js` próprio;
+   - casca do painel com a marca DIGITAL ISP;
+   - tirar o que é só do NEXA Broadcast: provedor Railway, motor do canal, prefeitura (desaparecidos, segurança, IBGE).
+3. Revenda em três níveis, com planos por telas, links de controle e mapa.
+4. App Android com outro pacote (por exemplo `br.com.digitalisp.telas`), nome e ícone da marca, e o próprio endereço de
+   atualização. Publicar **sempre o build de release** (`assembleRelease`): o de depuração é lento na TV box.
+5. Seguir a ordem de `docs/FUNCIONALIDADES.md`.
+
+## Regras herdadas que continuam valendo
+
+- Nunca digitar senhas do dono; segredos ficam em arquivos locais, nunca no chat nem no repositório.
+- Banco de produção: só mudanças aditivas.
+- Nada de concorrentes no site.
+- O nome é sempre **DIGITAL ISP**.
+- Testes de navegador sem som.
+- Uma bateria de testes pesada por vez.
+- Nunca usar `git stash`.
+- O JDK e o SDK Android ficam em `C:\Projetos\nexa-ferramentas` (`jdk-21.0.13+9`, `android-sdk`).
