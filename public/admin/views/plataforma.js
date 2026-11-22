@@ -62,7 +62,8 @@ function revendaForm(t, plans, done) {
       field('Razão social', inp('name', t?.name, { required: true, maxlength: 80 })),
       field('Nome fantasia', inp('fantasia', t?.fantasia, { maxlength: 80 })),
       field('CNPJ', inp('document', fmtDoc(t?.document), { required: true, inputmode: 'numeric', placeholder: '00.000.000/0000-00' })),
-      field('Site', inp('site', t?.site, { placeholder: 'www.provedor.com.br' }))),
+      field('Site', inp('site', t?.site, { placeholder: 'www.provedor.com.br' })),
+      field('Identificador (endereço dos clientes)', inp('slug', t?.slug, { maxlength: 40, pattern: '[a-z0-9][a-z0-9-]{0,39}', placeholder: 'ex.: meuprovedor' }), { hint: `Os clientes desta revenda entram em ${location.origin}/c/<identificador>. Vazio = sai do nome.` })),
     sec('Contato',
       field('Responsável', inp('contactName', t?.contactName, { maxlength: 80 })),
       field('CPF do responsável', inp('respCpf', t?.respCpf, { inputmode: 'numeric' })),
@@ -95,7 +96,7 @@ function revendaForm(t, plans, done) {
     const valor = toCents(v.valor);
     if (Number.isNaN(valor)) { toast('Valor mensal inválido.', true); return; }
     const body = {
-      name: v.name, fantasia: v.fantasia, document: v.document, site: v.site, contactName: v.contactName, respCpf: v.respCpf, responsavel: v.contactName,
+      name: v.name, fantasia: v.fantasia, document: v.document, site: v.site, ...(v.slug ? { slug: v.slug.trim().toLowerCase() } : {}), contactName: v.contactName, respCpf: v.respCpf, responsavel: v.contactName,
       contactEmail: v.contactEmail, phone: v.phone, whatsapp: v.whatsapp,
       address: { zip: v.zip, street: v.street, number: v.number, complement: v.complement, district: v.district, city: p.city || '', state: p.uf || '' },
       uf: p.uf || '', municipio: p.city || '', municipioIbge: p.cityIbge,

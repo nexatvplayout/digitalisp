@@ -7,6 +7,7 @@
 import { db } from './db.js';
 import * as T from './tenancy.js';
 import { loadExtras, saveExtras } from './revendas.js';
+import { contaOf, clientesDe } from './contas.js';
 
 const n = async (sql, args = []) => Number((await db.get(sql, args))?.n) || 0;
 const j = (s, d) => { try { return s ? JSON.parse(s) : d; } catch { return d; } };
@@ -25,6 +26,73 @@ function faltaDados(t, x) {
   if (!x.municipio) falta.push('estado e município');
   if (!a.street || !a.number) falta.push('endereço (rua e número)');
   return falta;
+}
+
+/** Em ordem: um passo abre quando todos os obrigatórios anteriores estão feitos. */
+function emOrdem(steps) {
+  let aberto = true;
+  for (const st of steps) { st.liberado = aberto; if (st.obrigatorio && !st.feito) aberto = false; }
+  const obrig = steps.filter((x) => x.obrigatorio);
+  return { steps, feitos: obrig.filter((x) => x.feito).length, total: obrig.length, completo: obrig.every((x) => x.feito) };
+}
+
+/** O guia de quem entrou: a revenda monta o negócio (dados, marca, planos, clientes); o cliente final monta as telas. */
+export async function guiaConta(tenantId) {
+  const c = await contaOf(tenantId);
+  return c.tipo === 'cliente' ? guiaCliente(tenantId) : guiaDaRevenda(tenantId);
+}
+
+async function guiaDaRevenda(tenantId) {
+  const t = await db.get('SELECT * FROM tenants WHERE id = ?', [tenantId]);
+  const x = await loadExtras(tenantId);
+  const s = await db.get('SELECT data FROM tvcorp_settings WHERE tenant_id = ?', [tenantId]);
+  const logo = Boolean(j(s?.data, {}).logo?.file);
+  const ids = await clientesDe(tenantId);
+  const planos = await n('SELECT COUNT(*) AS n FROM isp_planos_cliente WHERE revenda_id = ? AND ativo = 1', [tenantId]);
+  const q = ids.map(() => '?').join(',');
+  const telas = ids.length ? await n(`SELECT COUNT(*) AS n FROM telas_devices WHERE revoked_at IS NULL AND tenant_id IN (${q})`, ids) : 0;
+  const falta = faltaDados(t, x);
+  return emOrdem([
+    { id: 'dados', titulo: 'Dados da revenda', obrigatorio: true, feito: !falta.length, falta,
+      texto: 'Nome fantasia, CNPJ, responsável, contato e endereço. Aparecem nas cobranças dos seus clientes.' },
+    { id: 'logo', titulo: 'Sua logo', obrigatorio: true, feito: logo, ir: '#tvcorp/config',
+      texto: 'A logo que aparece na entrada do painel dos seus clientes e na abertura das telas deles. Envie em Configurações → Logomarca.' },
+    { id: 'planos', titulo: 'Planos para os seus clientes', obrigatorio: true, feito: planos > 0, conta: planos, ir: '#rv-planos',
+      texto: 'Monte os planos que você vende: número de telas, módulos e preço.' },
+    { id: 'cliente', titulo: 'Primeiro cliente final', obrigatorio: true, feito: ids.length > 0, conta: ids.length, ir: '#rv-clientes',
+      texto: 'Cadastre o cliente (loja, clínica, empresa), escolha o plano e a forma de cobrança. Ele recebe o link e a senha para montar as telas dele.' },
+    { id: 'telas', titulo: 'Primeira tela de um cliente no ar', obrigatorio: false, feito: telas > 0, conta: telas, ir: '#rv-telas',
+      texto: 'O cliente (ou você, em "Abrir o painel do cliente") instala o app na TV e digita a chave.' },
+    { id: 'cobranca', titulo: 'Cobranças', obrigatorio: false, feito: false, ir: '#rv-cobrancas',
+      texto: 'Gere as mensalidades do mês ou registre os pagamentos recebidos por fora.' },
+  ]);
+}
+
+async function guiaCliente(tenantId) {
+  const s = await db.get('SELECT data FROM tvcorp_settings WHERE tenant_id = ?', [tenantId]);
+  const [unidades, chaves, telas, midias, itens, grades] = await Promise.all([
+    n('SELECT COUNT(*) AS n FROM telas_offices WHERE tenant_id = ?', [tenantId]),
+    n('SELECT COUNT(*) AS n FROM telas_keys WHERE tenant_id = ?', [tenantId]),
+    n('SELECT COUNT(*) AS n FROM telas_devices WHERE tenant_id = ? AND revoked_at IS NULL', [tenantId]),
+    n('SELECT COUNT(*) AS n FROM tvcorp_media WHERE tenant_id = ?', [tenantId]),
+    n('SELECT COUNT(*) AS n FROM tvcorp_playlist_items WHERE tenant_id = ?', [tenantId]),
+    n('SELECT COUNT(*) AS n FROM tvcorp_schedules WHERE tenant_id = ?', [tenantId]),
+  ]);
+  void s;
+  return emOrdem([
+    { id: 'unidade', titulo: 'Sua loja ou unidade', obrigatorio: true, feito: unidades > 0, conta: unidades, ir: '#tvcorp/unidades',
+      texto: 'Onde ficam as telas: o nome e o endereço (o CEP preenche). Se tiver mais de uma loja, cadastre todas.' },
+    { id: 'chave', titulo: 'Chave da primeira tela', obrigatorio: true, feito: chaves > 0 || telas > 0, ir: '#tvcorp/telas',
+      texto: 'Em "Telas", clique em "+ TV box", escolha a unidade e gere a chave (vale 24 horas).' },
+    { id: 'tela', titulo: 'Instalar o app e ativar a tela', obrigatorio: true, feito: telas > 0, conta: telas, ir: '#tvcorp/instalar',
+      texto: 'Instale o app "Telas" na TV box ou na TV, abra e digite a chave.' },
+    { id: 'midia', titulo: 'Primeira imagem', obrigatorio: true, feito: midias > 0, conta: midias, ir: '#tvcorp/midias',
+      texto: 'Envie uma imagem ou crie um slide a partir de um modelo, em "Mídias".' },
+    { id: 'playlist', titulo: 'Playlist', obrigatorio: true, feito: itens > 0, ir: '#tvcorp/playlists',
+      texto: 'Monte a sequência do que vai passar em "Playlists".' },
+    { id: 'grade', titulo: 'O que passa em cada tela', obrigatorio: true, feito: grades > 0, ir: '#tvcorp/telas',
+      texto: 'Na tela, em "Captura, comandos e programação", escolha o layout e a playlist. Ou use a aba Grade para horários.' },
+  ]);
 }
 
 export async function guiaRevenda(tenantId) {
@@ -100,7 +168,7 @@ async function minhaRevenda(tenantId) {
 export function mountGuia(app, { needs, signedIn, needsPlatform, ah }) {
   app.get('/api/guia', signedIn, ah(async (req, res) => {
     if (req.user.tenantId == null) return res.status(400).json({ error: 'Use /api/platform/guia.' });
-    res.set('Cache-Control', 'no-store').json(await guiaRevenda(req.user.tenantId));
+    res.set('Cache-Control', 'no-store').json(await guiaConta(req.user.tenantId));
   }));
   app.get('/api/minha-revenda', signedIn, ah(async (req, res) => {
     if (req.user.tenantId == null) return res.status(400).json({ error: 'Só para revendas.' });

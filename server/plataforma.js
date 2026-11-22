@@ -169,6 +169,12 @@ export function mountPlataforma(app) {
     const b = req.body || {};
     const f = {};
     if (b.name !== undefined) { const name = text(b.name, 80); if (name.length < 2) throw fail(400, 'Nome inválido.'); f.name = name; }
+    if (b.slug !== undefined && b.slug !== t.slug) {
+      // o identificador é o endereço de entrada dos clientes da revenda: /c/<identificador>
+      const slug = T.validSlug(String(b.slug).trim().toLowerCase());
+      if (await db.get('SELECT id FROM tenants WHERE slug = ? AND id <> ?', [slug, t.id])) throw fail(409, 'Já existe uma revenda com esse identificador.');
+      f.slug = slug;
+    }
     if (b.contactName !== undefined) f.contact_name = text(b.contactName, 80);
     if (b.contactEmail !== undefined) { const e = text(b.contactEmail, 120).toLowerCase(); if (e && !EMAIL.test(e)) throw fail(400, 'E-mail de contato inválido.'); f.contact_email = e; }
     if (b.notes !== undefined) f.notes = text(b.notes, 1000);

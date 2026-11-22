@@ -10,7 +10,13 @@ const tvcorp = async () => (tvcorpMod ||= (await import('./views/tvcorp.js')).de
 // a porta decide quem entra; cada uma guarda a própria sessão (dá para ter as duas abertas em abas diferentes)
 const KIND = location.pathname === '/superadmin' || location.pathname.startsWith('/superadmin/') ? 'plataforma' : 'revenda';
 const TOKEN_KEY = KIND === 'plataforma' ? 'disp.token.plataforma' : 'disp.token.revenda';
-const S = { kind: KIND, view: null };
+// area: quem entrou — plataforma, revenda (o provedor) ou cliente (o cliente final da revenda)
+const S = { kind: KIND, area: KIND === 'plataforma' ? 'plataforma' : 'revenda', view: null, conta: null };
+// a porta do cliente final: /c/<revenda> (a entrada com a marca da revenda)
+const PORTA_CLIENTE = /^\/c\/([a-z0-9-]+)/.exec(location.pathname)?.[1] || null;
+// a sessão desta aba (sessionStorage: o painel do cliente aberto pela revenda) vence a guardada no navegador
+const lerToken = () => sessionStorage.getItem(TOKEN_KEY) || store.get(TOKEN_KEY);
+const gravarToken = (t) => { if (sessionStorage.getItem(TOKEN_KEY)) { if (t) sessionStorage.setItem(TOKEN_KEY, t); else sessionStorage.removeItem(TOKEN_KEY); } else store.set(TOKEN_KEY, t); };
 document.title = KIND === 'plataforma' ? 'DIGITAL ISP · Plataforma' : 'DIGITAL ISP · Painel';
 
 /* ------------------------------------------------------------------ entrada */
@@ -20,7 +26,8 @@ function showLogin(msg = '') {
   const err = $('#loginErr');
   err.hidden = !msg; err.textContent = msg;
   const f = $('#loginForm');
-  $('#loginKind').textContent = KIND === 'plataforma' ? 'Equipe da plataforma' : 'Painel da revenda';
+  $('#loginKind').textContent = KIND === 'plataforma' ? 'Equipe da plataforma' : PORTA_CLIENTE ? 'Painel das suas telas' : 'Painel da revenda';
+  if (PORTA_CLIENTE) marcaDaRevenda();
   $('#fldUser').firstChild.textContent = KIND === 'plataforma' ? 'Usuário' : 'E-mail';
   (f.username.value ? f.password : f.username).focus();
 }
@@ -32,7 +39,7 @@ $('#loginForm').addEventListener('submit', async (e) => {
   try {
     const r = await api(kind === 'plataforma' ? '/api/platform/login' : '/api/admin/login', { method: 'POST', body });
     state.token = r.token; S.kind = kind;
-    store.set(TOKEN_KEY, r.token);
+    gravarToken(r.token);
     f.password.value = '';
     await start();
   } catch (err) {
@@ -43,29 +50,36 @@ $('#loginForm').addEventListener('submit', async (e) => {
 async function logout() {
   const path = S.kind === 'plataforma' ? '/api/platform/logout' : '/api/me/logout';
   try { if (state.token) await api(path, { method: 'POST' }); } catch { /* já saiu */ }
-  state.token = null; state.me = null; store.set(TOKEN_KEY, null);
+  state.token = null; state.me = null; gravarToken(null);
   showLogin();
 }
 $('#logout').addEventListener('click', logout);
-on('logout', () => { state.token = null; store.set(TOKEN_KEY, null); showLogin('Sessão expirada. Entre novamente.'); });
+on('logout', () => { state.token = null; gravarToken(null); showLogin('Sessão expirada. Entre novamente.'); });
 
 /* ------------------------------------------------------------------ telas do painel */
 const guiaMod = () => import('./views/guia.js');
+const rev = () => import('./views/revenda.js');
 const VIEWS = {
+  'rv-resumo': { area: 'revenda', load: async () => (await rev()).paintResumo($('#rrPanel')) },
+  'rv-clientes': { area: 'revenda', load: async () => (await rev()).paintClientes($('#rcPanel')) },
+  'rv-planos': { area: 'revenda', load: async () => (await rev()).paintPlanos($('#rpPanel')) },
+  'rv-cobrancas': { area: 'revenda', load: async () => (await rev()).paintCobrancas($('#rbPanel')) },
+  'rv-telas': { area: 'revenda', load: async () => (await rev()).paintTelas($('#rtPanel')), leave: async () => (await rev()).leaveMapa() },
   guia: { area: null, load: async () => (await guiaMod()).paintGuia($('#gdPanel'), S.kind, { onChange: faixaGuia }) },
-  tvcorp: { area: 'revenda', load: async (sub) => (await tvcorp()).load(sub), leave: () => tvcorpMod?.leave?.() },
+  tvcorp: { area: ['revenda', 'cliente'], load: async (sub) => (await tvcorp()).load(sub), leave: () => tvcorpMod?.leave?.() },
   revendas: { area: 'plataforma', load: async () => (await plat()).paintRevendas($('#rvPanel')) },
   planos: { area: 'plataforma', load: async () => (await plat()).paintPlanos($('#plPanel')) },
   cobrancas: { area: 'plataforma', load: async () => (await plat()).paintCobrancas($('#cbPanel')) },
   mapa: { area: 'plataforma', load: async () => (await plat()).paintMapa($('#mpPanel')), leave: async () => (await plat()).leaveMapa() },
   conta: { area: null, load: () => paintConta() },
 };
-const firstView = () => (S.kind === 'plataforma' ? 'revendas' : 'tvcorp');
+const firstView = () => ({ plataforma: 'revendas', revenda: 'rv-resumo', cliente: 'tvcorp' }[S.area]);
+const pode = (v) => v && (v.area === null || [].concat(v.area).includes(S.area));
 
 async function route() {
   if (!state.me) return;
   const [id, sub] = (location.hash.slice(1) || firstView()).split('/');
-  const v = VIEWS[id] && (VIEWS[id].area === null || VIEWS[id].area === S.kind) ? id : firstView();
+  const v = pode(VIEWS[id]) ? id : firstView();
   if (S.view && S.view !== v) VIEWS[S.view].leave?.();
   S.view = v;
   for (const k of Object.keys(VIEWS)) $(`#view-${k}`).hidden = k !== v;
@@ -104,10 +118,17 @@ async function start() {
   try {
     state.me = await api(S.kind === 'plataforma' ? '/api/platform/me' : '/api/me');
   } catch (e) {
-    state.token = null; store.set(TOKEN_KEY, null);
+    state.token = null; gravarToken(null);
     return showLogin(e.message === 'Sessão expirada. Entre novamente.' ? '' : e.message);
   }
-  for (const n of $$('.side [data-area]')) n.hidden = n.dataset.area !== S.kind;
+  if (KIND === 'revenda') {
+    S.conta = await api('/api/conta').catch(() => ({ tipo: 'revenda' }));
+    S.area = S.conta.tipo === 'cliente' ? 'cliente' : 'revenda';
+  }
+  for (const n of $$('[data-area]')) n.hidden = !n.dataset.area.split(' ').includes(S.area);
+  const aviso = $('#entrouComo');
+  aviso.hidden = !S.conta?.impersonador;
+  if (S.conta?.impersonador) aviso.textContent = `Você está no painel do cliente ${state.me.tenant?.name || ''}, aberto pela revenda. Feche esta aba para voltar.`;
   $('#who').textContent = S.kind === 'plataforma'
     ? `${state.me.name || state.me.username} · equipe DIGITAL ISP`
     : `${state.me.name || state.me.username} · ${state.me.tenant?.name || ''}`;
@@ -119,6 +140,16 @@ async function start() {
     if (g && !g.completo) location.hash = '#guia';
   }
   await route();
+}
+
+/* a marca da revenda na entrada do cliente final (/c/<revenda>) */
+async function marcaDaRevenda() {
+  try {
+    const m = await api(`/api/marca/${PORTA_CLIENTE}`);
+    const logo = $('#login .login-logo');
+    if (m.logo) { logo.src = m.logo; logo.alt = m.nome; } else if (logo) logo.replaceWith(el('h2', { class: 'login-nome', text: m.nome }));
+    document.title = m.nome;
+  } catch { /* revenda inexistente: fica a entrada neutra */ }
 }
 
 /* ------------------------------------------------------------------ plataforma (views/plataforma.js, carregado só no superadmin) */
@@ -136,7 +167,7 @@ function paintConta() {
     e.preventDefault();
     const b = Object.fromEntries(new FormData(form));
     const r = await api(S.kind === 'plataforma' ? '/api/platform/me/password' : '/api/me/password', { method: 'POST', body: b });
-    if (r?.token) { state.token = r.token; store.set(TOKEN_KEY, r.token); }
+    if (r?.token) { state.token = r.token; gravarToken(r.token); }
     form.reset();
     toast('Senha trocada.');
     if (state.me?.mustChange) { state.me.mustChange = false; location.hash = `#${firstView()}`; }
@@ -146,5 +177,12 @@ function paintConta() {
 }
 
 /* ------------------------------------------------------------------ início */
-state.token = store.get(TOKEN_KEY);
+// o painel do cliente aberto pela revenda (outra aba): a sessão chega uma vez e fica só nesta aba
+if (location.hash === '#entrar') {
+  const t = localStorage.getItem('disp.token.entrar');
+  localStorage.removeItem('disp.token.entrar');
+  if (t) sessionStorage.setItem(TOKEN_KEY, t);
+  history.replaceState(null, '', location.pathname);
+}
+state.token = lerToken();
 if (state.token) start(); else showLogin();

@@ -138,3 +138,9 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
 .av-video { width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: 8px; }
 .pl-card.dirty { border-color: #f5b31c; }
 .pl-dirty { align-self: center; color: #f5c55c; font-weight: 600; font-size: .86rem; }
+
+.gd-entrou { background: rgba(245, 179, 28, .14); border-color: rgba(245, 179, 28, .5); }
+.login-nome { margin: 4px 0 10px; text-align: center; }
+.kpi.ok b { color: #5fe3e9; } .kpi.warn b { color: #f5c55c; }
+.rv-acesso { margin-top: 16px; border-color: var(--brand-cyan); }
+.tc-sub { margin: 4px 0 0; font-size: .86rem; }
