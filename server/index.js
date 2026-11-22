@@ -27,6 +27,7 @@ import { createTelas } from './telas.js';
 import { createGeocoder } from './telas-geocode.js';
 import { geocode } from './web/fontes.js';
 import { getJson as netGetJson } from './web/net.js';
+import { forecast as weatherForecast } from './weather.js'; // o clima das telas (Open-Meteo/INMET, com cache e cota)
 
 const bootedAt = Date.now();
 const ah = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -163,7 +164,7 @@ const graphicsFiles = (...prefixes) => ({
 
 const tvcorpDados = createTvcorpDados({
   db, audit: access.audit, ipOf: clientIp, publicUrl: publicOrigin, available: tvcorpOn,
-  weatherOf: null, // o clima volta no passo de conteúdo (fonte própria do DIGITAL ISP)
+  weatherOf: (ibge) => weatherForecast(ibge),
   files: { dir: path.join(config.dataDir, 'telas', 'tvcorp') },
   photoUrl: (name) => (config.platform.publicUrl ? `${config.platform.publicUrl}/tvcorp/foto/${name}` : null),
 });
@@ -188,6 +189,7 @@ telas = createTelas({
   streamOf: (tenantId, channelId, req, deviceId) => hlsStream(tenantId, channelId, req, deviceId),
   channelsOf: (tenantId) => hlsChannels(tenantId),
   geocode, geocodeAddress: telasGeocoder.find, audit: access.audit, ipOf: clientIp, publicUrl: publicOrigin,
+  weatherOf: (ibge) => weatherForecast(ibge),
   mediaUrl: (filename, req) => { const u = storage.url('media', filename); return !u ? null : isUrl(u) ? u : `${publicOrigin(req)}${u}`; },
   openMedia: async (m) => {
     const src = await readInput('media', m.filename);

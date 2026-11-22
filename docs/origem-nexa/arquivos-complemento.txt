@@ -57,3 +57,4 @@ public/admin/tvcorp.css
 public/admin/cg.css
 public/admin/tabs.css
 public/shared/municipios-ibge.json
+server/weather.js
