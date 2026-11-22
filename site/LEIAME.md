@@ -36,7 +36,7 @@ Outras opções que funcionam do mesmo jeito: GitHub Pages, Netlify, ou qualquer
 
 ## O que falta do dono
 
-1. **Contato** — procure por `CONTATO_A_DEFINIR` em `index.html` (aparece 2 vezes):
+1. **Contato** — procure por `CONTATO_A_DEFINIR` em `index.html` (aparece 3 vezes, uma delas num comentário do script):
    - no texto "E-mail e telefone" da seção Contato;
    - na variável `EMAIL_CONTATO` do script. Enquanto não tiver um e-mail com `@`, o botão Enviar só mostra
      "O canal de contato ainda está sendo definido". Com o e-mail preenchido, o botão abre o programa de e-mail do
