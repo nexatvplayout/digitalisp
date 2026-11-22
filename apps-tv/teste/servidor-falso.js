@@ -95,6 +95,7 @@ const est = {
   grade: { viradaEm: (minutoAgora() + 360) % 1440 }, // A nas 6 h antes da virada (minuto do dia), B depois
   versao: 1,
   novidade: null,     // imagem nova publicada pelo /teste/nova-imagem (entra na grade B)
+  semPar: false,      // true = como o servidor de produção sem /api/telas/pair (a TV cai na chave digitada)
   log: []
 };
 let proxId = 1;
@@ -216,6 +217,7 @@ function servirMidia(req, res, nome) {
 async function api(req, res, url) {
   const p = url.pathname;
   if (p === '/api/telas/pair' && req.method === 'POST') {
+    if (est.semPar) return json(res, 404, { error: 'Rota inexistente' });
     const b = await lerCorpo(req);
     const pairId = rnd(24);
     const par = { code: codigo(), expiresAt: Date.now() + 10 * 60000, device: b && b.device, aprovado: null };
@@ -319,6 +321,7 @@ function controle(req, res, url) {
     }
     return json(res, 404, { error: 'código não encontrado' });
   }
+  if (p === '/teste/sem-par') { est.semPar = q.get('on') !== '0'; registrar('pareamento ' + (est.semPar ? 'desligado (chave digitada)' : 'ligado')); return volta(); }
   if (p === '/teste/chave') { const k = codigo(); est.chaves.set(k, false); registrar('chave ' + k); return volta({ key: k }); }
   if (p === '/teste/rede') { est.rede = q.get('on') !== '0'; registrar('rede ' + (est.rede ? 'ligada' : 'desligada')); return volta(); }
   if (p === '/teste/nova-imagem') {

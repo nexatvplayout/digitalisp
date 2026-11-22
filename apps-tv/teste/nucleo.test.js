@@ -237,3 +237,21 @@ test('sinal de vida: os campos do contrato do Android, com valores que o servido
   assert.deepEqual(c.pending, { rev: 'r2', files: 2, bytes: 10 });
   assert.equal(N.corpoSinal({ estado: 'offline-content', fonte: 'hls' }).state, 'offline-content');
 });
+
+// ---------------------------------------------------------------- tela sem programação (bug da tela preta na Samsung, 1.0.1)
+
+test('sem token, a tela é sempre a do cadastro (o relógio da grade não pode trocá-la pela abertura preta)', () => {
+  for (const online of [true, false]) for (const baixando of [true, false]) {
+    assert.equal(N.camadaSemConteudo({ atual: null, token: null, online, baixando }), 'cadastro');
+  }
+  assert.equal(N.camadaSemConteudo({ atual: null, token: 't', online: false }), 'semrede');
+  assert.equal(N.camadaSemConteudo({ atual: null, token: 't', online: true, baixando: true }), 'espera');
+  assert.equal(N.camadaSemConteudo({ atual: null, token: 't', online: true, baixando: false }), 'abertura');
+  assert.equal(N.camadaSemConteudo({ atual: {}, token: null, online: true }), null);
+});
+
+test('linha de diagnóstico: versão, servidor sem https, plataforma, modo e o último erro', () => {
+  const l = N.linhaDiagnostico({ servidor: 'https://painel.digitalisp.com.br/', plataforma: 'tizen', modo: 'chave (pair 404)', erro: 'ativar: HTTP 404\nChave' });
+  assert.equal(l, 'v' + N.VERSAO + ' · painel.digitalisp.com.br · tizen · chave (pair 404) · erro: ativar: HTTP 404 Chave');
+  assert.match(N.linhaDiagnostico({}), /erro: nenhum$/);
+});

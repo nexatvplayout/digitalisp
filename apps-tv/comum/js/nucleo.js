@@ -12,7 +12,7 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  var VERSAO = '1.0.0';
+  var VERSAO = '1.0.1';
   var TZ_PADRAO = 'America/Sao_Paulo';
   var SHA = /^[0-9a-f]{64}$/;
   var DIA = /^\d{4}-\d{2}-\d{2}$/;
@@ -524,6 +524,26 @@
     return c;
   }
 
+  /**
+   * Qual camada cobre a tela quando não há programação para tocar. Sem token a tela é SEMPRE a do cadastro: nada
+   * (relógio da grade, rede que cai ou volta) pode trocá-la pela abertura, que antes do cadastro é só fundo preto
+   * (a TV ainda não conhece a logo da revenda). Com programação: null (o conteúdo).
+   */
+  function camadaSemConteudo(s) {
+    if (s.atual) return null;
+    if (!s.token) return 'cadastro';
+    if (!s.online) return 'semrede';
+    return s.baixando ? 'espera' : 'abertura';
+  }
+
+  /** A linha de diagnóstico fixa da tela de cadastro (para o dono mandar uma foto). */
+  function linhaDiagnostico(d) {
+    var srv = String(d.servidor || '—').replace(/^https?:\/\//, '').replace(/\/+$/, '');
+    var partes = ['v' + VERSAO, srv, d.plataforma || '', d.modo || ''];
+    partes.push('erro: ' + (d.erro ? umaLinha(String(d.erro), 140) : 'nenhum'));
+    return partes.filter(Boolean).join(' · ');
+  }
+
   /** Espera da próxima tentativa (s): 5, 10, 20… até 300. */
   function espera(tentativa) { return Math.min(300, 5 * Math.pow(2, Math.max(0, tentativa))); }
 
@@ -536,6 +556,6 @@
     proximaVirada: proximaVirada, telaLigada: telaLigada, diferencaRelogio: diferencaRelogio,
     normalizarChave: normalizarChave,
     contarExibicao: contarExibicao, loteExibicao: loteExibicao, baixarLote: baixarLote, corpoSinal: corpoSinal,
-    espera: espera
+    espera: espera, camadaSemConteudo: camadaSemConteudo, linhaDiagnostico: linhaDiagnostico
   };
 });

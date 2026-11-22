@@ -75,6 +75,19 @@
   function camada(id) {
     ['abertura', 'cadastro', 'espera', 'semrede'].forEach(function (c) { $(c).hidden = c !== id; });
     if (id) aplicarMarca();
+    if (id === 'cadastro') diag();
+  }
+
+  /** Guarda o último erro e atualiza a linha de diagnóstico do cadastro. */
+  function erro(msg) {
+    est.erro = msg ? String(msg).slice(0, 300) : null;
+    diag();
+  }
+
+  /** Linha fixa embaixo da tela de cadastro: versão, servidor, plataforma, modo e o último erro. */
+  function diag() {
+    var el = $('cad-diag');
+    if (el) el.textContent = N.linhaDiagnostico({ servidor: servidor, plataforma: P.nome, modo: est.modoCadastro, erro: est.erro });
   }
 
   function aplicarMarca() {
@@ -126,12 +139,13 @@
       return rec.then(function (r) {
         if (r) return ativado(r);
         return a.parear(dev).then(function (r2) {
-          if (r2.status === 200 && r2.json && r2.json.code && r2.json.pairId) return aguardarPar(a, r2.json);
-          if ([404, 405, 501].indexOf(r2.status) >= 0) return chaveDigitada(a, dev); // servidor sem o código na TV
+          if (r2.status === 200 && r2.json && r2.json.code && r2.json.pairId) { est.modoCadastro = 'código'; return aguardarPar(a, r2.json); }
+          if ([404, 405, 501].indexOf(r2.status) >= 0) { est.modoCadastro = 'chave (pair ' + r2.status + ')'; return chaveDigitada(a, dev); } // servidor sem o código na TV
           throw new Error((r2.json && r2.json.error) || 'Erro ' + r2.status);
         });
       });
     }).catch(function (e) {
+      erro((e.semRede ? 'sem conexão: ' : '') + e.message);
       $('cad-texto').textContent = e.semRede ? 'Sem internet. Tentando de novo…' : 'Não foi possível cadastrar agora (' + e.message + '). Tentando de novo…';
       setTimeout(cadastrar, 15000);
     });
@@ -141,6 +155,7 @@
     $('cad-codigo').textContent = N.normalizarChave(p.code) || p.code;
     $('cad-texto').textContent = 'No painel, abra Telas › Cadastrar tela e digite este código.';
     $('cad-chave').hidden = true;
+    diag();
     var vence = typeof p.expiresAt === 'number' ? p.expiresAt : Date.now() + 10 * 60000;
     var passo = Math.max(2, Math.min(30, p.pollSec || 5)) * 1000;
     function consultar() {
@@ -158,6 +173,7 @@
   function chaveDigitada(a, dev) {
     $('cad-codigo').textContent = '';
     $('cad-texto').textContent = 'Digite a chave de ativação que aparece no painel (XXXX-XXXX).';
+    diag();
     var campo = $('cad-chave');
     campo.hidden = false;
     campo.value = '';
@@ -167,7 +183,8 @@
       var k = N.normalizarChave(campo.value);
       if (!k) { $('cad-texto').textContent = 'A chave tem 8 caracteres e não usa 0, 1, I nem O.'; return; }
       $('cad-texto').textContent = 'Conferindo…';
-      a.ativar(k, dev).then(function (r) { campo.hidden = true; ativado(r.json); }, function (e) {
+      a.ativar(k, dev).then(function (r) { campo.hidden = true; erro(null); ativado(r.json); }, function (e) {
+        erro('ativar: ' + (e.status ? 'HTTP ' + e.status + ' ' : '') + e.message);
         $('cad-texto').textContent = e.status === 404 ? 'Chave inexistente, usada ou vencida.' : (e.semRede ? 'Sem internet.' : e.message);
       });
     };
@@ -215,7 +232,7 @@
         return cadastrar();
       }
       if (e && e.semRede) online(false);
-      else est.erro = e && e.message;
+      else erro(e && e.message);
       est.falhasSinal++;
       timerCiclo = setTimeout(ciclo, N.espera(est.falhasSinal - 1) * 1000);
     });
@@ -317,9 +334,11 @@
   }
 
   function mostrarSemConteudo() {
-    if (est.atual) return;
-    if (!est.online) { camada('semrede'); return; }
-    camada(fila ? 'espera' : 'abertura');
+    var c = N.camadaSemConteudo({ atual: est.atual, token: est.token, online: est.online, baixando: !!fila });
+    if (!c) return;
+    // o cadastro tem os próprios textos e o campo da chave: só garante que está visível, sem refazer nada
+    if (c === 'cadastro') { if ($('cadastro').hidden) camada('cadastro'); return; }
+    camada(c);
   }
 
   function desenhar(forcar) {
@@ -382,6 +401,9 @@
     var k = P.tecla(ev);
     if (k === 'BACK') { ev.preventDefault(); if (!$('diag').hidden) $('diag').hidden = true; return; } // não sai do app
     if (!k) return;
+    // tela da chave: OK no controle traz o teclado da TV de volta para o campo
+    var campo = $('cad-chave');
+    if (k === 'OK' && !$('cadastro').hidden && !campo.hidden && document.activeElement !== campo) { campo.focus(); return; }
     seq.push(k); seq = seq.slice(-5);
     if (seq.join(' ') === 'UP UP DOWN DOWN OK' || k === 'INFO') { seq = []; diagnostico(); }
   }
@@ -420,6 +442,9 @@
   // ------------------------------------------------------------------ partida
 
   function iniciar() {
+    // erro de JS não pode sumir calado: vai para a linha de diagnóstico e para o sinal de vida
+    window.addEventListener('error', function (ev) { erro('js: ' + (ev.message || 'erro') + (ev.lineno ? ' (' + String(ev.filename || '').split('/').pop() + ':' + ev.lineno + ')' : '')); });
+    window.addEventListener('unhandledrejection', function (ev) { erro('js: ' + ((ev.reason && ev.reason.message) || ev.reason)); });
     P.preparar();
     A.persistir();
     conteudo = $('conteudo');
@@ -446,7 +471,7 @@
         ciclo();
       }, est.atual ? 1500 : 800);
     }, function (e) {
-      est.erro = 'armazenamento indisponível: ' + e.message;
+      erro('armazenamento indisponível: ' + (e && e.message));
       ciclo();
     });
 
