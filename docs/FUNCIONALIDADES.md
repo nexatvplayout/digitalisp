@@ -27,6 +27,13 @@ Referências comparadas: OptiSigns (optisigns.com) e Pix Mídia (pixmidia.com.br
   da TV com a marca dela.
 - **Usuários e papéis** em cada nível: dono, gestor, operador, aprovador, só leitura. Registro de quem fez o quê.
 
+**Definições (22/11/2026):**
+- **Revenda** = o cliente do DIGITAL ISP: o provedor, pessoa jurídica que tem clientes.
+- **Cliente final** = o cliente da revenda, pessoa física ou jurídica.
+- **Cobrança:** pelo sistema (boleto e Pix) ou por fora; a revenda escolhe, para ela e para cada cliente final.
+- **App white-label:** na tela só aparece o conteúdo; abertura, cadastro e tela sem internet com a logo da revenda;
+  um APK só, a marca vem do servidor.
+
 ## 2. Telas e mapa
 
 - **Mapa** com todas as telas, para você e para a revenda. Para o cliente final, só as telas dele.

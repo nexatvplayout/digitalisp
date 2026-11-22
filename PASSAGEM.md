@@ -33,6 +33,15 @@ Não mexa no repositório do NEXA Broadcast (`C:\Projetos\nexatvplayout`), e o N
    automática). Depois: **apps Samsung e LG** e um **instalador pelo celular** (instala na TV por fora da loja).
 8. **Site** simples e objetivo em www.digitalisp.com.br, sem preços até o dono definir.
 9. GitHub: o dono já criou o repositório. **Falta o endereço** para ligar o remoto (`git remote add origin ...`).
+10. **Nomes (definição do dono):**
+    - **revenda** = o cliente do DIGITAL ISP: o provedor, sempre pessoa jurídica, que tem clientes;
+    - **cliente final** = o cliente da revenda, pessoa física ou jurídica.
+11. **Cobrança: as duas formas.** Dentro do sistema (boleto e Pix) e por fora. A revenda escolhe, para ela e para cada
+    cliente final dela, se cobra pelo sistema ou registra só o plano e cobra por conta própria.
+12. **App da TV box white-label:** na tela não aparece nada do app nem do DIGITAL ISP, só o conteúdo do cliente.
+    - Abertura, tela de cadastro e imagem sem internet com a **logo da revenda**, que é a que chega ao cliente final.
+    - O nome do app no aparelho é neutro (por exemplo "Telas").
+    - Um APK só para todas as revendas: a marca vem do servidor no cadastro da tela.
 
 ## Primeiros passos
 
