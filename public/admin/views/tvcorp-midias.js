@@ -127,7 +127,11 @@ export default async function paintMidias(box, ctx) {
   const sel = (key, first, options) => el('select', { 'aria-label': first, onchange: (e) => { V[key] = e.target.value; ctx.repaint(); } }, opt('', first, !V[key]), ...options.map(([v, t]) => opt(v, t, V[key] === String(v))));
   const cards = shown.map((m) => {
     const thumb = el('div', { class: 'tc-thumb' });
-    if (m.kind === 'slide') put(thumb, slidePreview(m.template, m.fields, { theme: themeOf() }));
+    if (m.kind === 'slide') {
+      put(thumb, slidePreview(m.template, m.fields, { theme: themeOf() }));
+      // o slide com foto (boas-vindas, reconhecimento…): a miniatura busca a imagem pela sessão e redesenha com ela
+      if (m.fields?.image) tblob(`/api/tvcorp/media/${m.fields.image}/file`).then((u) => { if (u) put(thumb, slidePreview(m.template, m.fields, { theme: themeOf(), image: u })); }, () => {});
+    }
     else {
       const img = el('img', { alt: m.title || 'Imagem', hidden: true });
       put(thumb, img, el('span', { class: 'dim small', text: T.demo ? 'Imagem (exemplo)' : '' }));
