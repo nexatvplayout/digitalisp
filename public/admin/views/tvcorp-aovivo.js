@@ -4,15 +4,9 @@
 import { el, guard, toast, put, f, btn, note, label } from './tvcorp-base.js';
 import { api } from '../lib.js';
 
+// o hls.js do próprio sistema (node_modules, servido em /vendor/hls.mjs), carregado só quando a prévia é usada
 let hlsLib = null;
-const carregarHlsJs = () => hlsLib || (hlsLib = new Promise((ok, erro) => {
-  if (window.Hls) { ok(window.Hls); return; }
-  const s = document.createElement('script');
-  s.src = '/vendor/hls.js';
-  s.onload = () => ok(window.Hls);
-  s.onerror = () => { hlsLib = null; erro(new Error('Não foi possível carregar o player.')); };
-  document.head.append(s);
-}));
+const carregarHlsJs = () => hlsLib || (hlsLib = import('/vendor/hls.mjs').then((m) => m.default).catch((e) => { hlsLib = null; throw new Error(`Não foi possível carregar o player (${e.message}).`); }));
 
 let atual = null; // { video, hls }
 function pararPrevia() {
@@ -55,7 +49,8 @@ async function previa(box, url) {
 
 export default async function paintAoVivo(box) {
   pararPrevia();
-  const lista = await api('/api/hls');
+  const r = await api('/api/hls').catch(() => []);
+  const lista = Array.isArray(r) ? r : [];
   const prev = el('div', { class: 'av-prev' }, note('Clique em "Prévia" num canal para ver aqui.', 'dim'));
   const nome = el('input', { type: 'text', maxlength: '80', placeholder: 'Ex.: TV do Provedor' });
   const url = el('input', { type: 'url', maxlength: '500', placeholder: 'https://…/playlist.m3u8' });

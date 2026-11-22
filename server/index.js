@@ -224,7 +224,7 @@ app.get('/graphics/:name', ah(async (req, res) => {
   if (!fs.existsSync(src)) return res.status(404).end();
   res.set('Cache-Control', 'public, max-age=86400').sendFile(src, { dotfiles: 'allow' });
 }));
-app.get('/vendor/hls.js', (_req, res) => res.set('Cache-Control', 'public, max-age=86400').sendFile(path.join(config.root, 'node_modules', 'hls.js', 'dist', 'hls.min.js'))); // prévia do HLS no painel
+app.get('/vendor/hls.mjs', (_req, res) => res.set('Cache-Control', 'public, max-age=86400').type('application/javascript').sendFile(path.join(config.root, 'node_modules', 'hls.js', 'dist', 'hls.min.mjs'))); // prévia do HLS no painel
 app.use('/marca', express.static(path.join(config.root, 'marca'), { maxAge: '1h' }));
 // o painel tem duas portas: /admin/ (revendas) e /superadmin/ (equipe da plataforma); main.js vê a porta pelo endereço
 // o navegador sempre confere os arquivos do painel pelo ETag (304 quando não mudou): uma atualização nunca deixa a página
