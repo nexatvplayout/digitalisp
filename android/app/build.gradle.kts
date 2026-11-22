@@ -5,24 +5,33 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
-// Assinatura de release: só se existir android-telas/keystore.properties (fora do git), com
-// storeFile, storePassword, keyAlias e keyPassword. Sem o arquivo, o release sai sem assinatura.
+// Assinatura de release: só se existir android/keystore.properties (fora do git), com storeFile, storePassword,
+// keyAlias e keyPassword (como criar: docs/APP-ANDROID.md). Sem o arquivo, o release sai SEM assinatura; para testar
+// numa TV box sem a chave do dono: -Ptelas.assinarComDebug=true (só teste: um aparelho com o APK de depuração precisa
+// desinstalar antes de receber o assinado com a chave do dono).
 val keystoreProps = Properties().apply {
     val f = rootProject.file("keystore.properties")
     if (f.exists()) f.inputStream().use { load(it) }
 }
+val assinarComDebug = providers.gradleProperty("telas.assinarComDebug").orNull == "true"
+
+// Servidor padrão da tela de cadastro e da recuperação (§32). O domínio de produção ainda não foi decidido:
+// SERVIDOR_A_DEFINIR = sem padrão (quem instala digita o endereço). Para fixar: -Ptelas.servidorPadrao=https://…
+// ou a linha telas.servidorPadrao=https://… no android/gradle.properties.
+val servidorPadrao = providers.gradleProperty("telas.servidorPadrao").orNull ?: "SERVIDOR_A_DEFINIR"
 
 android {
-    namespace = "br.com.nexatv.telas"
+    namespace = "br.com.digitalisp.telas"
     compileSdk = 35
     buildToolsVersion = "35.0.0"
 
     defaultConfig {
-        applicationId = "br.com.nexatv.telas"
+        applicationId = "br.com.digitalisp.telas"
         minSdk = 24
         targetSdk = 35
-        versionCode = 25
-        versionName = "1.3.1"
+        versionCode = 1
+        versionName = "0.1.0"
+        buildConfigField("String", "SERVIDOR_PADRAO", "\"" + servidorPadrao.replace("\"", "") + "\"")
     }
 
     signingConfigs {
@@ -37,13 +46,12 @@ android {
     }
 
     buildTypes {
-        // 22/11: as TV box recebem o build de release (sem "depurável"): o Android compila o app de verdade e as setas,
-        // o PIN e a chave respondem bem mais rápido do que no de depuração, que roda sem as otimizações. Sem o
-        // keystore.properties, assina com a mesma chave de depuração das versões já instaladas (senão o Android recusa a
-        // atualização por cima). R8 desligado de propósito: sem aparelho de teste aqui para conferir o encolhimento.
+        // As TV box recebem SEMPRE o build de release (sem "depurável"): o Android compila o app de verdade e as setas,
+        // o PIN e o código respondem bem mais rápido do que no de depuração, que roda sem as otimizações.
+        // R8 desligado de propósito: sem aparelho de teste aqui para conferir o encolhimento.
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("release") ?: (if (assinarComDebug) signingConfigs.getByName("debug") else null)
         }
     }
 
