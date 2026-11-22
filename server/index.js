@@ -40,6 +40,19 @@ const server = http.createServer(app);
 if (config.http.trustProxy) app.set('trust proxy', config.http.trustProxy);
 app.disable('x-powered-by');
 app.use(express.json({ limit: '256kb' }));
+// CORS da API das telas: os apps de TV (Samsung/Tizen, LG/webOS) rodam do pacote, sem origem web própria. A tela se
+// identifica pelo token (Authorization: Bearer), nunca por cookie, então liberar qualquer origem aqui não expõe sessão.
+app.use('/api/telas', (req, res, next) => {
+  res.set({
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Authorization, Content-Type, If-None-Match, Range',
+    'Access-Control-Expose-Headers': 'Date, ETag',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
+    'Access-Control-Max-Age': '600',
+  });
+  if (req.method === 'OPTIONS') return res.status(204).end();
+  next();
+});
 app.use((_req, res, next) => { res.set('X-Content-Type-Options', 'nosniff'); next(); });
 
 if (config.platform.canonicalHost) {
@@ -201,9 +214,23 @@ app.use('/marca', express.static(path.join(config.root, 'marca'), { maxAge: '1h'
 // o painel tem duas portas: /admin/ (revendas) e /superadmin/ (equipe da plataforma); main.js vê a porta pelo endereço
 // o navegador sempre confere os arquivos do painel pelo ETag (304 quando não mudou): uma atualização nunca deixa a página
 // nova com o código velho guardado (22/11: o botão Entrar não fazia nada com o main.js antigo no cache)
-// "no-cache" explícito: a Cloudflare troca um max-age=0 pelo TTL do navegador dela (4 h), mas respeita o no-cache
+// Arquivos do painel por endereço com versão (/_v/<versão>/admin/…, /_v/<versão>/shared/…): a Cloudflare guarda .js e .css
+// no navegador por 4 h mesmo com no-cache, então cada atualização (cada subida do servidor) usa um endereço novo e a
+// página nunca mistura o código velho com o novo. O index.html sai na hora, sem cache, já apontando para a versão.
 const noCache = (res) => res.setHeader('Cache-Control', 'no-cache');
-const panelStatic = express.static(pub('admin'), { setHeaders: noCache });
+const ASSET_VER = Date.now().toString(36);
+const longCache = { maxAge: '30d', immutable: true };
+app.use(`/_v/${ASSET_VER}/admin`, express.static(pub('admin'), longCache));
+app.use(`/_v/${ASSET_VER}/shared`, express.static(pub('shared'), longCache));
+app.use('/_v/:ver', (_req, res) => res.status(404).set('Cache-Control', 'no-store').end()); // versão antiga: recarregue
+const panelHtml = fs.readFileSync(pub('admin/index.html'), 'utf8')
+  .replace(/(href|src)="(?!\/|https?:)([^"]+\.(?:css|js))"/g, `$1="/_v/${ASSET_VER}/admin/$2"`)
+  .replace(/(href|src)="\/shared\//g, `$1="/_v/${ASSET_VER}/shared/`);
+const sendPanel = (_req, res) => res.set({ 'Cache-Control': 'no-cache', 'Content-Type': 'text/html; charset=utf-8' }).send(panelHtml);
+for (const door of ['/admin', '/superadmin']) {
+  app.get([`${door}/`, `${door}/index.html`], sendPanel);
+}
+const panelStatic = express.static(pub('admin'), { setHeaders: noCache }); // outros arquivos pelo endereço antigo
 app.use('/admin', panelStatic);
 app.use('/superadmin', panelStatic);
 const cacheAge = config.production ? '5m' : 0; // em desenvolvimento, sempre o arquivo novo
