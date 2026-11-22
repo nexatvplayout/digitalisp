@@ -43,6 +43,19 @@ CREATE TABLE IF NOT EXISTS isp_faturas (
   created_at     ${big} NOT NULL,
   created_by     TEXT NOT NULL DEFAULT ''
 );
+-- a biblioteca de vídeos do NEXA, que o módulo das telas ainda consulta (vídeos guardados para a tela sem internet):
+-- tabela mínima e vazia, só para a consulta não falhar; os vídeos do DIGITAL ISP ficam em tvcorp_media
+CREATE TABLE IF NOT EXISTS media (
+  id        ${id},
+  tenant_id ${big} NOT NULL,
+  title     TEXT NOT NULL DEFAULT '',
+  filename  TEXT NOT NULL DEFAULT '',
+  size      ${big} NOT NULL DEFAULT 0,
+  duration  ${real} NOT NULL DEFAULT 0,
+  kind      TEXT NOT NULL DEFAULT 'program',
+  status    TEXT NOT NULL DEFAULT 'ready',
+  censura   INTEGER NOT NULL DEFAULT 0
+);
 CREATE UNIQUE INDEX IF NOT EXISTS isp_faturas_ref ON isp_faturas(tenant_id, referencia);
 CREATE INDEX IF NOT EXISTS isp_faturas_status ON isp_faturas(status, vencimento);
 `;
