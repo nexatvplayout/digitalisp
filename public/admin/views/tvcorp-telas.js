@@ -19,7 +19,10 @@ import { TVC_PLAYLIST_ZONES } from '../../shared/tvcorp-tipos.js';
 function programacaoDaTela(d, reload) {
   const data = D();
   const nomeGrade = `Tela ${d.name}`;
-  const minha = (data.schedules || []).find((g) => g.scope?.kind === 'devices' && (g.scope.devices || []).length === 1 && Number(g.scope.devices[0]) === d.id && g.name === nomeGrade);
+  // a programação própria desta tela: a mais recente; as cópias antigas (de cliques repetidos) saem ao salvar
+  const proprias = (data.schedules || []).filter((g) => g.scope?.kind === 'devices' && (g.scope.devices || []).length === 1 && Number(g.scope.devices[0]) === d.id && g.name === nomeGrade).sort((a, b) => b.id - a.id);
+  const minha = proprias[0] || null;
+  const copias = proprias.slice(1);
   const layout = el('select', {}, opt('', 'Escolha o layout', !minha), ...(data.layouts || []).map((l) => opt(l.id, l.name, minha?.layoutId === l.id)));
   const zonasBox = el('div', { class: 'pf-grid' });
   const escolhas = { ...(minha?.zonePlaylists || {}) };
@@ -56,6 +59,7 @@ function programacaoDaTela(d, reload) {
     if ((l?.zones || []).some((z) => z.kind === 'video')) await api(`/api/hls/tela/${d.id}`, { method: 'PUT', body: { hlsId: canalTela } });
     if (atualId) await tapi(`/api/tvcorp/schedules/${atualId}`, { method: 'PATCH', body });
     else { const r = await tapi('/api/tvcorp/schedules', { method: 'POST', body }); atualId = r?.id ?? null; }
+    for (const c of copias.splice(0)) await tapi(`/api/tvcorp/schedules/${c.id}`, { method: 'DELETE' }).catch(() => {});
     toast(`Programação da tela "${d.name}" salva: ela troca em até 30 s.`);
     await reload?.();
     } finally { ocupado = false; if (b) b.disabled = false; }
