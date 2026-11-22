@@ -129,6 +129,12 @@ CREATE TABLE IF NOT EXISTS isp_hls (
   created_at ${big} NOT NULL
 );
 CREATE INDEX IF NOT EXISTS isp_hls_tenant ON isp_hls(tenant_id);
+-- o canal ao vivo de UMA tela (vence o da unidade)
+CREATE TABLE IF NOT EXISTS isp_tela_hls (
+  device_id  ${big} PRIMARY KEY REFERENCES telas_devices(id) ON DELETE CASCADE,
+  tenant_id  ${big} NOT NULL,
+  hls_id     ${big} NOT NULL REFERENCES isp_hls(id) ON DELETE CASCADE
+);
 CREATE UNIQUE INDEX IF NOT EXISTS isp_faturas_ref ON isp_faturas(tenant_id, referencia);
 CREATE INDEX IF NOT EXISTS isp_faturas_status ON isp_faturas(status, vencimento);
 `;

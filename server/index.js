@@ -129,7 +129,7 @@ app.post('/api/me/logout', ah(async (req, res) => {
 mountPlataforma(app);
 mountGuia(app, { needs, signedIn, needsPlatform, ah }); // configuração guiada (server/guia.js)
 mountRevenda(app, { needs, signedIn });
-mountHls(app, { needs, ah }); // canais ao vivo (HLS) (server/hls.js)
+mountHls(app, { needs, ah, onChange: (tid) => telas?.forget(tid) }); // canais ao vivo (HLS) (server/hls.js)
 
 /* ------------------------------------------------------------------ telas e TV Corporativa */
 const publicOrigin = (req) => config.platform.publicUrl || `${req.protocol}://${req.get('host')}`;
@@ -176,7 +176,7 @@ const tvcorp = createTvcorp({
 telas = createTelas({
   tvcorp, tvcorpDados,
   // o ao vivo da zona de vídeo: o canal HLS que a unidade escolheu (NEXA Broadcast, IPTV do provedor, câmera…)
-  streamOf: (tenantId, channelId) => hlsStream(tenantId, channelId),
+  streamOf: (tenantId, channelId, req, deviceId) => hlsStream(tenantId, channelId, req, deviceId),
   channelsOf: (tenantId) => hlsChannels(tenantId),
   geocode, geocodeAddress: telasGeocoder.find, audit: access.audit, ipOf: clientIp, publicUrl: publicOrigin,
   mediaUrl: (filename, req) => { const u = storage.url('media', filename); return !u ? null : isUrl(u) ? u : `${publicOrigin(req)}${u}`; },

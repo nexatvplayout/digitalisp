@@ -5,7 +5,7 @@ import {
   el, guard, toast, tapi, tblob, put, f, opt, table, label, note, empty, btn, btns, chip, dialog, D, T,
   active, officeOf, groupsOf, statusOf, sinceText, counters, dot, when, ago, now, pct, STATUS,
 } from './tvcorp-base.js';
-import { copyText } from '../lib.js';
+import { copyText, api } from '../lib.js';
 import { createMap } from '../telas-mapa.js';
 import { officeStatus, OFFICE_STATUS_LABEL } from '../../shared/telas-geo.js';
 import { LAYOUTS, LAYOUT_KEYS, COMMANDS, typeLabel } from '../../shared/telas-tipos.js';
@@ -23,10 +23,20 @@ function programacaoDaTela(d, reload) {
   const layout = el('select', {}, opt('', 'Escolha o layout', !minha), ...(data.layouts || []).map((l) => opt(l.id, l.name, minha?.layoutId === l.id)));
   const zonasBox = el('div', { class: 'pf-grid' });
   const escolhas = { ...(minha?.zonePlaylists || {}) };
+  // o canal ao vivo da zona de vídeo, só desta tela (Ao vivo (HLS)); vazio = o canal da unidade, se ela tiver
+  let canais = []; let canalTela = null;
+  const canal = el('select', { onchange: (e) => { canalTela = e.target.value ? Number(e.target.value) : null; } });
+  const desenharCanal = () => put(canal, opt('', canais.length ? 'O canal da unidade (ou nenhum)' : 'Nenhum canal cadastrado (aba Ao vivo)', canalTela == null),
+    ...canais.filter((c) => c.ativo).map((c) => opt(c.id, c.name, canalTela === c.id)));
+  Promise.all([api('/api/hls').catch(() => []), api('/api/hls/telas').catch(() => ({}))]).then(([l, m]) => {
+    canais = Array.isArray(l) ? l : []; canalTela = m?.[d.id] ?? null; desenharCanal();
+  });
+  desenharCanal();
   const desenhar = () => {
     const l = (data.layouts || []).find((x) => x.id === Number(layout.value));
     const zonas = (l?.zones || []).filter((z) => TVC_PLAYLIST_ZONES.includes(z.kind));
-    put(zonasBox, ...(l ? (zonas.length ? zonas.map((z) => {
+    const temVideo = (l?.zones || []).some((z) => z.kind === 'video');
+    put(zonasBox, ...(temVideo ? [f('Canal ao vivo da zona de vídeo', canal)] : []), ...(l ? (zonas.length ? zonas.map((z) => {
       const sel = el('select', { onchange: (e) => { escolhas[z.id] = e.target.value ? Number(e.target.value) : null; } },
         opt('', 'Nenhuma', !escolhas[z.id]), ...(data.playlists || []).map((p) => opt(p.id, p.name, Number(escolhas[z.id]) === p.id)));
       return f(`Playlist da zona "${z.name || z.id}"`, sel);
@@ -43,6 +53,7 @@ function programacaoDaTela(d, reload) {
     const l = (data.layouts || []).find((x) => x.id === Number(layout.value));
     const zp = Object.fromEntries((l?.zones || []).filter((z) => TVC_PLAYLIST_ZONES.includes(z.kind) && escolhas[z.id]).map((z) => [z.id, escolhas[z.id]]));
     const body = { name: nomeGrade, layoutId: Number(layout.value), zonePlaylists: zp, scope: { kind: 'devices', devices: [d.id] }, days: [], timeFrom: 0, timeTo: 1440, priority: 0 };
+    if ((l?.zones || []).some((z) => z.kind === 'video')) await api(`/api/hls/tela/${d.id}`, { method: 'PUT', body: { hlsId: canalTela } });
     if (atualId) await tapi(`/api/tvcorp/schedules/${atualId}`, { method: 'PATCH', body });
     else { const r = await tapi('/api/tvcorp/schedules', { method: 'POST', body }); atualId = r?.id ?? null; }
     toast(`Programação da tela "${d.name}" salva: ela troca em até 30 s.`);
