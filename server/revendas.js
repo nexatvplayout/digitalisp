@@ -91,24 +91,29 @@ export function mountRevendas(r, { A, ah, aud }) {
   /* mapa do Brasil: revendas (pelo município), clientes finais e telas, com o estado de cada tela */
   r.get('/mapa', A('platform.view'), ah(async (_req, res) => {
     const now = Date.now();
-    const [tenants, extras, offices, devices] = await Promise.all([
+    const [tenants, extras, offices, devices, contas] = await Promise.all([
       db.all('SELECT id, name, slug, status FROM tenants ORDER BY name'),
       db.all('SELECT tenant_id, fantasia, uf, municipio, lat, lng FROM isp_revenda'),
       db.all('SELECT id, tenant_id, name, type, lat, lng FROM telas_offices'),
       db.all('SELECT id, tenant_id, office_id, name, lat, lng, last_seen FROM telas_devices WHERE revoked_at IS NULL'),
+      db.all("SELECT tenant_id, revenda_id FROM isp_conta WHERE tipo = 'cliente'"),
     ]);
+    const revDe = new Map(contas.map((c) => [Number(c.tenant_id), Number(c.revenda_id)]));
+    const rv = (tid) => revDe.get(Number(tid)) ?? Number(tid);
+    const nomeT = new Map(tenants.map((t) => [Number(t.id), t.name]));
     const ex = new Map(extras.map((x) => [Number(x.tenant_id), x]));
     const off = new Map(offices.map((o) => [Number(o.id), o]));
     const n = (v) => (v == null ? null : Number(v));
     res.json({
       serverTime: now, onlineMs: ONLINE_MS,
-      revendas: tenants.map((t) => { const x = ex.get(Number(t.id)) || {}; return { id: Number(t.id), name: t.name, fantasia: x.fantasia || '', status: t.status, uf: x.uf || '', municipio: x.municipio || '', lat: n(x.lat), lng: n(x.lng) }; }),
-      clientes: offices.map((o) => ({ id: Number(o.id), tenantId: Number(o.tenant_id), name: o.name, lat: n(o.lat), lng: n(o.lng) })),
+      revendas: tenants.filter((t) => !revDe.has(Number(t.id))).map((t) => { const x = ex.get(Number(t.id)) || {}; return { id: Number(t.id), name: t.name, fantasia: x.fantasia || '', status: t.status, uf: x.uf || '', municipio: x.municipio || '', lat: n(x.lat), lng: n(x.lng) }; }),
+      // clientes finais: as unidades (lojas, filiais) de cada cliente, com o cliente e a revenda dele
+      clientes: offices.map((o) => ({ id: Number(o.id), tenantId: rv(o.tenant_id), cliente: revDe.has(Number(o.tenant_id)) ? nomeT.get(Number(o.tenant_id)) : null, name: o.name, lat: n(o.lat), lng: n(o.lng) })),
       telas: devices.map((d) => {
         const o = off.get(Number(d.office_id));
         const seen = n(d.last_seen);
         return {
-          id: Number(d.id), tenantId: Number(d.tenant_id), clienteId: n(d.office_id), cliente: o?.name || null, name: d.name,
+          id: Number(d.id), tenantId: rv(d.tenant_id), clienteId: n(d.office_id), cliente: [revDe.has(Number(d.tenant_id)) ? nomeT.get(Number(d.tenant_id)) : null, o?.name].filter(Boolean).join(' · ') || null, name: d.name,
           lat: d.lat != null ? Number(d.lat) : n(o?.lat), lng: d.lng != null ? Number(d.lng) : n(o?.lng),
           lastSeen: seen, status: !seen ? 'nunca' : now - seen <= ONLINE_MS ? 'no-ar' : 'fora',
         };
@@ -149,7 +154,7 @@ export function mountRevendas(r, { A, ah, aud }) {
     const ref = String(req.body?.referencia || '');
     if (!REF_RE.test(ref)) throw fail(400, 'Referência: o mês, AAAA-MM.');
     const out = { criadas: [], puladas: [] };
-    for (const t of await db.all("SELECT * FROM tenants WHERE status IN ('active', 'past_due') ORDER BY id")) {
+    for (const t of await db.all("SELECT * FROM tenants WHERE status IN ('active', 'past_due') AND id NOT IN (SELECT tenant_id FROM isp_conta WHERE tipo = 'cliente') ORDER BY id")) {
       if (await db.get('SELECT id FROM isp_faturas WHERE tenant_id = ? AND referencia = ?', [t.id, ref])) { out.puladas.push({ id: Number(t.id), name: t.name, motivo: 'já tem' }); continue; }
       const valor = await monthlyOf(t);
       if (!valor) { out.puladas.push({ id: Number(t.id), name: t.name, motivo: 'sem valor' }); continue; }

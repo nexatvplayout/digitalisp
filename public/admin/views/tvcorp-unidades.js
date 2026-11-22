@@ -27,6 +27,7 @@ function showOnce(title, text, value, hint) {
 
 /** Os endereços estruturados das unidades (server/enderecos.js), lidos ao abrir a aba. */
 let enderecos = {};
+let canaisHls = [];
 
 function editOffice(o, reload) {
   const name = el('input', { type: 'text', maxlength: '80', value: o?.name || '', placeholder: 'Ex.: Fábrica Campinas' });
@@ -74,6 +75,8 @@ function editOffice(o, reload) {
     agendar();
   }));
   const address = { get value() { const p = place.value(); return [[rua.value.trim(), numero.value.trim()].filter(Boolean).join(', '), compl.value.trim(), bairro.value.trim(), p.city ? `${p.city}/${p.uf}` : '', cep.value.trim()].filter(Boolean).join(' - ').slice(0, 200); } };
+  const canal = el('select', {}, el('option', { value: '', text: 'Nenhum (a zona de vídeo passa os vídeos guardados)' }),
+    ...(canaisHls || []).filter((c) => c.ativo).map((c) => el('option', { value: c.id, text: c.name, selected: Number(o?.channelId) === c.id })));
   const respName = el('input', { type: 'text', maxlength: '120', value: o?.respName || '' });
   const respContact = el('input', { type: 'text', maxlength: '120', value: o?.respContact || '', placeholder: 'telefone ou e-mail' });
   const mods = { ...(o?.modules || {}) };
@@ -89,10 +92,12 @@ function editOffice(o, reload) {
     el('div', { class: 'pf-grid two' }, f('Latitude', lat), f('Longitude', lng)),
     ponto,
     note('Digite o CEP para preencher o endereço. O ponto põe a unidade no mapa e no clima da unidade.'),
+    el('div', { class: 'pf-grid' }, f('Ao vivo (HLS) nesta unidade', canal)),
+    note('O canal toca na zona de vídeo do layout das telas desta unidade. Cadastre os canais na aba "Ao vivo (HLS)".'),
     label('Módulos da unidade (os avisos do texto rolante valem sempre)'), modBox), {
     wide: true,
     save: async () => {
-      const b = { name: name.value, type: type.value, address: address.value, lat: num(lat.value), lng: num(lng.value), respName: respName.value, respContact: respContact.value, modules: { avisos: true, ...Object.fromEntries(CORP_MODULES.map(([k]) => [k, mods[k] ?? (DEFAULT_MODS[type.value] || []).includes(k)])) } };
+      const b = { channelId: canal.value ? Number(canal.value) : null, name: name.value, type: type.value, address: address.value, lat: num(lat.value), lng: num(lng.value), respName: respName.value, respContact: respContact.value, modules: { avisos: true, ...Object.fromEntries(CORP_MODULES.map(([k]) => [k, mods[k] ?? (DEFAULT_MODS[type.value] || []).includes(k)])) } };
       const p = place.value();
       if (!p.uf || !p.cityIbge) throw new Error('Escolha a UF e o município da lista.');
       if (!rua.value.trim()) throw new Error('Informe a rua.');
@@ -190,7 +195,7 @@ function editGroup(g, reload) {
 }
 
 export default async function paintUnidades(box, ctx) {
-  enderecos = await api('/api/unidades/enderecos').catch(() => ({}));
+  [enderecos, canaisHls] = await Promise.all([api('/api/unidades/enderecos').catch(() => ({})), api('/api/hls').catch(() => [])]);
   const d = D(); const reload = ctx.reload;
   const officeRows = d.offices.map((o) => {
     const devs = active().filter((x) => x.officeId === o.id); const n = counters(devs);

@@ -8,6 +8,7 @@ import {
   checkPasswordPolicy, USERNAME_RE, createSessions,
 } from './authcore.js';
 import { getTenant, isBlocked, suspendedError, DEFAULT_TENANT_ID, ensureDefaults, listTenantIds } from './tenancy.js';
+import { ehDaRevenda } from './contas.js';
 
 export { PERMISSIONS, PLATFORM_PERMISSIONS };
 export const ADMIN_GROUP = 'Administradores';
@@ -160,8 +161,10 @@ export async function authenticate(req) {
   const u = await loadUser(t.uid);
   if (!u || !u.active || u.ver !== t.ver) return null;
   if (t.imp != null) {
-    // personificação: a equipe da plataforma age como administrador de UM cliente, por até 1 h
-    if (!u.platform || t.imp !== u.id || !u.perms.has('platform.impersonate')) return null;
+    // personificação: a equipe da plataforma age como administrador de UM cliente, por até 1 h; a revenda (DIGITAL ISP)
+    // abre o painel de um cliente final DELA, também como administrador dele
+    const pode = t.imp === u.id && (u.platform ? u.perms.has('platform.impersonate') : u.perms.has('users.manage') && await ehDaRevenda(u.tenantId, t.tid));
+    if (!pode) return null;
     const tenant = await getTenant(t.tid);
     if (!tenant) return null;
     return {
@@ -226,6 +229,11 @@ export const needsPlatform = (...perms) => async (req, res, next) => {
 };
 
 /** Token de personificação (1 h) para a equipe da plataforma agir como administrador do cliente. */
+/** A revenda abre o painel do cliente final dela (a conferência de que o cliente é dela fica no authenticate). */
+export function issueRevendaAccess(user, clienteId) {
+  const token = sessions.issue({ id: user.id, ver: user.ver, tenantId: clienteId }, { imp: user.id, ttlMs: IMPERSONATE_MS });
+  return { token, expiresAt: Date.now() + IMPERSONATE_MS };
+}
 export function issueImpersonation(platformUser, tenantId) {
   const token = sessions.issue({ id: platformUser.id, ver: platformUser.ver, tenantId }, { imp: platformUser.id, ttlMs: IMPERSONATE_MS });
   return { token, expiresAt: Date.now() + IMPERSONATE_MS };

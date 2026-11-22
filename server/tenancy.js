@@ -141,7 +141,14 @@ export async function listPlans() {
 const defaultHasAll = (tenant) => Number(tenant?.id) === DEFAULT_TENANT_ID && !config.edge?.enabled;
 const NO_PLAN = { id: null, code: null, name: 'Sem plano', description: '', priceCents: 0, currency: 'brl', interval: 'month', trialDays: 0, active: false, public: false, gatewayRefs: {}, profileId: null, profile: null };
 /** Plano do cliente com limits/features já interpretados. Cliente sem plano válido: limites 0 e nenhum dos 10 recursos de antes (o padrão id 1 cai no Ilimitado). */
+/** Gancho do DIGITAL ISP (server/contas.js): o plano do cliente final sai do plano que a revenda criou para ele. */
+let planHook = null;
+export const setPlanHook = (fn) => { planHook = typeof fn === 'function' ? fn : null; };
 export async function effectivePlan(tenant) {
+  if (planHook && tenant) { const p = await planHook(tenant, basePlan); if (p) return p; }
+  return basePlan(tenant);
+}
+async function basePlan(tenant) {
   const plan = tenant?.plan_id ? await getPlan(Number(tenant.plan_id)) : null;
   // os modos (optIn, ex.: o modo prefeitura) só valem ligados de propósito no plano, também para o cliente padrão
   if (plan) return defaultHasAll(tenant) ? { ...plan, features: CAT.allFeaturesWith(plan.features) } : plan;

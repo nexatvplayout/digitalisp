@@ -127,3 +127,12 @@ button.primary:hover { background: var(--c-accent-hover); }
 .gd-form { display: grid; gap: 10px; margin-top: 6px; }
 a.btn { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
 #guiaBadge { margin-left: auto; }
+
+/* ao vivo (HLS): lista e prévia (views/tvcorp-aovivo.js) */
+.av-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px; align-items: start; }
+.av-list { display: grid; gap: 8px; }
+.av-row { display: flex; gap: 10px; justify-content: space-between; align-items: center; padding: 8px 10px; border: 1px solid var(--c-line-soft); border-radius: 8px; }
+.av-info { min-width: 0; }
+.av-url { overflow-wrap: anywhere; }
+.av-btns { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
+.av-video { width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: 8px; }

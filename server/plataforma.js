@@ -30,12 +30,15 @@ async function tenantOr404(id) {
 }
 
 /** Telas, unidades (clientes finais) e usuários de cada revenda, numa consulta por tabela. */
+/** Por revenda: as telas dela e dos clientes finais dela, quantos clientes finais e quantos usuários. */
+const NAO_CLIENTE = "id NOT IN (SELECT tenant_id FROM isp_conta WHERE tipo = 'cliente')";
+const REVENDA_DE = "COALESCE((SELECT c.revenda_id FROM isp_conta c WHERE c.tenant_id = x.tenant_id AND c.tipo = 'cliente'), x.tenant_id)";
 async function countsByTenant() {
-  const m = (rows) => new Map(rows.map((x) => [Number(x.tenant_id), Number(x.n)]));
+  const m = (rows) => new Map(rows.map((x) => [Number(x.r), Number(x.n)]));
   const [telas, unidades, usuarios] = await Promise.all([
-    db.all('SELECT tenant_id, COUNT(*) AS n FROM telas_devices WHERE revoked_at IS NULL GROUP BY tenant_id'),
-    db.all('SELECT tenant_id, COUNT(*) AS n FROM telas_offices GROUP BY tenant_id'),
-    db.all('SELECT tenant_id, COUNT(*) AS n FROM users WHERE tenant_id IS NOT NULL GROUP BY tenant_id'),
+    db.all(`SELECT ${REVENDA_DE} AS r, COUNT(*) AS n FROM telas_devices x WHERE x.revoked_at IS NULL GROUP BY 1`),
+    db.all("SELECT revenda_id AS r, COUNT(*) AS n FROM isp_conta WHERE tipo = 'cliente' GROUP BY revenda_id"),
+    db.all('SELECT tenant_id AS r, COUNT(*) AS n FROM users WHERE tenant_id IS NOT NULL GROUP BY tenant_id'),
   ]);
   return { telas: m(telas), unidades: m(unidades), usuarios: m(usuarios) };
 }
@@ -75,8 +78,8 @@ export function mountPlataforma(app) {
   r.get('/overview', A('platform.view'), ah(async (_req, res) => {
     const n = async (sql) => Number((await db.get(sql))?.n) || 0;
     res.json({
-      revendas: await n('SELECT COUNT(*) AS n FROM tenants'),
-      unidades: await n('SELECT COUNT(*) AS n FROM telas_offices'),
+      revendas: await n(`SELECT COUNT(*) AS n FROM tenants WHERE ${NAO_CLIENTE}`),
+      unidades: await n("SELECT COUNT(*) AS n FROM isp_conta WHERE tipo = 'cliente'"),
       telas: await n('SELECT COUNT(*) AS n FROM telas_devices WHERE revoked_at IS NULL'),
     });
   }));
@@ -86,7 +89,8 @@ export function mountPlataforma(app) {
     const where = []; const args = [];
     if (req.query.status) { where.push('t.status = ?'); args.push(String(req.query.status)); }
     if (req.query.q) { const like = `%${text(req.query.q, 60).toLowerCase()}%`; where.push('(LOWER(t.name) LIKE ? OR LOWER(t.slug) LIKE ? OR LOWER(t.contact_email) LIKE ?)'); args.push(like, like, like); }
-    const rows = await db.all(`SELECT t.* FROM tenants t ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY t.id`, args);
+    where.push(`t.${NAO_CLIENTE}`); // os clientes finais aparecem dentro da revenda deles
+    const rows = await db.all(`SELECT t.* FROM tenants t WHERE ${where.join(' AND ')} ORDER BY t.id`, args);
     const plans = new Map((await T.listPlans()).map((p) => [p.id, p]));
     const c = await countsByTenant();
     const ex = new Map((await db.all('SELECT * FROM isp_revenda')).map((x) => [Number(x.tenant_id), x]));

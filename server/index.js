@@ -18,6 +18,9 @@ import { clock } from './ntp.js';
 import { mountPlataforma } from './plataforma.js';
 import { mountGuia } from './guia.js';
 import { mountEnderecos } from './enderecos.js';
+import { bindContas, assertNovaTela } from './contas.js';
+import { mountRevenda } from './revenda.js';
+import { mountHls, carregarHls, channelsOf as hlsChannels, streamOf as hlsStream } from './hls.js';
 import { createTvcorp } from './tvcorp.js';
 import { createTvcorpDados, FILE_RE as TVC_FILE_RE } from './tvcorp-dados.js';
 import { createTelas } from './telas.js';
@@ -30,7 +33,9 @@ const ah = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch
 const pub = (p) => path.join(config.root, 'public', p);
 
 /* ------------------------------------------------------------------ banco, acessos e relógio */
+bindContas(); // o plano do cliente final sai do plano que a revenda criou (server/contas.js)
 await access.bootstrap();
+await carregarHls(); // os canais ao vivo (HLS) de cada conta, em memória (server/hls.js)
 {
   const { ntp } = await tenancy.getPlatformSettings();
   clock.configure({ enabled: config.ntp.enabled && ntp.enabled, servers: ntp.servers, intervalMin: config.ntp.intervalMin });
@@ -123,6 +128,8 @@ app.post('/api/me/logout', ah(async (req, res) => {
 
 mountPlataforma(app);
 mountGuia(app, { needs, signedIn, needsPlatform, ah }); // configuração guiada (server/guia.js)
+mountRevenda(app, { needs, signedIn });
+mountHls(app, { needs, ah }); // canais ao vivo (HLS) (server/hls.js)
 
 /* ------------------------------------------------------------------ telas e TV Corporativa */
 const publicOrigin = (req) => config.platform.publicUrl || `${req.protocol}://${req.get('host')}`;
@@ -168,8 +175,9 @@ const tvcorp = createTvcorp({
 });
 telas = createTelas({
   tvcorp, tvcorpDados,
-  streamOf: () => null, // sem canal próprio: o ao vivo de uma zona é um endereço HLS (NEXA Broadcast ou qualquer outro)
-  channelsOf: () => [],
+  // o ao vivo da zona de vídeo: o canal HLS que a unidade escolheu (NEXA Broadcast, IPTV do provedor, câmera…)
+  streamOf: (tenantId, channelId) => hlsStream(tenantId, channelId),
+  channelsOf: (tenantId) => hlsChannels(tenantId),
   geocode, geocodeAddress: telasGeocoder.find, audit: access.audit, ipOf: clientIp, publicUrl: publicOrigin,
   mediaUrl: (filename, req) => { const u = storage.url('media', filename); return !u ? null : isUrl(u) ? u : `${publicOrigin(req)}${u}`; },
   openMedia: async (m) => {
@@ -182,6 +190,8 @@ telas = createTelas({
   photos: graphicsFiles('desap-'),
   offlineImages: graphicsFiles('telasimg-'),
 });
+// limite de telas (plano do cliente e plano da revenda) antes de gerar a chave de uma tela nova
+app.post(['/api/tvcorp/rede/keys', '/api/prefeitura/keys'], needs('tvcorp.manage', 'prefeitura.manage'), ah(async (req, _res, next) => { await assertNovaTela(req.tenantId); next(); }));
 telas.mount(app, { needs });
 mountEnderecos(app, { needs, ah, geocodeAddress: telasGeocoder.find }); // CEP, ponto no mapa e endereço da unidade (server/enderecos.js)
 tvcorp.mount(app, { needs });
@@ -214,6 +224,7 @@ app.get('/graphics/:name', ah(async (req, res) => {
   if (!fs.existsSync(src)) return res.status(404).end();
   res.set('Cache-Control', 'public, max-age=86400').sendFile(src, { dotfiles: 'allow' });
 }));
+app.get('/vendor/hls.js', (_req, res) => res.set('Cache-Control', 'public, max-age=86400').sendFile(path.join(config.root, 'node_modules', 'hls.js', 'dist', 'hls.min.js'))); // prévia do HLS no painel
 app.use('/marca', express.static(path.join(config.root, 'marca'), { maxAge: '1h' }));
 // o painel tem duas portas: /admin/ (revendas) e /superadmin/ (equipe da plataforma); main.js vê a porta pelo endereço
 // o navegador sempre confere os arquivos do painel pelo ETag (304 quando não mudou): uma atualização nunca deixa a página
@@ -231,6 +242,7 @@ const panelHtml = fs.readFileSync(pub('admin/index.html'), 'utf8')
   .replace(/(href|src)="(?!\/|https?:)([^"]+\.(?:css|js))"/g, `$1="/_v/${ASSET_VER}/admin/$2"`)
   .replace(/(href|src)="\/shared\//g, `$1="/_v/${ASSET_VER}/shared/`);
 const sendPanel = (_req, res) => res.set({ 'Cache-Control': 'no-cache', 'Content-Type': 'text/html; charset=utf-8' }).send(panelHtml);
+app.get(['/c/:slug', '/c/:slug/'], sendPanel); // a entrada do cliente final, com a marca da revenda
 for (const door of ['/admin', '/superadmin']) {
   app.get([`${door}/`, `${door}/index.html`], sendPanel);
 }

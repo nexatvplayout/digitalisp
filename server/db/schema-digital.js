@@ -71,6 +71,64 @@ CREATE TABLE IF NOT EXISTS isp_unidade_endereco (
   precisao       TEXT,
   updated_at     ${big} NOT NULL DEFAULT 0
 );
+-- conta: a revenda (o provedor) ou o cliente final dela (uma conta própria, filha da revenda; telas e conteúdo ficam
+-- separados por conta). Conta sem linha aqui é revenda (as que já existiam)
+CREATE TABLE IF NOT EXISTS isp_conta (
+  tenant_id        ${big} PRIMARY KEY REFERENCES tenants(id) ON DELETE CASCADE,
+  tipo             TEXT NOT NULL DEFAULT 'revenda',
+  revenda_id       ${big},
+  pessoa           TEXT NOT NULL DEFAULT 'pj',
+  plano_cliente_id ${big},
+  created_at       ${big} NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS isp_conta_revenda ON isp_conta(revenda_id);
+-- os planos que a revenda cria para os clientes dela (dentro do plano dela com a plataforma)
+CREATE TABLE IF NOT EXISTS isp_planos_cliente (
+  id          ${id},
+  revenda_id  ${big} NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  nome        TEXT NOT NULL,
+  descricao   TEXT NOT NULL DEFAULT '',
+  telas       INTEGER,
+  usuarios    INTEGER,
+  storage_mb  INTEGER,
+  modulos     TEXT NOT NULL DEFAULT '{}',
+  preco_cents ${big} NOT NULL DEFAULT 0,
+  ativo       INTEGER NOT NULL DEFAULT 1,
+  sort        INTEGER NOT NULL DEFAULT 0,
+  created_at  ${big} NOT NULL
+);
+-- as cobranças da revenda para os clientes dela
+CREATE TABLE IF NOT EXISTS isp_faturas_cliente (
+  id               ${id},
+  revenda_id       ${big} NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  cliente_id       ${big} NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  referencia       TEXT NOT NULL,
+  descricao        TEXT NOT NULL DEFAULT '',
+  valor_cents      ${big} NOT NULL,
+  vencimento       TEXT NOT NULL,
+  status           TEXT NOT NULL DEFAULT 'aberta',
+  modo             TEXT NOT NULL DEFAULT 'fora',
+  pago_em          ${big},
+  pago_valor_cents ${big},
+  pago_forma       TEXT,
+  obs              TEXT NOT NULL DEFAULT '',
+  gateway_id       TEXT,
+  link             TEXT,
+  created_at       ${big} NOT NULL,
+  created_by       TEXT NOT NULL DEFAULT ''
+);
+CREATE UNIQUE INDEX IF NOT EXISTS isp_faturas_cliente_ref ON isp_faturas_cliente(cliente_id, referencia);
+CREATE INDEX IF NOT EXISTS isp_faturas_cliente_rev ON isp_faturas_cliente(revenda_id, status, vencimento);
+-- canais ao vivo (HLS) da conta; a unidade escolhe um em telas_offices.channel_id
+CREATE TABLE IF NOT EXISTS isp_hls (
+  id         ${id},
+  tenant_id  ${big} NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  nome       TEXT NOT NULL,
+  url        TEXT NOT NULL,
+  ativo      INTEGER NOT NULL DEFAULT 1,
+  created_at ${big} NOT NULL
+);
+CREATE INDEX IF NOT EXISTS isp_hls_tenant ON isp_hls(tenant_id);
 CREATE UNIQUE INDEX IF NOT EXISTS isp_faturas_ref ON isp_faturas(tenant_id, referencia);
 CREATE INDEX IF NOT EXISTS isp_faturas_status ON isp_faturas(status, vencimento);
 `;
