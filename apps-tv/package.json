@@ -1,6 +1,6 @@
 {
   "name": "digital-isp-apps-tv",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": true,
   "description": "Apps de tela para TVs Samsung (Tizen) e LG (webOS): o player web em comum/ e os empacotamentos",
   "type": "commonjs",

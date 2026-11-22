@@ -196,7 +196,11 @@ deve renovar quando visitar a TV) ou a linha profissional da LG.
 - Itens desenhados: imagem, vídeo, slide/comunicado/texto, notícias, aniversariantes, contagem, relógio, logo e a
   faixa de avisos. Ainda não: QR code, clima, cotações, indicador, cardápio, relógio mundial, dias sem acidente, senha
   (o item é pulado sem mostrar nada).
-- HLS ao vivo usa o player nativo da TV (Tizen e webOS tocam HLS no `<video>`); no navegador de computador, só os
-  vídeos guardados.
+- Ao vivo (`stream.hls`), desde a 1.0.3 (`comum/js/aovivo.js`): na Samsung pelo **AVPlay** (o player da TV, o caminho
+  recomendado para HLS ao vivo na Tizen); no webOS e no navegador pelo `<video>` nativo (o Chrome do computador não toca
+  HLS: só um vídeo comum, como o `/teste/aovivo?url=video` do servidor falso). O player fica numa camada própria e não é
+  recriado pelo redesenho da grade, por configuração nova nem por falha do sinal de vida. Vigia: 30 s de tolerância na
+  partida, parado 20 s (30 s enchendo o buffer) recarrega; 3 recargas sem andar vão para os vídeos guardados e o ao vivo
+  é tentado de novo em 30 s, 60 s… até 5 min. No AVPlay o volume é o da TV (`stream.muted`/`volume` não valem ali).
 - PIN de saída e menu de ajustes completos do Android: não há "sair" no app de TV (Voltar não sai); os ajustes
   escondidos só mostram o diagnóstico.

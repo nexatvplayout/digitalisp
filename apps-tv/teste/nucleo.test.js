@@ -290,3 +290,40 @@ test('chave digitada: apagar o traço automático apaga o caractere antes dele',
   // apagar normal no meio do texto
   assert.equal(N.editarChave('ABCDE', 'ABCD-').texto, 'ABCD-');
 });
+
+// ---------------------------------------------------------------- vigia do ao vivo (1.0.3)
+
+test('vigia do ao vivo: tolera a partida e o buffer, recarrega o travado e vai para a reserva na 3ª', () => {
+  let s = N.vigiaNovo(0);
+  const passo = (agora, tempo, bufferizando) => N.vigiaAoVivo(s, { agora, tempo, bufferizando: !!bufferizando }).acao;
+  // partida lenta (HLS na TV): nada nos primeiros 30 s
+  for (let t = 5000; t < 30000; t += 5000) assert.equal(passo(t, 0), null);
+  // andou: tudo bem
+  assert.equal(passo(35000, 1.2), null);
+  assert.equal(passo(40000, 6.1), null);
+  // parou enchendo o buffer: espera 30 s
+  assert.equal(passo(45000, 6.1, true), null);
+  assert.equal(passo(70000, 6.1, true), null);
+  assert.equal(passo(75000, 6.1, true), 'recarregar');
+  assert.equal(s.falhas, 1);
+  // depois da recarga, nova tolerância de partida; parado sem buffer: 20 s
+  assert.equal(passo(100000, 0), null);
+  assert.equal(passo(105000, 0), null);
+  assert.equal(passo(125000, 0), 'recarregar');
+  assert.equal(passo(175000, 0), null);
+  assert.equal(passo(194000, 0), null);
+  assert.equal(passo(195000, 0), 'reserva');
+});
+
+test('vigia do ao vivo: o vídeo voltando a andar zera as falhas; erro do player conta como falha', () => {
+  const s = N.vigiaNovo(0);
+  assert.equal(N.vigiaFalhou(s, 1000).acao, 'recarregar');
+  assert.equal(N.vigiaFalhou(s, 2000).acao, 'recarregar');
+  N.vigiaAoVivo(s, { agora: 40000, tempo: 3, bufferizando: false });
+  assert.equal(s.falhas, 0);
+  assert.equal(N.vigiaFalhou(s, 50000).acao, 'recarregar');
+});
+
+test('espera para tentar o ao vivo de novo: 30, 60, 120, 240, 300', () => {
+  assert.deepEqual([0, 1, 2, 3, 4, 9].map(N.esperaAoVivo), [30, 60, 120, 240, 300, 300]);
+});

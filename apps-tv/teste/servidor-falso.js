@@ -95,7 +95,8 @@ const est = {
   grade: { viradaEm: (minutoAgora() + 360) % 1440 }, // A nas 6 h antes da virada (minuto do dia), B depois
   versao: 1,
   novidade: null,     // imagem nova publicada pelo /teste/nova-imagem (entra na grade B)
-  semPar: false,      // true = como o servidor de produção sem /api/telas/pair (a TV cai na chave digitada)
+  semPar: false,
+  aoVivo: null,       // endereço mandado em stream.hls (/teste/aovivo?url=…; "video" = o mp4 de teste)      // true = como o servidor de produção sem /api/telas/pair (a TV cai na chave digitada)
   log: []
 };
 let proxId = 1;
@@ -133,7 +134,7 @@ function montarConfig(tela) {
     rev: '',
     device: { name: tela.name },
     brand: { name: 'Provedor X', logo: arquivo('logo-revenda.svg'), color: '#0ea5e9', background: '#020617' },
-    stream: { hls: null, volume: 100, muted: true },
+    stream: { hls: est.aoVivo, volume: 100, muted: true },
     ticker: { items: ['Programação versão ' + est.versao, 'Ofertas válidas enquanto durar o estoque'], speed: 60 },
     offline: {
       items: midia['video-teste.mp4'] ? [arquivo('video-teste.mp4')] : [],
@@ -320,6 +321,12 @@ function controle(req, res, url) {
       return volta({ ok: true, deviceId: t.deviceId });
     }
     return json(res, 404, { error: 'código não encontrado' });
+  }
+  if (p === '/teste/aovivo') {
+    const u = q.get('url');
+    est.aoVivo = !u ? null : (u === 'video' ? `${BASE}/midia/video-teste.mp4` : u);
+    registrar('ao vivo: ' + (est.aoVivo || 'nenhum'));
+    return volta();
   }
   if (p === '/teste/sem-par') { est.semPar = q.get('on') !== '0'; registrar('pareamento ' + (est.semPar ? 'desligado (chave digitada)' : 'ligado')); return volta(); }
   if (p === '/teste/chave') { const k = codigo(); est.chaves.set(k, false); registrar('chave ' + k); return volta({ key: k }); }

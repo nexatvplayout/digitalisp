@@ -276,8 +276,9 @@
     if (est.online === sim) return;
     est.online = sim;
     document.body.classList.toggle('sem-rede', !sim);
+    // com programação, nada é redesenhado: uma falha do sinal de vida não pode derrubar o ao vivo (o vigia do
+    // player decide se ele travou de verdade e vai para os vídeos guardados)
     if (!est.atual) mostrarSemConteudo();
-    else if (est.atual.stream.hls) desenhar(true); // o ao vivo depende da rede: redesenha a zona de vídeo
   }
 
   function buscarConfig(a) {
@@ -457,6 +458,7 @@
         ['Programação', est.atual ? est.atual.rev : '—'],
         ['Chegando', est.baixando ? est.baixando.files + ' arquivo(s), ' + Math.ceil(est.baixando.bytes / 1048576) + ' MB' : '—'],
         ['Bloco agora', est.bloco || '(padrão)'],
+        ['Ao vivo', ctxTela.aoVivo ? ctxTela.aoVivo.motor + (ctxTela.aoVivo.ativo() ? ' · tocando ' + ctxTela.aoVivo.url() : ' · parado') : '—'],
         ['Espaço', esp ? Math.round(esp.used / 1048576) + ' MB usados, ' + Math.round(esp.free / 1048576) + ' MB livres' : 'a TV não informa'],
         ['Hora', new Date(agora()).toLocaleString('pt-BR')],
         ['Último erro', est.erro || '—']
@@ -484,6 +486,12 @@
     P.preparar();
     A.persistir();
     conteudo = $('conteudo');
+    ctxTela.aoVivo = raiz.TelasAoVivo.criar($('aovivo'), {
+      mudo: function () { return ctxTela.mudo; },
+      volume: function () { return ctxTela.volume; },
+      agora: function () { return Date.now(); },
+      aoErro: function (m) { erro('ao vivo (' + ctxTela.aoVivo.motor + '): ' + m); }
+    });
     telaObj = raiz.TelasTela.criar(conteudo, ctxTela);
     document.addEventListener('keydown', teclas);
     window.addEventListener('online', function () { ciclo(); });

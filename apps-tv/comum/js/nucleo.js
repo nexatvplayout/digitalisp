@@ -12,7 +12,7 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  var VERSAO = '1.0.2';
+  var VERSAO = '1.0.3';
   var TZ_PADRAO = 'America/Sao_Paulo';
   var SHA = /^[0-9a-f]{64}$/;
   var DIA = /^\d{4}-\d{2}-\d{2}$/;
@@ -555,6 +555,39 @@
     return s.baixando ? 'espera' : 'abertura';
   }
 
+  /**
+   * Vigia do ao vivo (HLS), sem relógio nem player dentro: recebe uma amostra a cada poucos segundos e diz o que fazer.
+   *   s: { inicio, ultimoTempo, paradoDesde, falhas } (comece com vigiaNovo(agora))
+   *   amostra: { agora (ms), tempo (posição do vídeo em s), bufferizando (bool) }
+   * Regras: 30 s de tolerância na partida; parado 20 s (30 s se o player diz que está enchendo o buffer) = recarregar
+   * o ao vivo; 3 recargas sem o vídeo andar = ir para a reserva (vídeos guardados) e tentar o ao vivo de novo depois.
+   * O vídeo andando zera as falhas.
+   */
+  function vigiaNovo(agora) { return { inicio: agora, ultimoTempo: -1, paradoDesde: null, falhas: 0 }; }
+
+  function vigiaAoVivo(s, a) {
+    if (a.tempo !== s.ultimoTempo && a.tempo > 0) {
+      s.ultimoTempo = a.tempo; s.paradoDesde = null; s.falhas = 0;
+      return { s: s, acao: null };
+    }
+    if (a.agora - s.inicio < 30000) return { s: s, acao: null };
+    if (s.paradoDesde === null) s.paradoDesde = a.agora;
+    if (a.agora - s.paradoDesde < (a.bufferizando ? 30000 : 20000)) return { s: s, acao: null };
+    return vigiaFalhou(s, a.agora);
+  }
+
+  /** Erro do player ou travada confirmada: recarregar (e recomeçar a tolerância) ou, na 3ª, ir para a reserva. */
+  function vigiaFalhou(s, agora) {
+    s.falhas++;
+    s.paradoDesde = null;
+    s.inicio = agora;
+    s.ultimoTempo = -1;
+    return { s: s, acao: s.falhas >= 3 ? 'reserva' : 'recarregar' };
+  }
+
+  /** Na reserva, espera até tentar o ao vivo de novo (s): 30, 60, 120… até 300. */
+  function esperaAoVivo(rodada) { return Math.min(300, 30 * Math.pow(2, Math.max(0, rodada))); }
+
   /** A linha de diagnóstico fixa da tela de cadastro (para o dono mandar uma foto). */
   function linhaDiagnostico(d) {
     var srv = String(d.servidor || '—').replace(/^https?:\/\//, '').replace(/\/+$/, '');
@@ -575,6 +608,7 @@
     proximaVirada: proximaVirada, telaLigada: telaLigada, diferencaRelogio: diferencaRelogio,
     normalizarChave: normalizarChave, editarChave: editarChave,
     contarExibicao: contarExibicao, loteExibicao: loteExibicao, baixarLote: baixarLote, corpoSinal: corpoSinal,
-    espera: espera, camadaSemConteudo: camadaSemConteudo, linhaDiagnostico: linhaDiagnostico
+    espera: espera, camadaSemConteudo: camadaSemConteudo, linhaDiagnostico: linhaDiagnostico,
+    vigiaNovo: vigiaNovo, vigiaAoVivo: vigiaAoVivo, vigiaFalhou: vigiaFalhou, esperaAoVivo: esperaAoVivo
   };
 });

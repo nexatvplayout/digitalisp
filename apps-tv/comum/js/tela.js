@@ -192,13 +192,18 @@
       }, 50);
     }
 
-    /** Zona de vídeo: ao vivo com rede; sem rede (ou ao vivo com erro), os vídeos guardados em laço. */
-    function zonaVideo(caixa, prog) {
-      var guardados = prog.offline.itens, k = 0;
+    /**
+     * Zona de vídeo: o ao vivo (stream.hls) pelo controlador TelasAoVivo, que fica numa camada própria e sobrevive
+     * aos redesenhos; quando ele desiste (3 recargas sem andar) ou não há ao vivo, os vídeos guardados em laço nesta
+     * zona, e o ao vivo é tentado de novo depois (30 s, 60 s… até 5 min).
+     */
+    function zonaVideo(caixa, prog, ret) {
+      var guardados = prog.offline.itens, k = 0, emReserva = false;
       function guardado() {
-        if (!guardados.length) { caixa.innerHTML = ''; return semVideo(); }
+        if (!guardados.length) return semVideo();
         var f = guardados[k++ % guardados.length];
         ctx.url(f.sha256).then(function (u) {
+          if (!emReserva) return;
           if (!u) return timers.push(setTimeout(guardado, 1000));
           var v = novoVideo();
           v.onended = guardado;
@@ -215,33 +220,38 @@
         else logo(c, prog);
         trocar(caixa, c);
       }
-      if (prog.stream.hls && ctx.online() && podeHls()) {
-        var v = novoVideo();
-        v.onerror = function () { guardado(); };
-        v.src = prog.stream.hls;
-        trocar(caixa, v);
-        tocar(v);
-        // vigia: parado por 15 s = volta aos guardados (e o app tenta o ao vivo de novo no próximo ciclo)
-        var ultimo = -1, parado = 0;
-        timers.push(setInterval(function () {
-          if (!v.parentNode) return;
-          if (v.currentTime === ultimo) parado += 5; else parado = 0;
-          ultimo = v.currentTime;
-          if (parado >= 15 || !ctx.online()) { parado = 0; guardado(); }
-        }, 5000));
+      var vivo = ctx.aoVivo;
+      if (prog.stream.hls && vivo && vivo.suporta(prog.stream.hls)) {
+        usouVivo = true;
+        var rodada = 0;
+        var aoVivo = function () {
+          emReserva = false;
+          trocar(caixa, el('div', 'item')); // a zona fica vazia (transparente): o ao vivo aparece pela camada dele
+          vivo.tocar(prog.stream.hls, ret, function () {
+            emReserva = true;
+            guardado();
+            timers.push(setTimeout(aoVivo, N.esperaAoVivo(rodada++) * 1000));
+          });
+        };
+        aoVivo();
       } else {
+        emReserva = true;
         guardado();
       }
     }
 
-    function podeHls() {
-      var v = document.createElement('video');
-      return !!(v.canPlayType('application/vnd.apple.mpegurl') || v.canPlayType('application/x-mpegURL'));
-    }
-
     /** Mostra o bloco da programação. */
+    var usouVivo = false;
+
     function mostrar(prog, bloco) {
       limpar();
+      usouVivo = false;
+      desenharBloco(prog, bloco);
+      // o bloco novo não tem zona de vídeo (ou não tem ao vivo): o ao vivo para
+      if (!usouVivo && ctx.aoVivo) ctx.aoVivo.parar();
+    }
+
+    function desenharBloco(prog, bloco) {
       atual = { prog: prog, bloco: bloco };
       raizEl.style.background = (bloco && bloco.layout.fundo) || prog.marca.fundo || '#000';
       if (!bloco) {
@@ -250,7 +260,7 @@
         z.style.left = '0'; z.style.top = '0'; z.style.width = '100%';
         z.style.height = prog.avisos.length ? '90%' : '100%';
         raizEl.appendChild(z);
-        zonaVideo(z, prog);
+        zonaVideo(z, prog, { x: 0, y: 0, w: 100, h: prog.avisos.length ? 90 : 100 });
         if (prog.avisos.length) {
           var f = el('div', 'zona zona-ticker');
           f.style.left = '0'; f.style.top = '90%'; f.style.width = '100%'; f.style.height = '10%';
@@ -264,7 +274,7 @@
         c.style.left = zona.x + '%'; c.style.top = zona.y + '%'; c.style.width = zona.w + '%'; c.style.height = zona.h + '%';
         raizEl.appendChild(c);
         var itens = bloco.itens[zona.id] || [];
-        if (zona.kind === 'video') zonaVideo(c, prog);
+        if (zona.kind === 'video') zonaVideo(c, prog, { x: zona.x, y: zona.y, w: zona.w, h: zona.h });
         else if (zona.kind === 'playlist') playlist(c, itens, prog);
         else if (zona.kind === 'ticker') faixa(c, prog.avisos.concat(itens.filter(function (i) { return i.kind === 'text'; }).map(function (i) { return i.title || i.text; })), prog.velocidade);
         else if (zona.kind === 'clock') relogio(c, prog);
@@ -274,7 +284,12 @@
       });
     }
 
-    return { mostrar: mostrar, limpar: limpar, atual: function () { return atual; } };
+    return {
+      mostrar: mostrar,
+      // limpar por fora (tela revogada, TV desligada pelo horário, conteúdo apagado) para também o ao vivo
+      limpar: function () { limpar(); if (ctx.aoVivo) ctx.aoVivo.parar(); },
+      atual: function () { return atual; }
+    };
   }
 
   raiz.TelasTela = { criar: criar };

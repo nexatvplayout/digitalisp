@@ -54,3 +54,7 @@ video.midia { object-fit: contain; }
 #diag b { display: inline-block; min-width: 14vw; color: #9ca3af; font-weight: 600; }
 .diag-linha { position: absolute; left: 3vw; right: 3vw; bottom: 3vh; font-size: 2.6vh; opacity: .7; text-align: center;
   font-variant-numeric: tabular-nums; word-break: break-all; }
+/* o ao vivo numa camada própria, acima das zonas e abaixo do cadastro e do alerta (AVPlay: o vídeo aparece no lugar do object) */
+#aovivo { position: absolute; left: 0; top: 0; right: 0; bottom: 0; z-index: 1; pointer-events: none; }
+.aovivo-el { position: absolute; background: transparent; object-fit: contain; }
+video.aovivo-el { background: #000; }
