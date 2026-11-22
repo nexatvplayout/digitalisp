@@ -1,0 +1,54 @@
+:root { --cor: #2563eb; --margem: 3vh; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #000; color: #fff; cursor: none;
+  font-family: "Samsung One", "LG Smart UI", Roboto, "Segoe UI", Arial, sans-serif; }
+[hidden] { display: none !important; }
+
+#conteudo { position: absolute; inset: 0; left: 0; top: 0; right: 0; bottom: 0; overflow: hidden; }
+.zona { position: absolute; overflow: hidden; }
+.item { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+.midia { position: absolute; left: 0; top: 0; width: 100%; height: 100%; object-fit: cover; background: #000; }
+.midia.contain { object-fit: contain; }
+video.midia { object-fit: contain; }
+.legenda { position: absolute; left: 0; right: 0; bottom: 0; padding: 1.2vh 3vw; font-size: 3vh; background: rgba(0,0,0,.55); }
+
+.cartao { position: absolute; left: 0; top: 0; right: 0; bottom: 0; box-sizing: border-box; padding: 6% 7%;
+  display: flex; flex-direction: column; justify-content: center; background: rgba(0,0,0,.35); }
+.fundo-cartao { opacity: .45; }
+.cartao .rotulo { font-size: 2.6vh; text-transform: uppercase; letter-spacing: .1em; color: var(--cor); font-weight: 700; margin-bottom: 1.5vh; }
+.cartao .titulo { font-size: 6vh; font-weight: 800; line-height: 1.1; margin-bottom: 2vh; }
+.cartao .texto { font-size: 3.6vh; line-height: 1.35; white-space: pre-line; }
+.cartao .manchete { font-size: 3.4vh; line-height: 1.3; padding: 1vh 0; border-bottom: 1px solid rgba(255,255,255,.15); }
+.cartao .numero { font-size: 12vh; font-weight: 800; font-variant-numeric: tabular-nums; }
+.relogio { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: flex; align-items: center;
+  justify-content: center; font-size: 9vh; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.zona-ticker { background: rgba(0,0,0,.8); display: flex; align-items: center; }
+.faixa { position: relative; width: 100%; height: 100%; overflow: hidden; display: flex; align-items: center; font-size: 4vh; }
+.faixa span { position: absolute; white-space: nowrap; left: 100%; }
+.faixa span.rolando { animation: rolar linear infinite; }
+@keyframes rolar { from { transform: translateX(0); } to { transform: translateX(-100%) translateX(-100vw); } }
+
+/* camadas sem conteúdo: só a logo da revenda (white-label) */
+.camada { position: absolute; left: 0; top: 0; right: 0; bottom: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; text-align: center; padding: var(--margem); box-sizing: border-box; z-index: 5; background: #000; }
+.logo-revenda { max-width: 42vw; max-height: 32vh; object-fit: contain; margin-bottom: 5vh; }
+.codigo { font-size: 15vh; font-weight: 800; letter-spacing: .08em; font-variant-numeric: tabular-nums; }
+.chave { font-size: 8vh; width: 60vw; text-align: center; text-transform: uppercase; background: #111; color: #fff;
+  border: .4vh solid var(--cor); border-radius: 1vh; padding: 1vh; }
+.instrucao { font-size: 3.4vh; opacity: .85; max-width: 70vw; margin-top: 3vh; line-height: 1.4; }
+.barra { width: 40vw; height: 1vh; background: rgba(255,255,255,.15); border-radius: 1vh; overflow: hidden; }
+#espera-barra { width: 0; height: 100%; background: var(--cor); transition: width .5s; }
+
+#desligada { position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: #000; z-index: 8; }
+
+#alerta { position: absolute; left: 0; top: 0; right: 0; bottom: 0; z-index: 10; display: flex; flex-direction: column;
+  justify-content: center; padding: 8vh 8vw; box-sizing: border-box; }
+#alerta.nivel-0 { background: #1d4ed8; }
+#alerta.nivel-1 { background: #b45309; }
+#alerta.nivel-2 { background: #b91c1c; }
+#alerta-titulo { font-size: 9vh; font-weight: 800; margin-bottom: 3vh; }
+#alerta-texto { font-size: 5vh; line-height: 1.35; white-space: pre-line; }
+
+#diag { position: absolute; right: 3vw; top: 4vh; z-index: 20; background: rgba(0,0,0,.88); border: 1px solid #444;
+  border-radius: 1vh; padding: 2vh 2vw; font-size: 2.4vh; max-width: 60vw; }
+#diag b { display: inline-block; min-width: 14vw; color: #9ca3af; font-weight: 600; }

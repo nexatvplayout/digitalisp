@@ -1,0 +1,541 @@
+/*
+ * Regras do app de tela, sem tela nem rede (testadas com `node --test`): leitura da configuração do servidor (o mesmo
+ * contrato do app Android: /api/telas/config com `signage`, `offline`, `stream`, `schedule`), a marca da revenda, a
+ * escolha do bloco da grade pelo relógio, a lista de arquivos do pacote, a decisão de trocar de programação (só com
+ * tudo baixado e conferido), a limpeza do que saiu, o sinal de vida e a contagem de exibição.
+ *
+ * Sintaxe limitada ao que o Chromium 53 (webOS 4, 2018) entende: nada de async/await, `?.`, `??` nem `...` em objeto.
+ */
+(function (raiz, fabrica) {
+  if (typeof module === 'object' && module.exports) module.exports = fabrica();
+  else raiz.TelasNucleo = fabrica();
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  var VERSAO = '1.0.0';
+  var TZ_PADRAO = 'America/Sao_Paulo';
+  var SHA = /^[0-9a-f]{64}$/;
+  var DIA = /^\d{4}-\d{2}-\d{2}$/;
+
+  // Tetos do contrato (docs/origem-nexa/TV-CORPORATIVA.md §4.1), os mesmos do Android.
+  var TETO = {
+    blocos: 12,
+    zonas: 6,
+    itens: 60,
+    arquivos: 200,
+    bytesArquivo: 512 * 1024 * 1024, // vídeo pode ser grande; imagem vem com até 2 MB
+    titulo: 60,
+    texto: 280,
+    offlineItens: 20
+  };
+
+  var ZONAS = ['video', 'playlist', 'ticker', 'clock', 'weather', 'qr', 'logo', 'text', 'news', 'quotes',
+    'countdown', 'safety', 'worldclock', 'queue'];
+  // `video` como item de playlist é extensão do DIGITAL ISP (o Android 1.3 ignora o tipo que não conhece).
+  var ITENS = ['image', 'video', 'slide', 'post', 'birthdays', 'kpi', 'news', 'quotes', 'menu', 'countdown',
+    'safety', 'worldclock', 'text', 'clock', 'weather', 'qr', 'logo'];
+
+  function str(o, k) {
+    if (!o || typeof o !== 'object') return null;
+    var v = o[k];
+    if (typeof v !== 'string') return null;
+    v = v.trim();
+    return v ? v : null;
+  }
+
+  function num(o, k, padrao) {
+    var v = o ? o[k] : undefined;
+    return typeof v === 'number' && isFinite(v) ? v : padrao;
+  }
+
+  function limpar(s, max) {
+    if (typeof s !== 'string') return '';
+    // tira caracteres de controle (menos a quebra de linha)
+    var t = s.replace(/\r\n/g, '\n').replace(/[\u0000-\u0009\u000b-\u001f\u007f]/g, '');
+    t = t.split('\n').map(function (l) { return l.trim(); }).slice(0, 8).join('\n').trim();
+    return max ? t.slice(0, max) : t;
+  }
+
+  function umaLinha(s, max) { return limpar(s, max).replace(/\n/g, ' '); }
+
+  // ------------------------------------------------------------------ endereços
+
+  /** Endereço local de teste (localhost, 127.x, 10.x, 192.168.x, 172.16–31.x): http só vale com `teste`. */
+  function enderecoLocal(host) {
+    return /^(localhost|127\.\d+\.\d+\.\d+|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|\[::1\])$/i.test(host);
+  }
+
+  /** O app só fala https; http apenas para endereço local no modo de teste (como o build de depuração do Android). */
+  function urlPermitida(url, teste) {
+    if (typeof url !== 'string' || url.length > 2048) return false;
+    var m = /^(https?):\/\/([^\/?#:]+|\[[^\]]+\])(:\d+)?([\/?#]|$)/i.exec(url);
+    if (!m) return false;
+    if (m[1].toLowerCase() === 'https') return true;
+    return !!teste && enderecoLocal(m[2]);
+  }
+
+  /** A origem do servidor ("https://api.exemplo.com.br"), sem barra no fim, ou null. */
+  function origem(url) {
+    if (typeof url !== 'string') return null;
+    var m = /^(https?:\/\/[^\/?#]+)/i.exec(url.trim());
+    return m ? m[1].toLowerCase() : null;
+  }
+
+  // ------------------------------------------------------------------ arquivos
+
+  /** Arquivo indicado pelo servidor: { url, sha256, bytes }. Inválido = null (o item que depende dele é pulado). */
+  function arquivo(o, teste) {
+    if (!o || typeof o !== 'object') return null;
+    var url = str(o, 'url');
+    var sha = (str(o, 'sha256') || '').toLowerCase();
+    var bytes = num(o, 'bytes', 0);
+    if (!url || !urlPermitida(url, teste) || !SHA.test(sha)) return null;
+    if (!(bytes >= 1 && bytes <= TETO.bytesArquivo)) return null;
+    var tipo = str(o, 'type') || str(o, 'mime') || tipoPeloNome(url);
+    return { url: url, sha256: sha, bytes: Math.floor(bytes), tipo: tipo };
+  }
+
+  function tipoPeloNome(url) {
+    var ext = (url.split('?')[0].split('#')[0].split('.').pop() || '').toLowerCase();
+    var mapa = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif',
+      svg: 'image/svg+xml', mp4: 'video/mp4', m4v: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime' };
+    return mapa[ext] || 'application/octet-stream';
+  }
+
+  // ------------------------------------------------------------------ marca da revenda
+
+  /**
+   * A marca da revenda (white-label). O contrato da marca (docs/CONTRATO-APP-MARCA.md) ainda pode não existir:
+   * o app aceita a marca em `brand` no topo da configuração, em `signage.brand` ou na resposta da ativação, e
+   * a logo como `{ url, sha256, bytes }` (baixada e guardada) ou como endereço puro (só mostrada com rede).
+   * Campo faltando = sem ele: sem logo a tela fica só com o fundo, sem nome de app nenhum.
+   */
+  function lerMarca(fontes, teste) {
+    var marca = { nome: '', logo: null, logoUrl: null, cor: null, fundo: null, modo: 'dark' };
+    for (var i = fontes.length - 1; i >= 0; i--) { // a primeira fonte tem prioridade: lida por último
+      var b = fontes[i];
+      if (!b || typeof b !== 'object') continue;
+      var nome = umaLinha(str(b, 'name') || str(b, 'nome') || '', 60);
+      if (nome) marca.nome = nome;
+      var l = b.logo;
+      if (l && typeof l === 'object') {
+        var f = arquivo(l, teste);
+        if (f) { marca.logo = f; marca.logoUrl = null; }
+      } else if (typeof l === 'string' && urlPermitida(l.trim(), teste)) {
+        marca.logo = null; marca.logoUrl = l.trim();
+      }
+      var cor = cores(str(b, 'color') || str(b, 'cor'));
+      if (cor) marca.cor = cor;
+      var fundo = cores(str(b, 'background') || str(b, 'fundo'));
+      if (fundo) marca.fundo = fundo;
+      var modo = str(b, 'mode');
+      if (modo === 'light' || modo === 'dark') marca.modo = modo;
+    }
+    return marca;
+  }
+
+  function cores(s) { return s && /^#[0-9a-f]{6}$/i.test(s) ? s.toLowerCase() : null; }
+
+  // ------------------------------------------------------------------ configuração
+
+  function lerItem(o, teste) {
+    if (!o || typeof o !== 'object') return null;
+    var id = str(o, 'id');
+    var kind = (str(o, 'kind') || '').toLowerCase();
+    if (!id || ITENS.indexOf(kind) < 0) return null;
+    var seg = num(o, 'seconds', 10);
+    seg = seg <= 0 ? 10 : Math.max(3, Math.min(300, Math.round(seg)));
+    var it = { id: id.slice(0, 64), kind: kind, seconds: seg, file: null, files: [] };
+    var f = o.fields && typeof o.fields === 'object' ? o.fields : o;
+    it.title = umaLinha(str(f, 'title') || '', TETO.titulo);
+    it.text = limpar(str(f, 'text') || str(f, 'body') || '', TETO.texto);
+    if (!it.text && Array.isArray(f.lines)) it.text = limpar(f.lines.filter(function (x) { return typeof x === 'string'; }).join('\n'), TETO.texto);
+    it.label = umaLinha(str(o, 'caption') || str(f, 'label') || str(o, 'source') || '', 120);
+    it.template = (str(o, 'template') || '').toLowerCase();
+    it.contain = str(o, 'fit') === 'contain';
+    // restrições do item (o app confere sozinho, sem rede)
+    it.days = dias(o.days);
+    it.from = num(o, 'from', null);
+    it.to = num(o, 'to', null);
+    it.dateFrom = DIA.test(str(o, 'dateFrom') || '') ? str(o, 'dateFrom') : null;
+    it.dateTo = DIA.test(str(o, 'dateTo') || '') ? str(o, 'dateTo') : null;
+
+    if (kind === 'image' || kind === 'video') {
+      it.file = arquivo(o, teste);
+      if (!it.file) return null;
+      if (kind === 'video') it.file.tipo = /^video\//.test(it.file.tipo) ? it.file.tipo : 'video/mp4';
+    } else if (kind === 'slide' || kind === 'post') {
+      it.file = arquivo(f.image || o.image || o.media, teste);
+      if (!it.title && !it.text && !it.file) return null;
+    } else if (kind === 'text') {
+      if (!it.title && !it.text) return null;
+    } else if (kind === 'news') {
+      var lista = Array.isArray(o.items) ? o.items : (Array.isArray(o.headlines) ? o.headlines : []);
+      it.news = lista.slice(0, 12).map(function (n) { return n && umaLinha(str(n, 'title') || '', 140); }).filter(Boolean);
+      if (!it.news.length) return null;
+    } else if (kind === 'birthdays') {
+      var p = Array.isArray(o.people) ? o.people : [];
+      it.people = p.slice(0, 40).map(function (x) {
+        return x && { name: umaLinha(str(x, 'name') || '', 60), day: num(x, 'day', 0), month: num(x, 'month', 0) };
+      }).filter(function (x) { return x && x.name && x.day >= 1 && x.day <= 31 && x.month >= 1 && x.month <= 12; });
+      if (!it.people.length) return null;
+    } else if (kind === 'countdown') {
+      it.target = epoch(o.target);
+      if (!it.target) return null;
+    }
+    if (it.file) it.files.push(it.file);
+    return it;
+  }
+
+  function epoch(v) {
+    if (typeof v === 'number' && v > 0) return v;
+    if (typeof v === 'string') { var t = Date.parse(v); return isFinite(t) ? t : 0; }
+    return 0;
+  }
+
+  function dias(a) {
+    var out = [];
+    if (!Array.isArray(a)) return out;
+    for (var i = 0; i < a.length; i++) {
+      var n = a[i];
+      if (typeof n === 'number' && n >= 0 && n <= 7 && out.indexOf(n % 7) < 0) out.push(n % 7);
+    }
+    return out;
+  }
+
+  function lerZona(o) {
+    if (!o || typeof o !== 'object') return null;
+    var id = str(o, 'id');
+    var kind = (str(o, 'kind') || '').toLowerCase();
+    if (!id || ZONAS.indexOf(kind) < 0) return null;
+    var x = num(o, 'x', -1), y = num(o, 'y', -1);
+    if (!(x >= 0 && x <= 99 && y >= 0 && y <= 99)) return null;
+    var w = Math.min(num(o, 'w', 0), 100 - x), h = Math.min(num(o, 'h', 0), 100 - y);
+    if (w <= 0 || h <= 0) return null;
+    return { id: id.slice(0, 32), kind: kind, x: x, y: y, w: w, h: h,
+      title: umaLinha(str(o, 'title') || '', TETO.titulo), text: limpar(str(o, 'text') || '', TETO.texto) };
+  }
+
+  function lerBloco(o, teste) {
+    if (!o || typeof o !== 'object') return null;
+    var id = str(o, 'id');
+    var lay = o.layout;
+    if (!id || !lay || !Array.isArray(lay.zones)) return null;
+    var zonas = [], ids = {}, video = false;
+    for (var i = 0; i < lay.zones.length && zonas.length < TETO.zonas; i++) {
+      var z = lerZona(lay.zones[i]);
+      if (!z || ids[z.id]) continue;
+      if (z.kind === 'video') { if (video) continue; video = true; }
+      ids[z.id] = true;
+      zonas.push(z);
+    }
+    if (!zonas.length) return null;
+    var itens = {};
+    var zo = o.zones && typeof o.zones === 'object' ? o.zones : {};
+    Object.keys(zo).forEach(function (k) {
+      if (!ids[k] || !Array.isArray(zo[k])) return;
+      var lista = [];
+      for (var j = 0; j < zo[k].length && lista.length < TETO.itens; j++) {
+        var it = lerItem(zo[k][j], teste);
+        if (it) lista.push(it);
+      }
+      if (lista.length) itens[k] = lista;
+    });
+    var from = Math.max(0, Math.min(1440, Math.round(num(o, 'from', 0))));
+    var to = Math.max(0, Math.min(1440, Math.round(num(o, 'to', 1440))));
+    return {
+      id: id.slice(0, 64),
+      layout: { retrato: str(lay, 'orientation') === 'port', fundo: cores(str(lay, 'background')), zonas: zonas },
+      days: dias(o.days), from: from, to: to,
+      dateFrom: DIA.test(str(o, 'dateFrom') || '') ? str(o, 'dateFrom') : null,
+      dateTo: DIA.test(str(o, 'dateTo') || '') ? str(o, 'dateTo') : null,
+      itens: itens
+    };
+  }
+
+  function hm(s) {
+    var m = /^(\d{1,2}):(\d{2})$/.exec((s || '').trim());
+    if (!m) return null;
+    var h = +m[1], mi = +m[2];
+    if (mi > 59 || h > 24 || (h === 24 && mi !== 0)) return null;
+    return h * 60 + mi;
+  }
+
+  /**
+   * A configuração inteira do servidor (JSON do /api/telas/config) no formato que o app usa.
+   * Nunca lança: o que não se entende fica de fora.
+   */
+  function lerConfig(json, opcoes) {
+    var teste = !!(opcoes && opcoes.teste);
+    var o = json && typeof json === 'object' ? json : {};
+    var sig = o.signage && typeof o.signage === 'object' ? o.signage : null;
+    var tz = (sig && str(sig, 'tz')) || str(o, 'tz') || TZ_PADRAO;
+    var blocos = [], vistos = {};
+    if (sig && Array.isArray(sig.blocks)) {
+      for (var i = 0; i < sig.blocks.length && blocos.length < TETO.blocos; i++) {
+        var b = lerBloco(sig.blocks[i], teste);
+        if (b && !vistos[b.id]) { vistos[b.id] = true; blocos.push(b); }
+      }
+    }
+    var off = o.offline && typeof o.offline === 'object' ? o.offline : {};
+    var offItens = [];
+    if (Array.isArray(off.items)) {
+      var shas = {};
+      for (var j = 0; j < off.items.length && offItens.length < TETO.offlineItens; j++) {
+        var f = arquivo(off.items[j], teste);
+        if (f && !shas[f.sha256]) { shas[f.sha256] = true; if (!/^video\//.test(f.tipo)) f.tipo = 'video/mp4'; offItens.push(f); }
+      }
+    }
+    var s = o.stream && typeof o.stream === 'object' ? o.stream : {};
+    var hls = str(s, 'hls');
+    var sch = o.schedule && typeof o.schedule === 'object' ? o.schedule : null;
+    var horario = null;
+    if (sch) {
+      var on = hm(str(sch, 'tvOn')), offM = hm(str(sch, 'tvOff'));
+      if (on !== null && offM !== null) horario = { on: on, off: offM, days: dias(sch.days) };
+    }
+    var t = o.ticker && typeof o.ticker === 'object' ? o.ticker : {};
+    var marca = lerMarca([o.brand, sig && sig.brand, opcoes && opcoes.marcaAtivacao], teste);
+    return {
+      rev: str(o, 'rev') || '',
+      tz: tz,
+      nome: umaLinha((o.device && str(o.device, 'name')) || '', 80),
+      blocos: blocos,
+      fallback: sig ? str(sig, 'fallback') : null,
+      offline: { itens: offItens, imagem: arquivo(off.image, teste) },
+      stream: {
+        hls: hls && urlPermitida(hls, teste) ? hls : null,
+        volume: Math.max(0, Math.min(100, num(s, 'volume', 100))),
+        mudo: s.muted === true
+      },
+      horario: horario,
+      avisos: Array.isArray(t.items) ? t.items.filter(function (x) { return typeof x === 'string' && x.trim(); }).slice(0, 20).map(function (x) { return umaLinha(x, 200); }) : [],
+      velocidade: Math.max(20, Math.min(200, num(t, 'speed', 60))),
+      marca: marca
+    };
+  }
+
+  // ------------------------------------------------------------------ pacote: o que precisa estar no aparelho
+
+  /**
+   * Todos os arquivos da programação, sem repetir (pelo sha256): logo da revenda, imagem sem internet, vídeos
+   * guardados e os itens de todos os blocos. É a lista que tem de estar inteira e conferida antes da troca.
+   */
+  function arquivosDoPacote(prog) {
+    var out = [], vistos = {};
+    function add(f) { if (f && !vistos[f.sha256] && out.length < TETO.arquivos) { vistos[f.sha256] = true; out.push(f); } }
+    if (!prog) return out;
+    add(prog.marca && prog.marca.logo);
+    add(prog.offline && prog.offline.imagem);
+    (prog.blocos || []).forEach(function (b) {
+      Object.keys(b.itens).forEach(function (z) {
+        b.itens[z].forEach(function (it) { it.files.forEach(add); });
+      });
+    });
+    ((prog.offline && prog.offline.itens) || []).forEach(add);
+    return out;
+  }
+
+  function bytesDe(lista) { return lista.reduce(function (s, f) { return s + f.bytes; }, 0); }
+
+  /** O que falta baixar para a programação: os arquivos cujo sha256 não está em `presentes` ({ sha: true }). */
+  function faltando(prog, presentes) {
+    return arquivosDoPacote(prog).filter(function (f) { return !presentes[f.sha256]; });
+  }
+
+  /**
+   * A regra central do offline: a programação nova só entra quando TODOS os arquivos dela estão no aparelho e
+   * conferidos. Até lá a tela segue com a atual. Sem atual (primeira vez), a tela espera mostrando o progresso.
+   * Devolve { acao: 'manter' | 'trocar' | 'esperar', faltam: [...], bytesFaltando }.
+   */
+  function decidirTroca(atual, nova, presentes) {
+    if (!nova) return { acao: 'manter', faltam: [], bytesFaltando: 0 };
+    if (atual && atual.rev && atual.rev === nova.rev) return { acao: 'manter', faltam: [], bytesFaltando: 0 };
+    var f = faltando(nova, presentes);
+    if (!f.length) return { acao: 'trocar', faltam: [], bytesFaltando: 0 };
+    return { acao: 'esperar', faltam: f, bytesFaltando: bytesDe(f) };
+  }
+
+  /** Arquivos guardados que nenhuma das programações (a atual e a que está chegando) cita: podem ser apagados. */
+  function paraApagar(guardados, programacoes) {
+    var usados = {};
+    programacoes.forEach(function (p) { arquivosDoPacote(p).forEach(function (f) { usados[f.sha256] = true; }); });
+    return guardados.filter(function (sha) { return !usados[sha]; });
+  }
+
+  /** Cabe? `livre` = espaço que o navegador/TV ainda dá; deixa uma folga fixa (padrão 50 MB). */
+  function cabe(bytesFaltando, livre, folga) {
+    if (livre === null || livre === undefined || !isFinite(livre)) return true; // a plataforma não informa: tenta
+    return bytesFaltando + (folga === undefined ? 50 * 1024 * 1024 : folga) <= livre;
+  }
+
+  // ------------------------------------------------------------------ relógio e grade
+
+  var NOMES_DIA = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+
+  function dois(n) { return (n < 10 ? '0' : '') + n; }
+
+  /** Hora no fuso da grade: { dow (0 = domingo), minuto do dia, data "AAAA-MM-DD", prevDow, prevData }. */
+  function horaLocal(agoraMs, tz) {
+    var p = partes(agoraMs, tz);
+    var ontem = partes(agoraMs - 86400000, tz);
+    return { dow: p.dow, minuto: p.h * 60 + p.mi, data: p.data, prevDow: ontem.dow, prevData: ontem.data };
+  }
+
+  function partes(ms, tz) {
+    try {
+      var fmt = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour12: false, weekday: 'short', year: 'numeric',
+        month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+      // "Sat, 11/22/2026, 14:05"
+      var m = /^(\w{3}),? (\d{2})\/(\d{2})\/(\d{4}),? (\d{2}):(\d{2})/.exec(fmt.format(new Date(ms)));
+      if (m) {
+        var h = +m[5] % 24;
+        return { dow: NOMES_DIA[m[1]], h: h, mi: +m[6], data: m[4] + '-' + m[2] + '-' + m[3] };
+      }
+    } catch (e) { /* fuso que a TV não conhece: hora do aparelho */ }
+    var d = new Date(ms);
+    return { dow: d.getDay(), h: d.getHours(), mi: d.getMinutes(), data: d.getFullYear() + '-' + dois(d.getMonth() + 1) + '-' + dois(d.getDate()) };
+  }
+
+  function diaVale(b, dow, data) {
+    if (b.days.length && b.days.indexOf(dow) < 0) return false;
+    if (b.dateFrom && data < b.dateFrom) return false;
+    if (b.dateTo && data > b.dateTo) return false;
+    return true;
+  }
+
+  /** O bloco vale agora? Faixa que vira a meia-noite (from > to) pertence ao dia em que começa. */
+  function blocoAtivo(b, l) {
+    if (b.from === b.to || (b.from === 0 && b.to >= 1440)) return diaVale(b, l.dow, l.data);
+    if (b.from < b.to) return l.minuto >= b.from && l.minuto < b.to && diaVale(b, l.dow, l.data);
+    return (l.minuto >= b.from && diaVale(b, l.dow, l.data)) || (l.minuto < b.to && diaVale(b, l.prevDow, l.prevData));
+  }
+
+  /** O bloco da grade para agora (o primeiro que vale, na ordem de prioridade do servidor); nenhum = o `fallback`. */
+  function escolherBloco(prog, agoraMs) {
+    if (!prog || !prog.blocos.length) return null;
+    var l = horaLocal(agoraMs, prog.tz);
+    for (var i = 0; i < prog.blocos.length; i++) if (blocoAtivo(prog.blocos[i], l)) return prog.blocos[i];
+    if (prog.fallback) for (var j = 0; j < prog.blocos.length; j++) if (prog.blocos[j].id === prog.fallback) return prog.blocos[j];
+    return null;
+  }
+
+  /** O item da playlist vale agora (dias, faixa e datas do próprio item)? */
+  function itemVale(it, l) {
+    var b = { days: it.days || [], from: it.from === null || it.from === undefined ? 0 : it.from,
+      to: it.to === null || it.to === undefined ? 1440 : it.to, dateFrom: it.dateFrom, dateTo: it.dateTo };
+    return blocoAtivo(b, l);
+  }
+
+  /** Minutos até a próxima mudança possível de bloco (para o app reavaliar na hora certa, mesmo sem rede). */
+  function proximaVirada(prog, agoraMs) {
+    if (!prog) return 60;
+    var l = horaLocal(agoraMs, prog.tz);
+    var marcos = [0, 1440];
+    prog.blocos.forEach(function (b) { marcos.push(b.from, b.to); });
+    var melhor = 1440;
+    marcos.forEach(function (m) { var d = (m - l.minuto + 1440) % 1440; if (d > 0 && d < melhor) melhor = d; });
+    return melhor;
+  }
+
+  /** A TV deve estar ligada agora (`schedule` do contrato, 0 = domingo)? Sem horário = sempre. */
+  function telaLigada(horario, l) {
+    if (!horario) return true;
+    var b = { days: horario.days, from: horario.on, to: horario.off, dateFrom: null, dateTo: null };
+    if (horario.on === horario.off) return diaVale(b, l.dow, l.data);
+    return blocoAtivo(b, l);
+  }
+
+  /**
+   * Relógio confiável: o app guarda a diferença entre a hora do servidor e a do aparelho a cada resposta, e usa
+   * a hora corrigida para a grade, também sem rede. Diferença absurda (mais de 3 anos) é ignorada.
+   */
+  function diferencaRelogio(horaServidorMs, horaAparelhoMs) {
+    if (!isFinite(horaServidorMs) || horaServidorMs <= 0) return null;
+    var d = horaServidorMs - horaAparelhoMs;
+    return Math.abs(d) > 3 * 365 * 86400000 ? null : d;
+  }
+
+  // ------------------------------------------------------------------ código de cadastro
+
+  var ALFABETO = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+  /** A chave/código como o servidor usa (8 caracteres sem 0, 1, I, O), formatada XXXX-XXXX, ou null. */
+  function normalizarChave(bruto) {
+    var s = String(bruto || '').toUpperCase(), out = '';
+    for (var i = 0; i < s.length && out.length < 8; i++) if (ALFABETO.indexOf(s[i]) >= 0) out += s[i];
+    return out.length === 8 ? out.slice(0, 4) + '-' + out.slice(4) : null;
+  }
+
+  // ------------------------------------------------------------------ sinal de vida e exibição
+
+  /** Acumula a exibição (contrato §4.3: `plays`), por dia; o app só zera depois do 200 do sinal de vida. */
+  function contarExibicao(log, ref, segundos, dia) {
+    var l = log && log.dia === dia ? log : { dia: dia, itens: {} };
+    if (log && log.dia !== dia && log.itens && Object.keys(log.itens).length) l.anterior = log; // o dia que virou segue pendente
+    var e = l.itens[ref] || (l.itens[ref] = { n: 0, sec: 0 });
+    e.n += 1;
+    e.sec += Math.max(0, Math.round(segundos));
+    return l;
+  }
+
+  function loteExibicao(log) {
+    if (!log) return null;
+    var base = log.anterior || log;
+    var refs = Object.keys(base.itens).slice(0, 100);
+    if (!refs.length) return null;
+    return { dia: base.dia, plays: refs.map(function (r) { return { ref: r, n: base.itens[r].n, sec: base.itens[r].sec }; }) };
+  }
+
+  /** Tira do log o que o servidor aceitou (o lote enviado). */
+  function baixarLote(log, lote) {
+    if (!log || !lote) return log;
+    var base = log.anterior && log.anterior.dia === lote.dia ? log.anterior : (log.dia === lote.dia ? log : null);
+    if (!base) return log;
+    lote.plays.forEach(function (p) {
+      var e = base.itens[p.ref];
+      if (!e) return;
+      e.n -= p.n; e.sec -= p.sec;
+      if (e.n <= 0) delete base.itens[p.ref];
+    });
+    if (log.anterior && !Object.keys(log.anterior.itens).length) delete log.anterior;
+    return log;
+  }
+
+  /** O corpo do POST /api/telas/heartbeat (os campos do Android, mais os da TV que o servidor pode ignorar). */
+  function corpoSinal(e) {
+    var c = {
+      rev: e.rev || '',
+      // os valores que o servidor aceita (server/telas-core.js: STATES e SOURCES)
+      state: ['playing', 'buffering', 'offline-content', 'error', 'idle'].indexOf(e.estado) >= 0 ? e.estado : 'idle',
+      source: ['hls', 'backup', 'offline'].indexOf(e.fonte) >= 0 ? e.fonte : 'offline',
+      appVersion: VERSAO,
+      uptimeSec: Math.max(0, Math.round(e.ligadoSeg || 0)),
+      net: e.rede || 'wifi',
+      lastError: e.erro || null,
+      locked: true,
+      platform: e.plataforma || 'browser',
+      model: e.modelo || ''
+    };
+    if (e.hwid) c.hwid = e.hwid;
+    if (e.pendente) c.pending = e.pendente; // { rev, files, bytes }: o que ainda está chegando
+    if (e.armazenamento) c.storage = e.armazenamento; // { used, free } em bytes
+    if (e.lote) { c.plays = e.lote.plays; c.playsDay = e.lote.dia; }
+    return c;
+  }
+
+  /** Espera da próxima tentativa (s): 5, 10, 20… até 300. */
+  function espera(tentativa) { return Math.min(300, 5 * Math.pow(2, Math.max(0, tentativa))); }
+
+  return {
+    VERSAO: VERSAO, TETO: TETO, ZONAS: ZONAS, ITENS: ITENS,
+    urlPermitida: urlPermitida, origem: origem, arquivo: arquivo, lerMarca: lerMarca, lerConfig: lerConfig,
+    arquivosDoPacote: arquivosDoPacote, faltando: faltando, decidirTroca: decidirTroca, paraApagar: paraApagar,
+    cabe: cabe, bytesDe: bytesDe,
+    horaLocal: horaLocal, blocoAtivo: blocoAtivo, escolherBloco: escolherBloco, itemVale: itemVale,
+    proximaVirada: proximaVirada, telaLigada: telaLigada, diferencaRelogio: diferencaRelogio,
+    normalizarChave: normalizarChave,
+    contarExibicao: contarExibicao, loteExibicao: loteExibicao, baixarLote: baixarLote, corpoSinal: corpoSinal,
+    espera: espera
+  };
+});

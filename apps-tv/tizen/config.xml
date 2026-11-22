@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  App de tela para TVs Samsung (Tizen). Nome neutro "Telas": nada do sistema aparece no aparelho.
+  O empacotamento (apps-tv/scripts/empacotar.js tizen) copia apps-tv/comum para junto deste arquivo, põe o
+  webapis.js do aparelho no index.html e assina com o perfil de certificado do dono (Tizen Studio).
+  package: 10 letras/números, único por app; id = package + "." + nome.
+-->
+<widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets"
+        id="https://digitalisp.com.br/telas" version="1.0.0" viewmodes="maximized">
+  <tizen:application id="DgIspTela1.Telas" package="DgIspTela1" required_version="4.0"/>
+  <content src="index.html"/>
+  <feature name="http://tizen.org/feature/screen.size.all"/>
+  <icon src="icon.png"/>
+  <name>Telas</name>
+  <!-- a API e os arquivos ficam em outro domínio (o app roda do pacote) -->
+  <access origin="*" subdomains="true"/>
+  <tizen:privilege name="http://tizen.org/privilege/internet"/>
+  <tizen:privilege name="http://tizen.org/privilege/tv.inputdevice"/>
+  <!-- sem teto de espaço para o IndexedDB do pacote de conteúdo -->
+  <tizen:privilege name="http://tizen.org/privilege/unlimitedstorage"/>
+  <!-- DUID do aparelho (só o hash sai do app) e tipo de rede -->
+  <tizen:privilege name="http://developer.samsung.com/privilege/productinfo"/>
+  <tizen:privilege name="http://developer.samsung.com/privilege/network.public"/>
+  <tizen:profile name="tv-samsung"/>
+  <tizen:setting screen-orientation="landscape" context-menu="disable" background-support="disable"
+                 encryption="disable" install-location="auto" hwkey-event="enable"/>
+</widget>
