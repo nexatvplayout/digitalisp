@@ -57,3 +57,46 @@ button.primary:hover { background: var(--c-accent-hover); }
 .rv-form label { display: grid; gap: 4px; font-size: .84rem; color: var(--c-fg-2); }
 .rv-secret { font-family: var(--font-mono); background: var(--c-sunken); padding: 8px 10px; border-radius: 8px; overflow-wrap: anywhere; }
 .kpis .kpi b { display: block; font-size: 1.6rem; }
+
+/* superadmin: listas, formulários, planos, cobranças e mapa (views/plataforma.js) */
+.rv-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.rv-bar h3 { margin: 0; }
+.rv-search { flex: 1 1 260px; max-width: 420px; }
+.rv-scroll { overflow-x: auto; }
+.rv-table td.num, .rv-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.rv-row { cursor: pointer; }
+.rv-row:hover td, .rv-row:focus-visible td { background: var(--c-panel-2); }
+.rv-row:focus-visible { outline: var(--focus-ring); }
+.rv-st { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: .76rem; font-weight: 600; background: var(--c-panel-3); color: var(--c-fg-2); }
+.rv-st.active { background: rgba(20, 196, 204, .16); color: #5fe3e9; }
+.rv-st.trial { background: rgba(13, 128, 255, .18); color: #7fb8ff; }
+.rv-st.past_due { background: rgba(245, 179, 28, .16); color: #f5c55c; }
+.rv-st.suspended, .rv-st.canceled { background: rgba(255, 59, 48, .14); color: #ff8a80; }
+.rv-form { margin-top: 16px; }
+.rv-form-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.rv-sec { border: 1px solid var(--c-line-soft); border-radius: 10px; padding: 10px 12px 12px; margin: 0; }
+.rv-sec legend { padding: 0 6px; color: var(--c-fg-2); font-weight: 600; }
+.rv-grid2 { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px 14px; }
+.rv-f { display: grid; gap: 4px; font-size: .84rem; color: var(--c-fg-2); min-width: 0; }
+.rv-f.full { grid-column: 1 / -1; }
+.rv-f input, .rv-f select, .rv-f textarea, .rv-grid2 .fx-field input, .rv-grid2 .fx-field select { width: 100%; box-sizing: border-box; }
+.rv-actions { display: flex; gap: 10px; justify-content: flex-end; }
+.rv-btns { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.small { font-size: .8rem; }
+.pl-card { margin-top: 16px; display: grid; gap: 12px; }
+.pl-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pl-head h3 { margin: 0; }
+.pl-active { display: inline-flex; gap: 6px; align-items: center; font-weight: 600; }
+.pl-mtitle { margin: 4px 0 0; }
+.pl-mods { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.pl-sec { border: 1px solid var(--c-line-soft); border-radius: 10px; padding: 8px 10px; display: grid; gap: 6px; align-content: start; }
+.pl-sec h4 { margin: 0 0 2px; font-size: .8rem; color: var(--c-dim); text-transform: uppercase; letter-spacing: .06em; }
+.pl-mod { display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: start; cursor: pointer; }
+.pl-mod input { margin-top: 3px; }
+.pl-mod small { display: block; line-height: 1.35; }
+.mp-side { min-height: 120px; }
+.mp-map { min-height: 420px; }
+/* os módulos e as caixas de marcar: texto normal (o label herdado é em maiúsculas e monoespaçado) */
+.pl-mod, .pl-active { font: inherit; font-size: .88rem; letter-spacing: normal; text-transform: none; color: var(--c-fg); }
+.pl-mod b { font-weight: 600; }
+.pl-mod small { font-size: .78rem; }

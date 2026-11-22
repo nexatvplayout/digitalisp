@@ -11,6 +11,7 @@ import * as T from './tenancy.js';
 import { PLATFORM_PERMISSIONS, checkPasswordPolicy, USERNAME_RE } from './authcore.js';
 import { clientIp } from './clientip.js';
 import { mountFeatureProfiles, storedFeatures } from './funcionalidades.js';
+import { mountRevendas, saveExtras, loadExtras, extrasDto } from './revendas.js';
 
 const { fail } = T;
 const ah = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -88,8 +89,10 @@ export function mountPlataforma(app) {
     const rows = await db.all(`SELECT t.* FROM tenants t ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY t.id`, args);
     const plans = new Map((await T.listPlans()).map((p) => [p.id, p]));
     const c = await countsByTenant();
+    const ex = new Map((await db.all('SELECT * FROM isp_revenda')).map((x) => [Number(x.tenant_id), x]));
     res.json(rows.map((t) => ({
       ...T.tenantDto(t, plans.get(Number(t.plan_id))),
+      ...extrasDto(ex.get(Number(t.id))),
       uso: { telas: c.telas.get(Number(t.id)) || 0, unidades: c.unidades.get(Number(t.id)) || 0, usuarios: c.usuarios.get(Number(t.id)) || 0 },
     })));
   }));
@@ -121,26 +124,30 @@ export function mountPlataforma(app) {
     const status = b.status === 'active' ? 'active' : 'trial';
     const ts = T.now();
     const trialDays = plan.trialDays > 0 ? plan.trialDays : settings.trialDays;
+    // a revenda é sempre pessoa jurídica: CNPJ obrigatório
     const doc = T.cleanDocument(b.document);
+    if (doc.document_type !== 'cnpj') throw fail(400, 'Informe o CNPJ da revenda (a revenda é sempre pessoa jurídica).');
     const id = await T.insertTenant({
       slug, name, status, plan_id: plan.id, contact_name: text(b.contactName, 80), contact_email: contactEmail, notes: text(b.notes, 1000),
       ...doc, phone: T.cleanPhone(b.phone), address: T.cleanAddress(b.address),
       trial_ends_at: status === 'trial' ? ts + trialDays * T.DAY : null,
     });
     try {
+      await saveExtras(id, b);
       const adminGroup = await access.createTenantGroups(id);
       await access.createUser({ username: adminUsername, name: text(b.contactName, 80) || adminUsername, password: adminPassword, mustChange: b.mustChange !== false, groupIds: [adminGroup] }, id);
     } catch (err) { // desfaz o cadastro pela metade
       await db.run('DELETE FROM user_groups WHERE group_id IN (SELECT id FROM access_groups WHERE tenant_id = ?)', [id]);
       await db.run('DELETE FROM users WHERE tenant_id = ?', [id]);
       await db.run('DELETE FROM access_groups WHERE tenant_id = ?', [id]);
+      await db.run('DELETE FROM isp_revenda WHERE tenant_id = ?', [id]);
       await db.run('DELETE FROM tenants WHERE id = ?', [id]);
       T.invalidateTenants();
       throw err;
     }
     aud(res, id, `criou a revenda ${slug} (plano ${plan.code})`);
     res.status(201).json({
-      tenant: T.tenantDto(await T.getTenant(id), plan),
+      tenant: { ...T.tenantDto(await T.getTenant(id), plan), ...(await loadExtras(id)) },
       admin: { username: adminUsername, password: generated ? adminPassword : null, mustChange: b.mustChange !== false, note: generated ? 'Senha gerada: mostrada só desta vez.' : 'Senha definida por você.' },
     });
   }));
@@ -148,7 +155,9 @@ export function mountPlataforma(app) {
   r.get('/tenants/:id', A('platform.view'), ah(async (req, res) => {
     const t = await tenantOr404(idParam(req));
     const plan = await T.effectivePlan(t);
-    res.json({ ...T.tenantDto(t, plan), admins: await access.tenantAdmins(t.id) });
+    const c = await countsByTenant();
+    res.json({ ...T.tenantDto(t, plan), ...(await loadExtras(t.id)), plan, admins: await access.tenantAdmins(t.id),
+      uso: { telas: c.telas.get(Number(t.id)) || 0, unidades: c.unidades.get(Number(t.id)) || 0, usuarios: c.usuarios.get(Number(t.id)) || 0 } });
   }));
 
   r.patch('/tenants/:id', A('platform.tenants'), ah(async (req, res) => {
@@ -161,13 +170,18 @@ export function mountPlataforma(app) {
     if (b.notes !== undefined) f.notes = text(b.notes, 1000);
     if (b.phone !== undefined) f.phone = T.cleanPhone(b.phone);
     if (b.address !== undefined) f.address = T.cleanAddress(b.address);
-    if (b.document !== undefined) Object.assign(f, T.cleanDocument(b.document));
+    if (b.document !== undefined) {
+      const doc = T.cleanDocument(b.document);
+      if (doc.document_type !== 'cnpj') throw fail(400, 'Informe o CNPJ da revenda (a revenda é sempre pessoa jurídica).');
+      Object.assign(f, doc);
+    }
     if (b.planCode !== undefined) {
       const plan = await T.getPlanByCode(b.planCode);
       if (!plan || !plan.active) throw fail(400, 'Plano inexistente ou inativo.');
       f.plan_id = plan.id;
     }
     if (Object.keys(f).length) await T.updateTenant(t.id, f);
+    await saveExtras(t.id, b);
     if (b.status !== undefined) {
       if (!T.TENANT_STATUS.includes(b.status)) throw fail(400, 'Situação inválida.');
       await T.setTenantStatus(t.id, b.status);
@@ -175,7 +189,7 @@ export function mountPlataforma(app) {
     T.invalidateTenants();
     aud(res, t.id, `alterou a revenda ${t.slug}`);
     const fresh = await T.getTenant(t.id);
-    res.json(T.tenantDto(fresh, await T.effectivePlan(fresh)));
+    res.json({ ...T.tenantDto(fresh, await T.effectivePlan(fresh)), ...(await loadExtras(t.id)) });
   }));
 
   r.post('/tenants/:id/impersonate', A('platform.impersonate'), ah(async (req, res) => {
@@ -187,6 +201,7 @@ export function mountPlataforma(app) {
   /* ------------------------------------------------------------------ perfis de funcionalidades e planos das revendas */
   // Herdados do NEXA (c51d2469). O plano por número de telas, os planos dos clientes finais e a cobrança vêm no passo 3.
   mountFeatureProfiles(r, { A, ah, aud });
+  mountRevendas(r, { A, ah, aud }); // mapa do Brasil e cobranças das revendas (server/revendas.js)
   /** Perfil pedido no plano: profileId (número; null = funcionalidades próprias) ou profileCode. undefined = não mexe. */
   const profileOf = async (b) => {
     if (b.profileId === undefined && b.profileCode === undefined) return undefined;
