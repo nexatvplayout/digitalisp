@@ -26,9 +26,20 @@ apps-tv/
 
 ## Testar no computador
 
+Uma vez, para o gerador da prévia (esbuild-wasm, o mesmo do painel):
+
+```powershell
+cd apps-tv; npm install
+```
+
 ```powershell
 node apps-tv/teste/servidor-falso.js
 ```
+
+- **Painel × TV lado a lado**: <http://localhost:8787/teste/comparar> mostra cada tipo de item com o desenho do
+  painel (o módulo original de `public/shared`) à esquerda e o do app (o `tela.js` de verdade) à direita, em zona larga,
+  lateral ou grande. `/teste/tipos?modo=lateral` (vídeo 75% + playlist 25%) ou `?modo=cheia` põe um item de cada tipo
+  na grade da tela; `/teste/tema?cor=%2315803d&modo=light` troca o tema.
 
 - A tela: <http://localhost:8787/?servidor=http://localhost:8787> (no navegador o vídeo é sempre **mudo**; `&som=1` liga).
 - O "painel" falso: <http://localhost:8787/teste/painel>: aprovar o código da TV, cortar e religar a rede, virar a grade
@@ -77,6 +88,27 @@ pacotes (.ipk aberto e conferido, pasta do Tizen).
 
 Recomendação até medir nas TVs: **pacote de até 500 MB por tela**, vídeos H.264 1080p com taxa moderada. A tela manda
 `storage: { used, free }` no sinal de vida (quando a TV informa), e o painel pode avisar antes de publicar.
+
+## O desenho dos itens (o mesmo código da prévia do painel)
+
+A TV desenha cada item com `itemPreview`/`slidePreview` de `public/shared/tvcorp-previa.js` e o CSS de
+`public/shared/tvcorp-previa.css`, sem cópia à mão: `apps-tv/scripts/previa.js` gera `comum/js/previa.js`,
+`comum/previa.css` e `comum/arte/` (fora do git; o empacotamento e o servidor falso geram sozinhos).
+
+- **JS**: empacotado pelo esbuild para o Chromium 53, com polyfills de `Array.flat`, `append`, `Object.entries` e
+  `padStart`.
+- **CSS**: as TVs de 2018–2020 não têm container queries, `min()`, `gap` no flex, `inset` nem `:has()`. `Ncqw`/`Ncqh`
+  viram `calc(N * var(--cqw|--cqh))`, `min(A, B)` vira `var(--mI)`, `gap` vira margem entre os filhos e `inset` vira
+  top/right/bottom/left. O app mede cada zona e põe as variáveis nela. Slide e item são containers no painel: lá dentro
+  1cqw é 1% da largura **sem o padding**; o app mede isso também (`TelasPrevia.CONTEINERES`).
+- **Dados do aparelho**: imagens, imagem dos campos do slide e fotos dos aniversariantes saem do IndexedDB (`blob:`).
+  Foto é opcional: não segura a troca de programação; sem ela, as iniciais (as do servidor, `initials`) num círculo da
+  cor do tema. Dias sem acidente são contados pela data (`since`) no aparelho, e relógio, relógio mundial e contagem
+  pela hora: seguem certos sem rede. Notícias e cotações ficam com o último valor guardado até a próxima configuração.
+- **Tema**: `signage.brand.color/mode` (ou `signage.theme`), as mesmas classes `th-*` do painel.
+- Clima, QR code e relógio como item: o painel só os desenha como zona; a TV usa esse mesmo desenho de zona.
+- Diferenças de propósito em relação à prévia: as iniciais dos aniversariantes (a prévia divide o nome por `/s+/`, a
+  letra "s", e não por espaço, e pinta com `--tacc`, que nenhum tema define). Vale corrigir na prévia do painel.
 
 ## Contrato com o servidor
 
@@ -193,9 +225,11 @@ deve renovar quando visitar a TV) ou a linha profissional da LG.
 ## Limitações conhecidas desta versão (1.0.0)
 
 - Captura de tela e reiniciar o aparelho: impossíveis para app comum nas duas marcas.
-- Itens desenhados: imagem, vídeo, slide/comunicado/texto, notícias, aniversariantes, contagem, relógio, logo e a
-  faixa de avisos. Ainda não: QR code, clima, cotações, indicador, cardápio, relógio mundial, dias sem acidente, senha
-  (o item é pulado sem mostrar nada).
+- Itens (desde a 1.0.4): todos com **o desenho da prévia do painel**, o mesmo código (ver "O desenho dos itens"):
+  imagem, slide (todos os modelos), comunicado (comunicado, vaga, segurança), aniversariantes com foto ou iniciais,
+  indicador com a barra da meta, notícias com o crédito, cotações, cardápio, contagem, dias sem acidente, relógio
+  mundial, texto, QR code, clima e relógio. O vídeo da playlist e o ao vivo continuam com o player. Senha (fila) ainda
+  não.
 - Ao vivo (`stream.hls`), desde a 1.0.3 (`comum/js/aovivo.js`): na Samsung pelo **AVPlay** (o player da TV, o caminho
   recomendado para HLS ao vivo na Tizen); no webOS e no navegador pelo `<video>` nativo (o Chrome do computador não toca
   HLS: só um vídeo comum, como o `/teste/aovivo?url=video` do servidor falso). O player fica numa camada própria e não é

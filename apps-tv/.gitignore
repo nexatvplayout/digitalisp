@@ -1,2 +1,6 @@
 dist/
 teste/.midia/
+comum/js/previa.js
+comum/previa.css
+comum/arte/
+node_modules/

@@ -12,7 +12,7 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  var VERSAO = '1.0.3';
+  var VERSAO = '1.0.4';
   var TZ_PADRAO = 'America/Sao_Paulo';
   var SHA = /^[0-9a-f]{64}$/;
   var DIA = /^\d{4}-\d{2}-\d{2}$/;
@@ -145,7 +145,8 @@
     if (!id || ITENS.indexOf(kind) < 0) return null;
     var seg = num(o, 'seconds', 10);
     seg = seg <= 0 ? 10 : Math.max(3, Math.min(300, Math.round(seg)));
-    var it = { id: id.slice(0, 64), kind: kind, seconds: seg, file: null, files: [] };
+    // `raw`: o item como o servidor mandou, para o desenho da prévia do painel (o mesmo código, comum/js/previa.js)
+    var it = { id: id.slice(0, 64), kind: kind, seconds: seg, file: null, files: [], raw: o };
     var f = o.fields && typeof o.fields === 'object' ? o.fields : o;
     it.title = umaLinha(str(f, 'title') || '', TETO.titulo);
     it.text = limpar(str(f, 'text') || str(f, 'body') || '', TETO.texto);
@@ -184,6 +185,21 @@
       if (!it.target) return null;
     }
     if (it.file) it.files.push(it.file);
+    // as outras imagens dos campos do slide ({ url, sha256, bytes } em qualquer campo) e as fotos dos aniversariantes;
+    // foto é opcional: se não baixar, a tela mostra as iniciais e a programação não espera por ela
+    if (o.fields && typeof o.fields === 'object') {
+      Object.keys(o.fields).forEach(function (k) {
+        var v = o.fields[k];
+        var fa = v && typeof v === 'object' && !Array.isArray(v) && v.sha256 ? arquivo(v, teste) : null;
+        if (fa && !it.files.some(function (x) { return x.sha256 === fa.sha256; })) it.files.push(fa);
+      });
+    }
+    if (Array.isArray(o.people)) {
+      o.people.forEach(function (p) {
+        var fp = p && p.photo && typeof p.photo === 'object' ? arquivo(p.photo, teste) : null;
+        if (fp) { fp.opcional = true; it.files.push(fp); }
+      });
+    }
     return it;
   }
 
@@ -212,7 +228,7 @@
     if (!(x >= 0 && x <= 99 && y >= 0 && y <= 99)) return null;
     var w = Math.min(num(o, 'w', 0), 100 - x), h = Math.min(num(o, 'h', 0), 100 - y);
     if (w <= 0 || h <= 0) return null;
-    return { id: id.slice(0, 32), kind: kind, x: x, y: y, w: w, h: h,
+    return { id: id.slice(0, 32), kind: kind, x: x, y: y, w: w, h: h, qr: str(o, 'qr'),
       title: umaLinha(str(o, 'title') || '', TETO.titulo), text: limpar(str(o, 'text') || '', TETO.texto) };
   }
 
@@ -296,6 +312,16 @@
     }
     var t = o.ticker && typeof o.ticker === 'object' ? o.ticker : {};
     var marca = lerMarca([o.brand, sig && sig.brand, opcoes && opcoes.marcaAtivacao], teste);
+    // o tema dos slides (cor e modo): signage.theme, signage.brand (o servidor manda color/mode ali) ou theme do topo
+    var fTema = [sig && sig.theme, sig && sig.brand, o.theme];
+    var tema = { color: null, mode: 'dark' };
+    for (var ti = fTema.length - 1; ti >= 0; ti--) {
+      var tt = fTema[ti];
+      if (!tt || typeof tt !== 'object') continue;
+      if (cores(str(tt, 'color'))) tema.color = cores(str(tt, 'color'));
+      if (str(tt, 'mode') === 'light' || str(tt, 'mode') === 'dark') tema.mode = str(tt, 'mode');
+    }
+    var clima = o.weather && typeof o.weather === 'object' ? o.weather : null;
     return {
       rev: str(o, 'rev') || '',
       tz: tz,
@@ -311,7 +337,9 @@
       horario: horario,
       avisos: Array.isArray(t.items) ? t.items.filter(function (x) { return typeof x === 'string' && x.trim(); }).slice(0, 20).map(function (x) { return umaLinha(x, 200); }) : [],
       velocidade: Math.max(20, Math.min(200, num(t, 'speed', 60))),
-      marca: marca
+      marca: marca,
+      tema: tema,
+      clima: clima
     };
   }
 
@@ -323,7 +351,15 @@
    */
   function arquivosDoPacote(prog) {
     var out = [], vistos = {};
-    function add(f) { if (f && !vistos[f.sha256] && out.length < TETO.arquivos) { vistos[f.sha256] = true; out.push(f); } }
+    function add(f) {
+      if (!f) return;
+      var ja = vistos[f.sha256];
+      if (ja) { if (ja.opcional && !f.opcional) ja.opcional = false; return; } // o mesmo arquivo obrigatório em outro lugar
+      if (out.length >= TETO.arquivos) return;
+      var c = { url: f.url, sha256: f.sha256, bytes: f.bytes, tipo: f.tipo, opcional: !!f.opcional };
+      vistos[f.sha256] = c;
+      out.push(c);
+    }
     if (!prog) return out;
     add(prog.marca && prog.marca.logo);
     add(prog.offline && prog.offline.imagem);
@@ -349,11 +385,14 @@
    * Devolve { acao: 'manter' | 'trocar' | 'esperar', faltam: [...], bytesFaltando }.
    */
   function decidirTroca(atual, nova, presentes) {
-    if (!nova) return { acao: 'manter', faltam: [], bytesFaltando: 0 };
-    if (atual && atual.rev && atual.rev === nova.rev) return { acao: 'manter', faltam: [], bytesFaltando: 0 };
-    var f = faltando(nova, presentes);
-    if (!f.length) return { acao: 'trocar', faltam: [], bytesFaltando: 0 };
-    return { acao: 'esperar', faltam: f, bytesFaltando: bytesDe(f) };
+    if (!nova) return { acao: 'manter', faltam: [], bytesFaltando: 0, opcionais: [] };
+    if (atual && atual.rev && atual.rev === nova.rev) return { acao: 'manter', faltam: [], bytesFaltando: 0, opcionais: [] };
+    var todos = faltando(nova, presentes);
+    var f = todos.filter(function (x) { return !x.opcional; });
+    var op = todos.filter(function (x) { return x.opcional; });
+    // os opcionais (fotos) não seguram a troca, mas vão junto no download
+    if (!f.length) return { acao: 'trocar', faltam: [], bytesFaltando: 0, opcionais: op };
+    return { acao: 'esperar', faltam: todos, bytesFaltando: bytesDe(todos), opcionais: op };
   }
 
   /** Arquivos guardados que nenhuma das programações (a atual e a que está chegando) cita: podem ser apagados. */

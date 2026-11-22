@@ -21,6 +21,8 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { execFileSync } = require('child_process');
+const { itensTipos, fotoSvg } = require('./tipos.js');
+const REPO = path.join(__dirname, '..', '..');
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => a.replace(/^--/, '').split('=')));
 const PORTA = Number(args.porta || process.env.PORTA || 8787);
@@ -57,6 +59,8 @@ function prepararMidia() {
   addMidia('oferta-b.svg', svg('#059669', 'Promoção da tarde', 'Grade B · trocou no horário'), 'image/svg+xml');
   addMidia('cardapio.svg', svg('#dc2626', 'Cardápio do dia', 'Prato feito R$ 24,90'), 'image/svg+xml');
   addMidia('sem-internet.svg', svg('#334155', 'Voltamos já', 'imagem sem internet da revenda'), 'image/svg+xml');
+  addMidia('foto-ana.svg', fotoSvg('#93c5fd', 'Ana'), 'image/svg+xml');
+  addMidia('foto-marcos.svg', fotoSvg('#fca5a5', 'Marcos'), 'image/svg+xml');
   // vídeo: gerado uma vez com o FFmpeg, se houver (sem áudio). Sem FFmpeg, a grade fica só com imagens.
   const ff = [process.env.FFMPEG, 'C:/Projetos/nexa-ferramentas/ffmpeg-5.1.2/ffmpeg.exe', 'ffmpeg'].filter(Boolean);
   const destino = path.join(PASTA_MIDIA, 'video-teste.mp4');
@@ -96,6 +100,8 @@ const est = {
   versao: 1,
   novidade: null,     // imagem nova publicada pelo /teste/nova-imagem (entra na grade B)
   semPar: false,
+  tipos: null,        // 'lateral' (vídeo 75% + playlist 25%) | 'cheia' (playlist na tela toda): um item de cada tipo
+  tema: { color: '#6d28d9', mode: 'dark' }, // signage.brand.color/mode (o tema dos slides)
   aoVivo: null,       // endereço mandado em stream.hls (/teste/aovivo?url=…; "video" = o mp4 de teste)      // true = como o servidor de produção sem /api/telas/pair (a TV cai na chave digitada)
   log: []
 };
@@ -105,6 +111,17 @@ function registrar(msg) { est.log.push(new Date().toISOString().slice(11, 19) + 
 
 function minutoAgora() { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); }
 function tzLocal() { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Sao_Paulo'; }
+
+/** A grade com um item de cada tipo (teste visual contra a prévia do painel). */
+function blocoTipos() {
+  const lateral = est.tipos === 'lateral';
+  const zones = lateral
+    ? [{ id: 'main', x: 0, y: 0, w: 75, h: 100, kind: midia['video-teste.mp4'] ? 'video' : 'playlist' }, { id: 'right', x: 75, y: 0, w: 25, h: 100, kind: 'playlist' }]
+    : [{ id: 'right', x: 0, y: 0, w: 100, h: 100, kind: 'playlist' }];
+  return { id: 'grade-tipos', layout: { orientation: 'land', background: '#0b1220', zones }, days: [], from: 0, to: 1440,
+    // a hora dos dados presa na hora cheia: senão o rev mudaria a cada sinal de vida (o servidor real segura 15 min)
+    zones: { right: itensTipos(arquivo, Math.floor(Date.now() / 3600000) * 3600000), main: [] } };
+}
 
 function montarConfig(tela) {
   const virada = est.grade.viradaEm;
@@ -140,7 +157,7 @@ function montarConfig(tela) {
       items: midia['video-teste.mp4'] ? [arquivo('video-teste.mp4')] : [],
       image: arquivo('sem-internet.svg')
     },
-    signage: { tz: tzLocal(), blocks: [blocoA, blocoB], fallback: 'grade-a' },
+    signage: { tz: tzLocal(), brand: { logo: arquivo('logo-revenda.svg'), color: est.tema.color, mode: est.tema.mode }, blocks: (est.tipos ? [blocoTipos()] : []).concat([blocoA, blocoB]), fallback: 'grade-a' },
     versao: est.versao
   };
   cfg.rev = sha(Buffer.from(JSON.stringify(cfg))).slice(0, 12);
@@ -183,6 +200,13 @@ function novaTela(device, nome) {
 }
 
 const ESTATICOS = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.png': 'image/png', '.svg': 'image/svg+xml' };
+
+function arquivoDe(res, pasta, rel) {
+  const alvo = path.normalize(path.join(pasta, decodeURIComponent(rel)));
+  if (!alvo.startsWith(pasta) || !fs.existsSync(alvo) || fs.statSync(alvo).isDirectory()) { res.writeHead(404); return res.end(); }
+  res.writeHead(200, { 'Content-Type': ESTATICOS[path.extname(alvo)] || 'application/octet-stream', 'Cache-Control': 'no-store' });
+  fs.createReadStream(alvo).pipe(res);
+}
 
 function estatico(req, res, caminho) {
   const rel = caminho === '/' ? 'index.html' : decodeURIComponent(caminho.slice(1));
@@ -328,6 +352,13 @@ function controle(req, res, url) {
     registrar('ao vivo: ' + (est.aoVivo || 'nenhum'));
     return volta();
   }
+  if (p === '/teste/tipos') { est.tipos = ['lateral', 'cheia'].includes(q.get('modo')) ? q.get('modo') : null; est.versao++; registrar('todos os tipos: ' + (est.tipos || 'desligado')); return volta(); }
+  if (p === '/teste/tema') { est.tema = { color: q.get('cor') || '#6d28d9', mode: q.get('modo') === 'light' ? 'light' : 'dark' }; est.versao++; return volta(); }
+  if (p === '/teste/itens.json') return json(res, 200, { itens: itensTipos(arquivo, Date.now()), tema: est.tema, tz: tzLocal() });
+  if (p === '/teste/previa-painel' || p === '/teste/previa-tv' || p === '/teste/comparar') {
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+    return res.end(paginaComparar(p, q));
+  }
   if (p === '/teste/sem-par') { est.semPar = q.get('on') !== '0'; registrar('pareamento ' + (est.semPar ? 'desligado (chave digitada)' : 'ligado')); return volta(); }
   if (p === '/teste/chave') { const k = codigo(); est.chaves.set(k, false); registrar('chave ' + k); return volta({ key: k }); }
   if (p === '/teste/rede') { est.rede = q.get('on') !== '0'; registrar('rede ' + (est.rede ? 'ligada' : 'desligada')); return volta(); }
@@ -351,6 +382,72 @@ function controle(req, res, url) {
   res.writeHead(404); res.end();
 }
 
+/*
+ * Teste visual lado a lado: à esquerda o desenho do PAINEL (o módulo original public/shared/tvcorp-previa.js, com o CSS
+ * original e container queries), à direita o da TV (o tela.js do app com a prévia gerada para o Chromium 53). Os dois
+ * recebem o mesmo item, com as mesmas imagens; a única preparação é a que o app faz (imagens locais, dias sem acidente
+ * pela data).
+ */
+const PREPARAR = `function preparar(o, porSha) {
+  o = JSON.parse(JSON.stringify(o));
+  var sha = function (v) { return v && typeof v === 'object' && v.sha256 ? v.sha256 : null; };
+  if (o.kind === 'slide' && o.fields) Object.keys(o.fields).forEach(function (k) { var h = sha(o.fields[k]); if (h) { if (!o.image) o.image = porSha[h]; delete o.fields[k]; } });
+  if (o.kind === 'post') { var hp = sha(o.image) || sha(o.media); o.image = hp ? porSha[hp] : null; }
+  if (o.kind === 'birthdays') o.people = o.people.map(function (p) { var q = JSON.parse(JSON.stringify(p)); var h = sha(p.photo); if (h) q.photo = porSha[h]; else delete q.photo; return q; });
+  if (o.kind === 'safety' && o.since) delete o.days;
+  return o;
+}`;
+
+function paginaComparar(p, q) {
+  const i = Number(q.get('i') || 0);
+  if (p === '/teste/previa-painel') {
+    return `<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="/painel/shared/tvcorp-previa.css">
+<style>html,body{margin:0;height:100%;background:#000;overflow:hidden}#c{width:100vw;height:100vh;container-type:size}#c>*{width:100%;height:100%}</style>
+<div id="c" class="tvc-z"></div>
+<script type="module">
+import { itemPreview } from '/painel/shared/tvcorp-previa.js';
+${PREPARAR}
+const r = await fetch('/teste/itens.json').then((x) => x.json());
+const it = r.itens[${i}];
+const porSha = {};
+for (const o of r.itens) for (const v of [o, o.image, o.media, ...(o.fields ? Object.values(o.fields) : []), ...((o.people || []).map((x) => x.photo))]) if (v && v.sha256) porSha[v.sha256] = v.url;
+document.getElementById('c').append(itemPreview(preparar(it, porSha), { theme: r.tema }));
+</script>`;
+  }
+  if (p === '/teste/previa-tv') {
+    return `<!doctype html><meta charset="utf-8">
+<link rel="stylesheet" href="/estilo.css"><link rel="stylesheet" href="/previa.css"><link rel="stylesheet" href="/previa-tv.css">
+<style>body{cursor:auto}</style>
+<div id="conteudo"></div>
+<script src="/js/sha256.js"></script><script src="/js/nucleo.js"></script><script src="/js/previa.js"></script><script src="/js/tela.js"></script>
+<script>
+fetch('/teste/itens.json').then(function (x) { return x.json(); }).then(function (r) {
+  var it = JSON.parse(JSON.stringify(r.itens[${i}])); it.seconds = 300;
+  var cfg = { rev: 'x', brand: { name: 'Provedor X' }, signage: { tz: r.tz, brand: { color: r.tema.color, mode: r.tema.mode },
+    blocks: [{ id: 'b', layout: { zones: [{ id: 'z', x: 0, y: 0, w: 100, h: 100, kind: 'playlist' }] }, zones: { z: [it] } }] } };
+  var prog = TelasNucleo.lerConfig(cfg, { teste: true });
+  var urls = {};
+  TelasNucleo.arquivosDoPacote(prog).forEach(function (f) { urls[f.sha256] = f.url; });
+  var tela = TelasTela.criar(document.getElementById('conteudo'), {
+    url: function (s) { return Promise.resolve(urls[s] || null); }, agora: function () { return Date.now(); },
+    online: function () { return true; }, mudo: true, volume: 0, aoExibir: function () {}, aoErro: function (m) { document.title = 'ERRO ' + m; }
+  });
+  if (!prog.blocos.length) { document.body.textContent = 'item recusado pelo app'; return; }
+  tela.mostrar(prog, prog.blocos[0]);
+});
+</script>`;
+  }
+  const w = Number(q.get('w') || 480), h = Number(q.get('h') || 270);
+  const n = itensTipos(arquivo, Date.now());
+  const linhas = n.map((it, k) => `<tr><td>${k}<br><b>${it.kind}</b><br>${it.template || it.category || ''}</td>
+<td><iframe src="/teste/previa-painel?i=${k}" width="${w}" height="${h}"></iframe></td><td><iframe src="/teste/previa-tv?i=${k}" width="${w}" height="${h}"></iframe></td></tr>`).join('');
+  return `<!doctype html><meta charset="utf-8"><title>Painel × TV</title>
+<style>body{font:14px system-ui;margin:12px;background:#f1f5f9}td{vertical-align:top;padding:4px 8px}iframe{border:1px solid #94a3b8;background:#000}th{text-align:left}</style>
+<p>Esquerda: prévia do painel (código original). Direita: app de TV (mesmo código, gerado para o Chromium 53). Zona ${w}×${h}.
+<a href="?w=480&h=270">larga</a> · <a href="?w=320&h=640">lateral</a> · <a href="?w=960&h=540">grande</a></p>
+<table><tr><th>item</th><th>painel</th><th>TV</th></tr>${linhas}</table>`;
+}
+
 const servidor = http.createServer((req, res) => {
   const url = new URL(req.url, BASE);
   cors(res);
@@ -360,12 +457,17 @@ const servidor = http.createServer((req, res) => {
   if (!est.rede && (url.pathname.startsWith('/api/') || url.pathname.startsWith('/midia/'))) return req.socket.destroy();
   if (url.pathname.startsWith('/api/')) return api(req, res, url).catch((e) => json(res, 500, { error: e.message }));
   if (url.pathname.startsWith('/midia/')) return servirMidia(req, res, decodeURIComponent(url.pathname.slice(7)));
+  // o código original do painel, para o teste lado a lado
+  if (url.pathname.startsWith('/painel/shared/')) return arquivoDe(res, path.join(REPO, 'public', 'shared'), url.pathname.slice(15));
+  if (url.pathname.startsWith('/tvcorp/arte/')) return arquivoDe(res, path.join(REPO, 'public', 'tvcorp', 'arte'), url.pathname.slice(13));
   // a tela aberta sem ?servidor= procuraria o servidor de produção: aponta para este
   if (url.pathname === '/' && !url.searchParams.get('servidor')) { res.writeHead(302, { Location: '/?servidor=' + encodeURIComponent(BASE) }); return res.end(); }
   return estatico(req, res, url.pathname);
 });
 
 prepararMidia();
+// o desenho da prévia do painel para a TV (comum/js/previa.js e previa.css): gera se faltar ou se a fonte mudou
+try { require('../scripts/previa.js').gerar({ seNecessario: true }); } catch (e) { console.warn('prévia não gerada: ' + e.message); }
 if (require.main === module) {
   servidor.listen(PORTA, () => console.log(`servidor falso em ${BASE}  (tela: ${BASE}/?servidor=${BASE}  painel: ${BASE}/teste/painel)`));
 }

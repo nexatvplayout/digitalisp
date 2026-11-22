@@ -10,7 +10,10 @@ const path = require('path');
 const vm = require('vm');
 
 const PASTA = path.join(__dirname, '..', 'comum');
-const arquivos = fs.readdirSync(path.join(PASTA, 'js')).filter((f) => f.endsWith('.js')).map((f) => path.join(PASTA, 'js', f));
+// previa.js é gerado (esbuild a partir de public/shared/tvcorp-previa.js): fica fora da lista escrita à mão e tem
+// a conferência própria abaixo
+const GERADO = 'previa.js';
+const arquivos = fs.readdirSync(path.join(PASTA, 'js')).filter((f) => f.endsWith('.js') && f !== GERADO).map((f) => path.join(PASTA, 'js', f));
 
 function semComentarios(src) {
   return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"\\])\/\/.*$/gm, '$1');
@@ -47,7 +50,27 @@ test('nenhum nome do app ou do sistema na tela (white-label)', () => {
   assert.match(html, /<title>Telas<\/title>/);
 });
 
-test('index.html carrega todos os scripts de js/', () => {
+test('index.html carrega todos os scripts de js/ (e a prévia gerada)', () => {
   const html = fs.readFileSync(path.join(PASTA, 'index.html'), 'utf8');
   for (const f of arquivos) assert.ok(html.includes('js/' + path.basename(f)), path.basename(f) + ' fora do index.html');
+  assert.ok(html.includes('js/' + GERADO) && html.includes('previa.css'));
+});
+
+test('a prévia gerada para as TVs: sem sintaxe nova, sem cqw/min()/gap/inset no CSS, e compila', () => {
+  require('../scripts/previa.js').gerar({ seNecessario: true });
+  const js = fs.readFileSync(path.join(PASTA, 'js', GERADO), 'utf8');
+  for (const [re, nome] of [[/\?\.[a-zA-Z_$[(]/, '?.'], [/\?\?/, '??'], [/async\s/, 'async'], [/await\s/, 'await'], [/\{\s*\.\.\.[a-zA-Z_$]/, '{...}'], [/import\s*[{(*]|export\s/, 'import/export']]) {
+    assert.ok(!re.test(js), 'previa.js usa ' + nome);
+  }
+  assert.doesNotThrow(() => new vm.Script(js));
+  const css = fs.readFileSync(path.join(PASTA, 'previa.css'), 'utf8');
+  assert.ok(!/\d(cqw|cqh)/.test(css), 'cqw/cqh');
+  assert.ok(!/min\(|inset:|gap:|:has\(|container-type|aspect-ratio/.test(css), 'propriedade que as TVs não têm');
+  assert.ok(/var\(--cqw\)/.test(css));
+  // o mesmo código do painel: as funções que o app usa existem
+  const ctx = { document: { createElement() {}, createDocumentFragment() {} }, Element: function () {}, Document: function () {}, DocumentFragment: function () {}, Node: function () {} };
+  ctx.self = ctx;
+  vm.runInNewContext(js + ';self.P = TelasPrevia;', ctx);
+  for (const f of ['itemPreview', 'slidePreview', 'themeClass', 'qrSvg']) assert.equal(typeof ctx.P[f], 'function', f);
+  assert.ok(Array.isArray(ctx.P.MINS) && ctx.P.MINS.length > 0);
 });

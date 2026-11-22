@@ -64,7 +64,146 @@
       proximo();
     }
 
+    // ---- o desenho da prévia do painel (TelasPrevia, gerado de public/shared/tvcorp-previa.js)
+
+    /** As medidas da zona para o CSS da prévia: --cqw/--cqh (1% da largura/altura) e os min() (--mI). */
+    function medidas(caixa) {
+      var r = caixa.getBoundingClientRect();
+      var w = r.width / 100, h = r.height / 100;
+      caixa.style.setProperty('--cqw', w + 'px');
+      caixa.style.setProperty('--cqwp', w + 'px');
+      caixa.style.setProperty('--cqh', h + 'px');
+      (raiz.TelasPrevia.MINS || []).forEach(function (m, i) {
+        var a = m[0] * (m[1] === 'w' ? w : h), b = m[2] * (m[3] === 'w' ? w : h);
+        caixa.style.setProperty('--m' + i, Math.min(a, b) + 'px');
+      });
+      // slide e item são containers no painel: lá dentro 1cqw é 1% da largura do conteúdo deles (sem o padding)
+      var sel = raiz.TelasPrevia.CONTEINERES;
+      if (!sel) return;
+      Array.prototype.forEach.call(caixa.querySelectorAll(sel), function (e) {
+        var cs = getComputedStyle(e);
+        var cw = e.clientWidth - parseFloat(cs.paddingLeft || 0) - parseFloat(cs.paddingRight || 0);
+        e.style.setProperty('--cqw', Math.max(0, cw) / 100 + 'px');
+      });
+    }
+
+    function tema(prog) { return { color: prog.tema && prog.tema.color, mode: prog.tema && prog.tema.mode }; }
+
+    function copia(o) { return JSON.parse(JSON.stringify(o || {})); }
+
+    /** Os endereços locais (blob:) dos arquivos do item; arquivo que não está no aparelho fica de fora. */
+    function locais(it) {
+      var mapa = {};
+      return Promise.all(it.files.map(function (f) {
+        return ctx.url(f.sha256).then(function (u) { if (u) mapa[f.sha256] = u; }, function () {});
+      })).then(function () { return mapa; });
+    }
+
+    function shaDe(v) { return v && typeof v === 'object' && v.sha256 ? String(v.sha256).toLowerCase() : null; }
+
+    /** O item do servidor no formato que a prévia lê, com as imagens trocadas pelas cópias do aparelho. */
+    function paraPrevia(it, mapa) {
+      var o = copia(it.raw);
+      if (o.kind === 'image') { o.url = mapa[it.file.sha256] || ''; if (!o.url) return null; }
+      if (o.kind === 'slide' && o.fields) {
+        Object.keys(o.fields).forEach(function (k) {
+          var sh = shaDe(o.fields[k]);
+          if (!sh) return;
+          if (mapa[sh] && !o.image) o.image = mapa[sh];
+          delete o.fields[k]; // o objeto do arquivo não é texto: não vai para o desenho
+        });
+      }
+      if (o.kind === 'post') {
+        var sp = shaDe(o.image) || shaDe(o.media);
+        o.image = sp && mapa[sp] ? mapa[sp] : null;
+      }
+      if (o.kind === 'birthdays' && Array.isArray(o.people)) {
+        o.people = o.people.map(function (p) {
+          var q = copia(p), sh = shaDe(p.photo);
+          if (sh && mapa[sh]) q.photo = mapa[sh]; else delete q.photo;
+          return q;
+        });
+      }
+      // conta no aparelho, pela data: segue certo sem rede (o número pronto do servidor envelhece)
+      if (o.kind === 'safety' && o.since) delete o.days;
+      return o;
+    }
+
+    /** Aniversariantes sem foto: as iniciais que o servidor manda (as da prévia saem erradas: ver LEIAME). */
+    function iniciais(n, o) {
+      if (o.kind !== 'birthdays' || !Array.isArray(o.people)) return;
+      var ini = n.querySelectorAll('.tvc-av-ini');
+      var sem = o.people.slice(0, 8).filter(function (p) { return !p.photo; });
+      for (var i = 0; i < ini.length && i < sem.length; i++) {
+        var t = sem[i].initials || String(sem[i].name || '').split(/\s+/).filter(Boolean).slice(0, 2).map(function (x) { return x[0]; }).join('');
+        ini[i].textContent = String(t).toUpperCase().slice(0, 2);
+      }
+    }
+
+    function dataLonga(ms, tz) {
+      try { return new Date(ms).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: tz }); } catch (e) { return ''; }
+    }
+
+    /** Os tipos que a prévia desenha só como zona (relógio, clima, QR, logomarca): as mesmas classes dela. */
+    function zonaPrevia(kind, o, prog) {
+      var th = raiz.TelasPrevia.themeClass(tema(prog));
+      if (kind === 'clock') {
+        var c = el('div', 'tvc-z-clock ' + th), b = el('b'), sp = el('span');
+        var f = function () { b.textContent = hhmm(ctx.agora(), prog.tz); sp.textContent = dataLonga(ctx.agora(), prog.tz); };
+        f(); timers.push(setInterval(f, 5000));
+        c.appendChild(b); c.appendChild(sp);
+        return c;
+      }
+      if (kind === 'weather') {
+        var w = (o && typeof o.tempC === 'number') ? o : prog.clima;
+        if (!w || typeof w.tempC !== 'number') return null;
+        var cw = el('div', 'tvc-z-weather ' + th);
+        cw.appendChild(el('b', null, Math.round(w.tempC) + '°'));
+        cw.appendChild(el('span', null, [w.city, w.text || w.condition].filter(Boolean).join(' · ')));
+        if (typeof w.min === 'number' && typeof w.max === 'number') cw.appendChild(el('span', null, 'mín ' + Math.round(w.min) + '° · máx ' + Math.round(w.max) + '°'));
+        return cw;
+      }
+      if (kind === 'qr') {
+        var dado = o && (o.qr || o.url);
+        if (!dado) return null;
+        var cq = el('div', 'tvc-z-qr ' + th);
+        cq.appendChild(raiz.TelasPrevia.qrSvg(dado, 'tvc-z-qrc'));
+        cq.appendChild(el('span', null, (o && (o.title || o.label)) || 'Aponte a câmera'));
+        return cq;
+      }
+      if (kind === 'logo') {
+        var cl = el('div', 'tvc-z-logo ' + th);
+        logo(cl, prog);
+        return cl;
+      }
+      return null;
+    }
+
+    function desenharPrevia(caixa, it, prog, depois) {
+      locais(it).then(function (mapa) {
+        var n = null;
+        try {
+          if (['clock', 'weather', 'qr', 'logo'].indexOf(it.kind) >= 0) n = zonaPrevia(it.kind, it.raw, prog);
+          else {
+            var o = paraPrevia(it, mapa);
+            if (o) { n = raiz.TelasPrevia.itemPreview(o, { theme: tema(prog) }); iniciais(n, o); }
+          }
+        } catch (e) {
+          if (ctx.aoErro) ctx.aoErro('desenho do item ' + it.id + ': ' + e.message);
+          n = null;
+        }
+        if (!n) return depois(); // sem o que mostrar (arquivo faltando, dado vazio): o próximo
+        var z = el('div', 'tvc-z');
+        z.appendChild(n);
+        trocar(caixa, z);
+        medidas(caixa);
+        timers.push(setTimeout(depois, it.seconds * 1000));
+      });
+    }
+
     function desenharItem(caixa, it, prog, depois) {
+      // tudo que não é vídeo vai pelo desenho do painel; sem ele (prévia não gerada), o desenho simples abaixo
+      if (it.kind !== 'video' && raiz.TelasPrevia) return desenharPrevia(caixa, it, prog, depois);
       var conteudo = el('div', 'item item-' + it.kind);
       var avancar = function () { timers.push(setTimeout(depois, it.seconds * 1000)); };
       if (it.kind === 'image' || ((it.kind === 'slide' || it.kind === 'post') && it.file && !it.title && !it.text)) {
@@ -241,6 +380,18 @@
     }
 
     /** Mostra o bloco da programação. */
+    /** Zona de relógio, logomarca, clima, QR ou texto fixo, com o desenho da prévia. */
+    function zonaFixa(c, zona, prog) {
+      var n = zona.kind === 'text'
+        ? raiz.TelasPrevia.itemPreview({ kind: 'text', title: zona.title, text: zona.text }, { theme: tema(prog) })
+        : zonaPrevia(zona.kind, zona.kind === 'qr' ? { qr: zona.qr, title: zona.title } : null, prog);
+      if (!n) return;
+      var z = el('div', 'tvc-z');
+      z.appendChild(n);
+      c.appendChild(z);
+      medidas(c);
+    }
+
     var usouVivo = false;
 
     function mostrar(prog, bloco) {
@@ -277,6 +428,7 @@
         if (zona.kind === 'video') zonaVideo(c, prog, { x: zona.x, y: zona.y, w: zona.w, h: zona.h });
         else if (zona.kind === 'playlist') playlist(c, itens, prog);
         else if (zona.kind === 'ticker') faixa(c, prog.avisos.concat(itens.filter(function (i) { return i.kind === 'text'; }).map(function (i) { return i.title || i.text; })), prog.velocidade);
+        else if (raiz.TelasPrevia && !itens.length && ['clock', 'logo', 'weather', 'qr', 'text'].indexOf(zona.kind) >= 0) zonaFixa(c, zona, prog);
         else if (zona.kind === 'clock') relogio(c, prog);
         else if (zona.kind === 'logo') logo(c, prog);
         else if (zona.kind === 'text') { var cc = el('div', 'cartao'); if (zona.title) cc.appendChild(el('div', 'titulo', zona.title)); if (zona.text) cc.appendChild(el('div', 'texto', zona.text)); c.appendChild(cc); }

@@ -327,3 +327,40 @@ test('vigia do ao vivo: o vídeo voltando a andar zera as falhas; erro do player
 test('espera para tentar o ao vivo de novo: 30, 60, 120, 240, 300', () => {
   assert.deepEqual([0, 1, 2, 3, 4, 9].map(N.esperaAoVivo), [30, 60, 120, 240, 300, 300]);
 });
+
+// ---------------------------------------------------------------- itens com o desenho do painel (1.0.4)
+
+test('aniversariantes: as fotos entram no pacote como opcionais e não seguram a troca', () => {
+  const foto = (c) => ({ url: 'https://cdn.x/' + c + '.jpg', sha256: H(c), bytes: 500 });
+  const p = N.lerConfig(cfg('r', [bloco('a', 0, 1440, [
+    { id: 'w:b', kind: 'birthdays', seconds: 8, people: [{ name: 'Ana Souza', day: 2, month: 11, photo: foto('a') }, { name: 'Bruno', day: 3, month: 11 }] },
+    img('m1', 'b')])]));
+  const pacote = N.arquivosDoPacote(p);
+  assert.deepEqual(pacote.map((f) => [f.sha256[0], f.opcional]).sort(), [['a', true], ['b', false]]);
+  const d = N.decidirTroca(null, p, { [H('b')]: true });
+  assert.equal(d.acao, 'trocar');
+  assert.deepEqual(d.opcionais.map((f) => f.sha256), [H('a')]);
+  // o item guarda o original, para o desenho do painel
+  assert.equal(p.blocos[0].itens.z[0].raw.people[0].name, 'Ana Souza');
+});
+
+test('a mesma imagem obrigatória em outro item vence a opcional', () => {
+  const foto = { url: 'https://cdn.x/a.jpg', sha256: H('a'), bytes: 500 };
+  const p = N.lerConfig(cfg('r', [bloco('a', 0, 1440, [
+    { id: 'w:b', kind: 'birthdays', seconds: 8, people: [{ name: 'Ana', day: 2, month: 11, photo: foto }] },
+    img('m1', 'a', { url: foto.url, bytes: 500 })])]));
+  assert.equal(N.arquivosDoPacote(p).length, 1);
+  assert.equal(N.arquivosDoPacote(p)[0].opcional, false);
+});
+
+test('slide: a imagem de qualquer campo do modelo vai para o pacote', () => {
+  const p = N.lerConfig(cfg('r', [bloco('a', 0, 1440, [
+    { id: 's1', kind: 'slide', seconds: 8, template: 'boas-vindas', fields: { title: 'Oi', name: 'Ana', image: { url: 'https://cdn.x/f.jpg', sha256: H('c'), bytes: 9 } } }])]));
+  assert.deepEqual(N.arquivosDoPacote(p).map((f) => f.sha256), [H('c')]);
+});
+
+test('tema dos slides: signage.theme, signage.brand ou theme do topo', () => {
+  assert.deepEqual(N.lerConfig({ signage: { brand: { color: '#15803D', mode: 'light' } } }).tema, { color: '#15803d', mode: 'light' });
+  assert.deepEqual(N.lerConfig({ signage: { theme: { color: '#6d28d9' }, brand: { color: '#15803d' } } }).tema, { color: '#6d28d9', mode: 'dark' });
+  assert.deepEqual(N.lerConfig({}).tema, { color: null, mode: 'dark' });
+});

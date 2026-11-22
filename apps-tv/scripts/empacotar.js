@@ -89,6 +89,8 @@ function copiar(origem, destino) {
 }
 
 function prepararApp(destino, servidor, plataforma) {
+  // o desenho da prévia do painel, gerado de public/shared (sempre de novo: o pacote leva a versão atual do painel)
+  require('./previa.js').gerar();
   fs.rmSync(destino, { recursive: true, force: true });
   copiar(COMUM, destino);
   if (servidor) {

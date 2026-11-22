@@ -50,6 +50,7 @@
   var conteudo, telaObj;
   var ctxTela = {
     url: function (sha) { return A.url(sha); }, agora: function () { return agora(); },
+    aoErro: function (m) { erro(m); },
     online: function () { return est.online; }, mudo: mudoForcado, volume: 100,
     aoExibir: function (ref, seg) {
       est.log = N.contarExibicao(est.log, ref, seg, N.horaLocal(agora(), est.atual ? est.atual.tz : 'America/Sao_Paulo').data);
@@ -304,7 +305,10 @@
     return A.presentes().then(function (pres) {
       var d = N.decidirTroca(est.atual, est.nova, pres);
       if (d.acao === 'manter') { est.nova = null; A.gravar('cfgNova', null); est.baixando = null; return; }
-      if (d.acao === 'trocar') return trocar();
+      if (d.acao === 'trocar') {
+        // fotos que ainda faltam (opcionais) seguem baixando depois da troca; até chegarem, as iniciais
+        return trocar().then(function () { if (d.opcionais.length) baixar(d.opcionais); });
+      }
       return A.espaco().then(function (esp) {
         est.baixando = { rev: est.nova.rev, files: d.faltam.length, bytes: d.bytesFaltando };
         if (!N.cabe(d.bytesFaltando, esp && esp.free)) {
