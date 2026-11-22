@@ -140,7 +140,11 @@ export async function paintPlanos(root) {
         field('Descrição', inp('description', p.description, { maxlength: 300 }), { full: true }),
         ...LIMITS.map(([k, label]) => field(label, inp(`l_${k}`, p.limits?.[k] ?? '', { type: 'number', min: 0, placeholder: 'ilimitado', disabled: fixed })))),
       el('h4', { class: 'pl-mtitle', text: 'Módulos liberados' }), mods,
-      el('div', { class: 'rv-actions' }, el('button', { class: 'primary', type: 'submit', text: 'Salvar plano' })));
+      el('div', { class: 'rv-actions' }, el('span', { class: 'pl-dirty', text: 'Alterações não salvas', hidden: true }), el('button', { class: 'primary', type: 'submit', text: 'Salvar plano' })));
+    // o que foi mexido e ainda não salvo fica marcado (e nada redesenha este cartão por cima do que está sendo digitado)
+    const marcar = (sujo) => { f.classList.toggle('dirty', sujo); f.querySelector('.pl-dirty').hidden = !sujo; };
+    f.addEventListener('input', () => marcar(true));
+    f.addEventListener('change', () => marcar(true));
     f.addEventListener('submit', guard(async (e) => {
       e.preventDefault();
       const v = Object.fromEntries(new FormData(f));
@@ -154,6 +158,7 @@ export async function paintPlanos(root) {
         body.profileId = null; // os módulos ficam no próprio plano
       }
       await api(`/api/platform/plans/${p.id}`, { method: 'PATCH', body });
+      marcar(false);
       toast(`Plano ${v.name} salvo.`);
     }));
     return f;
@@ -164,9 +169,13 @@ export async function paintPlanos(root) {
   novo.addEventListener('submit', guard(async (e) => {
     e.preventDefault();
     const v = Object.fromEntries(new FormData(novo));
-    await api('/api/platform/plans', { method: 'POST', body: { code: v.code.trim().toLowerCase(), name: v.name, priceCents: 0, active: false } });
-    toast('Plano criado: ajuste os limites e os módulos.');
-    await paintPlanos(root);
+    const novoPlano = await api('/api/platform/plans', { method: 'POST', body: { code: v.code.trim().toLowerCase(), name: v.name, priceCents: 0, active: false } });
+    // só acrescenta o cartão do plano novo: os outros cartões (e o que estiver digitado neles) ficam como estão
+    const c = card(novoPlano);
+    novo.before(c);
+    novo.reset();
+    c.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    toast('Plano criado: ajuste o preço, os limites e os módulos e salve.');
   }));
   root.replaceChildren(
     el('p', { class: 'hint', text: 'Os planos são das revendas. O principal é o número de telas. Plano inativo não aparece para novas revendas.' }),

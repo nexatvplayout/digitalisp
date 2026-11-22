@@ -89,7 +89,16 @@ async function faixaGuia() {
     el('a', { class: 'btn small', href: '#guia', text: 'Ver todos os passos' }));
   bar.hidden = false;
 }
-window.addEventListener('hashchange', route);
+// alterações não salvas (formulário marcado .dirty): avisa antes de trocar de tela ou fechar a aba
+let voltando = false;
+window.addEventListener('hashchange', (e) => {
+  if (voltando) { voltando = false; return; }
+  if (document.querySelector('form.dirty') && !confirm('Há alterações não salvas. Sair desta tela e perder o que foi digitado?')) {
+    voltando = true; location.hash = new URL(e.oldURL).hash; return;
+  }
+  route();
+});
+window.addEventListener('beforeunload', (e) => { if (document.querySelector('form.dirty')) { e.preventDefault(); e.returnValue = ''; } });
 
 async function start() {
   try {
