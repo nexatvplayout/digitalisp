@@ -13,7 +13,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { boot, cleanup, api, platformLogin, newTenant, sleep } from './helpers/srv.js';
 
-const rawDb = (dataDir) => new DatabaseSync(path.join(dataDir, 'playout.db'), { timeout: 15000 });
+const rawDb = (dataDir) => new DatabaseSync(path.join(dataDir, 'digitalisp.db'), { timeout: 15000 });
 const spDay = (ms = Date.now()) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(ms));
 const spWeekday = () => ({ Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 })[new Intl.DateTimeFormat('en-US', { timeZone: 'America/Sao_Paulo', weekday: 'short' }).format(new Date())];
 

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DIGITAL ISP · Painel</title>
+  <link rel="icon" href="/marca/favicon/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/marca/favicon/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="/marca/favicon/apple-touch-icon.png">
+  <link rel="stylesheet" href="tokens.css">
+  <link rel="stylesheet" href="admin.css">
+  <link rel="stylesheet" href="admin2.css">
+  <link rel="stylesheet" href="tabs.css">
+  <link rel="stylesheet" href="cg.css">
+  <link rel="stylesheet" href="/shared/telas-previa.css">
+  <link rel="stylesheet" href="prefeitura.css">
+  <link rel="stylesheet" href="tvcorp.css">
+  <link rel="stylesheet" href="/shared/tvcorp-previa.css">
+  <link rel="stylesheet" href="digitalisp.css"><!-- a marca DIGITAL ISP por cima dos tokens herdados -->
+</head>
+<body>
+  <!-- entrada: revenda (o gestor de telas) ou equipe da plataforma -->
+  <div id="login" hidden>
+    <form class="login-card" id="loginForm" autocomplete="on">
+      <img class="login-logo" src="/marca/svg/logo-horizontal-fundo-escuro.svg" alt="DIGITAL ISP" width="220" height="56">
+      <div class="seg" role="radiogroup" aria-label="Entrar como">
+        <label><input type="radio" name="kind" value="revenda" checked> Revenda</label>
+        <label><input type="radio" name="kind" value="plataforma"> Plataforma</label>
+      </div>
+      <label class="fld" id="fldTenant">Identificador da revenda
+        <input name="tenant" autocomplete="organization" placeholder="ex.: meuprovedor (vazio = endereço deste painel)">
+      </label>
+      <label class="fld">Usuário
+        <input name="username" autocomplete="username" required>
+      </label>
+      <label class="fld">Senha
+        <input name="password" type="password" autocomplete="current-password" required>
+      </label>
+      <button class="primary" type="submit">Entrar</button>
+      <p class="err" id="loginErr" role="alert" hidden></p>
+    </form>
+  </div>
+
+  <div id="app" hidden>
+    <nav class="side" aria-label="Menu">
+      <div class="brand"><img src="/marca/svg/logo-horizontal-fundo-escuro.svg" alt="DIGITAL ISP" width="160" height="40"></div>
+      <div class="sep" data-area="revenda">Telas</div>
+      <a href="#tvcorp" data-view="tvcorp" data-area="revenda"><svg viewBox="0 0 24 24"><rect x="2.5" y="4" width="19" height="12.5" rx="1.5"/><path d="M8 20.5h8M12 16.5v4M6 8h5v5H6zM14 8h4M14 11h4M14 14h2"/></svg>Telas e conteúdo</a>
+      <div class="sep" data-area="plataforma">Plataforma</div>
+      <a href="#revendas" data-view="revendas" data-area="plataforma"><svg viewBox="0 0 24 24"><path d="M3 20V9l9-5 9 5v11"/><path d="M8 20v-6h8v6"/></svg>Revendas</a>
+      <div class="sep">Conta</div>
+      <a href="#conta" data-view="conta"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>Minha conta</a>
+      <div class="side-foot">
+        <p class="who dim small" id="who"></p>
+        <button type="button" class="small" id="logout">Sair</button>
+      </div>
+    </nav>
+    <main>
+      <section class="view" id="view-tvcorp" hidden>
+        <header class="head"><h2>Telas e conteúdo</h2></header>
+        <section class="tc" id="tcPanel" aria-label="Telas e conteúdo"></section>
+      </section>
+      <section class="view" id="view-revendas" hidden>
+        <header class="head"><h2>Revendas</h2></header>
+        <section id="rvPanel"></section>
+      </section>
+      <section class="view" id="view-conta" hidden>
+        <header class="head"><h2>Minha conta</h2></header>
+        <section id="ctPanel"></section>
+      </section>
+    </main>
+  </div>
+  <div id="toasts" aria-live="polite"></div>
+  <script type="module" src="main.js"></script>
+</body>
+</html>

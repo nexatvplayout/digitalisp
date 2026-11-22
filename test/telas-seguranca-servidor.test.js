@@ -220,7 +220,7 @@ async function roteiro(s, { sqlite = false } = {}) {
   const k1 = await A.api('POST', keyUrl(pm), {});
   assert.equal(k1.status, 201, JSON.stringify(k1.data)); assert.match(k1.data.key, /^[A-Za-z0-9_-]{43}$/); assert.equal(k1.data.endpoint, 'https://painel.exemplo.test/api/telas-emissor/alerts');
   if (sqlite) {
-    const db = new DatabaseSync(path.join(s.dataDir, 'playout.db'), { timeout: 15000 });
+    const db = new DatabaseSync(path.join(s.dataDir, 'digitalisp.db'), { timeout: 15000 });
     assert.equal(db.prepare('SELECT token_hash FROM telas_api_keys WHERE office_id = ?').get(pm.id).token_hash, createHash('sha256').update(k1.data.key).digest('hex'), 'no banco, só o SHA-256 da chave');
     db.close();
   }
