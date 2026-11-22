@@ -238,9 +238,15 @@ const longCache = { maxAge: '30d', immutable: true };
 app.use(`/_v/${ASSET_VER}/admin`, express.static(pub('admin'), longCache));
 app.use(`/_v/${ASSET_VER}/shared`, express.static(pub('shared'), longCache));
 app.use('/_v/:ver', (_req, res) => res.status(404).set('Cache-Control', 'no-store').end()); // versão antiga: recarregue
+// todos os módulos do painel pedidos de uma vez (modulepreload): sem isso o navegador descobre um import de cada vez, e
+// pelo túnel cada volta custa ~100 ms (40 arquivos em fila = segundos). Com a versão no endereço, ficam guardados 30 dias
+const jsDe = (dir, base) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? jsDe(path.join(dir, e.name), `${base}${e.name}/`) : e.name.endsWith('.js') ? [`${base}${e.name}`] : []));
+const preloads = [...jsDe(pub('admin'), `/_v/${ASSET_VER}/admin/`), ...jsDe(pub('shared'), `/_v/${ASSET_VER}/shared/`)]
+  .map((u) => `  <link rel="modulepreload" href="${u}">`).join('\n');
 const panelHtml = fs.readFileSync(pub('admin/index.html'), 'utf8')
   .replace(/(href|src)="(?!\/|https?:)([^"]+\.(?:css|js))"/g, `$1="/_v/${ASSET_VER}/admin/$2"`)
-  .replace(/(href|src)="\/shared\//g, `$1="/_v/${ASSET_VER}/shared/`);
+  .replace(/(href|src)="\/shared\//g, `$1="/_v/${ASSET_VER}/shared/`)
+  .replace('</head>', `${preloads}\n</head>`);
 const sendPanel = (_req, res) => res.set({ 'Cache-Control': 'no-cache', 'Content-Type': 'text/html; charset=utf-8' }).send(panelHtml);
 app.get(['/c/:slug', '/c/:slug/'], sendPanel); // a entrada do cliente final, com a marca da revenda
 for (const door of ['/admin', '/superadmin']) {
@@ -267,6 +273,9 @@ app.use((err, req, res, _next) => {
   res.status(status).json(body);
 });
 
+// "localhost" no túnel pode virar ::1 (IPv6) antes de 127.0.0.1: escutando só no IPv4, o túnel batia primeiro na porta
+// recusada. Escuta também no ::1, que continua sendo só a própria máquina
+if (config.http.host === '127.0.0.1') http.createServer(app).listen(config.port, '::1').on('error', (e) => console.warn(`[http] ::1 indisponível (${e.code})`));
 server.listen(config.port, config.http.host || undefined, () => {
   console.log(`DIGITAL ISP no ar na porta ${config.port} (${config.databaseUrl ? 'Postgres' : `SQLite em ${config.dbFile}`}, armazenamento ${config.storage.driver}).`);
   console.log(`  Painel: http://${config.http.host || "localhost"}:${config.port}/admin/`);
