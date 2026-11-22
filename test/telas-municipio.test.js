@@ -241,28 +241,4 @@ test('mapa travado: a caixa da cidade ocupa a área toda (zoom fracionário), o 
   }
 });
 
-test('painel: o município vem do seletor dos cadastros, o painel nunca chama o IBGE, as escolhas ficam lembradas e o botão antigo saiu', () => {
-  const view = read('public/admin/views/prefeitura.js'); const map = read('public/admin/telas-mapa.js'); const srv = read('server/telas.js'); const css = read('public/admin/prefeitura.css');
-  // o mesmo seletor e a mesma lista do IBGE (nenhuma base nova)
-  assert.match(view, /import \{ ufCityPicker \} from '\.\.\/\.\.\/shared\/uf-city\.js'/); assert.match(srv, /import \{ cleanBrPlace \} from '\.\/br-places\.js'/);
-  // quem fala com o IBGE é só o servidor: nem a tela nem o mapa citam o endereço
-  for (const [name, src] of [['telas-mapa.js', map], ['telas-geo.js', read('public/shared/telas-geo.js')]]) assert.ok(!/servicodados|ibge\.gov/.test(src), `${name} não chama o IBGE`);
-  // o painel busca o contorno pelo navegador (o IBGE não responde a servidores fora do Brasil): uma chamada só, sem credencial
-  // nem referência, só com o código do município, e o resultado vai ao servidor para conferir e guardar
-  assert.equal((view.match(/servicodados\.ibge\.gov\.br/g) || []).length, 1);
-  assert.match(view, /malhas\/municipios\/\$\{Number\(ibge\)\}\?formato=application\/vnd\.geo\+json`, \{ signal: ctl\.signal, credentials: 'omit', referrerPolicy: 'no-referrer' \}/);
-  assert.match(view, /body: \{ geojson: \{ type: 'MultiPolygon', coordinates: polygons \} \}/);
-  assert.match(view, /\/api\/prefeitura\/municipio/); assert.match(view, /\/api\/prefeitura\/municipio\/outline/);
-  // estado vazio, cidade inteira, tela cheia, legenda, grupo destacado e fora do município
-  for (const s of ['De qual município é esta prefeitura?', 'Ver a cidade inteira', 'Tela cheia', 'Sair da tela cheia', 'Tentar de novo', 'Destacar um grupo', 'fora do município', 'Todas no ar', 'Ligada sem imagem', 'Alguma desligada', 'Sem tela', 'TV box desta repartição']) assert.ok(view.includes(s), s);
-  assert.ok(!view.includes('Guardar esta vista como o centro da cidade') && !view.includes('Enquadrar as telas'), 'os botões de antes saíram');
-  assert.match(view, /setOutline\(city\.outline\.polygons, \{ mask: true \}\)/); assert.match(view, /P\.map\.setBounds\(city\.bbox\)/);
-  // lembrado por cliente: filtros e tela cheia no localStorage (pelo store do painel, com try/catch), a posição na sessão
-  assert.match(view, /const prefKey = \(\) => `nexa\.pf\.mapa\.\$\{state\.me\?\.tenant\?\.slug/); assert.match(view, /store\.set\(prefKey\(\)/);
-  assert.ok(!/[^.\w]localStorage\./.test(view), 'localStorage só pelo store (try/catch)');
-  assert.equal([...view.matchAll(/sessionStorage\./g)].length, 3, 'a posição da sessão só em loadView e saveView');
-  assert.match(view, /function loadView\(\) \{\s*try \{[\s\S]{0,200}sessionStorage\.getItem/); assert.match(view, /function saveView\(v\) \{\s*try \{[\s\S]{0,300}sessionStorage\.removeItem[^\n]*\n\s*\} catch/);
-  // o contorno é desenhado num canvas (sem SVG nem endereço de fora) e o lado de fora escurece
-  assert.match(map, /node\('canvas', 'pf-map-shape'/); assert.match(map, /g\.fill\('evenodd'\)/);
-  assert.match(css, /\.pf-box\.pf-full \{[^}]*position: fixed/); assert.match(css, /\.pf-map-pin\.dim \{/); assert.match(css, /\.pf-map-legend \{/);
-});
+// (removido no DIGITAL ISP: "painel: o município vem do seletor…" conferia o painel/banco do NEXA Broadcast; o passo 3 escreve o equivalente)

@@ -1,0 +1,57 @@
+/* DIGITAL ISP: a marca por cima dos tokens herdados do painel do NEXA (tokens.css).
+   Cores do kit (marca/): azul-marinho #0A2150, azul #0D80FF, ciano #14C4CC. Sem fonte de fora: a do sistema. */
+:root {
+  --brand-navy: #0A2150;
+  --brand-blue: #0D80FF;
+  --brand-cyan: #14C4CC;
+
+  --c-bg: #071433;
+  --c-sunken: #0a1a3f;
+  --c-panel: #0d1f48;
+  --c-panel-2: #112856;
+  --c-panel-3: #163063;
+  --c-line: #1f3a70;
+  --c-line-strong: #27467f;
+  --c-line-soft: #18315f;
+  --c-line-hover: #34558f;
+
+  --c-accent: var(--brand-blue);       /* ação principal (texto branco sobre ele: 4,6) */
+  --c-accent-hover: #2b92ff;
+  --c-on-accent: #ffffff;
+  --c-accent-soft: rgba(13, 128, 255, 0.16);
+  --c-ok: var(--brand-cyan);
+
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", "Segoe UI Mono", Consolas, monospace;
+  --focus-ring: 2px solid var(--brand-cyan);
+}
+
+#login { background: radial-gradient(900px 500px at 20% 0%, rgba(20, 196, 204, .10), transparent 60%), var(--bg); }
+.login-logo { display: block; margin: 0 auto 10px; height: auto; }
+.login-card .fld { display: grid; gap: 4px; font-size: .86rem; color: var(--c-fg-2); }
+.login-card input:not([type=radio]) { width: 100%; box-sizing: border-box; }
+.seg { display: flex; gap: 6px; padding: 3px; border: 1px solid var(--c-line-strong); border-radius: 10px; background: var(--c-sunken); }
+.seg label { flex: 1; text-align: center; padding: 7px 10px; border-radius: 7px; cursor: pointer; color: var(--c-dim); font-weight: 600; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label:has(input:checked) { background: var(--c-accent); color: var(--c-on-accent); }
+.seg label:has(input:focus-visible) { outline: var(--focus-ring); }
+
+.side .brand img { display: block; height: auto; }
+.side .who { margin: 0 0 8px; overflow-wrap: anywhere; }
+main { padding: 22px 26px; min-width: 0; }
+.view > .head { margin-bottom: 16px; }
+
+button.primary, .btn.primary { background: var(--c-accent); color: var(--c-on-accent); border-color: transparent; }
+button.primary:hover { background: var(--c-accent-hover); }
+
+/* plataforma: revendas */
+.rv-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); align-items: start; }
+.rv-grid > .card { overflow-x: auto; }
+@media (max-width: 960px) { .rv-grid { grid-template-columns: 1fr; } #app { grid-template-columns: 1fr; } .side { position: static; height: auto; } }
+.rv-table { width: 100%; border-collapse: collapse; font-size: .86rem; }
+.rv-table th, .rv-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--c-line-soft); }
+.rv-table th { color: var(--c-dim); font-weight: 600; font-size: .76rem; text-transform: uppercase; letter-spacing: .06em; }
+.rv-form { display: grid; gap: 10px; }
+.rv-form label { display: grid; gap: 4px; font-size: .84rem; color: var(--c-fg-2); }
+.rv-secret { font-family: var(--font-mono); background: var(--c-sunken); padding: 8px 10px; border-radius: 8px; overflow-wrap: anywhere; }
+.kpis .kpi b { display: block; font-size: 1.6rem; }

@@ -1,7 +1,7 @@
 // Multi-cliente (SaaS): clientes (tenants), planos, limites, recursos, suspensão, ciclo de vida da assinatura e
 // resolução do cliente nas rotas públicas. Não importa auth.js (auth.js é quem importa este módulo).
 import { db, getSetting, setSetting } from './db.js';
-import { config, ENV_RESOLUTION } from './config.js';
+import { config } from './config.js';
 import { hostTenantId } from './domains.js';
 import { normalizeServers } from './ntp.js';
 import { isStoppedByOperator } from './operator-stop.js';
@@ -285,8 +285,6 @@ export async function getPlatformSettings() {
   return {
     ...SETTINGS_DEFAULTS, ...s, announcement: { ...SETTINGS_DEFAULTS.announcement, ...s.announcement }, maintenance: { ...SETTINGS_DEFAULTS.maintenance, ...s.maintenance },
     ntp: { enabled: ntp.enabled !== false, servers: ntp.servers?.length ? ntp.servers : [...config.ntp.servers], defaultServers: [...config.ntp.servers], custom: Boolean(ntp.servers?.length) },
-    // env: o padrão do servidor; effective: o que os canais usam agora (muda ao salvar, sem reiniciar o servidor)
-    video: { resolution: RESOLUTIONS.includes(s.video?.resolution) ? s.video.resolution : null, env: ENV_RESOLUTION, effective: config.engine.resolution },
   };
 }
 

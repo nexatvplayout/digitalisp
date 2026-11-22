@@ -16,7 +16,7 @@ import { SyncedWriter } from './escrita.js'; // o download do cache descarrega n
  * No R2 a chave é "<tipo>/<nome>".
  */
 // luts: só o servidor lê (sem rota pública); lojadocs: documentos dos títulos da Loja (cue-sheet do ECAD, CPB…), só pela API
-export const KINDS = { media: config.mediaDir, thumbs: config.thumbsDir, graphics: config.graphicsDir, fonts: config.fontsDir, captions: config.captionsDir, luts: config.lutsDir, lojadocs: config.lojaDocsDir, cueaudio: config.cueAudioDir };
+export const KINDS = { media: config.mediaDir, thumbs: config.thumbsDir, graphics: config.graphicsDir };
 
 /*
  * Loja de conteúdos (docs/LOJA.md). Os vídeos da Loja são do tipo "media", com nome próprio:

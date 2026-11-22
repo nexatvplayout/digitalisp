@@ -428,7 +428,7 @@ async function roteiro(db, label) {
 
 test('TV Corporativa (pacote A) no SQLite', { timeout: 240_000 }, async (t) => {
   const dir = tmpDir('nexa-tvcorp-sqlite', t);
-  const db = createSqlite(path.join(dir, 'playout.db'));
+  const db = createSqlite(path.join(dir, 'digitalisp.db'));
   try { await roteiro(db, 'sqlite'); } finally { await db.close(); }
 });
 

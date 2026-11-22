@@ -15,7 +15,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { boot, cleanup, api, platformLogin, newTenant } from './helpers/srv.js';
 
 const sha = (s) => createHash('sha256').update(s).digest('hex');
-const rawDb = (dataDir) => new DatabaseSync(path.join(dataDir, 'playout.db'), { timeout: 15000 });
+const rawDb = (dataDir) => new DatabaseSync(path.join(dataDir, 'digitalisp.db'), { timeout: 15000 });
 /** JPEG mínimo de mentira com a assinatura certa (FF D8 FF … FF D9). */
 const jpeg = (n = 2000) => Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(n, 0x41), Buffer.from([0xff, 0xd9])]);
 const leaks = (v) => /token_hash|key_hash|link_hash|link_pass|"pin"|"salt"|scrypt\$/.test(JSON.stringify(v));

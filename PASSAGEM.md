@@ -55,6 +55,37 @@ Não mexa no repositório do NEXA Broadcast (`C:\Projetos\nexatvplayout`), e o N
    atualização. Publicar **sempre o build de release** (`assembleRelease`): o de depuração é lento na TV box.
 5. Seguir a ordem de `docs/FUNCIONALIDADES.md`.
 
+## Andamento (22/11/2026)
+
+**Passo 2 feito, menos a prefeitura.** O sistema sobe sozinho: `npm install` e `npm start` (ou `npm run dev`). Abre em
+`http://localhost:3000/admin/`. As variáveis estão em `.env.exemplo`.
+
+- A cópia veio incompleta. Faltavam 47 arquivos de que o servidor precisava, trazidos do mesmo commit c51d2469 (lista em
+  `docs/origem-nexa/arquivos-complemento.txt`). O `index.js` e a casca do painel do NEXA ficam só como referência em
+  `docs/origem-nexa/referencia/`.
+- Servidor novo e enxuto: `server/index.js`, a plataforma em `server/plataforma.js` (login da equipe, revendas, planos,
+  perfis de funcionalidades) e a configuração em `server/config.js`, com cerca de 100 linhas.
+- Banco novo: `server/db/schema.js` tem só as tabelas de acesso, revendas, planos, auditoria e domínios, mais as das telas
+  e da TV Corporativa. Ficaram de fora mais de 200 tabelas de canal. Não há migração de versões antigas.
+  `server/db/schema-digital.js` está vazio, à espera das tabelas do passo 3.
+- Saíram o Railway (provedores de domínio), o motor do canal, o gerador de caracteres, o chat, a censura e o som 5.1.
+  `server/domains.js` só diz qual revenda atende um endereço.
+- Painel: `public/admin/index.html`, `main.js` e `digitalisp.css`, com a marca. Tem a entrada como revenda ou plataforma.
+  A revenda vê "Telas e conteúdo" (as abas da TV Corporativa). A plataforma vê as revendas e cadastra revendas novas.
+- Testes: `npm test` roda os 98 testes de unidade, todos passando. `npm run test:servidor` roda os que sobem o servidor;
+  esses ainda criam canais do NEXA (`POST /api/channels`) e falham até o passo 3. Quatro testes que conferiam o painel e
+  o banco do NEXA saíram, e o teste de migração da 0.5.188 também. Em cada lugar ficou um comentário dizendo isso.
+
+**Ainda não feito (vai junto com o passo 3):** tirar a prefeitura de `server/telas.js`. Desaparecidos
+(`telas-desaparecidos.js`), botão de pânico (`telas-seguranca.js`), município e malha do IBGE (`telas-malha.js`), tipos de
+repartição (Polícia, Defesa Civil), aprovação da SECOM, modo eleitoral e EAS estão entrelaçados no módulo das telas.
+O passo 3 troca "repartição" por "cliente final", e esse corte se faz no mesmo movimento, com os testes de servidor
+reescritos para o modelo revenda → cliente final.
+
+**Sessões paralelas abertas (22/11/2026), cada uma no seu branch:** site (`site/`), app Android white-label (`android/`,
+que escreve `docs/CONTRATO-APP-MARCA.md`, o contrato que o servidor vai seguir), apps Samsung/LG (`apps-tv/`) e
+instalador pelo celular (`apps-celular/instalador/`).
+
 ## Regras herdadas que continuam valendo
 
 - Nunca digitar senhas do dono; segredos ficam em arquivos locais, nunca no chat nem no repositório.
