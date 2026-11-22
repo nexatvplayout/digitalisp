@@ -137,12 +137,15 @@ async function faixaGuia() {
 let voltando = false;
 window.addEventListener('hashchange', (e) => {
   if (voltando) { voltando = false; return; }
-  if (document.querySelector('form.dirty') && !confirm('Há alterações não salvas. Sair desta tela e perder o que foi digitado?')) {
+  // só conta o que está sendo digitado na tela aberta (a escondida não incomoda), e o formulário novo ainda vazio não conta
+  const sujo = document.querySelector('.view:not([hidden]) form.dirty, dialog[open] form.dirty');
+  if (sujo && !confirm('Há alterações não salvas. Sair desta tela e perder o que foi digitado?')) {
     voltando = true; location.hash = new URL(e.oldURL).hash; return;
   }
+  for (const x of document.querySelectorAll('form.dirty')) { x.classList.remove('dirty'); const m = x.querySelector('.pl-dirty'); if (m) m.hidden = true; }
   route();
 });
-window.addEventListener('beforeunload', (e) => { if (document.querySelector('form.dirty')) { e.preventDefault(); e.returnValue = ''; } });
+window.addEventListener('beforeunload', (e) => { if (document.querySelector('.view:not([hidden]) form.dirty')) { e.preventDefault(); e.returnValue = ''; } });
 
 async function start() {
   try {

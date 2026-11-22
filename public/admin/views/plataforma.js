@@ -146,8 +146,8 @@ export async function paintPlanos(root) {
       el('div', { class: 'rv-actions' }, el('span', { class: 'pl-dirty', text: 'Alterações não salvas', hidden: true }), el('button', { class: 'primary', type: 'submit', text: 'Salvar plano' })));
     // o que foi mexido e ainda não salvo fica marcado (e nada redesenha este cartão por cima do que está sendo digitado)
     const marcar = (sujo) => { f.classList.toggle('dirty', sujo); f.querySelector('.pl-dirty').hidden = !sujo; };
-    f.addEventListener('input', () => marcar(true));
-    f.addEventListener('change', () => marcar(true));
+    f.addEventListener('input', (e) => { if (e.isTrusted) marcar(true); });
+    f.addEventListener('change', (e) => { if (e.isTrusted) marcar(true); });
     f.addEventListener('submit', guard(async (e) => {
       e.preventDefault();
       const v = Object.fromEntries(new FormData(f));

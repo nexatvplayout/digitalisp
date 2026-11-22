@@ -174,7 +174,8 @@ export async function paintPlanos(root) {
         p && !p.clientes ? el('button', { type: 'button', class: 'small', text: 'Apagar', onclick: guard(async () => { if (!confirm(`Apagar o plano ${p.nome}?`)) return; await api(`/api/revenda/planos/${p.id}`, { method: 'DELETE' }); await paintPlanos(root); }) }) : null,
         el('button', { class: 'primary', type: 'submit', text: p ? 'Salvar plano' : 'Criar plano' })));
     const marcar = (x) => { f.classList.toggle('dirty', x); f.querySelector('.pl-dirty').hidden = !x; };
-    f.addEventListener('input', () => marcar(true)); f.addEventListener('change', () => marcar(true));
+    // só o que a pessoa faz marca (isTrusted): mudança feita pelo próprio painel não conta
+    f.addEventListener('input', (e) => { if (e.isTrusted) marcar(true); }); f.addEventListener('change', (e) => { if (e.isTrusted) marcar(true); });
     f.addEventListener('submit', guard(async (e) => {
       e.preventDefault();
       const v = Object.fromEntries(new FormData(f));
