@@ -33,22 +33,28 @@ function programacaoDaTela(d, reload) {
     }) : [note('Este layout não tem zona de playlist (ex.: só o ao vivo). Pode salvar assim.')]) : []));
   };
   layout.addEventListener('change', desenhar); desenhar();
-  const salvar = guard(async () => {
+  let atualId = minha?.id ?? null; // depois do primeiro salvar, os seguintes atualizam a mesma programação
+  let ocupado = false;
+  const salvar = guard(async (e) => {
+    if (ocupado) return;
     if (!layout.value) { toast('Escolha o layout.', true); return; }
+    ocupado = true; const b = e?.currentTarget; if (b) b.disabled = true;
+    try {
     const l = (data.layouts || []).find((x) => x.id === Number(layout.value));
     const zp = Object.fromEntries((l?.zones || []).filter((z) => TVC_PLAYLIST_ZONES.includes(z.kind) && escolhas[z.id]).map((z) => [z.id, escolhas[z.id]]));
     const body = { name: nomeGrade, layoutId: Number(layout.value), zonePlaylists: zp, scope: { kind: 'devices', devices: [d.id] }, days: [], timeFrom: 0, timeTo: 1440, priority: 0 };
-    if (minha) await tapi(`/api/tvcorp/schedules/${minha.id}`, { method: 'PATCH', body });
-    else await tapi('/api/tvcorp/schedules', { method: 'POST', body });
+    if (atualId) await tapi(`/api/tvcorp/schedules/${atualId}`, { method: 'PATCH', body });
+    else { const r = await tapi('/api/tvcorp/schedules', { method: 'POST', body }); atualId = r?.id ?? null; }
     toast(`Programação da tela "${d.name}" salva: ela troca em até 30 s.`);
     await reload?.();
+    } finally { ocupado = false; if (b) b.disabled = false; }
   });
   return el('div', { class: 'tc-prog' },
     label('O que passa nesta tela'),
     note(minha ? 'Esta tela tem a programação própria abaixo (vale o dia todo, todos os dias, por cima da grade geral).' : 'Escolha o layout e a playlist de cada zona só para esta tela. Para horários e dias diferentes, use a aba Grade.'),
     el('div', { class: 'pf-grid' }, f('Layout', layout)), zonasBox,
     btns(btn(minha ? 'Salvar a programação da tela' : 'Pôr esta programação na tela', salvar, 'primary'),
-      minha ? btn('Tirar a programação própria', guard(async () => { await tapi(`/api/tvcorp/schedules/${minha.id}`, { method: 'DELETE' }); toast('A tela volta a seguir a grade geral.'); await reload?.(); }), 'small') : null));
+      minha ? btn('Tirar a programação própria', guard(async () => { await tapi(`/api/tvcorp/schedules/${atualId || minha.id}`, { method: 'DELETE' }); toast('A tela volta a seguir a grade geral.'); await reload?.(); }), 'small') : null));
 }
 
 const V = { mode: 'lista', avail: new Map(), map: null };
