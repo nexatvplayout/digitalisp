@@ -19,14 +19,11 @@
   <link rel="stylesheet" href="digitalisp.css"><!-- a marca DIGITAL ISP por cima dos tokens herdados -->
 </head>
 <body>
-  <!-- entrada: revenda (o gestor de telas) ou equipe da plataforma -->
+  <!-- entrada: /admin/ = revenda (o gestor de telas); /superadmin/ = equipe da plataforma -->
   <div id="login" hidden>
     <form class="login-card" id="loginForm" autocomplete="on">
       <img class="login-logo" src="/marca/svg/logo-horizontal-fundo-escuro.svg" alt="DIGITAL ISP" width="220" height="56">
-      <div class="seg" role="radiogroup" aria-label="Entrar como">
-        <label><input type="radio" name="kind" value="revenda" checked> Revenda</label>
-        <label><input type="radio" name="kind" value="plataforma"> Plataforma</label>
-      </div>
+      <p class="login-kind" id="loginKind"></p>
       <label class="fld" id="fldTenant">Identificador da revenda
         <input name="tenant" autocomplete="organization" placeholder="ex.: meuprovedor (vazio = endereço deste painel)">
       </label>

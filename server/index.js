@@ -42,6 +42,11 @@ app.disable('x-powered-by');
 app.use(express.json({ limit: '256kb' }));
 app.use((_req, res, next) => { res.set('X-Content-Type-Options', 'nosniff'); next(); });
 
+if (config.platform.canonicalHost) {
+  const canon = config.platform.canonicalHost;
+  app.use((req, res, next) => (req.hostname === canon.replace(/^www./, '') ? res.redirect(301, `https://${canon}${req.originalUrl}`) : next()));
+}
+
 app.get('/healthz', (_req, res) => res.json({ ok: true, uptime: Math.round((Date.now() - bootedAt) / 1000) }));
 app.get('/readyz', ah(async (_req, res) => { await db.get('SELECT 1 AS ok'); res.json({ ok: true }); }));
 
@@ -188,11 +193,14 @@ app.get('/graphics/:name', ah(async (req, res) => {
   res.set('Cache-Control', 'public, max-age=86400').sendFile(src, { dotfiles: 'allow' });
 }));
 app.use('/marca', express.static(path.join(config.root, 'marca'), { maxAge: '1h' }));
+// o painel tem duas portas: /admin/ (revendas) e /superadmin/ (equipe da plataforma); main.js vê a porta pelo endereço
 app.use('/admin', express.static(pub('admin')));
+app.use('/superadmin', express.static(pub('admin')));
 const cacheAge = config.production ? '5m' : 0; // em desenvolvimento, sempre o arquivo novo
 app.use('/shared', express.static(pub('shared'), { maxAge: cacheAge }));
 app.use('/tvcorp', express.static(pub('tvcorp'), { maxAge: cacheAge }));
-app.get('/', (_req, res) => res.redirect(302, '/admin/'));
+// o site institucional (site/) na raiz: www.digitalisp.com.br vem deste servidor pelo túnel, com o painel em /admin e /superadmin
+app.use(express.static(path.join(config.root, 'site'), { maxAge: cacheAge, index: 'index.html' }));
 
 /* ------------------------------------------------------------------ erros */
 app.use('/api', (_req, res) => res.status(404).json({ error: 'Rota inexistente.' }));

@@ -1,11 +1,15 @@
-// Casca do painel do DIGITAL ISP: a entrada (revenda ou plataforma), o menu e as telas.
+// Casca do painel do DIGITAL ISP: a entrada, o menu e as telas. Duas portas, o mesmo painel:
+//   /admin/       revendas (o gestor de telas) — o "Entrar" do site
+//   /superadmin/  equipe da plataforma DIGITAL ISP (www.digitalisp.com.br/superadmin leva para cá)
 // A revenda vê "Telas e conteúdo" (views/tvcorp.js, herdada da TV Corporativa do NEXA); a equipe da plataforma vê as revendas.
 import { $, $$, el, state, api, toast, guard, on, store } from './lib.js';
 import tvcorp from './views/tvcorp.js';
 
-const TOKEN_KEY = 'disp.token';
-const KIND_KEY = 'disp.kind'; // 'revenda' | 'plataforma'
-const S = { kind: store.get(KIND_KEY) || 'revenda', view: null };
+// a porta decide quem entra; cada uma guarda a própria sessão (dá para ter as duas abertas em abas diferentes)
+const KIND = location.pathname === '/superadmin' || location.pathname.startsWith('/superadmin/') ? 'plataforma' : 'revenda';
+const TOKEN_KEY = KIND === 'plataforma' ? 'disp.token.plataforma' : 'disp.token.revenda';
+const S = { kind: KIND, view: null };
+document.title = KIND === 'plataforma' ? 'DIGITAL ISP · Plataforma' : 'DIGITAL ISP · Painel';
 
 /* ------------------------------------------------------------------ entrada */
 function showLogin(msg = '') {
@@ -14,25 +18,20 @@ function showLogin(msg = '') {
   const err = $('#loginErr');
   err.hidden = !msg; err.textContent = msg;
   const f = $('#loginForm');
-  f.kind.value = S.kind;
-  syncKind();
+  $('#loginKind').textContent = KIND === 'plataforma' ? 'Equipe da plataforma' : 'Painel da revenda';
+  $('#fldTenant').hidden = KIND !== 'revenda';
   (f.username.value ? f.password : f.username).focus();
 }
-function syncKind() {
-  const kind = $('#loginForm').kind.value;
-  $('#fldTenant').hidden = kind !== 'revenda';
-}
-$('#loginForm').addEventListener('change', (e) => { if (e.target.name === 'kind') syncKind(); });
 $('#loginForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = e.currentTarget;
-  const kind = f.kind.value;
+  const kind = KIND;
   const body = { username: f.username.value.trim(), password: f.password.value };
   if (kind === 'revenda' && f.tenant.value.trim()) body.tenant = f.tenant.value.trim().toLowerCase();
   try {
     const r = await api(kind === 'plataforma' ? '/api/platform/login' : '/api/admin/login', { method: 'POST', body });
     state.token = r.token; S.kind = kind;
-    store.set(TOKEN_KEY, r.token); store.set(KIND_KEY, kind);
+    store.set(TOKEN_KEY, r.token);
     f.password.value = '';
     await start();
   } catch (err) {
