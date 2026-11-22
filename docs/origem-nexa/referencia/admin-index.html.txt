@@ -1,0 +1,1146 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex">
+  <title>Broadcast · NEXA TV</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23ffb224'/%3E%3Cpath d='M9.500 23.500v-15l13 15v-15' fill='none' stroke='%230a0b0e' stroke-width='3'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="tokens.css"><!-- tokens do painel (blueprint de 09/10): cores, tipografia, controles -->
+  <link rel="stylesheet" href="kinds.css"><!-- cores por tipo de item (Agenda, Grade, Playout) -->
+  <link rel="stylesheet" href="admin.css">
+  <link rel="stylesheet" href="admin2.css">
+  <link rel="stylesheet" href="vu.css">
+  <link rel="stylesheet" href="health.css">
+  <link rel="stylesheet" href="fx4d.css"><!-- Controle remoto de testes 4DX -->
+  <link rel="stylesheet" href="scopes.css">
+  <link rel="stylesheet" href="telemetria.css"><!-- Telemetria: multiviewer técnico, transport stream, QC de arquivos, sinais de teste (views/telemetria.js) -->
+  <link rel="stylesheet" href="monitoramento.css"><!-- Monitoramento: parede de monitores com alarme (views/monitoramento.js) -->
+  <link rel="stylesheet" href="maquina.css"><!-- Telemetria → Máquina e a faixa da máquina no topo (telemetria/maquina.js, maquina-faixa.js) -->
+  <link rel="stylesheet" href="/shared/telas-previa.css"><!-- a prévia "Como aparece na TV" (public/shared/telas-previa.js) -->
+  <link rel="stylesheet" href="prefeitura.css"><!-- Painel da Prefeitura: a rede de telas, o mapa e os alertas (views/prefeitura.js, docs/TELAS.md) -->
+  <link rel="stylesheet" href="tvcorp.css"><!-- TV Corporativa: o modo corporativo do NEXA Telas (views/tvcorp.js, docs/TV-CORPORATIVA.md) -->
+  <link rel="stylesheet" href="/shared/tvcorp-previa.css"><!-- a prévia das zonas e dos slides da TV Corporativa (public/shared/tvcorp-previa.js) -->
+  <link rel="stylesheet" href="access.css">
+  <link rel="stylesheet" href="../shared/poll-layouts.css"><!-- layouts da votação: o mesmo visual do app e da TV (Interações, views/interacoes-layouts.js) -->
+  <link rel="stylesheet" href="midia.css">
+  <link rel="stylesheet" href="colecoes.css"><!-- coleção com "vai ao ar como" (views/colecao.js) e entradas ao vivo em Entradas e saídas -->
+  <link rel="stylesheet" href="cadastro.css"><!-- cadastros: formulário em janela, UF/Município (/shared/uf-city.js), lista de anunciantes -->
+  <link rel="stylesheet" href="catalogo-app.css"><!-- Conteúdo → Catálogo do app (app NEXA de TV, views/catalogo-app.js) -->
+  <link rel="stylesheet" href="gadgets-app.css"><!-- Conteúdo → Gadgets (app NEXA de TV, views/gadgets-app.js) -->
+  <link rel="stylesheet" href="audiencia.css"><!-- Conteúdo → Audiência (views/audiencia.js, docs/AUDIENCIA.md) -->
+  <link rel="stylesheet" href="palavras.css"><!-- palavras proibidas no chat (Ajustes do canal, views/palavras.js) -->
+  <link rel="stylesheet" href="storage.css"><!-- medidor de armazenamento: Mídia, Plano e uso, avisos e envio cheio (storage-meter.js) -->
+  <link rel="stylesheet" href="loja.css"><!-- Loja de conteúdos: vitrine, prévia, aquisição e licenças (views/loja.js, docs/LOJA.md) -->
+  <link rel="stylesheet" href="cg.css">
+  <link rel="stylesheet" href="overlays.css">
+  <link rel="stylesheet" href="cartelas.css"><!-- cartelas L-bar (views/cartelas.js) -->
+  <link rel="stylesheet" href="tabs.css">
+  <link rel="stylesheet" href="mesa.css">
+  <link rel="stylesheet" href="air.css">
+  <link rel="stylesheet" href="licenca.css">
+  <link rel="stylesheet" href="grade.css">
+  <link rel="stylesheet" href="eas.css"><!-- alertas de emergência (views/alertas.js) -->
+  <link rel="stylesheet" href="agenda.css">
+  <link rel="stylesheet" href="automacao.css"><!-- Mesa de Automação: timeline de várias trilhas (views/automacao.js) -->
+  <link rel="stylesheet" href="arquivo.css"><!-- Arquivo legal (views/arquivo.js) -->
+  <link rel="stylesheet" href="redacao.css"><!-- Redação e Teleprompter (views/redacao.js, views/teleprompter.js) -->
+  <link rel="stylesheet" href="layout.css">
+</head>
+<body>
+
+<!-- ============ login ============ -->
+<div id="login" hidden>
+  <form id="loginForm" class="login-card">
+    <div class="brand"><span class="logo">N</span><span>BROADCAST</span></div>
+    <h1>Entrar no broadcast</h1>
+    <label for="org">Organização <span class="opt">(opcional)</span></label>
+    <input id="org" autocomplete="organization" autocapitalize="none" spellcheck="false" placeholder="identificador do cliente, ex.: minha-tv">
+    <label for="user">Usuário</label>
+    <input id="user" autocomplete="username" autocapitalize="none" spellcheck="false" required autofocus>
+    <label for="pw">Senha</label>
+    <input id="pw" type="password" autocomplete="current-password" required>
+    <p class="err" id="loginErr" hidden></p>
+    <p class="hint" id="loginHint" hidden></p>
+    <div class="edge-note" id="edgeNote" hidden><span id="edgeNoteText"></span><a class="btn small" href="/setup/" id="edgeNoteLink">Ativar este computador</a></div>
+    <button class="btn primary" type="submit">Entrar</button>
+  </form>
+</div>
+
+<!-- ============ app ============ -->
+<div id="app" hidden>
+  <nav class="side" aria-label="Seções">
+    <div class="brand"><span class="logo">N</span><span>BROADCAST</span></div>
+    <div class="chsel">
+      <label for="chSelect">Canal</label>
+      <select id="chSelect" aria-label="Canal selecionado"></select>
+    </div>
+
+    <div class="sep" data-sec="operacao">Operação</div>
+    <a href="#playout" data-view="playout"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="9" height="7" rx="1"/><rect x="13" y="5" width="9" height="7" rx="1"/><path d="M6 17h12M9 20h6"/></svg>Playout</a>
+    <a href="#dashboard" data-view="dashboard"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5"/><path d="M5 12a7 7 0 0 1 14 0M2 12a10 10 0 0 1 20 0"/></svg>Painel</a>
+    <a href="#aovivo" data-view="aovivo"><svg viewBox="0 0 24 24"><path d="M7 18v-6a5 5 0 0 1 10 0v6M5 18h14v3H5zM12 2v2M3.5 6.5l1.5 1.5M20.5 6.5L19 8"/></svg>AO VIVO</a>
+    <a href="#teleprompter" data-view="teleprompter" hidden><svg viewBox="0 0 24 24"><rect x="3" y="3.5" width="18" height="12" rx="1.5"/><path d="M6.5 7.5h11M6.5 10.5h8M3 12.5l2-1.5-2-1.5M9 21l3-5.5 3 5.5"/></svg>Teleprompter</a>
+    <a href="#monitor" data-view="monitor"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="13" rx="1.500"/><path d="M5 8v6M8 10v4M18 7v7M8 21h8M12 17v4"/></svg>Monitor</a>
+    <a href="#monitoramento" data-view="monitoramento"><svg viewBox="0 0 24 24"><rect x="2.5" y="3.5" width="8.5" height="6.5" rx="1"/><rect x="13" y="3.5" width="8.5" height="6.5" rx="1"/><rect x="2.5" y="12" width="8.5" height="6.5" rx="1"/><path d="M13 12h8.5v6.5H13zM7 21h10"/><circle cx="17.25" cy="15.25" r="1"/></svg>Monitoramento</a>
+    <a href="#saude" data-view="saude"><svg viewBox="0 0 24 24"><path d="M3 12h4l2.5-6 4 12 2.5-6h5"/></svg>Saúde do sinal<span class="badge" id="hsBadge" hidden></span></a>
+    <a href="#scopes" data-view="scopes"><svg viewBox="0 0 24 24"><rect x="2.500" y="3.500" width="19" height="17" rx="1.500"/><path d="M5 15l2.500-5 2 3 2.500-6 2.500 8 2-3 2.500 3"/></svg>Telemetria</a>
+    <a href="#relatorios" data-view="relatorios"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 17v-3M12 17v-6M15 17v-4"/></svg>Relatórios</a>
+    <a href="#alertas" data-view="alertas"><svg viewBox="0 0 24 24"><path d="M12 3 2.5 20h19z"/><path d="M12 10v4.5M12 17.2v.3"/></svg>Alertas de emergência<span class="badge" id="eaBadge" hidden></span></a>
+    <a href="#censura" data-view="censura" hidden><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9M10 13h4"/></svg>Censura</a>
+    <div class="sep" data-sec="programacao">Programação</div>
+    <a href="#grade" data-view="grade"><svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/><rect x="7" y="12.5" width="4" height="4" rx=".6"/></svg>Grade</a>
+    <a href="#automacao" data-view="automacao"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h10M7 12h5M7 16h7"/><path d="m16.5 13 1.5 1.5 3-3"/></svg>Automação</a>
+    <a href="#fx4d" data-view="fx4d" hidden><svg viewBox="0 0 24 24"><path d="m13 2-8 12h6l-1 8 9-13h-6z"/></svg>Imersão</a>
+    <a href="#midia" data-view="midia"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m10 9 5 3-5 3z"/></svg>Mídia</a>
+    <a href="#loja" data-view="loja" hidden><svg viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg>Loja</a>
+    <a href="#intervalos" data-view="intervalos"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 3h6"/></svg>Intervalos</a>
+    <a href="#comercial" data-view="comercial" hidden><svg viewBox="0 0 24 24"><path d="M4 7h16v11H4z"/><path d="M9 7V5h6v2M4 12h16"/></svg>Comercial</a>
+    <a href="#produtos" data-view="produtos"><svg viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6L5 8zM9 8a3 3 0 0 1 6 0"/></svg>Vitrine</a>
+    <div class="sep" data-sec="jornalismo">Jornalismo</div>
+    <a href="#redacao" data-view="redacao" hidden><svg viewBox="0 0 24 24"><path d="M4 5h13v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M17 9h3v10a2 2 0 0 1-2 2M7.5 9h6M7.5 12.5h6M7.5 16h4"/></svg>Redação</a>
+    <div class="sep" data-sec="sinal">Sinal do canal</div>
+    <a href="#graficos" data-view="graficos"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><rect x="14" y="6.5" width="5" height="4" rx="1"/><path d="M5 17h14"/></svg>Gráficos</a>
+    <a href="#cg" data-view="cg"><svg viewBox="0 0 24 24"><rect x="2.5" y="4" width="19" height="14" rx="2"/><path d="M5.5 14.5h8M5.5 11.5h5"/><rect x="15" y="10" width="4" height="5" rx=".8"/><path d="M8 21h8"/></svg>Gerador de caracteres</a>
+    <a href="#cartelas" data-view="cartelas"><svg viewBox="0 0 24 24"><rect x="2.5" y="4" width="19" height="14" rx="1.5"/><rect x="2.5" y="4" width="13" height="9.5" rx="1"/><path d="M18 7.5v3M6 16h7M8 21h8"/></svg>Cartelas</a>
+    <a href="#overlays" data-view="overlays"><svg viewBox="0 0 24 24"><rect x="2.5" y="3.5" width="19" height="13" rx="2"/><rect x="5" y="11.5" width="9" height="3" rx=".6"/><path d="M15.5 6.5h3M8 20.5h8M12 16.5v4"/><circle cx="17.5" cy="13" r="1.2"/></svg>Overlays e Composer</a>
+    <a href="#audio" data-view="audio"><svg viewBox="0 0 24 24"><path d="M4 10v4h4l5 4V6L8 10H4zM16 9a4 4 0 0 1 0 6M18.5 6.500a8 8 0 0 1 0 11"/></svg>Áudio e sinal</a>
+    <a href="#entradas" data-view="entradas"><svg viewBox="0 0 24 24"><path d="M3 12h9M8 8l4 4-4 4M14 5h5a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-5"/></svg>Entradas e saídas</a>
+    <div class="sep" data-sec="app">App do espectador</div>
+    <a href="#app" data-view="app" hidden><svg viewBox="0 0 24 24"><rect x="7" y="2.500" width="10" height="19" rx="2.500"/><path d="M11 18.500h2"/></svg>App</a>
+    <a href="#conteudo" data-view="conteudo" hidden><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="6" rx="1.5"/><rect x="3" y="13" width="5" height="7" rx="1"/><rect x="10" y="13" width="5" height="7" rx="1"/><rect x="17" y="13" width="4" height="7" rx="1"/></svg>Conteúdo</a>
+    <a href="#publico" data-view="publico" hidden><svg viewBox="0 0 24 24"><path d="M4 4h16v12H8l-4 4z"/><path d="M8 8h8M8 11h5"/></svg>Público<span class="badge" id="auBadge" hidden></span></a>
+    <a href="#reacoes" data-view="reacoes" hidden><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-9.2-8.6C1.3 8.5 3 5 6.5 5c2 0 3.5 1.2 4.5 2.7C12 6.2 13.5 5 15.5 5 19 5 20.7 8.5 19.2 11.4 17 15.6 12 20 12 20z"/></svg>Reações por programa</a>
+    <a href="#interacoes" data-view="interacoes" hidden><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.500h8M8 12.500h5"/></svg>Interações</a>
+    <a href="#moderacao" data-view="moderacao" hidden><svg viewBox="0 0 24 24"><path d="M12 2.5 4.5 5.5v6c0 4.8 3.2 8.3 7.5 10 4.3-1.7 7.5-5.2 7.5-10v-6z"/><path d="M8.500 12 11 14.500 15.500 9.500"/></svg>Moderação</a>
+    <a href="#denuncias" data-view="denuncias" hidden><svg viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>Denúncias e feedback</a>
+    <a href="#pedidos" data-view="pedidos" hidden><svg viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6L5 8zM9 8a3 3 0 0 1 6 0"/></svg>Pedidos<span class="badge" id="orBadge" hidden></span></a>
+    <div class="sep" data-sec="telas">NEXA Telas</div>
+    <a href="#prefeitura" data-view="prefeitura" hidden><svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V10M19 21V10M9 21v-6h6v6M2.5 10 12 3.5 21.5 10z"/></svg>Prefeitura<span class="badge" id="pfBadge" hidden></span></a>
+    <a href="#tvcorp" data-view="tvcorp" hidden><svg viewBox="0 0 24 24"><rect x="2.5" y="4" width="19" height="12.5" rx="1.5"/><path d="M8 20.5h8M12 16.5v4M6 8h5v5H6zM14 8h4M14 11h4M14 14h2"/></svg>TV Corporativa<span class="badge" id="tcBadge" hidden></span></a>
+    <div class="sep" data-sec="sistema">Sistema</div>
+    <a href="#canais" data-view="canais"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="8" height="7" rx="1"/><rect x="13" y="4" width="8" height="7" rx="1"/><rect x="3" y="14" width="8" height="6" rx="1"/><rect x="13" y="14" width="8" height="6" rx="1"/></svg>Canais</a>
+    <a href="#canal" data-view="canal"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg>Ajustes do canal</a>
+    <a href="#usuarios" data-view="usuarios" hidden><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.500 20a6.500 6.500 0 0 1 13 0M16 4.500a3.500 3.500 0 0 1 0 7M18 14.500a6.500 6.500 0 0 1 3.500 5.500"/></svg>Usuários e acessos</a>
+    <a href="#licenca" data-view="licenca" hidden><svg viewBox="0 0 24 24"><path d="M12 2.5 4 5.5v6c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10v-6z"/><path d="m8.5 12 2.500 2.500L15.500 9.500"/></svg>Licença e suporte<span class="badge" id="liBadge" hidden></span></a>
+    <a href="#plano" data-view="plano" hidden><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/></svg>Plano e uso</a>
+    <a href="#config" data-view="config" hidden><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>Configurações</a>
+    <a href="#conta" data-view="conta"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Minha conta</a>
+    <!-- Manual (docs/manual, /manual/): não é uma tela do painel; abre o artigo da tela atual numa aba nova (manual-link.js). data-menu entra nos nomes dos menus (menu-names.js) -->
+    <a href="/manual/" data-menu="manual" id="manualLink" target="_blank" rel="noopener" title="Manual passo a passo (abre o artigo desta tela numa aba nova)"><svg viewBox="0 0 24 24"><path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5z"/><path d="M5 19.5A1.5 1.5 0 0 0 6.5 21H19v-3"/><path d="M9 7.5h6M9 11h4"/></svg>Manual</a>
+    <a href="/" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5H5V6h5"/></svg>Abrir o app</a>
+    <div class="side-foot"><div class="who"><b id="meName"></b><small id="meGroups"></small></div><button class="btn" id="logout">Sair</button><button type="button" class="ver-btn" id="appVersion" hidden></button></div>
+  </nav>
+
+  <main>
+    <!-- faixa de abas: telas abertas (tabs.js) -->
+    <div class="tabstrip" id="tabStrip"></div>
+    <!-- faixa global: personificação, teste acabando, pagamento atrasado, conta suspensa, aviso da plataforma -->
+    <div id="tnBanner" class="tn-banners" aria-live="polite"></div>
+    <!-- ---------- playout: prévia + ao vivo ---------- -->
+    <section class="view" id="view-playout" hidden>
+      <!-- o topo fica preso (layout.css): do quadro NO AR para cima sempre à vista; por baixo rolam a lista e os comandos -->
+      <div class="po-top">
+      <!-- monitores (como a mesa AO VIVO): PRÉVIA e AO VIVO com os medidores de áudio dentro do quadro; no centro, a hora e
+           os comandos do ar (TAKE, Pausar, Loop) -->
+      <section class="po-mons" aria-label="Monitores">
+        <div class="po-mon pvw">
+          <div class="screen">
+            <div id="pvwMount"></div><!-- monitor PRÓXIMO do player único do painel (air.js) -->
+            <img id="pvwSnap" alt="Monitor da entrada" hidden>
+            <canvas class="po-meter" id="pvMeter" width="64" height="160" aria-hidden="true"></canvas>
+            <button class="cc-btn" id="pvwCc" type="button" hidden aria-pressed="false" title="Mostrar a legenda (Closed Caption) do vídeo nos monitores">CC</button>
+            <span class="chname" id="pvKind">—</span>
+          </div>
+          <div class="po-cap">
+            <span class="po-tag pvw" id="pvTag">PRÉVIA</span>
+            <b class="po-ttl" id="pvFile">—</b>
+            <span class="po-at mono" id="pvAt"></span>
+            <button class="po-mini" id="btnCue" type="button" title="Volta a prévia ao primeiro quadro" aria-label="Prévia: voltar ao primeiro quadro">⟲</button>
+            <button class="po-mini" id="btnPvPlay" type="button" title="Toca ou pausa a prévia, sem som e sem ir ao ar (Espaço: tocar/pausar)" aria-keyshortcuts="Space">▶ Prévia</button>
+          </div>
+          <!-- o arquivo da PRÉVIA no servidor (docs/TROCA-DE-ITEM.md, "TAKE de um arquivo frio"): "Baixando… 42% (~1 min)" ou "Pronto para TAKE" -->
+          <div class="po-ready" id="pvReady" role="status" aria-live="polite" hidden></div>
+        </div>
+
+        <div class="po-center">
+          <div class="po-k"><small>Espectadores</small><b id="mcViewers">0</b></div>
+          <div class="po-k"><small>Hora</small><b class="mono" id="mcClock">--:--:--</b></div>
+          <button class="po-take" id="btnTake" type="button" title="Coloca o item da prévia no ar agora">TAKE ›</button>
+          <!-- TAKE automático quando pronto: o item no ar segue até o arquivo estar no servidor -->
+          <div class="po-wait" id="takeWait" role="status" aria-live="polite" hidden><span id="takeWaitTxt"></span><button class="po-mini" id="takeWaitX" type="button" title="Cancela o TAKE automático: o item no ar segue e o arquivo continua baixando">Cancelar</button></div>
+          <div class="po-two">
+            <button class="po-b" id="tPause" type="button" title="Congela o quadro atual; a grade espera">Pausar</button>
+            <button class="po-b" id="tLoop" type="button" title="Repete o item atual até desligar">Loop</button>
+          </div>
+          <span class="pill soft" id="mcOut">—</span>
+          <span class="po-lat" id="pgLat"></span>
+        </div>
+
+        <div class="po-mon pgm">
+          <div class="screen live" id="pgmScreen">
+            <div id="pgmMount"></div><!-- monitor NO AR do player único do painel (air.js): o mesmo das outras telas -->
+            <canvas class="po-meter" id="pgMeter" width="64" height="160" aria-hidden="true"></canvas>
+            <span class="tag pgm">● AO VIVO</span>
+            <button class="cc-btn" id="pgmCc" type="button" hidden aria-pressed="false" title="Mostrar a legenda (Closed Caption) do vídeo nos monitores">CC</button>
+          </div>
+          <div class="po-cap">
+            <span class="po-tag pgm">NO AR</span>
+            <b class="po-ttl" id="pgFile">—</b>
+            <span class="po-at mono" id="pgState"></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- o item no ar: título, arquivo e codecs, tempos e progresso -->
+      <section class="po-air" aria-label="Item no ar">
+        <div class="po-air-id"><small id="pgKind">NO AR</small><b id="pgTitle">—</b><span class="mono" id="pgMeta"></span><span class="po-warn" id="pgWarn" role="status" hidden></span></div>
+        <div class="po-k"><small>Duração</small><b class="mono" id="pgDur">--:--:--</b></div>
+        <div class="po-k"><small>Posição</small><b class="mono" id="pgPos">--:--:--</b></div>
+        <div class="po-k hot"><small>Restante</small><b class="mono" id="pgLeft">--:--:--</b></div>
+        <div class="po-k"><small id="plListLbl">Restante da playlist</small><b class="mono" id="plList">--:--:--</b></div>
+        <div class="po-prog" aria-hidden="true"><b id="pgFill"></b></div>
+      </section>
+      <!-- comandos compactos ficam junto do programa que está no ar; a entrada ao vivo continua na área própria abaixo -->
+      <div class="transport-inline" aria-label="Comandos do programa no ar">
+        <span class="label">Roteiro</span>
+        <div class="tbtns">
+          <button class="tb" id="tStopLast" title="Ao terminar o item, fica parado no último quadro">⏹ Parar no fim<small>último quadro</small></button>
+          <button class="tb" id="tCue" title="Ao terminar o item, fica parado no primeiro quadro do próximo vídeo">◼ Preparar<small>1º quadro do próximo</small></button>
+          <button class="tb go" id="tStart" title="Solta o congelamento e entra no próximo vídeo do começo">▶ Iniciar próximo</button>
+          <button class="tb" id="tSkip" title="Pula para o próximo item">⏭ Pular</button>
+          <button class="tb" id="tRestartCurrent" title="Volta o programa ou conteúdo exibido ao início">↶ Reiniciar programa</button>
+          <button class="tb sb" id="tStandby" title="Barras de cores com tom de 1 kHz; a grade segue correndo">▦ Standby</button>
+          <button class="tb" id="btnRestart2" title="Recomeça a grade do primeiro item">↺ Reiniciar ciclo</button>
+        </div>
+        <span class="tstate" id="tState"></span>
+      </div>
+      </div>
+
+      <!-- lista de exibição (modelo dos playouts de emissora; contas em playout-list.js): previsto, real, atraso e status de cada item -->
+      <section class="card blocks-card po-list" aria-label="Lista da programação">
+        <div class="po-list-h">
+          <h2>Lista de exibição</h2>
+          <span class="mono dim" id="blkInfo"></span>
+          <label class="po-auto"><input type="checkbox" id="plAuto" data-keep> Rolar sozinho</label>
+        </div>
+        <div class="pl-scroll" id="plScroll">
+          <table class="pl-table">
+            <thead><tr>
+              <th scope="col" class="c-no">#</th>
+              <th scope="col" class="c-t" title="Horário previsto: o marcado na agenda; no resto, o primeiro horário calculado desde que esta tela abriu">Previsto</th>
+              <th scope="col" class="c-t" title="Exibido e no ar: quando entrou de fato. O que vem: quando vai entrar agora">Real</th>
+              <th scope="col" class="c-dl" title="Real menos o previsto">Atraso</th>
+              <th scope="col" class="c-du">Duração</th>
+              <th scope="col" class="c-nm">Título</th>
+              <th scope="col" class="c-k">Tipo</th>
+              <th scope="col" class="c-st">Status</th>
+              <th scope="col" class="c-md">Mídia</th>
+            </tr></thead>
+            <tbody id="blocks"></tbody>
+          </table>
+        </div>
+        <p class="gt-pending" id="blkPending" hidden></p>
+        <!-- edição: a mesma lista da Grade (mesmas rotas e permissão); Preparar põe na PRÉVIA; Prévia e corte abre o In/Out -->
+        <div class="po-bar">
+          <button type="button" class="po-bt po-ed" id="plIns" title="Põe um vídeo da biblioteca na grade, depois do item selecionado">Inserir</button>
+          <button type="button" class="po-bt po-ed" id="plSwap" title="Troca o vídeo do item selecionado por outro da biblioteca">Trocar</button>
+          <button type="button" class="po-bt" id="plCue" title="Põe o item selecionado na PRÉVIA: ele vira o próximo (TAKE põe no ar)">Preparar</button>
+          <button type="button" class="po-bt" id="plTrim" title="Abre o vídeo do item selecionado nos Detalhes da mídia: prévia e marcações In/Out (corte)">Prévia e corte</button>
+          <button type="button" class="po-bt po-ed" id="plUp" title="Sobe o item selecionado uma posição na grade">Subir</button>
+          <button type="button" class="po-bt po-ed" id="plDown" title="Desce o item selecionado uma posição na grade">Descer</button>
+          <button type="button" class="po-bt po-ed" id="plDup" title="Põe uma cópia do item selecionado logo depois dele">Duplicar</button>
+          <button type="button" class="po-bt po-ed danger" id="plDel" title="Tira o item selecionado da grade">Remover</button>
+          <button type="button" class="po-bt po-right" id="plHide" data-keep aria-pressed="false" title="Esconde da lista os itens já exibidos (a grade é um loop: nada é apagado). Das voltas que já passaram, a lista mostra só a última.">Limpar exibidos</button>
+        </div>
+      </section>
+
+      <!-- comandos de roteiro -->
+      <div class="card transport">
+        <div class="livebar">
+          <div class="label" style="margin:0">Entrada ao vivo</div>
+          <button class="tb live-back" id="liveBack" hidden title="Encerra a entrada ao vivo e retoma a programação normal">■ Voltar à programação</button>
+          <select id="liveSel" aria-label="Fonte ao vivo"></select>
+          <input id="liveUrl" placeholder="srt://host:porta · udp://host:porta · https://…/stream.m3u8" aria-label="URL da fonte" hidden>
+          <label class="live-clean small" title="O sinal vai ao ar limpo: sem logomarca, tarja, foguete nem gerador de caracteres (o croma, se configurado, continua)"><input type="checkbox" id="liveClean"> Sem gráficos</label>
+          <button class="tb go" id="liveGo">● Entrar ao vivo</button>
+          <button class="tb sb" id="plEnd" hidden>■ Encerrar plantão</button>
+          <label class="small dim live-loss" title="Fonte sem sinal não entra no ar. Se o sinal cair com ela no ar, o canal volta sozinho à grade depois deste tempo (em vez de ficar nas barras AGUARDANDO SINAL).">Sem sinal, volta à grade em
+            <select id="liveLoss" aria-label="Sem sinal, volta à grade em"><option value="10">10 s</option><option value="30">30 s</option><option value="60">1 min</option><option value="120">2 min</option><option value="0">nunca (espera o sinal)</option></select></label>
+          <span class="dim small" id="liveInfo" aria-live="polite"></span>
+        </div>
+        <!-- atraso de segurança do ao vivo: bipe, corte e monitor sem atraso (views/atraso.js, server/atraso.js, docs/ATRASO.md) -->
+        <div id="atrasoSlot"></div>
+        <!-- cartela L-bar: MOSTRAR/OCULTAR (views/cartelas-ctl.js; biblioteca e desenho na tela Cartelas) -->
+        <div id="cartelaSlot"></div>
+        <div class="livebar shopbar">
+          <div class="label" style="margin:0">Vitrine</div>
+          <select id="shopSel" aria-label="Produto"></select>
+          <select id="shopPos" aria-label="Posição da janela"><option value="br">base à direita</option><option value="bl">base à esquerda</option><option value="tr">topo à direita</option><option value="tl">topo à esquerda</option></select>
+          <input id="shopDur" type="number" min="3" max="300" value="15" aria-label="Duração em segundos" title="Duração (s)"><span class="dim small">s</span>
+          <button class="tb" id="shopWin" title="Janela sobre o vídeo">Janela</button>
+          <button class="tb" id="shopChat" title="Cartão no chat">Chat</button>
+          <button class="tb go" id="shopBoth" title="Janela e cartão no chat">Janela + chat</button>
+        </div>
+        <!-- gravação do ao vivo para a biblioteca (views/gravacao.js, server/recorder.js) -->
+        <div class="livebar recbar">
+          <div class="label" style="margin:0">Gravação</div>
+          <select id="recSrc" aria-label="O que gravar"><option value="program">Programa do canal (com gráficos)</option></select>
+          <input id="recMax" type="number" min="1" max="120" value="120" aria-label="Tempo máximo em minutos" title="Para sozinha depois de (min)"><span class="dim small">min</span>
+          <button class="tb go" id="recGo" title="Grava até você parar (ou o tempo máximo); o arquivo entra na biblioteca">● Gravar</button>
+          <span id="recList" class="rec-list"></span>
+          <!-- módulo Censura (server/censura.js, docs/CENSURA.md): todo ao vivo que vai ao ar é gravado com a etiqueta "ao vivo" -->
+          <span id="censBox" class="cens-box" aria-live="polite"></span>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ---------- plantão: mesa de coordenação com até 12 fontes (views/plantao.js, mesa.css, docs/MESA.md) ---------- -->
+    <section class="view" id="view-aovivo" hidden>
+      <section class="ms" id="msRoot" aria-label="Mesa AO VIVO"></section>
+    </section>
+
+    <!-- ---------- monitor do sinal: painel estilo encoder ou multiview (views/monitor.js, scopes.css, docs/SCOPES.md) ---------- -->
+    <section class="view" id="view-monitor" hidden>
+      <section class="card mo" id="moPanel" aria-label="Monitor do sinal"></section>
+    </section>
+
+    <!-- ---------- Monitoramento: parede de monitores de todas as entradas e saídas, com alarme e TIME CODE no topo
+         (views/monitoramento.js, monitoramento-core.js, monitoramento.css, server/monitoramento.js) ---------- -->
+    <section class="view" id="view-monitoramento" hidden>
+      <section class="mw" id="mnRoot" aria-label="Monitoramento dos sinais"></section>
+    </section>
+
+    <!-- ---------- Telemetria (views/telemetria.js, telemetria.css, docs/TELEMETRIA.md; endereço #scopes, como antes): abas Scopes
+         e Áudio = os scopes (views/scopes.js, scopes.css, docs/SCOPES.md) com dois jogos de painéis; Multiviewer técnico com
+         alarmes; Transport stream (TR 101 290); QC de arquivos; Sinais de teste. Qualquer aba abre numa tela externa
+         (rasterizador: ?raster=1) ---------- -->
+    <section class="view" id="view-scopes" hidden>
+      <header class="head tm-head">
+        <h2>Telemetria<span class="chn"></span></h2>
+        <nav class="gr-tabs tm-tabs" id="tmTabs" role="tablist" aria-label="Telemetria">
+          <a href="#scopes" role="tab" data-tab="video" aria-controls="scPanel" aria-selected="true">Scopes</a>
+          <a href="#scopes/audio" role="tab" data-tab="audio" aria-controls="scPanel" aria-selected="false">Áudio</a>
+          <a href="#scopes/multiviewer" role="tab" data-tab="mv" aria-controls="tmMv" aria-selected="false">Multiviewer</a>
+          <a href="#scopes/ts" role="tab" data-tab="ts" aria-controls="tmTs" aria-selected="false">Transport stream</a>
+          <a href="#scopes/qc" role="tab" data-tab="qc" aria-controls="tmQc" aria-selected="false">QC de arquivos</a>
+          <a href="#scopes/sinais" role="tab" data-tab="sinais" aria-controls="tmSig" aria-selected="false">Sinais de teste</a>
+          <a href="#scopes/maquina" role="tab" data-tab="maq" aria-controls="tmMaq" aria-selected="false" hidden>Máquina</a><!-- só na edição Windows e no servidor próprio (me.machine) -->
+        </nav>
+      </header>
+      <section class="card sc" id="scPanel" role="tabpanel" aria-label="Scopes"></section>
+      <section class="card tm-panel" id="tmMv" role="tabpanel" aria-label="Multiviewer técnico" hidden></section>
+      <section class="card tm-panel" id="tmTs" role="tabpanel" aria-label="Transport stream" hidden></section>
+      <section class="card tm-panel" id="tmQc" role="tabpanel" aria-label="QC de arquivos" hidden></section>
+      <section class="card tm-panel" id="tmSig" role="tabpanel" aria-label="Sinais de teste" hidden></section>
+      <section class="card tm-panel" id="tmMaq" role="tabpanel" aria-label="Máquina" hidden></section>
+    </section>
+
+    <!-- ---------- comercial: anunciantes, campanhas, vendido × exibido (views/comercial.js, docs/COMERCIAL.md) ---------- -->
+    <section class="view" id="view-comercial" hidden>
+      <header class="head"><h2>Comercial</h2></header>
+      <section class="card cm" id="cmPanel" aria-label="Comercial"></section>
+    </section>
+
+    <!-- ---------- prefeitura: a rede de telas (NEXA Telas): mapa, telas, grupos, repartições, regiões e alertas (views/prefeitura.js, docs/TELAS.md) ---------- -->
+    <section class="view" id="view-prefeitura" hidden>
+      <header class="head"><h2>Painel da Prefeitura</h2></header>
+      <section class="pf" id="pfPanel" aria-label="Painel da Prefeitura"></section>
+    </section>
+
+    <!-- ---------- tvcorp: a TV Corporativa (NEXA Telas): telas, mídias, playlists, layouts, grade, RH, indicadores e relatórios (views/tvcorp.js, docs/TV-CORPORATIVA.md) ---------- -->
+    <section class="view" id="view-tvcorp" hidden>
+      <header class="head"><h2>TV Corporativa</h2></header>
+      <section class="tc" id="tcPanel" aria-label="TV Corporativa"></section>
+    </section>
+
+    <!-- ---------- redação: espelhos, laudas, pautas e agências (views/redacao.js, docs/REDACAO.md) ---------- -->
+    <section class="view" id="view-redacao" hidden>
+      <header class="head"><h2>Redação</h2></header>
+      <section class="rd" id="rdPanel" aria-label="Redação"></section>
+    </section>
+
+    <!-- ---------- teleprompter: roteiros de qualquer programa, prévia igual à tela da câmera e comandos (views/teleprompter.js, docs/TELEPROMPTER.md) ---------- -->
+    <section class="view" id="view-teleprompter" hidden>
+      <header class="head"><h2>Teleprompter</h2></header>
+      <section class="tp" id="tpPanel" aria-label="Teleprompter"></section>
+    </section>
+
+    <!-- ---------- cartelas L-bar: o programa encolhe e a arte ocupa o L (views/cartelas.js, docs/CARTELAS.md) ---------- -->
+    <section class="view" id="view-cartelas" hidden>
+      <header class="head"><h2>Cartelas L-bar · <span class="chn"></span></h2></header>
+      <section class="card ct" id="ctPanel" aria-label="Cartelas L-bar"></section>
+    </section>
+
+    <!-- ---------- relatórios do canal: loudness do ar (views/relatorios.js, docs/LOUDNESS.md) ---------- -->
+    <section class="view" id="view-relatorios" hidden>
+      <header class="head"><h2>Relatórios · <span class="chn"></span></h2></header>
+      <section class="card rp" id="rpPanel" aria-label="Relatórios do canal"></section>
+    </section>
+
+    <!-- ---------- alertas de emergência: Defesa Civil, INMET, alerta manual, registro (views/alertas.js, eas.css, docs/EAS.md) ---------- -->
+    <section class="view" id="view-alertas" hidden>
+      <header class="head"><h2>Alertas de emergência · <span class="chn"></span></h2></header>
+      <section class="card ea" id="eaPanel" aria-label="Alertas de emergência"></section>
+    </section>
+
+    <!-- ---------- Censura: timeline de toda a programação exibida, gravações do ao vivo e prazos (views/arquivo.js, docs/ARQUIVO-LEGAL.md) ---------- -->
+    <section class="view" id="view-censura" hidden>
+      <header class="head"><h2>Censura · <span class="chn"></span></h2></header>
+      <section class="arq" id="arqRoot" aria-label="Censura do canal: timeline da programação exibida"></section>
+    </section>
+
+    <!-- ---------- saúde do sinal: cada entrada e saída medida (views/saude.js, health.css, docs/SAUDE.md) ---------- -->
+    <section class="view" id="view-saude" hidden>
+      <header class="head"><h2>Saúde do sinal<span class="chn"></span></h2></header>
+      <section class="card hs" id="hsPanel" aria-labelledby="hsTitle"></section>
+    </section>
+
+    <!-- ---------- painel ---------- -->
+    <section class="view" id="view-dashboard" hidden>
+      <header class="head"><h2>Painel<span class="chn" id="dashCh"></span></h2><span class="pill live" id="airPill">● NO AR</span></header>
+      <div class="kpis">
+        <div class="card kpi"><small>Espectadores</small><b id="kViewers">0</b></div>
+        <div class="card kpi"><small>Ciclo da grade</small><b id="kCycle">0:00</b></div>
+        <div class="card kpi"><small>Itens no ciclo</small><b id="kSlots">0</b></div>
+        <div class="card kpi"><small>Motor</small><b id="kEngine">—</b></div>
+      </div>
+      <div class="two">
+        <div class="card onair">
+          <div class="label">No ar agora</div>
+          <div class="onair-top"><span class="kind" id="oaKind">PROGRAMA</span><span class="dim mono" id="oaTimes"></span></div>
+          <h3 id="oaTitle">—</h3>
+          <div class="prog"><b id="oaFill"></b></div>
+          <div class="mono dim between"><span id="oaElapsed">00:00:00:00</span><span id="oaNext">—</span></div>
+          <div class="actions">
+            <button class="btn" id="btnSkip">Pular item</button>
+            <button class="btn danger" id="btnRestartCycle">Reiniciar ciclo</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="label">Motor de transmissão (FFmpeg → HLS)</div>
+          <div class="actions">
+            <button class="btn primary" data-engine="start">Iniciar</button>
+            <button class="btn" data-engine="stop">Parar</button>
+            <button class="btn" data-engine="restart">Reiniciar</button>
+          </div>
+          <dl class="kv" id="engineKv"></dl>
+          <pre class="log" id="engineLog"></pre>
+        </div>
+      </div>
+      <div class="two">
+        <div class="card">
+          <div class="label">Registro do que foi ao ar</div>
+          <div class="rows" id="asRun"></div>
+        </div>
+        <div class="card">
+          <div class="label between">Chat ao vivo · moderação <span class="row-btns"><button class="btn small" id="btnComments" type="button" title="Fontes (YouTube, Twitch, Facebook), filtro de palavras e banidos">Comentários…</button> <button class="btn small danger" id="btnClearChat">Limpar</button></span></div>
+          <ul class="chat-mod" id="chatMod"></ul>
+          <p class="dim" id="savedState"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- 4DX: controle remoto temporário; a rota confirma administrador no servidor (views/fx4d.js) ---------- -->
+    <section class="view" id="view-fx4d" hidden><div id="fx4dRoot"></div></section>
+
+    <!-- ---------- grade ---------- -->
+    <section class="view" id="view-grade" hidden>
+      <!-- Grade (views/grade-tela.js): aba Semana = agenda por dia e horário (views/agenda*.js, agenda.css, docs/AGENDA.md);
+           aba Lista em loop (#grade/lista) = o preenchimento, a lista que se repete, em planilha (views/lista-loop.js, grade.css,
+           docs/GRADE.md) -->
+      <header class="head gr-head">
+        <h2>Grade · <span class="chn"></span></h2>
+        <nav class="gr-tabs" id="gradeTabs" role="tablist" aria-label="Grade">
+          <a href="#grade" role="tab" data-tab="semana" aria-controls="gradeSemana" aria-selected="true">Semana</a>
+          <a href="#grade/lista" role="tab" data-tab="lista" aria-controls="gradeLista" aria-selected="false">Lista em loop</a>
+        </nav>
+        <!-- agenda no ar (docs/AGENDA.md, fase 3): o texto e o interruptor vêm de views/agenda.js (paintOnAir) -->
+        <div class="ag-off" id="agOff" role="status">
+          <label class="switch ag-off-sw"><input type="checkbox" id="agEnabled" disabled> <span>Agenda no ar</span></label>
+          <p id="agOffText"><b>Desligada</b> — a semana é só planejamento: o canal roda a lista em loop.</p>
+        </div>
+      </header>
+      <div class="gr-panel" id="gradeSemana" role="tabpanel">
+        <div class="ag-root" id="agRoot"></div>
+      </div>
+      <!-- a lista em PLANILHA (views/lista-loop.js monta tudo aqui; grade.css, docs/GRADE.md) -->
+      <div class="gr-panel" id="gradeLista" role="tabpanel" hidden>
+        <div class="ll" id="listaLoop"></div>
+      </div>
+    </section>
+
+    <!-- ---------- automação ---------- -->
+    <section class="view" id="view-automacao" hidden>
+      <header class="head"><h2>Automação · <span class="chn"></span></h2></header>
+      <div id="automacaoRoot"></div>
+    </section>
+
+    <!-- ---------- mídia ---------- -->
+    <section class="view" id="view-midia" hidden>
+      <header class="head"><h2>Biblioteca de mídia</h2></header>
+      <div class="drop" id="drop" tabindex="0" role="button" aria-label="Enviar vídeos">
+        <input type="file" id="fileInput" accept=".mp4,.mkv,.mov,.m4v,.webm,.vob,video/*,.zip,application/zip" multiple hidden>
+        <b>Solte vídeos aqui</b> ou clique para escolher
+        <span class="mono small">MP4 · MKV · MOV · WEBM · VOB (DVD) · até <span id="upLimit">20 GB</span> por arquivo · o servidor valida duração e codecs e mede o loudness (BS.1770) antes de usar</span>
+        <span class="mono small">.zip com vídeos: cada vídeo de dentro vira uma mídia (as pastas do zip viram etiquetas; o resto fica de fora)</span>
+        <span class="mono small">quando o vídeo terminar de subir, o painel pergunta do que se trata (a coleção)</span>
+        <span class="mono small" id="upMsg"></span>
+      </div>
+      <ul class="uplist" id="upList" aria-label="Envios em andamento" hidden></ul>
+      <form class="card inline-form imp-form" id="impForm" aria-describedby="impHint">
+        <div class="label" style="margin:0">Importar por link</div>
+        <input id="impUrl" type="url" placeholder="Link do vídeo (YouTube, Facebook, Instagram, TikTok, X, Vimeo…)" aria-label="Link do vídeo" required autocomplete="off" maxlength="2048">
+        <select id="impKind" aria-label="Escolher coleção"><option value="">Carregando coleções…</option></select>
+        <label class="imp-rights small"><input type="checkbox" id="impRights"> Tenho o direito de usar este conteúdo</label>
+        <button class="btn primary" type="submit">Importar</button>
+        <p class="dim small imp-hint" id="impHint"></p>
+        <ul class="uplist imp-list" id="impList" aria-label="Importações por link" hidden></ul>
+      </form>
+      <!-- 5.1 automático (views/midia-51auto.js, docs/UPMIX-51.md): o andamento do acervo e o Pausar -->
+      <div class="card s51-auto" id="s51Auto" aria-live="polite" hidden></div>
+      <!-- coleções (barra lateral), busca e etiquetas; clicar num item abre os detalhes (#midia/<id>) -->
+      <div class="lib-layout">
+        <aside class="lib-side" aria-label="Coleções da biblioteca">
+          <div class="label between"><span>Coleções</span><button class="btn small" id="grpNew" type="button">+ Nova</button></div>
+          <ul class="grp-list" id="grpList"></ul>
+        </aside>
+        <div class="lib-main">
+          <div class="lib-bar">
+            <input type="search" id="libSearch" placeholder="Buscar por título, arquivo ou etiqueta" aria-label="Buscar na biblioteca" data-keep autocomplete="off">
+            <span class="mono dim small" id="libCount"></span>
+          </div>
+          <div class="tag-filter" id="tagFilter" hidden></div>
+          <div class="grid" id="mediaGrid"></div>
+          <!-- coleções fixas da barra lateral (views/midia.js): Vídeos da censura (gravações do ao vivo) e a Lixeira -->
+          <section class="cens-sec" id="censSection" aria-label="Vídeos da censura" hidden></section>
+          <section class="cens-sec trash-sec" id="trashSection" aria-label="Lixeira" hidden></section>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- Loja de conteúdos (views/loja.js, docs/LOJA.md) ---------- -->
+    <section class="view" id="view-loja" hidden>
+      <header class="head"><h2>Loja de conteúdos</h2><div class="actions ls-tabs" id="lsTabs" role="tablist"></div></header>
+      <details class="lead"><summary><span>Programas, séries, filmes e documentários da plataforma para o seu canal. Assista à prévia (os primeiros 20%), veja as condições e adquira: o conteúdo entra na sua Mídia sem ocupar o seu armazenamento e não pode ser baixado.</span></summary>
+        <p class="small dim">Cada aquisição gera um termo de licenciamento com o aceite (data, usuário e IP). Os direitos (prazo e exibições) valem sozinhos: quando acabam, o conteúdo sai da grade e aparece como "licença vencida — renove na Loja". A vinheta da produtora, quando exigida, vai ao ar junto com o programa.</p></details>
+      <div id="lsBody"></div>
+    </section>
+
+    <!-- ---------- intervalos ---------- -->
+    <section class="view" id="view-intervalos" hidden>
+      <header class="head"><h2>Comerciais e vinhetas<span class="chn"></span></h2><div class="actions"><button class="btn" id="btnAddRule">+ Nova regra</button><button class="btn primary" id="btnSaveRules">Salvar regras</button></div></header>
+      <details class="lead"><summary><span>Cada regra insere um bloco de mídia na troca entre programas, nunca no meio de um (para pôr uma vinheta, um comercial ou um bloco no meio de um programa, abra Inserções… no programa, na Lista em loop da Grade; na Agenda, um bloco posicionado entra num horário com Agendar…). Os blocos entram na grade assim que você salvar. Todo intervalo com comercial emite SCTE-35 e DTMF automaticamente; só de vinhetas, não (veja Áudio e sinal).</span></summary></details>
+      <div id="rules" class="rules"></div>
+    </section>
+
+    <!-- ---------- vitrine: produtos na timeline ---------- -->
+    <section class="view" id="view-produtos" hidden>
+      <header class="head"><h2>Vitrine<span class="chn"></span></h2></header>
+      <details class="lead"><summary><span>Cadastre os produtos e posicione-os na timeline de um programa: no ponto marcado eles aparecem como janela sobre o vídeo, como cartão no chat ou nos dois. As janelas seguem o relógio do vídeo, então casam com a imagem mesmo com o atraso do HLS. Para vender ao vivo, dispare um produto na hora aqui embaixo, acompanhando o ar nos monitores ao lado.</span></summary></details>
+
+      <!-- disparo ao vivo (sem depender da tela Playout): comandar o ar pede playout.control; data-keep tira da trava de products.edit -->
+      <div class="card pr-push" id="prPush">
+        <div class="label">Disparar no ar agora<span class="chn"></span></div>
+        <div class="pr-push-row">
+          <select id="ppSel" aria-label="Produto" data-keep></select>
+          <select id="ppPos" aria-label="Posição da janela" data-keep><option value="br">base à direita</option><option value="bl">base à esquerda</option><option value="tr">topo à direita</option><option value="tl">topo à esquerda</option></select>
+          <label class="pr-push-dur"><input id="ppDur" type="number" min="3" max="300" value="15" aria-label="Duração em segundos" data-keep><span class="dim small">s</span></label>
+          <button class="btn" id="ppWin" type="button" title="Janela sobre o vídeo" data-keep>Janela</button>
+          <button class="btn" id="ppChat" type="button" title="Cartão no chat" data-keep>Chat</button>
+          <button class="btn primary" id="ppBoth" type="button" title="Janela e chat" data-keep>Janela e chat</button>
+        </div>
+        <p class="dim small pr-push-note" id="ppNote">O produto aparece para o público sincronizado com o vídeo (uns segundos depois do clique, no atraso do HLS).</p>
+      </div>
+
+      <!-- Vitrine na imagem (server/cg/vitrine.js): o cartão com QR queimado no vídeo do canal; interruptor por canal -->
+      <div class="card pr-burn">
+        <label class="switch"><input type="checkbox" id="prBurn"><span>Cartão com QR nas deixas automáticas</span></label>
+        <p class="dim small" id="prBurnNote">O disparo na hora (Janela, Janela e chat) sempre põe o cartão com foto, nome, preço e QR code no próprio vídeo (TVs, YouTube, apps, site e gravação), nos programas e no ao vivo, sem trocar nem travar a imagem. Esta chave vale para as deixas da linha do tempo dos vídeos: ligada, elas também saem na imagem (liga a camada do gerador de caracteres nesses programas, o que custa CPU); desligada, só o site e o app mostram a janela delas. Nos comerciais e vinhetas, só o site e o app mostram a janela.</p>
+      </div>
+
+      <div class="card">
+        <div class="label between"><span>Catálogo · compartilhado entre os canais</span><button class="btn small" id="prNew">+ Novo produto</button></div>
+        <div class="grid pr-grid" id="prGrid"></div>
+      </div>
+
+      <form class="card form" id="prForm" hidden>
+        <div class="label" id="prFormTitle">Novo produto</div>
+        <div class="pr-edit">
+          <div class="pr-imgcol">
+            <div class="gfx-img checker big" id="prImgBox"></div>
+            <input type="file" id="prImgFile" accept=".png,.gif,.webp,.jpg,.jpeg,image/*" hidden>
+            <button type="button" class="btn small" id="prImgBtn">Enviar imagem</button>
+          </div>
+          <div class="pr-fields">
+            <label for="prName">Nome</label><input id="prName" maxlength="80" required>
+            <label for="prDesc">Descrição</label><input id="prDesc" maxlength="240">
+            <div class="fields">
+              <div><label for="prPrice">Preço</label><input id="prPrice" maxlength="30" placeholder="R$ 129,90"></div>
+              <div><label for="prCta">Texto do botão</label><input id="prCta" maxlength="24" value="Comprar"></div>
+            </div>
+            <label for="prUrl">Link de compra</label><input id="prUrl" type="url" maxlength="500" placeholder="https://loja.exemplo.com/produto">
+          </div>
+        </div>
+        <div class="actions"><button class="btn primary" type="submit">Salvar produto</button><button class="btn" type="button" id="prCancel">Cancelar</button></div>
+      </form>
+
+      <div class="card">
+        <div class="label between"><span>Timeline do programa</span><span class="dim small">cada programa da grade deste canal tem a sua</span></div>
+        <p class="empty" id="cuEmpty" hidden>A grade deste canal não tem programas com timeline. Adicione vídeos na Grade.</p>
+        <div id="cuBody">
+          <div class="inline-form"><label for="cuMedia" class="dim small">Programa</label><select id="cuMedia" style="flex:1"></select></div>
+          <div class="cu-tl" id="cuTl"></div>
+          <div id="cuList" class="cu-list"></div>
+          <form class="inline-form" id="cuForm">
+            <select id="cuProduct" aria-label="Produto" style="flex:1.4"></select>
+            <label class="dim small" for="cuStart">aos</label><input id="cuStart" type="number" min="0" step="1" value="10" style="width:84px" title="Segundos desde o início do programa"><span class="dim small">s por</span>
+            <input id="cuDur" type="number" min="3" max="600" step="1" value="15" style="width:84px" title="Duração em segundos"><span class="dim small">s</span>
+            <select id="cuMode" aria-label="Modo"><option value="both">Janela e chat</option><option value="overlay">Janela sobre o vídeo</option><option value="chat">Cartão no chat</option></select>
+            <select id="cuPos" aria-label="Posição da janela"><option value="br">base à direita</option><option value="bl">base à esquerda</option><option value="tr">topo à direita</option><option value="tl">topo à esquerda</option></select>
+            <button class="btn primary" type="submit">+ Na timeline</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- gráficos ---------- -->
+    <section class="view" id="view-graficos" hidden>
+      <header class="head"><h2>Gráficos<span class="chn"></span></h2><button class="btn primary" id="gfxApply">Aplicar ao ar</button></header>
+      <details class="lead"><summary><span>Os gráficos são aplicados no vídeo de saída do canal (para todos os espectadores e destinos). Imagens PNG com transparência, GIF animado e WEBP funcionam. O texto rolante e a tarja atualizam ao vivo; as outras mudanças entram em 1 a 4 s, sem congelar a imagem. Os gráficos aparecem só nos programas: somem na vinheta, no comercial e no plantão e voltam sozinhos no programa seguinte.</span></summary></details>
+      <!-- os gráficos mudaram fora desta tela (ATEM, Cartelas, outra aba) com mudança sem aplicar aqui (views/graficos.js) -->
+      <div class="tn-banner warn gfx-sync" id="gfxSync" role="status" hidden></div>
+
+      <div class="gfx-layout">
+        <div class="card gfx-pv">
+          <div class="label between"><span>Preview · 1280×720</span><span class="mono dim small" id="gfxSel">—</span></div>
+          <div class="gfx-viewport" id="gfxViewport">
+            <div class="gfx-stage" id="gfxStage">
+              <!-- cartela L no ar (tela Cartelas; server/lbar.js): a arte no quadro inteiro, sombra e borda, e o programa na janela.
+                   Só leitura: por baixo dos gráficos do canal, como no motor -->
+              <img id="gfxLbArt" class="gfx-lb-art" alt="" draggable="false" hidden>
+              <div id="gfxLbShadow" class="gfx-lb-box" hidden></div>
+              <div id="gfxLbBorder" class="gfx-lb-box" hidden></div>
+              <div class="gfx-prog" id="gfxProg">
+                <video id="gfxBgVid" muted loop playsinline preload="auto"></video>
+                <!-- croma key no preview: o quadro do programa recortado e posto sobre o fundo escolhido (aproximação do FFmpeg) -->
+                <canvas id="gfxCk" class="gfx-ck" width="480" height="270" hidden></canvas>
+              </div>
+              <video id="gfxCkBg" muted loop playsinline preload="auto" hidden></video>
+              <div class="gfx-guides" id="gfxGuideBox" hidden></div>
+              <div class="gfx-snap" id="gfxSnapLines"></div>
+              <div id="gfxLayerOv"></div>
+              <div class="gfx-crawl-band" id="gfxCrawlBand" hidden></div>
+              <div class="gfx-crawl" id="gfxCrawl" hidden><span></span></div>
+              <div class="gfx-lt" id="gfxLt" hidden><i></i><s></s><b></b><em></em></div>
+            </div>
+          </div>
+          <div class="gfx-lb-note dim small" id="gfxLbNote" hidden></div>
+          <div class="gfx-pvbar">
+            <label>Fundo
+              <select id="gfxBgSel" aria-label="Fundo do preview">
+                <option value="air">Programa no ar</option>
+                <option value="bars">Barras</option>
+                <option value="dark">Escuro</option>
+                <option value="light">Claro</option>
+              </select>
+            </label>
+            <label class="switch"><input type="checkbox" id="gfxGuides"><span>Guias</span></label>
+            <label class="switch" title="Encaixa borda ou centro da imagem nas guias. Segure Alt para mover sem ímã."><input type="checkbox" id="gfxSnap" checked><span>Ímã</span></label>
+            <label class="switch" title="Mostra no preview, tracejados e apagados, os itens com &quot;Ligado&quot; desmarcado (no ar eles não aparecem)."><input type="checkbox" id="gfxShowOff"><span>Mostrar desligados</span></label>
+            <button class="btn small" id="gfxReplay" data-icon="play" title="Repete as animações de entrada das imagens (fade e deslizar)">Rever entrada</button>
+          </div>
+          <p class="dim small">Arraste a imagem no preview para qualquer ponto; com o ímã ligado ela encaixa nas guias (segure Alt para soltar). Com o preview em foco, as setas movem 1 px (Shift: 10 px). Itens desligados somem do preview, como somem do ar; marque "Mostrar desligados" para vê-los tracejados e apagados. O preview é uma aproximação; o vídeo final sai do motor FFmpeg.</p>
+        </div>
+        <div class="gfx-side">
+      <div class="card">
+        <div class="label between"><span>Imagens · logomarca, marca d'água, selos</span><button class="btn small" id="gfxAdd">+ Enviar imagem</button></div>
+        <input type="file" id="gfxFile" accept=".png,.gif,.webp,.jpg,.jpeg,image/*" hidden>
+        <div id="gfxList" class="gfx-list"></div>
+      </div>
+
+      <div class="two">
+        <div class="card form">
+          <div class="label between"><span>Texto rolante (foguete)</span>
+            <label class="switch"><input type="checkbox" id="crEnabled"><span>Ligado</span></label></div>
+          <label for="crText">Texto</label>
+          <textarea id="crText" rows="3" maxlength="600" placeholder="PLANTÃO · últimas notícias…"></textarea>
+          <div class="fields">
+            <div><label for="crSpeed">Velocidade (px/s)</label><input id="crSpeed" type="number" min="20" max="600" value="140"></div>
+            <div><label for="crSize">Tamanho</label><input id="crSize" type="number" min="16" max="120" value="34"></div>
+            <div><label for="crPos">Posição</label><select id="crPos"><option value="bottom">Rodapé</option><option value="top">Topo</option></select></div>
+          </div>
+          <label for="crBand">Faixa</label>
+          <select id="crBand">
+            <option value="full">De ponta a ponta: a faixa fica parada e só o texto passa</option>
+            <option value="text">Só atrás do texto: a faixa rola junto</option>
+            <option value="none">Sem faixa: só as letras</option>
+          </select>
+          <div class="fields">
+            <div><label for="crColor">Cor do texto</label><input id="crColor" type="color" value="#ffffff"></div>
+            <div><label for="crTxOp">Opacidade do texto <b class="mono" id="crTxOpV"></b></label><input id="crTxOp" type="range" min="0.1" max="1" step="0.05" value="1"></div>
+          </div>
+          <div class="fields" id="crBgRow">
+            <div><label for="crBg">Cor da faixa</label><input id="crBg" type="color" value="#000000"></div>
+            <div><label for="crBgOp">Opacidade da faixa <b class="mono" id="crBgOpV"></b></label><input id="crBgOp" type="range" min="0" max="1" step="0.05" value="0.65"></div>
+          </div>
+          <label class="switch" title="Borda escura em volta das letras: deixa o texto legível sem faixa ou com faixa bem transparente"><input type="checkbox" id="crOutline" checked><span>Contorno nas letras (sem faixa ou faixa quase transparente)</span></label>
+          <p class="dim small warn-note" id="crEmojiWarn" hidden>Emojis coloridos não aparecem no texto do vídeo (o gerador de texto só desenha letras e símbolos simples). Use a seção "Emojis e animações" para pôr emojis na tela.</p>
+        </div>
+        <div class="card form">
+          <div class="label between"><span>Tarja (lower third)</span>
+            <label class="switch"><input type="checkbox" id="ltEnabled"><span>Ligada</span></label></div>
+          <label for="ltTitle">Título</label>
+          <input id="ltTitle" maxlength="80" placeholder="Nome ou assunto">
+          <label for="ltSub">Subtítulo</label>
+          <input id="ltSub" maxlength="120" placeholder="Função, local…">
+          <div class="fields">
+            <div><label for="ltPos">Posição</label>
+              <select id="ltPos"><option value="bl">Base à esquerda</option><option value="bc">Base ao centro</option><option value="br">Base à direita</option><option value="tl">Topo à esquerda</option><option value="tr">Topo à direita</option></select></div>
+            <div><label for="ltWidth">Largura <b class="mono" id="ltWidthV"></b></label><input id="ltWidth" type="range" min="20" max="100" step="1" value="55"></div>
+          </div>
+          <div class="fields">
+            <div><label for="ltTitleSize">Tamanho do título</label><input id="ltTitleSize" type="number" min="16" max="96" value="40"></div>
+            <div><label for="ltTitleColor">Cor do título</label><input id="ltTitleColor" type="color" value="#ffffff"></div>
+            <div><label for="ltSubSize">Tamanho do subtítulo</label><input id="ltSubSize" type="number" min="12" max="72" value="26"></div>
+            <div><label for="ltSubColor">Cor do subtítulo</label><input id="ltSubColor" type="color" value="#ffb224"></div>
+          </div>
+          <div class="fields">
+            <div><label for="ltBg">Cor do fundo</label><input id="ltBg" type="color" value="#000000"></div>
+            <div><label for="ltBgOp">Opacidade do fundo <b class="mono" id="ltBgOpV"></b></label><input id="ltBgOp" type="range" min="0" max="1" step="0.05" value="0.65"></div>
+          </div>
+          <div class="fields">
+            <div class="inline-sw"><label class="switch"><input type="checkbox" id="ltAccentOn"><span>Barra de destaque</span></label><input id="ltAccent" type="color" value="#ffb224" aria-label="Cor da barra de destaque"></div>
+            <div><label class="switch"><input type="checkbox" id="ltUpper"><span>Caixa alta</span></label></div>
+          </div>
+          <p class="dim small">Com a opacidade do fundo em 0 ficam só as letras, com sombra para dar leitura. Os textos mudam ao vivo; posição, tamanhos e cores reiniciam o item atual por cerca de 1 s. Para sumir, desligue e aplique.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="label between"><span>Emojis e animações</span><span class="dim small" id="emoCount"></span></div>
+        <p class="dim small" style="margin:0 0 10px">Toque num emoji para colocá-lo no vídeo como figurinha, já com a animação escolhida. Depois ajuste posição, tamanho e animação na lista de imagens acima. GIF e WEBP animados também funcionam em "+ Enviar imagem".</p>
+        <div class="emo-tabs" id="emoTabs" role="tablist" aria-label="Categorias de emojis"></div>
+        <div class="emo-grid" id="emoGrid" role="group" aria-label="Emojis"></div>
+        <div class="inline-form emo-add">
+          <input id="emoCustom" maxlength="16" placeholder="ou cole qualquer emoji (ex.: 🇧🇷)" aria-label="Emoji personalizado">
+          <label class="emo-anim">Animação
+            <select id="emoAnim" aria-label="Animação do emoji">
+              <option value="float">Flutuar</option><option value="slide">Entrar deslizando</option><option value="cross">Atravessar a tela</option><option value="blink">Piscar</option><option value="fade">Aparecer suave (fade)</option><option value="none">Parado</option>
+            </select></label>
+          <button class="btn primary" id="emoAdd" type="button">Adicionar</button>
+        </div>
+      </div>
+
+      <div class="card form" id="ckCard">
+        <div class="label between"><span>Croma key (fundo verde)</span>
+          <label class="switch"><input type="checkbox" id="ckEnabled"><span>Ligado</span></label></div>
+        <p class="dim small" style="margin:0">Quem grava ou entra ao vivo na frente de um fundo verde (ou azul) tem esse fundo trocado por uma imagem, um vídeo da biblioteca ou uma cor. Ilumine o fundo por igual e evite roupas da mesma cor do fundo.</p>
+        <label for="ckColor">Cor do fundo a remover</label>
+        <div class="ck-color">
+          <input id="ckColor" type="color" value="#00b140">
+          <button class="btn small" type="button" data-ck="#00b140">Verde</button>
+          <button class="btn small" type="button" data-ck="#0047bb">Azul</button>
+          <button class="btn small" id="ckPick" type="button" aria-pressed="false" title="Depois clique no fundo verde, no preview, para pegar a cor exata" data-icon="eyedropper">Conta-gotas</button>
+        </div>
+        <label for="ckSim">Sensibilidade <b class="mono" id="ckSimV"></b></label>
+        <input id="ckSim" type="range" min="0.01" max="0.6" step="0.01" value="0.14">
+        <p class="dim small" style="margin:-4px 0 0">Aumente até o fundo sumir por inteiro; se partes da pessoa sumirem, diminua.</p>
+        <label for="ckBlend">Suavidade das bordas <b class="mono" id="ckBlendV"></b></label>
+        <input id="ckBlend" type="range" min="0" max="0.5" step="0.01" value="0.08">
+        <label class="switch"><input type="checkbox" id="ckDespill" checked><span>Tirar o reflexo verde/azul da pele e do cabelo</span></label>
+        <label for="ckBgType">Fundo novo</label>
+        <select id="ckBgType"><option value="color">Cor sólida</option><option value="image">Imagem</option><option value="media">Vídeo da biblioteca (em loop)</option></select>
+        <div id="ckBgColorRow"><input id="ckBgColor" type="color" value="#101622" aria-label="Cor do fundo novo"></div>
+        <div id="ckBgImageRow" class="inline-form" hidden>
+          <span class="dim small" id="ckBgFileName">Nenhuma imagem enviada</span>
+          <button class="btn small" id="ckBgUpload" type="button">Enviar imagem</button>
+          <input type="file" id="ckBgFile" accept=".png,.jpg,.jpeg,.webp,image/*" hidden>
+        </div>
+        <div id="ckBgMediaRow" hidden><select id="ckBgMedia" aria-label="Vídeo do fundo"></select></div>
+        <label for="ckApply">Aplicar em</label>
+        <select id="ckApply"><option value="live">Entradas ao vivo e plantão</option><option value="all">Tudo que vai ao ar (menos barras e cartões)</option><option value="list">Só os vídeos escolhidos</option></select>
+        <div id="ckList" class="ck-list" hidden></div>
+        <p class="small ck-status" id="ckStatus" role="status"></p>
+        <p class="dim small" style="margin:0">No preview, com o fundo "Programa no ar", o recorte aparece sobre o vídeo do programa para você ajustar a cor e a sensibilidade. É uma aproximação: o resultado final sai do FFmpeg.</p>
+      </div>
+      <!-- identidade no ar: classificação indicativa, patrocínio e "a seguir" (views/identidade.js, docs/BRANDING.md) -->
+      <div class="card form br-card" id="brandCard"></div>
+      <!-- aviso de horário da classificação indicativa: só aviso na Grade, na Agenda e no Playout (views/classind-horario.js, docs/CLASSIFICACAO.md) -->
+      <div class="card form br-card" id="ciHoursCard"></div>
+      <!-- tela de fora do ar do canal: a padrão, um cartão próprio ou uma imagem, com prévia (views/fora-do-ar.js, docs/FORA-DO-AR-HLS.md) -->
+      <div class="card form br-card" id="offairCard"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- gerador de caracteres (CG): public/admin/views/cg*.js ---------- -->
+    <section class="view" id="view-cg" hidden>
+      <header class="head"><h2>Gerador de caracteres<span class="chn"></span></h2></header>
+      <div id="cgRoot"></div>
+    </section>
+
+    <!-- ---------- overlays: Composer, modelos e acervo (public/admin/views/overlays*.js) ---------- -->
+    <section class="view" id="view-overlays" hidden>
+      <header class="head"><h2>Overlays e Composer<span class="chn"></span></h2></header>
+      <div id="ovRoot"></div>
+    </section>
+
+    <!-- ---------- áudio e sinalização ---------- -->
+    <section class="view" id="view-audio" hidden>
+      <header class="head"><h2>Áudio e sinalização<span class="chn"></span></h2><button class="btn primary" id="audApply">Aplicar</button></header>
+      <div class="two">
+        <div class="card form">
+          <div class="label between"><span>Normalização de loudness</span>
+            <label class="switch"><input type="checkbox" id="auNorm"><span>Ligada</span></label></div>
+          <label for="auStd">Norma</label>
+          <select id="auStd">
+            <option value="-23">EBU R128 · −23 LUFS (ITU-R BS.1770)</option>
+            <option value="-24">ATSC A/85 · −24 LKFS</option>
+            <option value="custom">Personalizado</option>
+          </select>
+          <div class="fields">
+            <div><label for="auTarget">Alvo (LUFS)</label><input id="auTarget" type="number" step="0.5" min="-40" max="-10"></div>
+            <div><label for="auTp">True peak (dBTP)</label><input id="auTp" type="number" step="0.5" min="-9" max="0"></div>
+            <div><label for="auLra">LRA (LU)</label><input id="auLra" type="number" step="0.5" min="1" max="30"></div>
+          </div>
+          <label for="auMaster">Nível da saída (dB) <b class="mono" id="auMasterV">0</b></label>
+          <input id="auMaster" type="range" min="-30" max="30" step="0.5" value="0">
+          <p class="dim small">Cada vídeo é medido ao entrar na biblioteca e normalizado para o alvo: de forma linear ou, se a dinâmica dele passa do LRA, no modo dinâmico. O ajuste de nível de cada vídeo ou entrada ao vivo fica na aba Mídia. A saída é aplicada por último.</p>
+          <p class="dim small">Som do painel: em <b>TEMPO REAL</b> o monitor toca o arquivo original do item, com o nível que o ar aplica a ele (normalização e Nível da saída, em até 5 s). Para ouvir o ar de verdade, com os gráficos e o atraso, use a chave <b>SAÍDA</b> do monitor.</p>
+          <div class="label between" style="margin-top:12px"><span>Som 5.1 no ar</span>
+            <label class="switch"><input type="checkbox" id="au51"><span>Ligado</span></label></div>
+          <p class="dim small">Uma 2ª trilha de áudio em som 5.1 (surround) ao lado do estéreo. Quem assiste num aparelho que toca 5.1 (TV ligada a um home theater ou soundbar) ouve o 5.1; os demais continuam no estéreo de sempre. Vídeos enviados com som 5.1 guardam as duas trilhas; os estéreo vão ao 5.1 só nos canais da frente (esquerdo e direito), até ganharem o 5.1 convertido (abaixo). As entradas ao vivo e a mesa AO VIVO também vão em 5.1: a fonte que manda 5.1 vai ao ar no 5.1, e a estéreo, nas caixas da frente. Ficam só nas caixas da frente a câmera do app direto ao ar (sem a mesa), o ao vivo atrás do atraso de segurança e o alerta de emergência. Ligar ou desligar vale em segundos, sem tirar o canal do ar (com a mesa AO VIVO no ar, quando o plantão sair). Com ele ligado em algum canal, os programas com 5.1 ganham também o som 5.1 nos apps (o VOD), que ocupa ~220 MB por hora de vídeo no armazenamento do plano (só o som: o vídeo não é copiado); desligado em todos os canais, esse som sai e o espaço volta.</p>
+          <div class="label between" style="margin-top:12px"><span>Gerar o 5.1 do estéreo automaticamente (acervo e novos envios)</span>
+            <label class="switch"><input type="checkbox" id="au51auto"><span>Ligado</span></label></div>
+          <p class="dim small" id="au51autoNote">Cada vídeo estéreo da biblioteca ganha a trilha 5.1 convertida do estéreo (voz no centro, ambiente atrás), e os próximos envios também, sozinhos. O vídeo e o estéreo não mudam; os vídeos com 5.1 próprio ficam como estão. Roda fora do ar, um vídeo por vez e com prioridade baixa: primeiro o que vai ao ar nas próximas 24 h. Só funciona com o "Som 5.1 no ar" ligado em algum canal. Cada hora de vídeo ocupa ~200 MB a mais e, nos programas, o 5.1 dos apps mais ~220 MB (só o som); tudo conta no armazenamento do plano. Se o plano não comportar, para e avisa, sem apagar nada. Vale para toda a organização e muda na hora, sem o Aplicar. O andamento e o Pausar ficam na Mídia.</p>
+          <div class="label between" style="margin-top:12px"><span>Bipe nos palavrões — canais próprios</span>
+            <label class="switch"><input type="checkbox" id="auBleepOwn"><span>Ligado</span></label></div>
+          <p class="dim small">O ar com "piii" nos palavrões: o HLS do site, os apps e as TVs, o VOD dos apps e as Saídas para destino próprio (RTMP genérico, SRT, UDP). Os vídeos com palavrão ganham uma trilha com bipe no próprio arquivo, gravada fora do ar; o vídeo e o áudio original não mudam. Ligar ou desligar vale em segundos, sem tirar o canal do ar. No VOD dos apps, cada programa com bipe ganha um índice pequeno (~4 MB por hora de vídeo; o vídeo não é copiado) que conta no armazenamento do plano; os apps antigos pedem para atualizar antes de tocar esses vídeos (nunca tocam o palavrão).</p>
+          <div class="label between" style="margin-top:12px"><span>Bipe nos palavrões — redes sociais</span>
+            <label class="switch"><input type="checkbox" id="auBleepSocial"><span>Ligado</span></label></div>
+          <p class="dim small">As Saídas para YouTube, Instagram, Facebook, TikTok, Twitch e as outras plataformas. Cada Saída também pode forçar (Saídas → editar → Bipe nos palavrões). Com as duas chaves diferentes, o programa leva também a outra versão do áudio para as Saídas (um codificador de áudio a mais por canal; o HLS não muda). Ao vivo (entradas e mesa) fica de fora: lá o bipe é o do atraso de segurança.</p>
+          <div class="label between" style="margin-top:12px"><span>Palavrões com **** na legenda</span>
+            <label class="switch"><input type="checkbox" id="auBleepCc"><span>Ligado</span></label></div>
+          <p class="dim small">Os palavrões do mesmo dicionário do bipe saem com um asterisco por letra na legenda (Closed Caption): no ar (o CC do HLS, dos apps, das TVs e de todas as Saídas, inclusive o YouTube) e na legenda dos programas no VOD dos apps. A pontuação fica e as palavras que só contêm um palavrão dentro ("curso", "escuta") não mudam. A legenda guardada e o editor continuam com o texto original: desligar volta tudo como era. Vale em segundos, na próxima fala, sem tirar o canal do ar. A legenda vai no vídeo, então é uma chave só para o canal inteiro (as Saídas não escolhem).</p>
+          <details class="bp-types" id="auBleepTypesBox" style="margin-top:8px"><summary>Tipos de mídia que entram no bipe e nos ****</summary>
+            <p class="dim small">Marque os tipos de mídia (as coleções da biblioteca) que levam o "piii" no áudio e os asteriscos na legenda. Por padrão só os programas e os podcasts (o tipo Programa e as coleções de programa com "programa" ou "podcast" no nome); comerciais, vinhetas e as outras coleções, como clipes e shows, ficam de fora. Os tipos desmarcados no "piii no áudio" não são procurados nem gravados (nada é pago para transcrever) e vão ao ar com o áudio original, também nas Saídas que forçam o bipe. Entradas ao vivo, canais parceiros e cartões nunca entram. Vale ao clicar em Aplicar.</p>
+            <table class="tbl bp-types-tbl" id="auBleepTypes"><thead><tr><th scope="col">Tipo de mídia</th><th scope="col">piii no áudio</th><th scope="col">**** na legenda</th></tr></thead><tbody></tbody></table>
+          </details>
+          <details class="bp-dict" style="margin-top:8px"><summary>Dicionário e folga do bipe (vale para toda a organização)</summary>
+            <p class="dim small">A lista padrão tem os palavrões mais comuns em português e inglês, sem diferenciar maiúsculas, acentos nem a pontuação colada, e só palavra inteira ("cu" não pega "curso"). Onde o acento separa duas palavras, vale o acento: "cocô" leva bipe e "coco" (a fruta) não; "cagado" leva e "cágado" (o réptil) não, escritos aqui de qualquer jeito. Acrescente ou libere termos, um por linha. Mudar o dicionário procura de novo nos vídeos (grátis: no texto já transcrito).</p>
+            <label for="bpExtra">Palavras a mais</label><textarea id="bpExtra" rows="3" spellcheck="false" placeholder="uma por linha"></textarea>
+            <label for="bpFree">Liberadas (da lista padrão)</label><textarea id="bpFree" rows="2" spellcheck="false" placeholder="uma por linha"></textarea>
+            <div class="fields">
+              <div><label for="bpBefore">Folga antes (s)</label><input id="bpBefore" type="number" step="0.01" min="0" max="1.5"></div>
+              <div><label for="bpAfter">Folga depois (s)</label><input id="bpAfter" type="number" step="0.01" min="0" max="1.5"></div>
+            </div>
+            <p class="dim small" id="bpBase"></p>
+            <button class="btn small" type="button" id="bpSave">Salvar o dicionário</button>
+          </details>
+        </div>
+        <div class="card form">
+          <div class="label between"><span>SCTE-35 (HLS)</span>
+            <label class="switch"><input type="checkbox" id="sgScte"><span>Ligado</span></label></div>
+          <label for="sgPre">Aviso antes do intervalo (s)</label>
+          <input id="sgPre" type="number" min="0" max="60" value="8">
+          <div class="label between" style="margin-top:12px"><span>Tons DTMF</span>
+            <label class="switch"><input type="checkbox" id="sgDtmf"><span>Ligado</span></label></div>
+          <div class="fields">
+            <div><label for="sgStart">Início do intervalo</label><input id="sgStart" maxlength="16" placeholder="1234"></div>
+            <div><label for="sgEnd">Retorno à programação</label><input id="sgEnd" maxlength="16" placeholder="5678"></div>
+          </div>
+          <p class="dim small">Todo trecho de comercial que vai ao ar sinaliza sozinho: intervalo, bloco ou comercial inserido no programa e comerciais na Lista em loop ou na Agenda (vários em sequência são um sinal só, com a soma). Vinheta sozinha não sinaliza. O SCTE-35 leva a duração do trecho; os tons entram no começo dele e no item logo depois.</p>
+          <p class="dim small">Dígitos: 0–9, A–D, * e #.</p>
+          <p class="small" style="color:var(--c-warn)">Os tons DTMF são <b>ouvidos por quem assiste</b> (site, apps, TV e destinos como o YouTube): soam como um telefone discando no começo e na volta de cada intervalo. Ligue só se uma operadora de cabo ou afiliada insere comercial local ouvindo os tons. Para o streaming, o SCTE-35 já sinaliza os intervalos sem som.</p>
+          <label for="sbLabel">Texto do standby</label>
+          <input id="sbLabel" maxlength="24" placeholder="STANDBY">
+        </div>
+      </div>
+      <div class="card">
+        <div class="label between"><span>Eventos SCTE-35 emitidos</span><span class="dim small">EXT-X-DATERANGE na playlist HLS do canal</span></div>
+        <div class="scroll"><table class="tbl" id="scteTbl"><thead><tr><th>Início</th><th>Trecho</th><th>Duração</th><th>Evento</th><th>OUT</th><th>IN</th></tr></thead><tbody></tbody></table></div>
+      </div>
+    </section>
+
+    <!-- ---------- entradas e saídas ---------- -->
+    <section class="view" id="view-entradas" hidden>
+      <header class="head"><h2>Entradas e saídas<span class="chn"></span></h2><span class="pill soft" id="rtmpState">—</span></header>
+
+      <div class="card">
+        <div class="label between"><span>Recepção RTMP · ATEM, OBS e encoders</span></div>
+        <p class="dim small" style="margin:0 0 12px">No ATEM (Mini Pro/Extreme), abra <b>Output → Streaming</b>, escolha <b>Custom</b> e preencha <b>Server</b> e <b>Key</b> com os valores da fonte. O sinal chega ao servidor mesmo sem ir ao ar; use <b>Entrar ao vivo</b> no Playout para colocá-lo no canal. Em nuvem, libere a porta TCP do RTMP no firewall.</p>
+        <div id="ingList" class="ing-list"></div>
+        <form class="inline-form" id="ingForm" style="margin-top:12px">
+          <input id="ingName" placeholder="Nome da fonte (ex.: ATEM Estúdio B)" maxlength="60" aria-label="Nome da fonte" required>
+          <button class="btn primary" type="submit">+ Nova fonte RTMP</button>
+        </form>
+      </div>
+
+      <!-- entradas ao vivo na programação (views/entradas-aovivo.js): o sinal que a Grade põe no horário -->
+      <div class="card">
+        <div class="label between"><span>Entradas ao vivo na programação</span><span class="dim small" id="liCount"></span></div>
+        <p class="dim small" style="margin:0 0 12px">O sinal ao vivo que vai para a grade: uma fonte RTMP desta tela ou um endereço externo (SRT, UDP, HTTP, HLS), com a duração de cada exibição. Depois de cadastrar, marque o horário na <a href="#grade">Grade</a>. O selo <b>TC</b> mostra o timecode que chega e o atraso para o relógio do canal; de outro canal NEXA, o <b>Timecode do NEXA embutido (SMPTE 12M, hora do dia)</b> com o canal de origem.</p>
+        <ul id="liList" class="li-list"></ul>
+        <p class="dim small" id="liPerm" style="margin:12px 0 0" hidden>Cadastrar e excluir entradas ao vivo pede a permissão de editar a biblioteca de mídia: peça a quem administra os acessos.</p>
+        <form class="inline-form" id="liveItemForm" style="margin-top:12px">
+          <input id="liTitle" placeholder="Nome (ex.: Jogo ao vivo)" maxlength="120" aria-label="Nome da entrada ao vivo" required>
+          <select id="liSource" aria-label="Fonte do sinal"></select>
+          <input id="liUrl" placeholder="URL da fonte (srt://… udp://… https://…)" aria-label="URL da fonte" hidden>
+          <input id="liMin" type="number" min="1" max="1440" value="60" aria-label="Duração em minutos" title="Duração de cada exibição, em minutos" style="width:90px">
+          <span class="dim small">min</span>
+          <label class="switch" title="Pode ir para os Gadgets do app de TV (Conteúdo → Gadgets → Câmeras)"><input type="checkbox" id="liCam"><span>É uma câmera</span></label>
+          <button class="btn primary" type="submit">Cadastrar entrada ao vivo</button>
+        </form>
+      </div>
+
+      <!-- entradas de sinal (views/entradas-sinal.js, docs/ENTRADA-DE-SINAL.md): o sinal contínuo de um canal parceiro, sem minutos -->
+      <div class="card" id="sigCard">
+        <div class="label between"><span>Entradas de sinal (canais parceiros)</span><span class="dim small" id="sigCount"></span></div>
+        <p class="dim small" style="margin:0 0 12px">Sinal de canal parceiro ou de outra emissora retransmitida: contínuo, sem limite de tempo. Sozinho na <a href="#grade/lista">Lista em loop</a>, o canal retransmite o parceiro sem parar e sem reconectar; na <a href="#grade">Agenda</a>, o bloco marcado diz quando ele entra e quando sai. Se a fonte cair, o canal mostra as barras com o aviso na Saúde do sinal e volta sozinho quando o sinal voltar. Parceiro que é outro canal NEXA: o selo <b>TC</b> mostra o <b>Timecode do NEXA embutido (SMPTE 12M, hora do dia)</b> dele, com o canal de origem e o atraso exato.</p>
+        <ul id="sigList" class="li-list"></ul>
+        <p class="dim small" id="sigPerm" style="margin:12px 0 0" hidden>Cadastrar, editar e excluir entradas de sinal pede a permissão de editar a biblioteca de mídia: peça a quem administra os acessos.</p>
+        <form class="inline-form" id="signalForm" style="margin-top:12px">
+          <input id="sigTitle" placeholder="Canal parceiro (ex.: RS Sports)" maxlength="120" aria-label="Nome do canal parceiro" required>
+          <select id="sigSource" aria-label="Fonte do sinal"></select>
+          <input id="sigUrl" placeholder="Endereço (https://…/playlist.m3u8, srt://…, udp://…)" aria-label="Endereço do sinal do parceiro">
+          <input id="sigNote" placeholder="Observações (contato, contrato…)" maxlength="500" aria-label="Observações sobre o parceiro">
+          <button class="btn primary" type="submit">Cadastrar entrada de sinal</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="label between"><span>Saídas do canal · IP streaming</span><span class="dim small" id="outCount"></span></div>
+        <p class="dim small" id="outProgram" style="margin:0 0 10px"></p>
+        <div class="out-tc" id="outTc"></div>
+        <div id="outBuiltin" class="out-builtin"></div>
+        <div id="outList" class="out-list"></div>
+        <div class="out-add" id="outAdd"></div>
+        <form id="outEditor" class="out-editor" hidden></form>
+        <details class="out-examples"><summary>Exemplos de endereço</summary><ul id="outExamples"></ul></details>
+      </div>
+
+      <div class="card">
+        <div class="label">Não suportado em nuvem</div>
+        <ul class="unsup" id="unsup"></ul>
+      </div>
+    </section>
+
+    <!-- ---------- canais ---------- -->
+    <section class="view" id="view-canais" hidden>
+      <header class="head"><h2>Canais</h2><span class="dim mono small" id="ovInfo"></span></header>
+      <form class="card inline-form" id="chForm">
+        <div class="label" style="margin:0">Novo canal</div>
+        <input id="chName" placeholder="Nome (ex.: NEXA Kids)" maxlength="32" aria-label="Nome do canal" required>
+        <input id="chSlug" placeholder="identificador (opcional)" maxlength="30" aria-label="Identificador do canal" pattern="[a-z0-9-]*">
+        <input id="chNum" type="number" min="1" placeholder="nº" aria-label="Número do canal" style="width:80px">
+        <button class="btn primary" type="submit">Criar canal</button>
+      </form>
+      <div class="grid ch-grid" id="chGrid"></div>
+    </section>
+
+    <!-- ---------- ajustes do canal ---------- -->
+    <section class="view" id="view-canal" hidden>
+      <header class="head"><h2>Ajustes do canal<span class="chn"></span></h2></header>
+      <form class="card form" id="settingsForm">
+        <label for="setName">Nome do canal</label>
+        <input id="setName" maxlength="32" required>
+        <label for="setTag">Slogan</label>
+        <input id="setTag" maxlength="60">
+        <label for="setNum">Número</label>
+        <input id="setNum" type="number" min="1" style="width:100px">
+        <div class="actions"><button class="btn primary" type="submit">Salvar</button></div>
+      </form>
+      <div class="card">
+        <div class="label">Logomarca do canal</div>
+        <p class="dim small" style="margin:8px 0 12px">Aparece no topo do site do canal (ao lado do nome), nos links públicos e nos apps. A mesma logo é usada no catálogo. Recomendado: PNG quadrado 512 × 512 px, fundo transparente.</p>
+        <button class="btn" id="channelLogoManager" type="button">Alterar logomarca</button>
+      </div>
+      <div class="card">
+        <div class="label">Endereços</div>
+        <dl class="kv" id="urls"></dl>
+      </div>
+      <!-- palavras proibidas no chat e nos comentários (views/palavras.js) -->
+      <div class="card pw-card" id="pwCard"></div>
+      <div class="card danger-zone">
+        <div class="label">Zona de risco</div>
+        <p class="dim" style="margin:0 0 10px">Excluir o canal apaga grade, regras, saídas e chat dele. A biblioteca de mídia não é afetada.</p>
+        <button class="btn danger" id="chDelete">Excluir este canal</button>
+      </div>
+    </section>
+    <!-- ---------- app do espectador ---------- -->
+    <section class="view" id="view-app" hidden>
+      <header class="head"><h2>App do espectador</h2><button class="btn primary" id="apPublish">Publicar no app</button></header>
+      <details class="lead"><summary><span>Controle remoto do app Android: o que muda aqui chega ao app já instalado, sem baixar de novo. O ícone, o nome do ícone e as permissões do celular só mudam com um novo build do app.</span></summary></details>
+      <div id="apBody" class="view"></div>
+      <div class="card ap-card">
+        <div class="label">Aviso imediato, em todos os canais</div>
+        <div class="ap-notice">
+          <input id="apNoticeText" maxlength="200" placeholder="Ex.: Começa o jogo agora!" aria-label="Texto do aviso">
+          <input id="apNoticeUrl" placeholder="https://… (opcional)" aria-label="Link do aviso">
+          <button class="btn primary" id="apNoticeSend" type="button">Enviar aviso</button>
+        </div>
+        <p class="dim small" style="margin:8px 0 0">Aparece como uma notificação dentro do app para quem está com ele aberto. Notificações push com o app fechado não estão incluídas.</p>
+      </div>
+    </section>
+
+    <!-- ---------- conteúdo dos apps (Central de conteúdo) ---------- -->
+    <section class="view" id="view-conteudo" hidden>
+      <header class="head"><h2>Conteúdo dos apps</h2>
+        <div class="actions"><label class="switch ct-global" title="Vitrines e itens que a plataforma oferece a todos os clientes"><input type="checkbox" id="ctGlobal" data-keep><span>Receber conteúdo da plataforma</span></label>
+          <button class="btn primary" id="ctNew" type="button">+ Novo conteúdo</button></div></header>
+      <details class="lead"><summary><span>O que os apps (celular, tablet, TVs e web) mostram além dos canais: VOD, links ao vivo, canais, informativos, banners e links, organizados em vitrines. Só o que está <b>publicado</b>, dentro da agenda e na plataforma certa chega ao app.</span></summary></details>
+      <div class="tabs" id="ctTabs" role="tablist">
+        <button class="tab on" role="tab" data-tab="lib" type="button">Biblioteca</button>
+        <button class="tab" role="tab" data-tab="rows" type="button">Vitrines</button>
+        <button class="tab" role="tab" data-tab="app" type="button">Catálogo do app</button>
+        <button class="tab" role="tab" data-tab="gadgets" type="button">Gadgets</button>
+        <button class="tab" role="tab" data-tab="preview" type="button">Pré-visualização</button>
+        <button class="tab" role="tab" data-tab="lic" type="button">Conteúdo licenciado</button>
+        <button class="tab" role="tab" data-tab="aud" type="button">Audiência</button>
+      </div>
+      <div id="ctLib" class="view"></div>
+      <div id="ctRows" class="view" hidden></div>
+      <div id="ctPreview" class="view" hidden></div>
+      <div id="ctLic" class="view" hidden></div>
+      <div id="ctApp" class="view" hidden></div>
+      <div id="ctGadgets" class="view" hidden></div>
+      <div id="ctAud" class="view" hidden></div>
+    </section>
+
+    <!-- ---------- público: Fale com a TV, caixa do app, estatísticas, perfis ---------- -->
+    <section class="view" id="view-publico" hidden>
+      <header class="head"><h2>Público</h2><span class="dim mono small" id="auInfo"></span></header>
+      <div class="tabs" id="auTabs" role="tablist">
+        <button class="tab on" role="tab" data-tab="msgs" type="button">Fale com a TV</button>
+        <button class="tab" role="tab" data-tab="inbox" type="button">Caixa do app</button>
+        <button class="tab" role="tab" data-tab="stats" type="button">Estatísticas</button>
+        <button class="tab" role="tab" data-tab="profiles" type="button">Perfis</button>
+      </div>
+      <div id="auMsgs" class="view"></div>
+      <div id="auInbox" class="view" hidden></div>
+      <div id="auStats" class="view" hidden></div>
+      <div id="auProfiles" class="view" hidden></div>
+    </section>
+
+    <!-- ---------- denúncias e feedback do público (views/denuncias.js, docs/DENUNCIAS.md) ---------- -->
+    <section class="view" id="view-denuncias" hidden>
+      <header class="head"><h2>Denúncias e feedback · <span class="chn"></span></h2></header>
+      <section class="card dn" id="dnPanel" aria-label="Denúncias e feedback do público"></section>
+    </section>
+
+    <!-- ---------- reações por programa: cada exibição com as reações do site, do app e das TVs (views/reacoes.js, docs/REACOES.md) ---------- -->
+    <section class="view" id="view-reacoes" hidden>
+      <header class="head"><h2>Reações por programa · <span class="chn"></span></h2></header>
+      <section class="card rp rx" id="rxPanel" aria-label="Reações por programa"></section>
+    </section>
+
+    <!-- ---------- central em tempo real: chat, fotos do mural, reações, enquetes e cliques ---------- -->
+    <section class="view" id="view-moderacao" hidden>
+      <header class="head"><h2>Moderação · <span class="chn"></span></h2><span class="pill live">TEMPO REAL</span></header>
+      <section class="card md" id="moderationPanel" aria-label="Central de moderação em tempo real"></section>
+      <!-- palavras proibidas aqui mesmo (botão "Palavras proibidas" da fila): quem só modera não abre Ajustes do canal -->
+      <section class="card pw-card" id="pwModCard" aria-label="Palavras proibidas" hidden></section>
+    </section>
+
+    <!-- ---------- interações ---------- -->
+    <section class="view" id="view-interacoes" hidden>
+      <header class="head"><h2>Interações<span class="chn"></span></h2><span class="dim mono small" id="ivViewers"></span></header>
+      <!-- a votação: o que está no ar e a nova (pergunta e opções, a prévia de como o telespectador vê e a galeria de layouts) -->
+      <div class="two iv-two">
+        <div class="card"><div class="label">Enquete no ar</div><div id="ivCurrent"></div><div id="ivHistory"></div></div>
+        <form class="card form iv-new" id="ivPollForm">
+          <div class="label">Nova enquete</div>
+          <div class="iv-new-grid">
+          <div class="iv-fields">
+          <label for="ivQuestion">Pergunta</label>
+          <input id="ivQuestion" maxlength="140" placeholder="Quem vai ganhar hoje?" required>
+          <label id="ivOptLabel">Opções (de 2 a 5)</label>
+          <div id="ivOptions"></div>
+          <p class="iv-warn small" id="ivOptWarn" hidden></p>
+          <!-- tempo na tela: só minutos; o servidor encerra sozinho no fim, mesmo com o painel fechado -->
+          <label for="ivMinutes">Tempo na tela</label>
+          <select id="ivMinutes"><option value="1">1 min</option><option value="2" selected>2 min</option><option value="5">5 min</option><option value="10">10 min</option><option value="15">15 min</option><option value="">Até eu encerrar</option></select>
+          <label class="switch iv-res"><input type="checkbox" id="ivResults" checked><span>Mostrar o resultado parcial a quem já votou</span></label>
+          <div class="actions"><button class="btn" id="ivAddOpt" type="button">＋ Opção</button><button class="btn primary" type="submit">Lançar enquete</button></div>
+          <p class="dim small">Uma enquete por canal: lançar outra encerra a anterior. Cada aparelho vota uma vez, no site, no app ou na TV.</p>
+          </div>
+          <!-- a prévia grande: o layout escolhido com a pergunta e as opções digitadas -->
+          <div class="iv-prev"><div id="ivPreview"></div><p class="dim small" id="ivLayoutInfo"></p></div>
+          </div>
+          <div class="label iv-gal-label">Layout da votação</div>
+          <div id="ivLayouts" class="iv-gal" role="radiogroup" aria-label="Layout da votação"></div>
+        </form>
+      </div>
+      <div class="two">
+        <div class="card"><div class="label">Reações · últimos 30 s</div><div id="ivReactions" class="iv-reacts"></div>
+          <div class="label" style="margin-top:14px">Curtidas no site · por programa</div><div id="ivLikes" class="iv-likes" title="Cada programa começa do zero. No site, o público vê só as curtidas; as descurtidas aparecem só aqui">—</div></div>
+        <form class="card form" id="ivNoticeForm">
+          <div class="label">Aviso neste canal</div>
+          <label for="ivNoticeText">Texto</label>
+          <input id="ivNoticeText" maxlength="200" placeholder="Ex.: Segundo tempo começando!" required>
+          <label for="ivNoticeUrl">Link (opcional)</label>
+          <input id="ivNoticeUrl" placeholder="https://…">
+          <div class="actions"><button class="btn primary" type="submit">Enviar aviso</button></div>
+        </form>
+      </div>
+    </section>
+
+    <!-- ---------- pedidos ---------- -->
+    <section class="view" id="view-pedidos" hidden>
+      <header class="head"><h2>Pedidos da loja</h2><div class="actions"><input id="orSearch" placeholder="Buscar por nome, produto, telefone…" aria-label="Buscar pedidos"><button class="btn" id="orCsv" type="button">Exportar CSV</button></div></header>
+      <details class="lead"><summary><span>Pedidos feitos no app. A venda é concluída por contato com o cliente: o app não processa pagamento.</span></summary></details>
+      <div class="chips" id="orChips"></div>
+      <div id="orList"></div>
+    </section>
+
+    <!-- ---------- usuários e acessos ---------- -->
+    <section class="view" id="view-usuarios" hidden>
+      <header class="head"><h2>Usuários e acessos</h2></header>
+      <div class="tabs" id="acTabs" role="tablist">
+        <button class="tab on" role="tab" data-tab="users">Usuários</button>
+        <button class="tab" role="tab" data-tab="groups">Grupos e permissões</button>
+        <button class="tab" role="tab" data-tab="audit" id="tabAudit">Auditoria</button>
+      </div>
+      <div id="acUsers"></div>
+      <div id="acGroups" hidden></div>
+      <div id="acAudit" hidden></div>
+    </section>
+
+    <!-- ---------- plano e uso ---------- -->
+    <section class="view" id="view-plano" hidden>
+      <header class="head"><h2>Plano e uso</h2></header>
+      <div id="plBody" class="pl-body"></div>
+    </section>
+
+    <!-- ---------- licença e suporte (edição Windows) ---------- -->
+    <section class="view" id="view-licenca" hidden>
+      <header class="head"><h2>Licença e suporte</h2></header>
+      <div id="liBody" class="pl-body"></div>
+    </section>
+
+    <!-- ---------- configurações: organização, domínio próprio, gerador de caracteres do canal… (public/admin/views/config.js) ---------- -->
+    <section class="view" id="view-config" hidden>
+      <header class="head"><h2>Configurações</h2></header>
+      <div id="cfgBody" class="pl-body"></div>
+    </section>
+
+    <!-- ---------- minha conta ---------- -->
+    <section class="view" id="view-conta" hidden>
+      <header class="head"><h2>Minha conta</h2></header>
+      <div id="acMe" class="view"></div>
+    </section>
+  </main>
+</div>
+
+<div id="toasts" aria-live="polite"></div>
+<script src="/vendor/sortable.js"></script>
+<script src="/vendor/hls.js"></script>
+<script src="runtime-config.js"></script>
+<script type="module" src="main.js"></script>
+</body>
+</html>

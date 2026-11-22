@@ -321,38 +321,27 @@ export function mountFeatureProfiles(r, { A, ah, aud }) {
   }));
 }
 
-/* ------------------------------------------------------------------ os 3 planos sugeridos (rascunhos) */
+/* ------------------------------------------------------------------ os 3 planos de revenda sugeridos (rascunhos) */
+// Planos do DIGITAL ISP: o principal é o número de telas. Preços em branco (o dono ainda não definiu): nascem inativos.
 const GB = 1024;
 const on = (...keys) => Object.fromEntries(keys.map((k) => [k, true]));
-/** Essencial: o canal 24 h com a programação, a mídia convertida, o monitor e o site com o player. */
-const ESSENCIAL = on('painel', 'monitor', 'saude', 'relatorios', 'intervalos', 'graphics', 'audio', 'entradas', 'embed'); // embed: o player no site da emissora (docs/INCORPORAR.md)
-/** Profissional: o Essencial + o ao vivo, o CG e a automação, o app com VOD, as legendas por IA e as interações. */
-const PROFISSIONAL = {
-  ...ESSENCIAL,
-  ...on('aovivo', 'plantaoCelular', 'rtmpIngest', 'entradasSrt', 'parceiros', 'modosEntrada', 'cg', 'cartelas', 'overlays', 'automacao', 'scte',
-    'comercial', 'app', 'conteudo', 'vod', 'vitrines', 'gadgets', 'audiencia', 'legendasIa', 'bipe', 'legendaAsteriscos', 'importarLink',
-    'interacoes', 'polls', 'chat', 'reacoes', 'mural', 'audience', 'moderacao', 'monitoramento', 'telemetria', 'customDomain', 'saidasSrtUdp', 'youtube'),
-};
-/** Broadcast: tudo. */
-const BROADCAST = Object.fromEntries(CAT.FEATURE_KEYS.map((k) => [k, !CAT.BY_KEY[k].optIn])); // os modos (modo prefeitura) ficam fora
+const INICIAL = on('mapa', 'alertas', 'aprovacao', 'templates', 'dados', 'paginas', 'marcaPropria');
+const PROFISSIONAL = { ...INICIAL, ...on('aoVivo', 'indicadores', 'rh', 'celular', 'senhas', 'relatorioAnunciante', 'avisosWhatsapp') };
+const COMPLETO = Object.fromEntries(CAT.FEATURE_KEYS.map((k) => [k, !CAT.BY_KEY[k].optIn])); // tudo, menos os modos especiais
 export const DRAFTS = [
-  {
-    code: 'essencial', name: 'Essencial', sort: 10, priceCents: 99000, features: ESSENCIAL,
-    description: 'Canal 24/7 com grade, mídia convertida, painel, monitor, saúde do sinal, gráficos básicos, áudio, intervalos, relatórios e o site com o player.',
-    limits: { channels: 1, users: 3, storageMB: 100 * GB, products: 0, ingests: 0, outputs: 2, viewers: null, contentItems: 0, installations: 0 },
-  },
-  {
-    code: 'profissional', name: 'Profissional', sort: 20, priceCents: 199000, features: PROFISSIONAL,
-    description: 'Essencial + AO VIVO (mesa, plantão, entradas e parceiros), CG, cartelas, overlays, automação, SCTE-35, comercial, app com VOD, legendas por IA, bipe, interações, moderação, monitoramento, telemetria e domínio próprio.',
-    limits: { channels: 1, users: 10, storageMB: 500 * GB, products: 0, ingests: 4, outputs: 5, viewers: null, contentItems: 500, installations: 0 },
-  },
-  {
-    code: 'broadcast', name: 'Broadcast', sort: 30, priceCents: 349000, features: BROADCAST,
-    description: 'Tudo: apps de TV, vitrine e loja, redação e teleprompter, censura, EAS, legendas em 11 idiomas, 5.1 e imersivo, imersão, API, NEXA MAM e classificação indicativa.',
-    limits: { channels: 1, users: 30, storageMB: 2048 * GB, products: null, ingests: 8, outputs: 10, viewers: null, contentItems: null, installations: 1 },
-  },
+  { code: 'revenda-inicial', name: 'Revenda Inicial', sort: 10, priceCents: 0, features: INICIAL,
+    description: 'Até 50 telas e 20 clientes finais: telas, mapa, alertas, aprovação, templates, notícias e clima, páginas e marca própria.',
+    limits: { telas: 50, clientes: 20, users: 5, storageMB: 20 * GB } },
+  { code: 'revenda-profissional', name: 'Revenda Profissional', sort: 20, priceCents: 0, features: PROFISSIONAL,
+    description: 'Até 200 telas e 100 clientes finais: o Inicial + ao vivo, indicadores, RH, envio pelo celular, senhas, relatório para anunciante e WhatsApp.',
+    limits: { telas: 200, clientes: 100, users: 15, storageMB: 100 * GB } },
+  { code: 'revenda-completa', name: 'Revenda Completa', sort: 30, priceCents: 0, features: COMPLETO,
+    description: 'Até 1.000 telas e clientes finais sem limite: todos os módulos, inclusive a API e os webhooks.',
+    limits: { telas: 1000, clientes: null, users: 50, storageMB: 500 * GB } },
 ];
-const SEED_KEY = 'feature_profiles_seeded';
+/** Rascunhos do NEXA Broadcast que o primeiro boot do DIGITAL ISP chegou a criar: saem se ninguém os usa. */
+const NEXA_DRAFTS = ['essencial', 'profissional', 'broadcast'];
+const SEED_KEY = 'feature_profiles_seeded_digitalisp';
 
 /**
  * Cria UMA vez os 3 perfis e os 3 planos sugeridos: inativos, privados, com o preço do site (R$ 990 / 1.990 / 3.490 por mês), 1 canal, cada plano
@@ -361,6 +350,13 @@ const SEED_KEY = 'feature_profiles_seeded';
 export async function seedDrafts() {
   if (config.edge?.enabled) return { seeded: false }; // edição Windows: o plano vem da licença da central
   if ((await getSetting(SEED_KEY, '')) === '1') return { seeded: false };
+  // limpeza única: os rascunhos do NEXA (inativos, sem revenda e criados pela semeadura antiga) saem com o perfil deles
+  for (const code of NEXA_DRAFTS) {
+    const p = await db.get('SELECT id, active FROM plans WHERE code = ?', [code]);
+    if (p && !Number(p.active) && !(await db.get('SELECT id FROM tenants WHERE plan_id = ? LIMIT 1', [p.id]))) await db.run('DELETE FROM plans WHERE id = ?', [p.id]);
+    const fp = await db.get('SELECT id FROM feature_profiles WHERE code = ?', [code]);
+    if (fp && !(await db.get('SELECT id FROM plans WHERE profile_id = ? LIMIT 1', [fp.id]))) await db.run('DELETE FROM feature_profiles WHERE id = ?', [fp.id]);
+  }
   const ts = Date.now();
   const made = { profiles: [], plans: [] };
   for (const d of DRAFTS) {
@@ -380,6 +376,6 @@ export async function seedDrafts() {
   }
   await setSetting(SEED_KEY, '1');
   T.invalidateTenants();
-  if (made.profiles.length || made.plans.length) console.log(`[plataforma] Perfis de funcionalidades sugeridos criados (${made.profiles.join(', ') || 'nenhum'}) e planos rascunho (${made.plans.join(', ') || 'nenhum'}), inativos, com o preço do site.`);
+  if (made.profiles.length || made.plans.length) console.log(`[plataforma] Planos de revenda sugeridos criados (${made.plans.join(', ') || 'nenhum'}), inativos e sem preço: revise e ative no superadmin.`);
   return { seeded: true, ...made };
 }

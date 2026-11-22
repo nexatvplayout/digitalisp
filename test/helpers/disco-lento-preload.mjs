@@ -13,7 +13,7 @@ if (dir && /server[\\/]index\.js$/.test(process.argv[1] || '')) {
   const ms = Number(process.env.DISCO_LENTO_MS) || 1500;
   const [every, length] = String(process.env.DISCO_LENTO_TEMPESTADE || '').split(',').map(Number);
   const storm = every > 0 && length > 0 ? { everyMs: every, lengthMs: length } : null;
-  const disco = await slowDisk({ dir, syncMs: ms, asyncMs: ms, storm, exclude: [path.join(dir, 'playout.db')], active: false });
+  const disco = await slowDisk({ dir, syncMs: ms, asyncMs: ms, storm, exclude: [path.join(dir, 'digitalisp.db')], active: false });
   globalThis.__discoLento = disco;
   const marker = path.join(dir, '.disco-lento');
   const stats = process.env.DISCO_LENTO_STATS || null;

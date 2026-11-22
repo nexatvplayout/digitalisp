@@ -4,13 +4,13 @@
    (o provedor do Superadmin, injetado como weatherOf); o trânsito só no Rio (server/transito-rio.js, injetado como
    trafficOf), nas outras cidades avisos escritos. Indicadores lidos de planilha publicada como CSV ou de JSON (https).
 
-   A busca é sempre no servidor, em segundo plano, pelo safeFetch de server/cg/net.js (só https aqui, prazo, teto de 2 MB,
+   A busca é sempre no servidor, em segundo plano, pelo safeFetch de server/web/net.js (só https aqui, prazo, teto de 2 MB,
    nada de rede interna). O app nunca busca fora. O texto sai limpo de HTML e de caracteres de controle; o painel, a página
    do celular e o app escrevem como texto.
 
    Nada aqui guarda: fetchFeed(feed) -> o cache (os itens prontos) ou lança; fetchKpiValue(kpi) -> o número ou lança.
    server/tvcorp-dados.js guarda, segura e serve. */
-import { safeFetch } from './cg/net.js';
+import { safeFetch } from './web/net.js';
 import { fail, line, cleanHttpsUrl } from './tvcorp-rh.js';
 
 export const FEED_KINDS = Object.freeze({ rss: 'Notícias (RSS)', quotes: 'Cotações', weather: 'Clima', traffic: 'Trânsito' });
@@ -97,9 +97,9 @@ async function getText(url, { fetcher = safeFetch, accept = '*/*' } = {}) {
   return r.text();
 }
 let parseFeedImpl = null;
-/** O leitor de RSS/Atom do gerador de caracteres (server/cg/sources.js), carregado só quando precisa. */
+/** O leitor de RSS/Atom do gerador de caracteres (server/web/fontes.js), carregado só quando precisa. */
 async function loadParseFeed() {
-  if (!parseFeedImpl) parseFeedImpl = (await import('./cg/sources.js')).parseFeed;
+  if (!parseFeedImpl) parseFeedImpl = (await import('./web/fontes.js')).parseFeed;
   return parseFeedImpl;
 }
 const pad = (n) => String(n).padStart(2, '0');

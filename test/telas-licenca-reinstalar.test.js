@@ -132,7 +132,7 @@ async function roteiro(s, dump) {
 test('SQLite: a licença sobrevive à reinstalação; migração aditiva das colunas sobre a tabela de antes', { timeout: 300000 }, async () => {
   let s = await boot(ENV);
   const dataDir = s.dataDir;
-  const file = path.join(dataDir, 'playout.db');
+  const file = path.join(dataDir, 'digitalisp.db');
   try {
     await roteiro(s, async () => {
       const db = new DatabaseSync(file, { timeout: 15000, readOnly: true });

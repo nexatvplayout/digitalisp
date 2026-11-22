@@ -466,7 +466,7 @@ export function createTelas({
       .catch((err) => { console.warn('[telas] tv corporativa:', err.message); return null; }) : null;
     const cfg = C.contractConfig({
       eff, device: dev, office: { name: dev.o_name, type: dev.o_type }, region: dev.r_name ? { name: dev.r_name } : null,
-      stream: await streamOf(tenantId, num(dev.o_channel), req),
+      stream: await streamOf(tenantId, num(dev.o_channel), req, Number(dev.id)), // DIGITAL ISP: a tela pode ter o canal dela
       // a atualização: a da prefeitura, se ela definiu; senão o APK servido por este servidor (§23 do docs/TELAS.md)
       update: def.update || appStore.update(publicUrl(req)),
       weather: conteudo.weatherFor(def), cards, queue, offline, offlineImage, electoral, internal, signage,

@@ -18,7 +18,7 @@
 //     clock: '14:32', date: 'quarta, 12 de novembro',
 //   }) -> elemento
 import { splitAviso, isQueueLayout, QUEUE_LAYOUT_KEYS, themeColorKey, SERVICE_COLORS } from './telas-tipos.js';
-import { encodeQr } from '../cg/qr.js'; // o QR code do contato do caso de pessoa desaparecida
+import { encodeQr } from './qr.js'; // o QR code do contato do caso de pessoa desaparecida
 
 const h = (tag, cls, ...kids) => {
   const n = document.createElement(tag);
@@ -145,7 +145,7 @@ function photoOf(m, cls) {
 }
 const ageText = (m) => (m.age != null && m.age !== '' ? `${m.age} ${Number(m.age) === 1 ? 'ano' : 'anos'}` : '');
 /**
- * O QR code de verdade (o mesmo gerador do gerador de caracteres, public/cg/qr.js), num SVG com a margem branca: um
+ * O QR code de verdade (o mesmo gerador do gerador de caracteres, public/shared/qr.js), num SVG com a margem branca: um
  * retângulo por módulo escuro, só com atributos (nenhum estilo pelo script). Conteúdo que não dá para codificar: nada.
  */
 export function qrSvg(data, cls = 'qrc') {

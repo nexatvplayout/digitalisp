@@ -96,3 +96,15 @@
 .tvc-sl.tvc-art-conquista { background-image: url(/tvcorp/arte/conquista.svg); }
 .tvc-sl.tvc-art-evento { background-image: url(/tvcorp/arte/evento.svg); }
 .tvc-sl.tvc-art-saude { background-image: url(/tvcorp/arte/saude.svg); --tfg: #0f172a; --tdim: #334155; }
+
+/* aniversariantes com a foto ou as iniciais (DIGITAL ISP) */
+.tvc-it-people { list-style: none; padding-left: 0; display: grid; gap: 1.4cqw; }
+.tvc-it-people li { display: flex; align-items: center; gap: 1.6cqw; }
+.tvc-av { width: 7cqw; height: 7cqw; border-radius: 50%; object-fit: cover; flex: none; }
+.tvc-av-ini { display: inline-grid; place-items: center; background: var(--tacc, #1d4ed8); color: #fff; font-weight: 700; font-size: 2.8cqw; }
+
+/* A prévia mede tudo (texto, margens) pela caixa onde ela está (cqw): a caixa de fora precisa ser um "container". Sem
+   isso, as medidas iam para a janela inteira, as margens engoliam o conteúdo e a miniatura transbordava (22/11). */
+:has(> .tvc-sl), :has(> .tvc-it), :has(> .tvc-lay), :has(> .tvc-z) { container-type: inline-size; }
+.tc-tpl, .tc-thumb { container-type: inline-size; min-width: 0; }
+.tc-tpl > .tvc-sl, .tc-thumb > .tvc-sl { max-width: 100%; }

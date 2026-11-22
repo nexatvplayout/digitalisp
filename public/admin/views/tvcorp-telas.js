@@ -5,11 +5,72 @@ import {
   el, guard, toast, tapi, tblob, put, f, opt, table, label, note, empty, btn, btns, chip, dialog, D, T,
   active, officeOf, groupsOf, statusOf, sinceText, counters, dot, when, ago, now, pct, STATUS,
 } from './tvcorp-base.js';
-import { copyText } from '../lib.js';
+import { copyText, api } from '../lib.js';
 import { createMap } from '../telas-mapa.js';
 import { officeStatus, OFFICE_STATUS_LABEL } from '../../shared/telas-geo.js';
 import { LAYOUTS, LAYOUT_KEYS, COMMANDS, typeLabel } from '../../shared/telas-tipos.js';
 import { WEEK_SHORT } from './tvcorp-catalogo.js';
+import { TVC_PLAYLIST_ZONES } from '../../shared/tvcorp-tipos.js';
+
+/**
+ * "O que passa nesta tela": o layout e a playlist de cada zona SÓ desta tela (a grade de alcance "Telas escolhidas", com
+ * esta tela só, o dia todo, todos os dias). A grade com tela escolhida vence as de unidade, grupo e empresa.
+ */
+function programacaoDaTela(d, reload) {
+  const data = D();
+  const nomeGrade = `Tela ${d.name}`;
+  // a programação própria desta tela: a mais recente; as cópias antigas (de cliques repetidos) saem ao salvar
+  const proprias = (data.schedules || []).filter((g) => g.scope?.kind === 'devices' && (g.scope.devices || []).length === 1 && Number(g.scope.devices[0]) === d.id && g.name === nomeGrade).sort((a, b) => b.id - a.id);
+  const minha = proprias[0] || null;
+  const copias = proprias.slice(1);
+  const layout = el('select', {}, opt('', 'Escolha o layout', !minha), ...(data.layouts || []).map((l) => opt(l.id, l.name, minha?.layoutId === l.id)));
+  const zonasBox = el('div', { class: 'pf-grid' });
+  const escolhas = { ...(minha?.zonePlaylists || {}) };
+  // o canal ao vivo da zona de vídeo, só desta tela (Ao vivo (HLS)); vazio = o canal da unidade, se ela tiver
+  let canais = []; let canalTela = null;
+  const canal = el('select', { onchange: (e) => { canalTela = e.target.value ? Number(e.target.value) : null; } });
+  const desenharCanal = () => put(canal, opt('', canais.length ? 'O canal da unidade (ou nenhum)' : 'Nenhum canal cadastrado (aba Ao vivo)', canalTela == null),
+    ...canais.filter((c) => c.ativo).map((c) => opt(c.id, c.name, canalTela === c.id)));
+  Promise.all([api('/api/hls').catch(() => []), api('/api/hls/telas').catch(() => ({}))]).then(([l, m]) => {
+    canais = Array.isArray(l) ? l : []; canalTela = m?.[d.id] ?? null; desenharCanal();
+  });
+  desenharCanal();
+  const desenhar = () => {
+    const l = (data.layouts || []).find((x) => x.id === Number(layout.value));
+    const zonas = (l?.zones || []).filter((z) => TVC_PLAYLIST_ZONES.includes(z.kind));
+    const temVideo = (l?.zones || []).some((z) => z.kind === 'video');
+    put(zonasBox, ...(temVideo ? [f('Canal ao vivo da zona de vídeo', canal)] : []), ...(l ? (zonas.length ? zonas.map((z) => {
+      const sel = el('select', { onchange: (e) => { escolhas[z.id] = e.target.value ? Number(e.target.value) : null; } },
+        opt('', 'Nenhuma', !escolhas[z.id]), ...(data.playlists || []).map((p) => opt(p.id, p.name, Number(escolhas[z.id]) === p.id)));
+      return f(`Playlist da zona "${z.name || z.id}"`, sel);
+    }) : [note('Este layout não tem zona de playlist (ex.: só o ao vivo). Pode salvar assim.')]) : []));
+  };
+  layout.addEventListener('change', desenhar); desenhar();
+  let atualId = minha?.id ?? null; // depois do primeiro salvar, os seguintes atualizam a mesma programação
+  let ocupado = false;
+  const salvar = guard(async (e) => {
+    if (ocupado) return;
+    if (!layout.value) { toast('Escolha o layout.', true); return; }
+    ocupado = true; const b = e?.currentTarget; if (b) b.disabled = true;
+    try {
+    const l = (data.layouts || []).find((x) => x.id === Number(layout.value));
+    const zp = Object.fromEntries((l?.zones || []).filter((z) => TVC_PLAYLIST_ZONES.includes(z.kind) && escolhas[z.id]).map((z) => [z.id, escolhas[z.id]]));
+    const body = { name: nomeGrade, layoutId: Number(layout.value), zonePlaylists: zp, scope: { kind: 'devices', devices: [d.id] }, days: [], timeFrom: 0, timeTo: 1440, priority: 0 };
+    if ((l?.zones || []).some((z) => z.kind === 'video')) await api(`/api/hls/tela/${d.id}`, { method: 'PUT', body: { hlsId: canalTela } });
+    if (atualId) await tapi(`/api/tvcorp/schedules/${atualId}`, { method: 'PATCH', body });
+    else { const r = await tapi('/api/tvcorp/schedules', { method: 'POST', body }); atualId = r?.id ?? null; }
+    for (const c of copias.splice(0)) await tapi(`/api/tvcorp/schedules/${c.id}`, { method: 'DELETE' }).catch(() => {});
+    toast(`Programação da tela "${d.name}" salva: ela troca em até 30 s.`);
+    await reload?.();
+    } finally { ocupado = false; if (b) b.disabled = false; }
+  });
+  return el('div', { class: 'tc-prog' },
+    label('O que passa nesta tela'),
+    note(minha ? 'Esta tela tem a programação própria abaixo (vale o dia todo, todos os dias, por cima da grade geral).' : 'Escolha o layout e a playlist de cada zona só para esta tela. Para horários e dias diferentes, use a aba Grade.'),
+    el('div', { class: 'pf-grid' }, f('Layout', layout)), zonasBox,
+    btns(btn(minha ? 'Salvar a programação da tela' : 'Pôr esta programação na tela', salvar, 'primary'),
+      minha ? btn('Tirar a programação própria', guard(async () => { await tapi(`/api/tvcorp/schedules/${atualId || minha.id}`, { method: 'DELETE' }); toast('A tela volta a seguir a grade geral.'); await reload?.(); }), 'small') : null));
+}
 
 const V = { mode: 'lista', avail: new Map(), map: null };
 const counterRow = (n, total) => el('div', { class: 'pf-counters' },
@@ -54,7 +115,7 @@ async function nowText(d) {
   return `${parts.join(' · ')}${zones.length ? ` · ${zones.join(', ')}` : ''}${shown.length ? ` · mostrou há pouco: ${shown.join(', ')}${r.lastPlays.at ? ` (${when(r.lastPlays.at)})` : ''}` : ''}`;
 }
 /** Captura, agora e comandos de uma tela. */
-function deviceDialog(d) {
+function deviceDialog(d, ctx = null) {
   const st = statusOf(d);
   const img = el('img', { class: 'pf-shot tc-shot', alt: `Captura da tela ${d.name}`, hidden: true });
   const shotNote = note(d.shotAt ? 'Carregando a captura…' : 'Sem captura ainda. Peça uma em "Captura da tela".');
@@ -69,6 +130,7 @@ function deviceDialog(d) {
       el('dt', { text: 'Passando agora' }), el('dd', {}, nowBox),
       el('dt', { text: 'App' }), el('dd', { text: [d.appVersion || '—', d.model, d.android ? `Android ${d.android}` : '', d.net ? `rede ${d.net}` : ''].filter(Boolean).join(' · ') }),
       d.lastError ? el('dt', { text: 'Último erro' }) : null, d.lastError ? el('dd', { class: 'pf-err', text: d.lastError }) : null),
+    programacaoDaTela(d, () => ctx?.reload?.()),
     img, shotNote,
     label('Comandos'),
     dead ? note('A tela está desligada: o comando só chega quando ela ligar.') : null,
@@ -140,7 +202,7 @@ export default async function paintTelas(box, ctx) {
       el('td', { text: x.appVersion || '—' }),
       el('td', { title: 'Tempo no ar sobre o tempo acompanhado, nos últimos 7 e 30 dias' }, x.revokedAt ? '—' : `${pct(av?.d7)} · ${pct(av?.d30)}`),
       el('td', { class: 'pf-actions' },
-        x.revokedAt ? null : btn('Captura e comandos', () => deviceDialog(x), 'small'),
+        x.revokedAt ? null : btn('Captura, comandos e programação', () => deviceDialog(x, ctx), 'small'),
         x.revokedAt ? null : btn('Editar', () => editDevice(x, reload), 'small'),
         x.revokedAt
           ? btn('Excluir', guard(async () => { if (!confirm(`Excluir a tela revogada "${x.name}" da lista?`)) return; await tapi(`/api/tvcorp/rede/devices/${x.id}`, { method: 'DELETE' }); await reload(); }), 'small danger')

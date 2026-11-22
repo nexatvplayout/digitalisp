@@ -1,0 +1,547 @@
+// NEXA TV · painel de playout: login, seletor de canal, roteador, estatísticas e WebSocket.
+import { $, $$, el, state, store, api, capi, guard, emit, on, can, seesLive, toast, VIEW_ALIAS, PLACE_ALIAS } from './lib.js';
+import { loadVersion } from './version.js'; // versão no menu, abaixo do Sair (CHANGELOG.md)
+import { loadMenuNames, applyMenuNames } from './menu-names.js'; // nomes dos menus da organização (docs/MENUS.md)
+import playout from './views/playout.js';
+import dashboard from './views/dashboard.js';
+import saude from './views/saude.js';
+import scopes from './views/telemetria.js'; // Telemetria (antes Scopes; endereço #scopes): scopes, áudio, multiviewer, transport stream, QC de arquivos, sinais de teste
+import { setupRaster } from './telemetria/raster.js'; // ?raster=1: a aba da Telemetria sozinha numa tela externa
+import { setupFaixa } from './maquina-faixa.js'; // faixa da máquina no topo (Telemetria → Máquina → Fixar no topo)
+import relatorios from './views/relatorios.js'; // relatórios do canal: loudness do ar (docs/LOUDNESS.md)
+import alertas from './views/alertas.js'; // alertas de emergência: Defesa Civil, INMET, alerta manual (docs/EAS.md)
+import fx4d from './views/fx4d.js'; // 4DX doméstico: painel temporário de testes
+import arquivo from './views/arquivo.js'; // menu Censura: timeline da programação exibida, gravações do ao vivo e prazos (docs/ARQUIVO-LEGAL.md)
+import monitor from './views/monitor.js';
+import monitoramento from './views/monitoramento.js'; // Monitoramento: parede de monitores (entradas, programa, saídas) com alarme e TIME CODE
+import plantao from './views/plantao.js'; // mesa do plantão (docs/MESA.md)
+import grade from './views/grade-tela.js'; // Grade: Semana (agenda por dia e horário) + Lista em loop (docs/AGENDA.md, docs/GRADE.md)
+import automacao from './views/automacao.js'; // central dos fluxos automáticos do canal: grade, breaks, CG, alertas e roteamento
+import midia from './views/midia.js';
+import loja from './views/loja.js'; // Loja de conteúdos: vitrine, prévia, aquisição e licenças (docs/LOJA.md)
+import intervalos from './views/intervalos.js';
+import cartelas from './views/cartelas.js'; // cartelas L-bar: biblioteca, desenho e MOSTRAR/OCULTAR (docs/CARTELAS.md)
+import comercial from './views/comercial.js'; // anunciantes, campanhas, vendido × exibido (docs/COMERCIAL.md)
+import redacao from './views/redacao.js'; // redação: espelhos, laudas, pautas e agências (docs/REDACAO.md)
+import teleprompter from './views/teleprompter.js'; // teleprompter: roteiros, prévia, comandos e a tela da câmera em endereço separado
+import produtos from './views/produtos.js';
+import graficos from './views/graficos.js';
+import cgView from './views/cg.js';
+import overlays from './views/overlays.js'; // Composer, catálogo de overlays e acervo (docs/OVERLAYS.md)
+import audio from './views/audio.js';
+import entradas from './views/entradas.js';
+import { canais, canal } from './views/canais.js';
+import { usuarios, conta } from './views/acesso.js';
+import app from './views/app.js';
+import interacoes from './views/interacoes.js';
+import denuncias from './views/denuncias.js';
+import moderacao from './views/moderacao.js';
+import pedidos from './views/pedidos.js';
+import conteudo from './views/conteudo.js';
+import publico from './views/publico.js';
+import reacoes from './views/reacoes.js'; // reações por programa (docs/REACOES.md)
+import prefeitura from './views/prefeitura.js'; // Painel da Prefeitura: a rede de telas do NEXA Telas (docs/TELAS.md)
+import tvcorp from './views/tvcorp.js'; // TV Corporativa: o modo corporativo do NEXA Telas (docs/TV-CORPORATIVA.md)
+import plano, { statusLine } from './views/plano.js';
+import config from './views/config.js';
+import licenca, { edgeBanner } from './views/licenca.js'; // edição Windows: licença da central (docs/WINDOWS.md)
+import './tabs.js'; // faixa de abas (precisa registrar os ouvintes antes do primeiro route)
+import { hideAirDock } from './air.js'; // monitores do ar (NO AR e PRÓXIMO) nas telas de operação: módulos independentes
+import './layout.js'; // telas de operação na janela inteira, sem rolagem da página (layout.css)
+import { storageBanner, openStorageFull } from './storage-meter.js'; // medidor de armazenamento: topo da Mídia, avisos e envio cheio (docs/ARMAZENAMENTO.md)
+import { viewersDialogOpen } from './espectadores.js'; // espectadores somando as plataformas (docs/ESPECTADORES.md)
+import './manual-link.js'; // item "Manual" do menu: abre /manual/ no artigo da tela atual (docs/manual)
+import { viewAllowed as planViewAllowed, hiddenSelectors } from '../shared/funcionalidades.js'; // funcionalidades do plano (docs/PLATAFORMA.md)
+
+setupRaster();
+
+const VIEWS = [playout, dashboard, plantao, monitor, monitoramento, saude, scopes, relatorios, alertas, fx4d, arquivo, grade, automacao, midia, loja, intervalos, comercial, produtos, redacao, prefeitura, tvcorp, teleprompter, graficos, cgView, cartelas, overlays, audio, entradas, canais, canal, usuarios, conta, app, conteudo, publico, reacoes, interacoes, denuncias, moderacao, pedidos, licenca, plano, config];
+
+/* ------------------------------------------------------------ permissões por tela
+   view: permissão para abrir a tela · edit: para alterar · channel: a tela é de um canal (precisa de um canal liberado) */
+const RULES = {
+  playout: { view: 'playout.view', channel: true },
+  dashboard: { view: 'playout.view', channel: true },
+  aovivo: { view: ['playout.view', 'live.mesa', 'live.plantao'], channel: true }, // AO VIVO (mesa do plantão): operar a mesa pede live.mesa e entrar no ar, live.plantao (playout.control tem as duas; a tela trava os botões). O grupo "Ao vivo (mesa e plantão)" só abre esta tela
+  monitor: { view: 'playout.view', channel: true }, // painel do sinal (encoder/multiview): só leitura
+  monitoramento: { view: 'playout.view', channel: true }, // parede de monitores com alarme: só leitura (o bipe e a escolha dos monitores ficam no navegador)
+  saude: { view: 'playout.view', channel: true }, // os limites dos alarmes pedem playout.control (a própria tela trava o formulário)
+  scopes: { view: 'playout.view', channel: true }, // Telemetria: só leitura (zerar o analisador de TS pede playout.control; varrer e gerar sinais, media.edit: a tela trava)
+  relatorios: { view: 'playout.view', channel: true }, // loudness do ar (ligar/desligar a medição pede audio.edit)
+  alertas: { view: 'playout.view', channel: true }, // aprovar, tirar do ar e alerta manual pedem playout.control; ajustes, channels.manage (a tela trava)
+  fx4d: { view: 'channels.manage', channel: true }, // painel temporário de teste: a rota confirma administrador no servidor
+  censura: { view: 'arquivo.view', channel: true }, // Censura (timeline da programação exibida): prazo e retenções pedem censura.manage (a tela trava sozinha)
+  grade: { view: 'playout.view', edit: 'schedule.edit', channel: true }, // Semana e Lista em loop; a Semana trava arrastar e editar sem schedule.edit
+  automacao: { view: 'playout.view', channel: true }, // central de automação: apresenta os atalhos autorizados para Grade, Breaks, CG, alertas e roteamento
+  midia: { view: 'media.view', edit: 'media.edit' },
+  loja: { view: 'media.view' }, // Loja de conteúdos: ver e assistir à prévia; adquirir pede store.buy (a tela trava os botões)
+  intervalos: { view: 'playout.view', edit: 'schedule.edit', channel: true },
+  comercial: { view: 'commercial.manage' }, // anunciantes e campanhas valem para todos os canais do cliente
+  produtos: { view: 'playout.view', edit: 'products.edit' },
+  redacao: { view: 'news.edit', channel: true }, // espelhos são do canal; pautas e agências valem para o cliente todo
+  teleprompter: { view: 'prompter.control', channel: true }, // ferramenta própria (roteiros de qualquer programa); mostra os endereços com chave da tela da câmera
+  graficos: { view: 'playout.view', edit: 'graphics.edit', channel: true },
+  cg: { view: 'playout.view', channel: true },
+  cartelas: { view: 'playout.view', edit: 'graphics.edit', channel: true }, // MOSTRAR/OCULTAR pede playout.control (a tela trava o botão) // operar pede playout.control; editar, graphics.edit (travas abaixo e nas abas)
+  overlays: { view: ['playout.view', 'media.view'], channel: true }, // Composer opera (playout.control); instalar modelos pede graphics.edit; acervo, media.edit
+  audio: { view: 'playout.view', edit: 'audio.edit', channel: true },
+  entradas: { view: 'io.edit', channel: true }, // as saídas guardam chaves de transmissão
+  canais: { view: 'playout.view' },
+  canal: { view: 'channels.manage', channel: true },
+  usuarios: { view: 'users.manage' },
+  app: { view: 'app.manage' },
+  conteudo: { view: 'content.manage' },
+  publico: { view: 'audience.manage' },
+  reacoes: { view: 'audience.manage', channel: true }, // quem vê o Público; as exibições são do canal
+  interacoes: { view: 'playout.view', edit: 'playout.control', channel: true },
+  moderacao: { view: 'playout.view', channel: true }, // ações individuais continuam protegidas por chat.moderate e playout.control
+  denuncias: { view: 'chat.moderate', channel: true }, // Denunciar e Enviar feedback do público (quem modera o chat; docs/DENUNCIAS.md)
+  pedidos: { view: 'orders.manage' },
+  prefeitura: { view: 'prefeitura.manage' }, // NEXA Telas: a rede de telas vale para o cliente todo (só com o modo prefeitura no plano)
+  tvcorp: { view: 'tvcorp.manage' }, // TV Corporativa: o cliente todo (só com a funcionalidade tvcorp no plano); NÃO esconde o Comercial
+  licenca: {}, // edição Windows: qualquer usuário vê a licença e as mensagens da central
+  plano: { view: 'billing.view' },
+  config: { view: ['domains.manage', 'billing.view', 'channels.manage', 'graphics.edit'] }, // Configurações: domínio próprio (domains.manage), organização (billing.view), legendas por IA (channels.manage) e Gerador de caracteres (graphics.edit; cada cartão confere a sua)
+  conta: {},
+};
+const ORDER = Object.keys(RULES);
+const viewAllowed = (id) => {
+  const r = RULES[id];
+  if (!r || !state.me) return false;
+  if (state.me.mustChange) return id === 'conta';
+  if (r.channel && !state.slug) return false;
+  // edição Windows: a assinatura é gerida pela central (tela Licença); na nuvem não existe a tela Licença
+  if (id === 'licenca' && !state.edge) return false;
+  if (id === 'plano' && state.edge) return false;
+  // a tela fora do plano do cliente some do menu (as rotas dela também recusam no servidor: server/funcionalidades.js)
+  if (state.me.planFeatures && !planViewAllowed(state.me.planFeatures, id)) return false;
+  // modo prefeitura (docs/TELAS.md): rede de telas sem comerciais; o menu Comercial some (os dados ficam como estão)
+  // (o plano Ilimitado tem tudo ligado, o modo também: nele o Comercial continua)
+  if (id === 'comercial' && state.me.planFeatures?.prefeitura && state.me.plan?.code !== 'ilimitado') return false;
+  return !r.view || (Array.isArray(r.view) ? r.view.some(can) : can(r.view)); // lista = basta uma das permissões
+};
+/** Os trechos das telas fora do plano somem (os seletores do catálogo, numa folha de estilo própria). */
+function applyPlanHide() {
+  let st = document.getElementById('planHide');
+  const sels = state.me?.planFeatures ? hiddenSelectors(state.me.planFeatures) : [];
+  if (!sels.length) { st?.remove(); return; }
+  if (!st) { st = document.createElement('style'); st.id = 'planHide'; document.head.append(st); }
+  // um seletor por regra: um que o navegador não entenda não derruba os outros
+  st.textContent = sels.map((s) => `${s} { display: none !important; }`).join('\n');
+}
+
+/** Trechos que só quem tem a permissão pode usar: ficam desativados (e continuam assim quando a tela redesenha). */
+const LOCKS = [
+  ['#view-playout .transport, #view-playout .po-center button', 'playout.control'],
+  ['#view-playout .po-ed', 'schedule.edit'], // lista do Playout: Inserir, Trocar, Subir, Descer, Duplicar e Remover editam a grade
+  ['#btnSkip, #btnRestartCycle', 'playout.control'],
+  ['#view-dashboard [data-engine]', 'engine.control'],
+  ['#view-grade', 'schedule.edit'], ['#view-intervalos', 'schedule.edit'], ['#view-midia', 'media.edit'], ['#view-produtos', 'products.edit'],
+  ['#cgRoot [data-pane=operar]', 'playout.control'], ['#cgRoot [data-pane=editor], #cgRoot [data-pane=sequencias], #cgRoot [data-pane=timeline], #cgRoot [data-pane=dados], #cgSaveBar', 'graphics.edit'],
+  ['#ovRoot [data-pane=composer]', 'playout.control'], ['#ovRoot [data-pane=modelos]', 'graphics.edit'], ['#ovRoot [data-pane=acervo]', 'media.edit'],
+  ['#view-interacoes', 'playout.control'], ['#view-conteudo', 'content.manage'], ['#view-publico', 'audience.manage'], ['#view-graficos', 'graphics.edit'], ['#view-audio', 'audio.edit'], ['#view-entradas', 'io.edit'], ['#chForm', 'channels.manage'], ['#view-canal', 'channels.manage'],
+];
+const CONTROLS = 'button, input, select, textarea';
+const lockObservers = [];
+function applyLocks() {
+  lockObservers.splice(0).forEach((o) => o.disconnect());
+  $$('.ro').forEach((n) => n.classList.remove('ro'));
+  for (const [sel, perm] of LOCKS) {
+    if (can(perm)) continue;
+    $$(sel).forEach((root) => {
+      root.classList.add('ro');
+      const shut = () => { [root, ...root.querySelectorAll(CONTROLS)].forEach((c) => { if (c.matches(CONTROLS) && !c.disabled && !c.hasAttribute('data-keep')) { c.disabled = true; c.title = c.title || 'Seu grupo não tem permissão para esta ação.'; } }); };
+      shut();
+      const o = new MutationObserver(shut);
+      o.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['disabled'] });
+      lockObservers.push(o);
+    });
+  }
+}
+
+/** Menu: some o que o usuário não pode abrir (e os títulos de seção que ficarem vazios). */
+function applyNav() {
+  applyPlanHide();
+  $$('.side a[data-view]').forEach((a) => { a.hidden = !viewAllowed(a.dataset.view); });
+  $$('.side a[data-view]').forEach((a) => { a.dataset.ch = RULES[a.dataset.view]?.channel ? '1' : ''; }); // tabs.js: aba por canal
+  $$('.side .sep').forEach((sep) => {
+    let n = sep.nextElementSibling; let any = false;
+    while (n && !n.classList.contains('sep') && !n.classList.contains('side-foot')) { if (n.matches('a') && !n.hidden) any = true; n = n.nextElementSibling; }
+    sep.hidden = !any;
+  });
+  $('#meName').textContent = state.me?.name || '';
+  $('#meGroups').textContent = state.me?.groups.map((g) => g.name).join(' · ') || 'sem grupo';
+  loadVersion();
+  // aviso de tela somente leitura
+  for (const id of ORDER) {
+    const sec = $(`#view-${id}`); const r = RULES[id];
+    sec.querySelector(':scope > .ro-banner')?.remove();
+    if (r.edit && !can(r.edit) && viewAllowed(id)) {
+      const b = document.createElement('p'); b.className = 'ro-banner'; b.textContent = 'Somente leitura: seu grupo não tem permissão para alterar esta tela.';
+      sec.prepend(b);
+    }
+  }
+}
+const byId = Object.fromEntries(VIEWS.map((v) => [v.id, v]));
+let current = null;
+let ws = null;
+let poll = null;
+
+/* ------------------------------------------------------------ login */
+async function showLogin() {
+  $('#app').hidden = true;
+  $('#login').hidden = false;
+  try {
+    const cfg = await (await fetch(`${window.NEXA?.apiBase || ''}/api/config`)).json();
+    state.edge = cfg.edge || null;
+    // edição Windows: um cliente só (sem Organização) e, antes da ativação, o caminho para /setup/
+    $('#org').hidden = Boolean(state.edge); document.querySelector('label[for=org]').hidden = Boolean(state.edge);
+    $('#edgeNote').hidden = !(state.edge && (!state.edge.activated || state.edge.blocked));
+    if (state.edge && !state.edge.activated) $('#edgeNoteText').textContent = 'Este computador ainda não foi ativado. Ative com o código enviado pela central e crie o administrador.';
+    else if (state.edge?.blocked) { $('#edgeNoteText').textContent = state.edge.message || 'Sistema bloqueado pela central.'; $('#edgeNoteLink').hidden = true; }
+    if (cfg.demoMode) { $('#loginHint').hidden = false; $('#loginHint').textContent = `Modo demonstração. Usuário: ${cfg.demoUser || 'admin'} · Senha: ${cfg.demoPassword}`; }
+    $('#user').value = store.get('nexa.user') || '';
+    // organização (cliente da plataforma): ?tenant= na URL ou a última usada; vazio = cliente do domínio / padrão
+    $('#org').value = new URLSearchParams(location.search).get('tenant') || store.get('nexa.org') || '';
+    (($('#user').value ? $('#pw') : $('#user'))).focus();
+  } catch { /* ignora */ }
+}
+
+$('#loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  $('#loginErr').hidden = true;
+  try {
+    const org = $('#org').value.trim().toLowerCase();
+    const { token } = await api('/api/admin/login', { method: 'POST', body: { ...(org ? { tenant: org } : {}), username: $('#user').value, password: $('#pw').value } });
+    state.token = token; store.set('nexa.admin', token); store.set('nexa.user', $('#user').value.trim().toLowerCase()); store.set('nexa.org', org || null);
+    $('#pw').value = '';
+    await enter();
+  } catch (err) { $('#loginErr').textContent = err.message; $('#loginErr').hidden = false; }
+});
+
+function logout() {
+  clearInterval(pollB);
+  paintHealthBadge(null);
+  $('#tnBanner').replaceChildren();
+  state.token = null; state.me = null; state.slug = null; state.stats = null; store.set('nexa.admin', null);
+  ws?.close(); ws = null;
+  clearInterval(poll); clearInterval(pollO);
+  current?.leave?.(); current = null;
+  hideAirDock();
+  applyMenuNames(null); // o próximo a entrar pode ser de outra organização
+  document.getElementById('planHide')?.remove(); // e de outro plano
+  showLogin();
+}
+/** Sair de verdade: o servidor revoga ESTE token (POST /api/me/logout; na personificação, o token personificado) e só
+ *  então o token local é apagado. Sem rede (ou servidor fora), apaga localmente mesmo assim. */
+async function signOut() {
+  const tok = state.token;
+  if (tok) {
+    try {
+      await fetch(`${window.NEXA?.apiBase || ''}/api/me/logout`, { method: 'POST', headers: { 'x-admin-token': tok }, signal: AbortSignal.timeout ? AbortSignal.timeout(5000) : undefined });
+    } catch { /* sem rede: sai localmente */ }
+  }
+  logout();
+}
+$('#logout').onclick = signOut;
+on('logout', logout); // 401: a sessão já não vale, nada a avisar ao servidor
+on('sign-out', signOut);
+
+/* ------------------------------------------------------------ canais */
+async function loadChannels(select) {
+  const r = await api('/api/channels');
+  state.channels = r.channels.filter((c) => !state.me.channels || state.me.channels.includes(c.slug));
+  if (r.fps) state.fps = r.fps;
+  const want = select || state.slug || new URLSearchParams(location.search).get('c') || store.get('nexa.slug');
+  state.slug = state.channels.some((c) => c.slug === want) ? want : state.channels[0]?.slug;
+  const sel = $('#chSelect');
+  sel.replaceChildren(...state.channels.map((c) => {
+    const o = document.createElement('option');
+    o.value = c.slug; o.textContent = `${c.number} · ${c.name}`; o.selected = c.slug === state.slug;
+    return o;
+  }));
+  paintChannelName();
+}
+
+function paintChannelName() {
+  const c = state.channels.find((x) => x.slug === state.slug);
+  $$('.chn').forEach((n) => { n.textContent = c?.name || ''; });
+  $('#dashCh').textContent = c?.name || '';
+  document.title = `Broadcast · ${c?.name || 'NEXA TV'}`;
+}
+
+async function setChannel(slug, reload = true) {
+  state.slug = slug;
+  store.set('nexa.slug', slug);
+  state.stats = null;
+  paintHealthBadge(null); // o aviso era do canal anterior
+  paintChannelName();
+  if (ws?.readyState === 1) ws.send(JSON.stringify({ type: 'join', role: 'admin', channel: slug, token: state.token })); // a sessão prova o papel admin
+  emit('channel', slug);
+  await pollStats();
+  if (current && reload) guard(current.load)();
+}
+$('#chSelect').addEventListener('change', (e) => setChannel(e.target.value));
+// faixa de abas (tabs.js): abrir uma aba troca o canal sem recarregar a tela atual e carrega a tela da aba uma vez só
+on('open-tab', async ({ view, slug, sub }) => {
+  if (slug && slug !== state.slug && state.channels.some((c) => c.slug === slug)) { $('#chSelect').value = slug; await setChannel(slug, false); }
+  const h = `#${view}${sub ? `/${encodeURIComponent(sub)}` : ''}`;
+  if (location.hash !== h) history.pushState(null, '', h); // sem hashchange: o route() abaixo carrega a tela inteira
+  route();
+});
+on('channels-changed', async (slug) => { await loadChannels(slug); await setChannel(state.slug); });
+
+/* ------------------------------------------------------------ estatísticas do canal */
+/** Telas que mostram o número de espectadores: só com uma delas (ou a janela dos espectadores) o servidor consulta o YouTube. */
+const VIEWER_VIEWS = new Set(['monitor', 'playout', 'dashboard']);
+async function pollStats() {
+  if (!state.slug || !seesLive()) return;
+  try {
+    // aba escondida (outra aba do navegador, janela minimizada): ninguém está vendo o número, o YouTube não é consultado
+    const showing = document.visibilityState === 'visible' && (VIEWER_VIEWS.has(current?.id) || viewersDialogOpen());
+    const s = await capi(showing ? '/stats?plataformas=1' : '/stats');
+    state.skew = s.serverTime - Date.now();
+    if (s.fps) state.fps = s.fps;
+    state.stats = s;
+    emit('stats', s);
+    paintHealthBadge(s.health);
+  } catch { /* próxima tentativa */ }
+}
+
+// o servidor avisa pelo WebSocket quando o ar muda sem troca de item (canal parado ou de volta: announceStream): o /stats é
+// relido na hora e as prévias trocam no mesmo instante (canal-parado.js), sem esperar a volta de 2 s
+on('ws', (m) => { if (m?.type === 'now' && m.channel === state.slug) pollStats(); });
+on('stats-poll', () => pollStats());
+
+/* ------------------------------------------------------------ mesa AO VIVO: câmera conectada */
+// câmera do app que chegou com sinal numa posição da mesa AO VIVO, em QUALQUER canal que o usuário vê (GET /api/mesa/cams):
+// aviso em qualquer tela, até alguém fechar ou ela sair
+const readyCams = new Map(); // canal|posição|usuário -> { pop (null = fechado pelo operador), goneAt }
+async function pollCams() {
+  if (!state.me || !seesLive()) return;
+  if (state.me.planFeatures && !state.me.planFeatures.aovivo) return; // sem a mesa AO VIVO no plano: nada a conferir
+
+  try { paintReadyCams((await api('/api/mesa/cams')).channels || []); } catch { /* próxima tentativa */ }
+}
+function paintReadyCams(channels) {
+  const key = (ch, c) => `${ch.slug}|${c.slot}|${c.user}`;
+  const here = new Set(channels.flatMap((ch) => ch.cams.map((c) => key(ch, c))));
+  const t = Date.now();
+  for (const [k, r] of readyCams) {
+    if (here.has(k)) { r.goneAt = 0; continue; }
+    // o sinal caiu: o aviso some; uma reconexão rápida não repete o aviso, uma chegada 20 s depois avisa de novo
+    r.pop?.remove(); r.pop = null;
+    r.goneAt ||= t;
+    if (t - r.goneAt > 20000) readyCams.delete(k);
+  }
+  for (const ch of channels) {
+    for (const c of ch.cams) {
+      const k = key(ch, c);
+      if (readyCams.has(k)) continue;
+      const box = $('#readyPops') || document.body.appendChild(el('div', { id: 'readyPops', class: 'ready-pops' }));
+      const close = () => { pop.remove(); const r = readyCams.get(k); if (r) r.pop = null; };
+      const here_ = ch.slug === state.slug && location.hash.startsWith('#aovivo');
+      const pop = el('div', { class: 'ready-pop', role: 'alert' },
+        el('span', { class: 'rp-dot', 'aria-hidden': 'true' }),
+        el('div', { class: 'rp-t' },
+          el('b', { text: `${c.user} se conectou na mesa AO VIVO` }),
+          el('small', { text: `${ch.name} · posição ${c.slot + 1}${c.name && c.name !== c.user ? ` (${c.name})` : ''} · a câmera já está na mesa` })),
+        el('div', { class: 'rp-acts' },
+          // abre a mesa do canal da câmera (troca de canal se preciso, como uma aba)
+          here_ ? null : el('button', { class: 'btn small primary', type: 'button', text: 'Abrir a mesa AO VIVO', onclick: () => { close(); emit('open-view', { view: 'aovivo', slug: ch.slug }); } }),
+          el('button', { class: 'btn small', type: 'button', text: 'OK', onclick: close })));
+      box.append(pop);
+      readyCams.set(k, { pop, goneAt: 0 });
+    }
+  }
+}
+
+/** Alarmes da saúde do sinal no item do menu, de qualquer tela: vermelho com crítico, âmbar só com alertas. */
+function paintHealthBadge(h) {
+  const b = $('#hsBadge');
+  const n = h?.alarms || 0;
+  b.hidden = !n;
+  b.textContent = String(n);
+  b.classList.toggle('warn', n > 0 && !h.critical);
+  const label = n ? `${n} ${n === 1 ? 'alarme ativo' : 'alarmes ativos'}${h.top ? `: ${h.top}` : ''}` : '';
+  b.title = label;
+  b.parentElement.setAttribute('aria-label', n ? `Saúde do sinal, ${label}` : 'Saúde do sinal');
+}
+
+/* ------------------------------------------------------------ WebSocket (chat, eventos) */
+function connectWs() {
+  if (ws) return;
+  const base = window.NEXA?.apiBase || location.origin;
+  const sock = new WebSocket(`${base.replace(/^http/, 'ws')}/ws`);
+  ws = sock;
+  sock.onopen = () => sock.send(JSON.stringify({ type: 'join', role: 'admin', channel: state.slug, token: state.token })); // sem a sessão, entra como espectador
+  sock.onmessage = (ev) => emit('ws', JSON.parse(ev.data));
+  sock.onclose = () => { ws = null; if (state.token) setTimeout(connectWs, 3000); };
+}
+
+/* ------------------------------------------------------------ roteador */
+// endereço "#tela/resto": o resto vai para a tela (ex.: #midia/123 abre os detalhes da mídia 123)
+function route(fromHash = false) {
+  let [head, ...rest] = location.hash.slice(1).split('/');
+  // endereço antigo (abas salvas e links de antes): #plantao virou #aovivo
+  if (Object.hasOwn(VIEW_ALIAS, head)) { head = VIEW_ALIAS[head]; history.replaceState(null, '', `#${[head, ...rest].join('/')}`); }
+  // aba que mudou de tela: #cg/saidas (Saídas e ajustes) abre Configurações → Gerador de caracteres
+  const place = [head, ...rest].join('/');
+  if (Object.hasOwn(PLACE_ALIAS, place)) { [head, ...rest] = PLACE_ALIAS[place].split('/'); history.replaceState(null, '', `#${PLACE_ALIAS[place]}`); }
+  let id = byId[head] ? head : 'playout';
+  let sub = id === head ? decodeURIComponent(rest.join('/')) : '';
+  if (!viewAllowed(id)) { id = ORDER.find(viewAllowed) || 'conta'; sub = ''; history.replaceState(null, '', `#${id}`); }
+  // só o resto mudou (abrir/fechar detalhes): a tela trata sem recarregar
+  if (fromHash === true && current?.id === id && current.sub) { guard(() => current.sub(sub))(); return; }
+  if (current && current.id !== id) current.leave?.();
+  current = byId[id];
+  VIEWS.forEach((v) => { $(`#view-${v.id}`).hidden = v.id !== id; });
+  $$('.side a[data-view]').forEach((a) => a.classList.toggle('on', a.dataset.view === id));
+  applyLocks();
+  guard(async () => { await current.load(sub); applyLocks(); })();
+  emit('route', { id, sub }); // tabs.js
+}
+window.addEventListener('hashchange', () => route(true));
+
+/* ------------------------------------------------------------ faixa global (plano, personificação, aviso da plataforma) */
+let pollB = null;
+async function renderBanner() {
+  const items = [];
+  const me = state.me;
+  if (!me) return;
+  if (me.impersonator) items.push({ cls: 'imp', text: `Você está no painel de ${me.tenant?.name || 'um cliente'} como ${me.impersonator} (personificação). Tudo o que fizer fica na auditoria do cliente.` });
+  let t = me.tenant;
+  if (state.edge) {
+    // edição Windows: quem decide é a licença da central (motivo do bloqueio, atraso, sem contato, atualização, mensagens)
+    try { for (const b of await edgeBanner()) items.push({ ...b, edge: true }); } catch { /* próxima volta */ }
+    t = null;
+  } else if (can('billing.view')) { try { t = (await api('/api/billing/plan')).tenant; } catch { /* usa o resumo do /api/me */ } }
+  if (t) {
+    const soon = t.status === 'trial' && t.trialDaysLeft != null && t.trialDaysLeft <= 5;
+    const cls = { past_due: 'warn', suspended: 'bad', canceled: 'bad' }[t.status] || (soon ? 'info' : (t.cancelAtPeriodEnd ? 'info' : null));
+    if (cls) items.push({ cls, text: statusLine(t) || 'Verifique o seu plano.', plan: true });
+  }
+  try {
+    const cfg = await (await fetch(`${window.NEXA?.apiBase || ''}/api/config`)).json();
+    if (cfg.platform?.announcement) items.push({ cls: cfg.platform.announcement.level === 'warn' ? 'warn' : 'info', text: cfg.platform.announcement.text });
+    if (cfg.platform?.maintenance) items.push({ cls: 'warn', text: cfg.platform.maintenance.message || 'Manutenção programada da plataforma.' });
+  } catch { /* sem aviso */ }
+  // armazenamento a partir de 80% (mudar de plano ou comprar extra); dispensado, volta em 1 dia (80%) ou em poucas horas (95%)
+  const storage = state.edge ? null : await storageBanner().catch(() => null);
+  $('#tnBanner').replaceChildren(...items.map((b) => el('div', { class: `tn-banner ${b.cls}`, role: 'status' }, el('span', { text: b.text }),
+    b.plan && can('billing.view') ? el('a', { href: '#plano', class: 'btn small', text: 'Plano e uso' }) : null,
+    b.edge && b.link ? el('a', { href: '#licenca', class: 'btn small', text: 'Licença e suporte' }) : null)), ...(storage ? [storage] : []));
+}
+// limite atingido / recurso fora do plano / conta suspensa: aviso com atalho para "Plano e uso"
+on('plan-error', (d) => {
+  // envio barrado pela cota de armazenamento: a janela com as saídas (mudar de plano, comprar extra, liberar espaço)
+  if (d.code === 'limit_reached' && d.key === 'storageMB' && !state.edge) { openStorageFull(d); renderBanner().catch(() => {}); return; }
+  const t = el('div', { class: 'toast err plan' }, el('span', { text: d.error || 'Ação indisponível no seu plano.' }),
+    state.edge ? el('a', { href: '#licenca', class: 'btn small', text: 'Licença e suporte', onclick: () => t.remove() })
+      : can('billing.view') ? el('a', { href: '#plano', class: 'btn small', text: 'Ver plano e uso', onclick: () => t.remove() }) : null);
+  $('#toasts').append(t);
+  setTimeout(() => t.remove(), 9000);
+  if (d.code === 'tenant_suspended') renderBanner();
+});
+
+/** Selo do menu Prefeitura (NEXA Telas): telas desligadas e pedidos aguardando a aprovação da SECOM. */
+async function pollPrefeitura() {
+  const b = $('#pfBadge');
+  if (!b) return;
+  if (!can('prefeitura.manage') || state.me?.planFeatures?.prefeitura !== true || state.me?.channels) { b.hidden = true; return; }
+  try {
+    const res = await fetch(`${window.NEXA?.apiBase || ''}/api/prefeitura/badge`, { headers: { 'x-admin-token': state.token || '' } });
+    if (!res.ok) { b.hidden = true; return; }
+    const r = await res.json();
+    const n = (r.off || 0) + (r.approvals || 0);
+    b.hidden = !n; b.textContent = String(n);
+    b.title = [r.off ? `${r.off} tela(s) desligada(s)` : '', r.approvals ? `${r.approvals} pedido(s) aguardando aprovação` : ''].filter(Boolean).join(' · ');
+  } catch { /* próxima tentativa */ }
+}
+window.addEventListener('nexa:prefeitura-badge', () => { pollPrefeitura(); });
+
+/** Selo do menu TV Corporativa: telas desligadas e pedidos aguardando (mídias, grades, comunicados e sugestões). */
+async function pollTvcorp() {
+  const b = $('#tcBadge');
+  if (!b) return;
+  if (!can('tvcorp.manage') || state.me?.planFeatures?.tvcorp !== true || state.me?.channels) { b.hidden = true; return; }
+  try {
+    const res = await fetch(`${window.NEXA?.apiBase || ''}/api/tvcorp/badge`, { headers: { 'x-admin-token': state.token || '' } });
+    if (!res.ok) { b.hidden = true; return; }
+    const r = await res.json();
+    const n = (r.off || 0) + (r.pending || 0);
+    b.hidden = !n; b.textContent = String(n);
+    b.title = [r.off ? `${r.off} tela(s) desligada(s)` : '', r.pending ? `${r.pending} pedido(s) aguardando` : ''].filter(Boolean).join(' · ');
+  } catch { /* próxima tentativa */ }
+}
+window.addEventListener('nexa:tvcorp-badge', () => { pollTvcorp(); });
+
+/** Selo de pedidos novos no menu. */
+let pollO = null;
+async function pollOrders() {
+  pollPrefeitura();
+  pollTvcorp();
+  if (can('orders.manage')) {
+    try {
+      const n = (await api('/api/orders?limit=1')).counts.new || 0;
+      const b = $('#orBadge'); b.hidden = !n; b.textContent = String(n);
+    } catch { /* próxima tentativa */ }
+  }
+  // mensagens novas do Fale com a TV (sem o recurso no plano, fica quieto)
+  if (can('audience.manage') && state.audienceOn !== false && state.me?.planFeatures?.audience !== false) {
+    try {
+      const res = await fetch(`${window.NEXA?.apiBase || ''}/api/audience/messages?limit=1`, { headers: { 'x-admin-token': state.token || '' } });
+      if (res.status === 403) { state.audienceOn = false; return; }
+      const n = (await res.json()).counts?.new || 0;
+      const b = $('#auBadge'); b.hidden = !n; b.textContent = String(n);
+    } catch { /* próxima tentativa */ }
+  }
+}
+
+async function enter() {
+  state.me = await api('/api/me');
+  if (state.edge === undefined) { try { state.edge = (await (await fetch(`${window.NEXA?.apiBase || ''}/api/config`)).json()).edge || null; } catch { state.edge = null; } }
+  $('#login').hidden = true;
+  $('#app').hidden = false;
+  if (seesLive()) await loadChannels(); else { state.channels = []; state.slug = null; $('#chSelect').replaceChildren(); }
+  applyNav();
+  setupFaixa(); // monitor da máquina fixado no topo (edição Windows e servidor próprio; escolha do usuário)
+  await loadMenuNames(); // perfil de nomes dos menus da organização (Padrão NEXA, Broadcast ou um próprio)
+  if (state.slug) { connectWs(); await pollStats(); }
+  clearInterval(poll);
+  poll = setInterval(() => { pollStats(); pollCams(); }, 2000);
+  clearInterval(pollO);
+  pollOrders(); pollO = setInterval(pollOrders, 15000);
+  renderBanner(); clearInterval(pollB); pollB = setInterval(() => renderBanner().catch(() => {}), 60000);
+  // volta do pagamento de um pedido da Loja (docs/LOJA.md): a tela da Loja acompanha o pedido até a licença sair
+  const lp = new URLSearchParams(location.search);
+  if (lp.get('loja_pedido')) {
+    state.lojaPedido = { id: Number(lp.get('loja_pedido')) || null, canceled: lp.has('loja_cancelado') };
+    history.replaceState(null, '', `${location.pathname}#loja/licencas`);
+  }
+  // volta do checkout do gateway
+  const ck = new URLSearchParams(location.search).get('checkout');
+  if (ck) {
+    history.replaceState(null, '', `${location.pathname}#plano`);
+    toast(ck === 'success' ? 'Pagamento enviado. A confirmação do gateway pode levar alguns instantes.' : 'Pagamento não concluído.', ck !== 'success');
+  }
+  route();
+}
+
+// o servidor pediu troca de senha (ex.: senha redefinida por um administrador)
+on('must-change', () => { if (state.me && !state.me.mustChange) { state.me.mustChange = true; applyNav(); location.hash = '#conta'; route(); } });
+on('me-changed', () => { applyNav(); setupFaixa(); route(); });
+
+/* ------------------------------------------------------------ boot */
+// personificação: o painel da plataforma abre /admin/#impersonate=<token> (o fragmento não vai ao servidor nem aos logs)
+const impHash = new URLSearchParams(location.hash.slice(1));
+const impTok = impHash.get('impersonate');
+// &go=<tela>: abre direto numa tela (as Mídias da Loja abrem na Mídia do cliente interno da Loja, docs/LOJA.md)
+const impGo = /^[a-z]{2,20}$/.test(impHash.get('go') || '') ? impHash.get('go') : '';
+if (impTok) { store.set('nexa.admin', impTok); history.replaceState(null, '', `${location.pathname}${location.search}${impGo ? `#${impGo}` : ''}`); }
+state.token = store.get('nexa.admin');
+if (state.token) {
+  try { await enter(); } catch { await showLogin(); }
+} else {
+  await showLogin();
+}

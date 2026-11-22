@@ -8,3 +8,7 @@ android/.gradle/
 android/**/build/
 .claude/
 *.log
+data/
+apk-teste/
+
+# a versão juntada do painel (gerada na subida, server/index.js)

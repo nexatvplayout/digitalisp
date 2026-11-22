@@ -1,0 +1,137 @@
+/* NEXA TV · tokens do painel: o visual do blueprint aprovado em 09/10 (Grade · agenda da semana e Playout · operação com a
+   lista, https://claude.ai/artifact/KfSf5PmSiXVp6q5NKAxdWd) para TODAS as telas. Carregado antes de tudo no index.html.
+   - Cores por tipo de item (programa, ao vivo, comercial, vinheta): kinds.css (--k-*), carregado logo depois deste.
+   - Os nomes antigos do painel (--bg, --panel, --line, --fg, --dim, --amber, --live, --f-mono…) apontam para estes tokens
+     no fim do arquivo: o que já existe muda de cara sem mudar de código. Código novo usa os tokens.
+   - Contraste (texto ≥ 4,5:1): o vermelho e o verde vivos do blueprint ficam nas bordas, barras e pontos; texto branco vai
+     sobre os tons de etiqueta (--c-live-tag, --c-pvw-tag), que passam. Medidas no topo de cada grupo. */
+:root {
+  color-scheme: dark;
+
+  /* superfícies (do fundo para cima) */
+  --c-bg: #0b0d12;          /* fundo da página */
+  --c-sunken: #0e1118;      /* rodapés de painel, barras de ação, menu lateral */
+  --c-panel: #10131a;       /* painel, cartão, cabeçalho da tela */
+  --c-panel-2: #151922;     /* botão, cabeçalho de tabela, painel dentro de painel */
+  --c-panel-3: #1a1f28;     /* passar o mouse, linha selecionada sem destaque */
+
+  /* linhas */
+  --c-line: #252b36;        /* borda de painel, divisória principal */
+  --c-line-strong: #2a313d; /* borda de botão, campo e chip */
+  --c-line-soft: #1d222c;   /* divisória interna (colunas, linhas de tabela) */
+  --c-line-hover: #3a4250;
+
+  /* texto (sobre --c-bg/--c-panel: 16,2 · 11,7 · 6,0 · 5,0) */
+  --c-fg: #e8eaef;
+  --c-fg-2: #c9cdd6;        /* títulos de seção, rótulos fortes */
+  --c-dim: #8b93a3;         /* apagado: legendas, horários secundários */
+  --c-faint: #7d8597;       /* exibido, desabilitado (o #6f7787 do blueprint não passa: 4,1) */
+
+  /* destaque e estados */
+  --c-accent: #f5b31c;      /* âmbar: ação principal, seleção, atraso (texto escuro sobre ele: 9,9) */
+  --c-accent-hover: #ffc53d;
+  --c-on-accent: #1a1406;
+  --c-accent-soft: rgba(245, 179, 28, 0.12); /* chip ou aba selecionada */
+  --c-live: #ff3b30;        /* NO AR: borda do monitor, barra de progresso, ponto */
+  --c-live-tag: #d92d20;    /* fundo da etiqueta NO AR / AO VIVO (branco: 4,8) */
+  --c-on-live: #ffffff;
+  --c-pvw: #2fc26b;         /* PRÉVIA: borda do monitor, medidor */
+  --c-pvw-tag: #15803d;     /* fundo da etiqueta PRÉVIA (branco: 5,0) */
+  --c-on-pvw: #ffffff;
+  --c-pvw-row: #123a24;     /* linha no ar/preparada na lista (texto #eafff1: 12,1) */
+  --c-ok: #7ee2a3;          /* "Pronto", sucesso (11,8) */
+  --c-warn: #f5b31c;        /* atraso, atenção */
+  --c-danger: #ff8a80;      /* ação destrutiva, erro (7,7) */
+  --c-danger-line: #5a2a2e;
+  --c-select: #173f73;      /* linha selecionada na lista (branco: 10,5) */
+  --c-select-line: #4f8fd6;
+
+  /* tipografia: IBM Plex Sans para o texto, IBM Plex Mono para rótulos, horários e números */
+  --font-sans: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", "JetBrains Mono", Consolas, ui-monospace, monospace;
+  --text-label: 10px;       /* rótulo em mono, maiúsculo, espaçado (ESPECTADORES, NO AR · PROGRAMA) */
+  --text-xs: 11px;          /* títulos de seção em mono, chips, legendas */
+  --text-sm: 12px;          /* botões, tabelas, campos pequenos */
+  --text-md: 13px;          /* texto do painel */
+  --text-lg: 15px;          /* nome do item no ar */
+  --text-xl: 18px;          /* título da tela, números grandes */
+  --text-clock: 22px;       /* relógio */
+  --track-label: 0.14em;
+  --track-tag: 0.12em;
+  --track-btn: 0.06em;      /* botão grande em maiúsculas (TAKE) */
+  --weight-ui: 600;
+  --weight-strong: 700;
+
+  /* raios */
+  --radius-xs: 3px;         /* etiqueta de status e de tipo */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-btn: 8px;        /* botão, campo, monitor */
+  --radius-lg: 10px;        /* botão grande (TAKE) */
+  --radius-panel: 12px;     /* painel */
+  --radius-pill: 999px;     /* chip */
+
+  /* espaçamento */
+  --space-1: 4px; --space-2: 6px; --space-3: 8px; --space-4: 10px;
+  --space-5: 12px; --space-6: 14px; --space-7: 16px; --space-8: 20px;
+
+  /* controles: botão, campo, segmento */
+  --ctl-h: 32px;            /* padrão */
+  --ctl-h-lg: 36px;         /* barra de ações, campo de busca */
+  --ctl-h-xl: 44px;         /* ação principal da tela (TAKE) */
+  --ctl-px: 12px;
+  --ctl-bg: var(--c-panel-2);
+  --ctl-line: var(--c-line-strong);
+  --ctl-fg: var(--c-fg);
+  --ctl-font: 600 var(--text-sm) var(--font-sans);
+  --field-bg: var(--c-bg);
+  --field-font: 400 var(--text-md) var(--font-sans);
+
+  /* chips (filtros) */
+  --chip-h: 28px;
+  --chip-px: 10px;
+  --chip-line: var(--c-line-strong);
+  --chip-fg: var(--c-fg-2);
+  --chip-on-line: var(--c-accent);
+  --chip-on-bg: var(--c-accent-soft);
+  --chip-on-fg: var(--c-accent);
+  --chip-font: 500 var(--text-xs) var(--font-sans);
+
+  /* etiquetas de status (NO AR, PRÉVIA, Pronto…) */
+  --tag-font: 700 var(--text-label) var(--font-mono);
+  --tag-pad: 1px 6px;
+
+  /* tabelas */
+  --tbl-head-bg: var(--c-panel-2);
+  --tbl-head-fg: var(--c-dim);
+  --tbl-font: 500 var(--text-sm) var(--font-mono);
+  --tbl-cell-pad: 7px 10px;
+  --tbl-line: var(--c-line-soft);
+
+  /* foco */
+  --focus-ring: 2px solid var(--c-accent);
+
+  /* ---------- nomes antigos do painel → tokens (para o que já existe seguir funcionando) ---------- */
+  --bg: var(--c-bg);
+  --side: var(--c-sunken);
+  --panel: var(--c-panel);
+  --panel-2: var(--c-panel-2);
+  --line: var(--c-line);
+  --fg: var(--c-fg);
+  --dim: var(--c-dim);
+  --amber: var(--c-accent);
+  --live: var(--c-live);
+  --ok: var(--c-ok);
+  --pvw: var(--c-pvw);
+  --f-display: var(--font-sans);
+  --f-body: var(--font-sans);
+  --f-mono: var(--font-mono);
+}
+
+/* ---------- etiqueta de status: <span class="status-tag live">NO AR</span> ---------- */
+.status-tag { display: inline-flex; align-items: center; gap: 4px; padding: var(--tag-pad); border-radius: var(--radius-xs); font: var(--tag-font); letter-spacing: var(--track-tag); text-transform: uppercase; white-space: nowrap; background: var(--c-panel-2); color: var(--c-fg-2); }
+.status-tag.live { background: var(--c-live-tag); color: var(--c-on-live); }
+.status-tag.pvw { background: var(--c-pvw-tag); color: var(--c-on-pvw); }
+.status-tag.ready { background: transparent; color: var(--c-ok); padding-inline: 0; }
+.status-tag.warn { background: transparent; color: var(--c-warn); padding-inline: 0; }
+.status-tag.muted { background: transparent; color: var(--c-faint); padding-inline: 0; }
