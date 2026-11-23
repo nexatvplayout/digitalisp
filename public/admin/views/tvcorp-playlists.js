@@ -79,12 +79,12 @@ export function widgetItem(w, { kpis = [], feeds = [] } = {}) {
     const sample = [['seg', 19, 28], ['ter', 18, 27], ['qua', 20, 30], ['qui', 19, 26]].map(([weekday, min, max]) => ({ weekday, min, max }));
     return { kind: 'weather', title: d.title || c.city || 'Clima', city: c.city, tempC: c.tempC ?? 26, text: c.text || 'Exemplo: a tela mostra o clima da fonte', days: (c.days?.length ? c.days : sample).slice(0, d.days || 4), source: c.source };
   }
-  if (w?.kind === 'clock') return { kind: 'clock', face: d.face, tz: d.tz || undefined, label: d.label, seconds: d.seconds, date: d.date };
+  if (w?.kind === 'clock') return { kind: 'clock', face: d.face, tz: d.tz || undefined, label: d.label, showSeconds: d.showSeconds, date: d.date };
   if (w?.kind === 'agenda') { const t = new Date(); const today = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`; return { kind: 'agenda', title: d.title, today, events: (d.events || []).filter((e) => e.date >= today) }; }
   if (w?.kind === 'reviews') return { kind: 'reviews', title: d.title, items: d.items || [], qr: d.qr };
   if (w?.kind === 'dashboard') return { kind: 'dashboard', title: d.title, items: (d.kpis || []).map((id) => kpis.find((k) => k.id === Number(id))).filter(Boolean).map((k) => ({ name: k.name, value: k.value, target: k.target, unit: k.unit, band: kpiBand(k) })) };
   if (w?.kind === 'directions') return { kind: 'directions', ...d };
-  if (w?.kind === 'web') return { kind: 'web', url: d.url, refreshMin: d.refreshMin };
+  if (w?.kind === 'web') return { kind: 'web', url: d.url, refreshMin: d.refreshMin, embeddable: d.embeddable };
   // os dados como o servidor guarda (server/tvcorp-dados.js cleanWidget) no formato do item que a tela recebe
   if (w?.kind === 'menu') { const day = new Date().getDay(); return { kind: 'menu', title: d.title || 'Cardápio de hoje', day: WEEK_SHORT[day], items: (d.days?.[String(day)] || []).map((x) => (d.showPrice ? x : { name: x.name })) }; }
   if (w?.kind === 'worldclock') return { kind: 'worldclock', title: w.name, clocks: (d.zones || []).map((tz) => ({ tz, label: zoneName(tz) })) };

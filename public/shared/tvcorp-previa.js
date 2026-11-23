@@ -246,7 +246,7 @@ export function itemPreview(it = {}, opts = {}) {
       let node; let paint;
       if (it.face === 'analog') {
         const hand = (cls, len, w) => s('line', { class: cls, x1: 50, y1: 50, x2: 50, y2: 50 - len, 'stroke-width': w, 'stroke-linecap': 'round' });
-        const hH = hand('tvc-clk-h', 24, 4.5); const hM = hand('tvc-clk-m', 34, 3); const hS = it.seconds ? hand('tvc-clk-s', 38, 1.2) : null;
+        const hH = hand('tvc-clk-h', 24, 4.5); const hM = hand('tvc-clk-m', 34, 3); const hS = it.showSeconds !== false ? hand('tvc-clk-s', 38, 1.2) : null;
         const svg = s('svg', { class: 'tvc-clk-face', viewBox: '0 0 100 100', role: 'img', 'aria-label': 'Relógio' }, s('circle', { class: 'tvc-clk-bg', cx: 50, cy: 50, r: 47 }));
         for (let i = 0; i < 12; i++) svg.append(s('line', { class: 'tvc-clk-tick', x1: 50, y1: 6, x2: 50, y2: i % 3 ? 10 : 13, 'stroke-width': i % 3 ? 1.5 : 3, transform: `rotate(${i * 30} 50 50)` }));
         svg.append(hH, hM); if (hS) svg.append(hS); svg.append(s('circle', { class: 'tvc-clk-dot', cx: 50, cy: 50, r: 3 }));
@@ -256,7 +256,7 @@ export function itemPreview(it = {}, opts = {}) {
       } else {
         const big = h('div', 'tvc-clk-time', '');
         node = box('tvc-it-clock digital tvc-tick', label, big, dateEl);
-        paint = (now) => { const { hh, mm, ss } = partsAt(now); big.textContent = `${pad2(hh)}:${pad2(mm)}${it.seconds ? `:${pad2(ss)}` : ''}`; };
+        paint = (now) => { const { hh, mm, ss } = partsAt(now); big.textContent = `${pad2(hh)}:${pad2(mm)}${it.showSeconds !== false ? `:${pad2(ss)}` : ''}`; };
       }
       node._tvcTick = (now = Date.now()) => { paint(now); if (dateEl) dateEl.textContent = dateOf(now); };
       node._tvcTick();
@@ -289,8 +289,11 @@ export function itemPreview(it = {}, opts = {}) {
     }
     case 'web': {
       // a tela abre o endereço (o app da TV num quadro, o Android numa WebView); a prévia mostra só o endereço
-      const n = box('tvc-it-web', h('div', 'tvc-it-t', 'Página da internet'), h('div', 'tvc-it-x', String(it.url || '').replace(/^https:\/\//, '')),
+      // embeddable false: o site recusa ser aberto dentro de outro (as TVs Samsung/LG mostram este aviso; o Android abre direto)
+      const n = box(`tvc-it-web${it.embeddable === false ? ' blocked' : ''}`, h('div', 'tvc-it-t', 'Página da internet'), h('div', 'tvc-it-x', String(it.url || '').replace(/^https:\/\//, '')),
+        it.embeddable === false ? h('div', 'tvc-it-x tvc-web-warn', 'Este site não deixa ser aberto dentro de outro: nas TVs Samsung e LG aparece este aviso no lugar da página.') : null,
         h('div', 'tvc-it-credit', it.refreshMin ? `Recarrega a cada ${it.refreshMin} min` : 'Aberta na tela como está no site'));
+      if (it.embeddable === false) n.setAttribute('data-embeddable', 'false');
       if (it.url) n.setAttribute('data-url', String(it.url));
       return n;
     }

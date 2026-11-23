@@ -21,7 +21,8 @@ test('os tipos novos existem no catálogo, no contrato e na zona "Gadget" do lay
 });
 
 test('validação: cada gadget guarda só o que serve e recusa o que não presta', () => {
-  assert.deepEqual(ok('clock', { face: 'analog', tz: 'Europe/Lisbon', label: 'Lisboa', seconds: true }), { face: 'analog', tz: 'Europe/Lisbon', label: 'Lisboa', seconds: true, date: true });
+  assert.deepEqual(ok('clock', { face: 'analog', tz: 'Europe/Lisbon', label: 'Lisboa' }), { face: 'analog', tz: 'Europe/Lisbon', label: 'Lisboa', showSeconds: true, date: true });
+  assert.equal(ok('clock', { showSeconds: false }).showSeconds, false, 'showSeconds (não seconds: seconds é a duração na playlist)');
   assert.equal(ok('clock', {}).face, 'digital');
   bad('clock', { tz: 'Marte/Base' }, /fuso/);
   assert.deepEqual(ok('weather', { feedId: '3', days: 9 }), { feedId: 3, days: 4, title: '' });
@@ -59,7 +60,7 @@ test('desenho: cada gadget aparece com o seu conteúdo, sem "undefined", e o rel
     const PV = await import('../public/shared/tvcorp-previa.js');
     const items = {
       weather: { kind: 'weather', city: 'Recife', uf: 'PE', tempC: 29.4, text: 'Sol entre nuvens', days: [{ weekday: 'seg', min: 24, max: 31, text: 'Sol' }], source: 'INMET' },
-      clock: { kind: 'clock', face: 'digital', tz: 'America/Sao_Paulo', label: 'Brasília', seconds: true },
+      clock: { kind: 'clock', face: 'digital', tz: 'America/Sao_Paulo', label: 'Brasília' },
       agenda: { kind: 'agenda', title: 'Sala 2', today: '2027-01-02', events: [{ date: '2027-01-02', time: '09:00', end: '10:00', title: 'Reunião geral', place: 'Auditório' }, { date: '2027-01-05', title: 'Treinamento' }] },
       reviews: { kind: 'reviews', title: 'Clientes', items: [{ name: 'Ana P.', stars: 4, text: 'Muito bom!' }], qr: 'https://exemplo.com.br/avaliar' },
       dashboard: { kind: 'dashboard', title: 'Resultados', items: [{ name: 'Vendas', value: 112, target: 100, unit: '%', band: 'ok' }, { name: 'Entregas', value: 95, target: 98, unit: '%', band: 'warn' }] },
@@ -75,11 +76,44 @@ test('desenho: cada gadget aparece com o seu conteúdo, sem "undefined", e o rel
       assert.match(txt, want[k], k);
     }
     // relógio analógico: os ponteiros giram pela hora do fuso
-    const an = PV.itemPreview({ kind: 'clock', face: 'analog', tz: 'UTC', seconds: true, date: false });
+    const an = PV.itemPreview({ kind: 'clock', face: 'analog', tz: 'UTC', date: false, seconds: 30 });
     PV.tickWidgets(an, Date.UTC(2027, 0, 1, 3, 15, 30));
     const rot = (cls) => an.all((x) => x.attrs.class === cls)[0].attrs.transform;
     assert.equal(rot('tvc-clk-h'), 'rotate(97.5 50 50)'); assert.equal(rot('tvc-clk-m'), 'rotate(93 50 50)'); assert.equal(rot('tvc-clk-s'), 'rotate(180 50 50)');
     assert.ok(an.className.includes('tvc-tick'));
     assert.equal(PV.itemPreview(items.web).attrs['data-url'], 'https://exemplo.com.br/painel');
+  } finally { globalThis.document = prev; }
+});
+
+test('página: o servidor descobre se o site aceita ser aberto dentro de outro (X-Frame-Options e CSP frame-ancestors)', async () => {
+  assert.equal(D.embeddableFrom({}), true);
+  assert.equal(D.embeddableFrom({ 'X-Frame-Options': 'DENY' }), false);
+  assert.equal(D.embeddableFrom({ 'x-frame-options': 'SAMEORIGIN' }), false);
+  assert.equal(D.embeddableFrom({ 'content-security-policy': "default-src 'self'; frame-ancestors 'self' https://exemplo.com.br" }), false);
+  assert.equal(D.embeddableFrom({ 'content-security-policy': "frame-ancestors 'none'" }), false);
+  assert.equal(D.embeddableFrom({ 'content-security-policy': 'frame-ancestors *' }), true);
+  assert.equal(D.embeddableFrom({ 'content-security-policy': "default-src 'self'" }), true, 'sem frame-ancestors: aceita');
+  // HEAD recusado: tenta o GET; site fora do ar: não se sabe (null); prazo curto e no máximo 2 redirecionamentos
+  const calls = [];
+  const fake = (res) => async (url, o) => { calls.push([o.method, o.timeout, o.redirects]); if (typeof res === 'function') return res(o); return res; };
+  assert.equal(await D.checkEmbeddable('https://exemplo.com.br', fake((o) => (o.method === 'HEAD' ? { status: 405, headers: {} } : { status: 200, headers: { 'x-frame-options': 'DENY' } }))), false);
+  assert.deepEqual(calls, [['HEAD', 4000, 2], ['GET', 4000, 2]]);
+  assert.equal(await D.checkEmbeddable('https://exemplo.com.br', fake(() => { throw new Error('fora do ar'); })), null);
+  assert.equal(await D.checkEmbeddable('https://exemplo.com.br', fake({ status: 200, headers: {} })), true);
+});
+
+test('relógio digital sem os segundos quando showSeconds é false (o seconds do item é a duração e não interfere)', async () => {
+  const prev = globalThis.document;
+  globalThis.document = { createElement: (t) => new Nd(t), createElementNS: (_, t) => new Nd(t), createTextNode: (t) => new Tx(t) };
+  try {
+    const PV = await import('../public/shared/tvcorp-previa.js');
+    const sem = PV.itemPreview({ kind: 'clock', face: 'digital', tz: 'UTC', showSeconds: false, seconds: 300, date: false });
+    PV.tickWidgets(sem, Date.UTC(2027, 0, 1, 3, 15, 30));
+    assert.equal(sem.textContent.trim(), '03:15');
+    const com = PV.itemPreview({ kind: 'clock', face: 'digital', tz: 'UTC', seconds: 12, date: false });
+    PV.tickWidgets(com, Date.UTC(2027, 0, 1, 3, 15, 30));
+    assert.equal(com.textContent.trim(), '03:15:30', 'sem o campo: mostra os segundos');
+    const bloq = PV.itemPreview({ kind: 'web', url: 'https://exemplo.com.br', embeddable: false });
+    assert.equal(bloq.attrs['data-embeddable'], 'false'); assert.match(bloq.textContent, /não deixa ser aberto dentro de outro/);
   } finally { globalThis.document = prev; }
 });

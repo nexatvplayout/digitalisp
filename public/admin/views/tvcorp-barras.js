@@ -51,9 +51,9 @@ function editWidget(w, reload, kindKey = 'countdown') {
     const face = el('select', {}, opt('digital', 'Digital (números)', d.face !== 'analog'), opt('analog', 'Analógico (ponteiros)', d.face === 'analog'));
     const tz = el('select', {}, opt('', 'O fuso da empresa (Configurações)', !d.tz), ...ZONES.map(({ tz: z, label: l }) => opt(z, l, d.tz === z)));
     const lbl = el('input', { type: 'text', maxlength: '40', value: d.label || '', placeholder: 'Ex.: Horário de Brasília' });
-    const secs = el('input', { type: 'checkbox', checked: Boolean(d.seconds) }); const date = el('input', { type: 'checkbox', checked: d.date !== false });
+    const secs = el('input', { type: 'checkbox', checked: d.showSeconds !== false }); const date = el('input', { type: 'checkbox', checked: d.date !== false });
     put(box, f('Tipo', face), f('Fuso', tz), f('Legenda (opcional)', lbl), el('label', { class: 'pf-check' }, secs, el('span', { text: 'Mostrar os segundos' })), el('label', { class: 'pf-check' }, date, el('span', { text: 'Mostrar a data' })));
-    read = () => ({ face: face.value, tz: tz.value, label: lbl.value.trim(), seconds: secs.checked, date: date.checked });
+    read = () => ({ face: face.value, tz: tz.value, label: lbl.value.trim(), showSeconds: secs.checked, date: date.checked });
   } else if (kind === 'agenda') {
     const title = el('input', { type: 'text', maxlength: '60', value: d.title || '', placeholder: 'Ex.: Agenda da semana, Sala de reuniões 2' });
     const ev = el('textarea', { rows: '8', placeholder: 'Um por linha: data | horário | compromisso | local\n25/11 | 09:00-10:00 | Reunião geral | Auditório\n28/11 | | Treinamento de brigada | Pátio' });
@@ -118,8 +118,11 @@ function editWidget(w, reload, kindKey = 'countdown') {
       if (kind === 'web' && !/^https:\/\//.test(data.url)) throw new Error('O endereço precisa começar com https://');
       if (kind === 'directions' && data.address.length < 4) throw new Error('Escreva o endereço.');
       const body = { kind, name: name.value.trim() || widgetLabel(kind), data };
-      if (w) await tapi(`/api/tvcorp/widgets/${w.id}`, { method: 'PATCH', body }); else await tapi('/api/tvcorp/widgets', { method: 'POST', body });
-      toast('Salvo. Ponha numa playlist (ou numa zona do layout) para ir às telas.'); await reload();
+      const saved = w ? await tapi(`/api/tvcorp/widgets/${w.id}`, { method: 'PATCH', body }) : await tapi('/api/tvcorp/widgets', { method: 'POST', body });
+      // a página que recusa ser aberta dentro de outra (o servidor conferiu os cabeçalhos do site ao salvar)
+      if (kind === 'web' && saved?.data?.embeddable === false) toast('Salvo, mas este site não deixa ser aberto dentro de outro: nas TVs Samsung e LG aparece um aviso no lugar dele (no Android abre normalmente).', true);
+      else toast('Salvo. Ponha numa playlist (ou numa zona do layout) para ir às telas.');
+      await reload();
     },
   });
 }

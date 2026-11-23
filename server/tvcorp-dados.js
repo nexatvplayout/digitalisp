@@ -29,6 +29,7 @@ import { createLimiter, ipKey } from './ratelimit.js';
 import { localParts, validTz } from './tz.js';
 import * as R from './tvcorp-rh.js';
 import * as F from './tvcorp-fontes.js';
+import { safeFetch } from './web/net.js';
 import { DATES, DATE_KINDS, cleanDateKeys, datesOn, upcomingDates } from '../public/shared/tvcorp-datas.js';
 
 const { fail, line, idOf, sha256 } = R;
@@ -75,12 +76,14 @@ const WEEK = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sáb
  * O widget digitado -> { name, data }.
  *   countdown   { title, at (epoch ms), until? (epoch ms: o fim), text }
  *   weather     { feedId? (a fonte de clima; sem ela, a da unidade), days (1 a 4 dias de previsão) }
- *   clock       { face: digital | analog, tz (um fuso da lista ou vazio = o da empresa), label, seconds, date }
+ *   clock       { face: digital | analog, tz (um fuso da lista ou vazio = o da empresa), label, showSeconds, date }
+ *               (showSeconds, não seconds: seconds é a duração do item na playlist)
  *   agenda      { title, events: [{ date AAAA-MM-DD, time? HH:MM, end? HH:MM, title, place }] } (a tela mostra de hoje em diante)
  *   reviews     { title, items: [{ name, text, stars 1-5 }], qr? (https: onde avaliar) }
  *   dashboard   { title, kpis: [ids] } (de 1 a 6 indicadores lado a lado)
  *   directions  { title, address, reference, hours, phone, qr? (https: o link do mapa) }
- *   web         { url (https), refreshMin (0 = não recarrega) }
+ *   web         { url (https), refreshMin (0 = não recarrega), embeddable? (false: o site recusa ser aberto dentro de outro;
+ *               conferido pelo servidor ao salvar, pelos cabeçalhos X-Frame-Options e CSP frame-ancestors) }
  *   safety      { title, lastAccident ('AAAA-MM-DD'), record (dias), goal (dias) }
  *   worldclock  { zones: ['America/Sao_Paulo', …] (até 6, da lista) }
  *   menu        { title, days: { '1': [{ name, price?, note? }], … } (0 = domingo; até 12 itens por dia), showPrice }
@@ -118,7 +121,7 @@ export function cleanWidget(kind, b, { partial = false, cur = null } = {}) {
   } else if (kind === 'clock') {
     const tz = d.tz == null || d.tz === '' ? '' : String(d.tz);
     if (tz && !ZONE.has(tz)) throw fail(400, 'Relógio: escolha um fuso da lista.');
-    out.data = { face: d.face === 'analog' ? 'analog' : 'digital', tz, label: line(d.label, 40), seconds: d.seconds === true, date: d.date !== false };
+    out.data = { face: d.face === 'analog' ? 'analog' : 'digital', tz, label: line(d.label, 40), showSeconds: d.showSeconds !== false, date: d.date !== false };
   } else if (kind === 'agenda') {
     const list = Array.isArray(d.events) ? d.events : [];
     if (list.length > GADGET_LIMITS.agendaEvents) throw fail(400, `Agenda: no máximo ${GADGET_LIMITS.agendaEvents} compromissos.`);
@@ -169,16 +172,43 @@ export function cleanWidget(kind, b, { partial = false, cur = null } = {}) {
   return out;
 }
 
+/**
+ * A página aceita ser aberta dentro de outra? Pelos cabeçalhos: X-Frame-Options DENY ou SAMEORIGIN, ou CSP frame-ancestors
+ * sem "*", recusam (a tela é outro endereço). true | false.
+ */
+export function embeddableFrom(headers = {}) {
+  const h = Object.fromEntries(Object.entries(headers || {}).map(([k, v]) => [k.toLowerCase(), Array.isArray(v) ? v.join(',') : String(v ?? '')]));
+  const xfo = (h['x-frame-options'] || '').toLowerCase();
+  if (/\b(deny|sameorigin)\b/.test(xfo)) return false;
+  const fa = /(?:^|;)\s*frame-ancestors\s+([^;]*)/i.exec(h['content-security-policy'] || '');
+  if (fa && !/(^|\s)\*(\s|$)/.test(fa[1].trim())) return false;
+  return true;
+}
+/**
+ * Confere a página no site: HEAD (e GET, se o site não responder ao HEAD), com prazo curto, sem rede interna e no máximo 2
+ * redirecionamentos (o safeFetch confere cada endereço). Devolve true, false ou null (não deu para saber: o site fora do ar).
+ */
+export async function checkEmbeddable(url, fetcher = safeFetch) {
+  for (const method of ['HEAD', 'GET']) {
+    try {
+      const r = await fetcher(url, { method, timeout: 4000, redirects: 2, maxBytes: 512 * 1024 });
+      if (r.status >= 200 && r.status < 400) return embeddableFrom(r.headers);
+    } catch { /* tenta o GET; se também falhar, não dá para saber */ }
+  }
+  return null;
+}
 const SOURCE_SAFE = (s) => line(s, 80);
 const MASC = new Set(['Comunicado', 'Indicador', 'Widget', 'Endereço', 'Grupo']);
 
 export function createTvcorpDados({
   db, audit = async () => {}, ipOf = (req) => req.ip, publicUrl = () => '', available = async () => true,
   weatherOf = null, trafficOf = null, fetcher = undefined, parseFeed = undefined, settingsOf = null,
-  isCorpOffice = (o) => CORP_OFFICE_TYPES.includes(o?.type), files = {}, photoUrl = null,
+  isCorpOffice = (o) => CORP_OFFICE_TYPES.includes(o?.type), files = {}, photoUrl = null, webCheck = checkEmbeddable,
   now = () => Date.now(), tz = 'America/Sao_Paulo', timers = true, tickMs = 60_000, pageDir = TVC_PAGE_DIR, log = (m) => console.warn(m),
 }) {
   if (!db) throw new Error('createTvcorpDados: falta o db.');
+  /** A página aceita ser aberta dentro de outra? (o site conferido ao salvar o gadget; falha = não se sabe) */
+  const checkWeb = (url) => Promise.resolve().then(() => webCheck(url)).catch(() => null);
   const fileDir = files.dir || null;
   const prepareImage = files.prepare || (async (buf) => {
     const [{ preparePhoto }, { config }] = await Promise.all([import('./telas-desaparecidos.js'), import('./config.js')]);
@@ -643,6 +673,7 @@ export function createTvcorpDados({
     app.post(`${P}/widgets`, M, ah(async (req, res) => {
       const kind = req.body?.kind;
       const w = cleanWidget(kind, req.body);
+      if (kind === 'web' && (await checkWeb(w.data.url)) === false) w.data.embeddable = false;
       await under('SELECT COUNT(*) AS n FROM tvcorp_widgets WHERE tenant_id = ?', [req.tenantId], DADOS_LIMITS.widgets, `Limite de ${DADOS_LIMITS.widgets} widgets atingido.`);
       const t = now();
       const id = await db.insert('INSERT INTO tvcorp_widgets(tenant_id,kind,name,data,created_at,updated_at) VALUES(?,?,?,?,?,?)', [req.tenantId, kind, w.name, JSON.stringify(w.data), t, t]);
@@ -652,6 +683,7 @@ export function createTvcorpDados({
     app.patch(`${P}/widgets/:id`, M, ah(async (req, res) => {
       const cur = await own('tvcorp_widgets', req.params.id, req.tenantId, 'Widget');
       const w = cleanWidget(cur.kind, req.body, { partial: true });
+      if (cur.kind === 'web' && w.data && (await checkWeb(w.data.url)) === false) w.data.embeddable = false;
       const set = { ...w, ...(w.data ? { data: JSON.stringify(w.data) } : {}) };
       if (Object.keys(set).length) await db.run(`UPDATE tvcorp_widgets SET ${Object.keys(set).map((k) => `${k} = ?`).join(', ')}, updated_at = ? WHERE id = ? AND tenant_id = ?`, [...Object.values(set), now(), cur.id, req.tenantId]);
       res.locals.audit = `tvcorp: widget "${w.name || cur.name}" alterado (#${cur.id})`;
@@ -1018,7 +1050,7 @@ export function createTvcorpDados({
           const wx = await dataFor(tenantId, officeId, { kind: 'weather', id: d.data.feedId || null, params: {} });
           return wx ? { ...wx, id: `w${d.id}`, ...(d.data.title ? { title: d.data.title } : {}), days: (wx.days || []).slice(0, d.data.days || 4) } : null;
         }
-        if (d.kind === 'clock') return { id: `w${d.id}`, kind: 'clock', face: d.data.face, tz: d.data.tz || s.tz, label: d.data.label || '', seconds: Boolean(d.data.seconds), date: d.data.date !== false };
+        if (d.kind === 'clock') return { id: `w${d.id}`, kind: 'clock', face: d.data.face, tz: d.data.tz || s.tz, label: d.data.label || '', showSeconds: d.data.showSeconds !== false, date: d.data.date !== false };
         if (d.kind === 'agenda') {
           const next = (d.data.events || []).filter((e) => e.date >= day.ymd).slice(0, GADGET_LIMITS.agendaShown);
           return next.length ? { id: `w${d.id}`, kind: 'agenda', title: d.data.title, today: day.ymd, events: next } : null;
@@ -1030,7 +1062,7 @@ export function createTvcorpDados({
           return items.length ? { id: `w${d.id}`, kind: 'dashboard', title: d.data.title, items } : null;
         }
         if (d.kind === 'directions') return { id: `w${d.id}`, kind: 'directions', ...d.data };
-        if (d.kind === 'web') return { id: `w${d.id}`, kind: 'web', url: d.data.url, refreshMin: d.data.refreshMin || 0 };
+        if (d.kind === 'web') return { id: `w${d.id}`, kind: 'web', url: d.data.url, refreshMin: d.data.refreshMin || 0, ...(d.data.embeddable === false ? { embeddable: false } : {}) };
         return null;
       }
       default: return null;
