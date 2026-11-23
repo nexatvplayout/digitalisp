@@ -15,6 +15,7 @@ esses campos sem quebrar (ignora ou descarta), conferido pelo código.
 | `clock` com `face` (`digital`/`analog`), `tz`, `label`, `seconds`, `date` | 85222aa | relógio digital no fuso do modo | ponteiros, fuso e rótulo próprios, segundos, data |
 | Conjuntos de várias TVs (menu board): zona `text` com `title` e zona `widget` | cd29340 | o `text` funciona; o `widget` fica vazio | resolvido junto com a zona `widget` |
 | `ticker.style` (cor, fundo, negrito, itálico, tamanho em % da faixa, fonte, separador, etiqueta) e `ticker.rich` (cor, negrito e itálico por aviso) | main, `public/shared/faixa.js` | usa só `ticker.items` (texto) | aplicar o estilo e o texto rico na faixa |
+| Zona com `overlay: true` e `opacity` (0 a 100): por cima das outras (widget sobre imagem ou vídeo; o vídeo nunca é overlay); as de cima vêm por último | 0e78276 | já desenha as zonas na ordem recebida (a última fica por cima), mas com o fundo opaco do tema: cobre o que está embaixo | fundo `rgba(2,6,23, opacity/100)` e texto claro na zona overlay |
 | `image` nos modelos `oferta`, `precos`, `combo` | fe133de | não desenha a imagem | pôr a imagem ao lado ou embaixo |
 
 Já feito: a arte de fundo (`artFile`), a paleta e os modelos do comércio (fe133de, `docs/CONTRATO-APP-SLIDES.md`).
