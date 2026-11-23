@@ -7,6 +7,7 @@ import { layoutPreview, frameOf } from '../../shared/tvcorp-previa.js';
 import { widgetItem } from './tvcorp-playlists.js';
 import { FACTORY_LAYOUTS, FACTORY_LAYOUT, FACTORY_SETS, LAYOUT_SEGMENTS, ZONE_KINDS, ZONE_KIND, zoneLabel, LIMITS, checkZones, widgetLabel } from './tvcorp-catalogo.js';
 import { themeOf } from './tvcorp-midias.js';
+import { wifiQr, vcardQr, qrKind, qrLabel } from '../../shared/qr-conteudo.js';
 import { quadroPx, formatoDe, FORMATO_TXT, dicaArte, quadrosDoLayout } from './tvcorp-quadros.js';
 
 const NS = 'http://www.w3.org/2000/svg';
@@ -119,7 +120,29 @@ export function layoutEditor(lay, reload, factoryKey = null, copyOf = null) {
     const num = (z, k) => el('input', { type: 'number', min: '0', max: '100', step: '1', value: String(z[k]), class: 'tc-num-in', 'aria-label': `${k} da zona ${z.id}`,
       onchange: (e) => { z[k] = clamp(Math.round(Number(e.target.value) || 0), 0, 100); canvas.paint(); paintPv(); paintRows(); } });
     // os campos próprios da zona (QR code, texto fixo, título do relógio mundial), como o servidor aceita
-    const PARAM = { title: ['Título', 40], text: ['Texto', 120], qr: ['Endereço do QR (https)', 500] };
+    const PARAM = { title: ['Título', 40], text: ['Texto', 120], qr: ['Endereço do QR (https)', 600] };
+    // o QR da zona: um endereço, ou o Wi-Fi da loja (o celular entra na rede) ou um cartão de contato (salva o contato)
+    const qrMaker = (z, kind) => () => {
+      const a = el('input', { type: 'text', maxlength: '60' }); const b = el('input', { type: 'text', maxlength: '60' }); const c = el('input', { type: 'text', maxlength: '80' });
+      const d = el('input', { type: 'text', maxlength: '80' }); const e = el('input', { type: 'text', maxlength: '120' });
+      const sec = el('select', {}, opt('WPA', 'WPA/WPA2 (a mais comum)', true), opt('WEP', 'WEP'), opt('nopass', 'Rede aberta (sem senha)'));
+      const body = kind === 'wifi'
+        ? el('div', { class: 'pf-grid' }, f('Nome da rede (SSID)', a), f('Senha', b), f('Segurança', sec), note('Quem ler o QR com a câmera do celular entra na rede sem digitar a senha. A senha fica dentro do QR, à vista de quem estiver na frente da tela.'))
+        : el('div', { class: 'pf-grid' }, f('Nome', a), f('Empresa', b), f('Telefone ou WhatsApp', c), f('E-mail', d), f('Site', e), note('O celular oferece salvar o contato com esses dados.'));
+      dialog(kind === 'wifi' ? 'QR do Wi-Fi' : 'QR do contato', body, {
+        save: async () => {
+          if (a.value.trim().length < 1) throw new Error(kind === 'wifi' ? 'Escreva o nome da rede.' : 'Escreva o nome.');
+          z.qr = kind === 'wifi' ? wifiQr({ ssid: a.value.trim(), password: b.value, security: sec.value }) : vcardQr({ name: a.value.trim(), org: b.value.trim(), phone: c.value.trim(), email: d.value.trim(), url: e.value.trim() });
+          if (!z.title) z.title = kind === 'wifi' ? 'Wi-Fi grátis' : 'Salve nosso contato';
+          paintRows(); paintPv();
+        },
+      });
+    };
+    const qrField = (z) => {
+      const special = qrKind(z.qr) === 'wifi' || qrKind(z.qr) === 'vcard';
+      const inp = el('input', { type: 'url', maxlength: '600', value: special ? '' : z.qr || '', placeholder: special ? qrLabel(z.qr) : PARAM.qr[0], 'aria-label': `QR da zona ${z.id}`, onchange: (ev) => { z.qr = ev.target.value.trim(); paintPv(); } });
+      return el('div', { class: 'tc-qrf' }, inp, special ? el('span', { class: 'small', text: qrLabel(z.qr) }) : null, btn('Wi-Fi', qrMaker(z, 'wifi'), 'small'), btn('Contato', qrMaker(z, 'vcard'), 'small'));
+    };
     // o gadget da zona (contador, dias sem acidente, relógio mundial): escolhido aqui, vai à tela sem precisar de playlist
     const widgetPick = (z) => {
       const mine = WIDGETS.filter((w) => z.kind === 'widget' || w.kind === z.kind);
@@ -132,7 +155,7 @@ export function layoutEditor(lay, reload, factoryKey = null, copyOf = null) {
     const layer = (z) => (z.kind === 'video' ? null : el('span', { class: 'tc-layer' },
       el('label', { class: 'pf-check' }, el('input', { type: 'checkbox', checked: Boolean(z.overlay), 'aria-label': `Zona ${z.id} por cima`, onchange: (e) => { if (e.target.checked) { z.overlay = true; z.opacity ??= 60; } else { delete z.overlay; delete z.opacity; } canvas.paint(); paintRows(); paintPv(); } }), el('span', { text: 'Por cima' })),
       z.overlay ? el('select', { 'aria-label': `Fundo da zona ${z.id}`, onchange: (e) => { z.opacity = Number(e.target.value); paintPv(); } }, ...[0, 20, 40, 60, 80, 100].map((v) => opt(v, v ? `fundo ${v}%` : 'sem fundo', (z.opacity ?? 60) === v))) : null));
-    const params = (z) => [layer(z), ...(ZONE_KIND[z.kind]?.params || []).map((k) => (k === 'widget' ? widgetPick(z) : el('input', { type: k === 'qr' ? 'url' : 'text', maxlength: String(PARAM[k][1]), value: z[k] || '', placeholder: PARAM[k][0], 'aria-label': `${PARAM[k][0]} da zona ${z.id}`, onchange: (e) => { z[k] = e.target.value.trim(); paintPv(); } })))];
+    const params = (z) => [layer(z), ...(ZONE_KIND[z.kind]?.params || []).map((k) => (k === 'widget' ? widgetPick(z) : k === 'qr' ? qrField(z) : el('input', { type: k === 'qr' ? 'url' : 'text', maxlength: String(PARAM[k][1]), value: z[k] || '', placeholder: PARAM[k][0], 'aria-label': `${PARAM[k][0]} da zona ${z.id}`, onchange: (e) => { z[k] = e.target.value.trim(); paintPv(); } })))];
     const tam = (z) => { const px = quadroPx(st, z); return el('td', { class: 'small', title: z.kind === 'playlist' ? dicaArte({ px }) : '' }, el('b', { text: `${px.w}×${px.h}` }), el('div', { class: 'dim', text: FORMATO_TXT[formatoDe(px)] })); };
     const dicas = st.zones.filter((z) => z.kind === 'playlist').map((z) => note(`Quadro "${z.id}": ${dicaArte({ px: quadroPx(st, z) })}`, 'small'));
     put(rowsBox, table(['Zona', 'O que mostra', 'Esquerda %', 'Alto %', 'Largura %', 'Altura %', 'Na TV (px)', 'Conteúdo fixo', ''], st.zones.map((z, i) => el('tr', { class: st.sel === i ? 'tc-sel' : '' },

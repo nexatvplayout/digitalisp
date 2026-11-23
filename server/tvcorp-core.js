@@ -2,6 +2,7 @@
 // manda (layout por zonas, slide de modelo, playlist e itens, grade e alcance, configurações), a resolução da grade (qual
 // bloco vale em cada tela, por prioridade, especificidade e data), a montagem da chave `signage` do /config e a leitura do
 // `plays` do sinal de vida. O banco e as rotas ficam em server/tvcorp.js; o catálogo em public/shared/tvcorp-tipos.js.
+import { qrKind } from '../public/shared/qr-conteudo.js';
 import {
   TVC_LIMITS as L, TVC_ZONE, TVC_ZONE_KEYS, TVC_ZONE_ID_RE, TVC_PLAYLIST_ZONES, TVC_ORIENTATION_KEYS, TVC_LAYOUT_MODEL, TVC_SLIDE_MODEL,
   TVC_REF_KIND, TVC_SCOPE, TVC_SCOPE_KEYS, TVC_ITEM_KINDS, TVC_FIT_KEYS, TVC_POST_CATEGORY_KEYS, itemRef, parseItemRef, tvcScopeHits,
@@ -29,6 +30,15 @@ export function cleanName(v, what = 'Nome', max = L.name) {
   return s;
 }
 /** Endereço https (sem usuário e senha no endereço), até 500 caracteres. */
+/** O conteúdo de um QR code: endereço https, Wi-Fi (WIFI:…) ou cartão de contato (BEGIN:VCARD…), até 600 letras. */
+export function cleanQrData(v, what = 'QR code') {
+  const s = String(v ?? '').replace(/\r\n/g, '\n').trim();
+  if (/^WIFI:/i.test(s) || /^BEGIN:VCARD/i.test(s)) {
+    if (s.length > 600 || !qrKind(s)) throw fail(400, `${what}: o Wi-Fi ou o contato está incompleto. Monte de novo pelo painel.`);
+    return s;
+  }
+  return cleanUrl(s, what);
+}
 export function cleanUrl(v, what = 'Endereço') {
   const s = String(v ?? '').trim();
   let u = null;
@@ -112,7 +122,7 @@ export function cleanZone(z, i = 0) {
   const params = TVC_ZONE[kind].params || [];
   if (params.includes('title')) { const t = line(z.title, L.label); if (t) out.title = t; }
   if (params.includes('text')) { const t = line(z.text, L.zoneText); if (t) out.text = t; }
-  if (params.includes('qr') && z.qr) out.qr = cleanUrl(z.qr, `${what}, QR code`);
+  if (params.includes('qr') && z.qr) out.qr = cleanQrData(z.qr, `${what}, QR code`);
   if (kind === 'qr' && !out.qr) throw fail(400, `${what}: diga o endereço do QR code.`);
   // o gadget (contador, dias sem acidente, relógio mundial) escolhido direto no layout: o id do bloco do cliente
   if (params.includes('widget') && z.widget != null && z.widget !== '') out.widget = idOf(z.widget, `${what}, gadget`);
