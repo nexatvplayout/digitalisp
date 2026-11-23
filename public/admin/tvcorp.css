@@ -170,3 +170,27 @@ tr.tc-sel td { background: var(--c-panel-3); }
 /* templates PREMIUM (foto própria gerada por IA) */
 .tc-thumb.tp-prem { position: relative; }
 .tp-tag { position: absolute; top: 6px; right: 6px; z-index: 2; padding: 2px 8px; border-radius: 999px; font: 700 .68rem/1.4 system-ui, sans-serif; letter-spacing: .06em; color: #1a1300; background: linear-gradient(135deg, #ffd86b, #f5a623); box-shadow: 0 1px 4px rgba(0,0,0,.4); }
+
+/* a faixa de avisos: editor e prévia rolando (tvcorp-faixa.js) */
+.fx-pv { margin: 6px 0 14px; }
+.fx-bar { display: flex; align-items: stretch; height: 56px; border-radius: 8px; overflow: hidden; }
+.fx-label { display: flex; align-items: center; padding: 0 14px; font-size: calc(var(--fx-size) * .5px); font-style: normal; white-space: nowrap; }
+.fx-win { flex: 1; overflow: hidden; display: flex; align-items: center; }
+.fx-track { display: inline-flex; white-space: nowrap; animation: fx-rola 20s linear infinite; font-size: calc(var(--fx-size) * .56px); }
+.fx-run { padding-right: 3em; }
+.fx-vazio { opacity: .6; }
+@keyframes fx-rola { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .fx-track { animation: none; } }
+.fx-rows { display: grid; gap: 6px; margin-bottom: 8px; }
+.fx-row { display: flex; gap: 6px; align-items: center; }
+.fx-row input[type=text] { flex: 1; min-width: 0; }
+.fx-tg { min-width: 34px; }
+.fx-tg.on { background: var(--brand-blue, #1d4ed8); color: #fff; border-color: var(--brand-blue, #1d4ed8); }
+.fx-corlin { display: inline-flex; align-items: center; gap: 4px; }
+.fx-corlin input[type=color], .fx-cor input[type=color] { width: 38px; height: 30px; padding: 0; border: 1px solid var(--c-line, #24324a); border-radius: 6px; background: none; }
+.fx-cor { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.fx-sw { width: 20px; height: 20px; border-radius: 50%; border: 1px solid rgba(255,255,255,.35); cursor: pointer; padding: 0; }
+.fx-rng { display: flex; align-items: center; gap: 8px; } .fx-rng input { flex: 1; }
+.fx-b { font-weight: 800; } .fx-i { font-style: italic; }
+.fx-bar { display: block; width: 100%; height: auto; border-radius: 8px; }
+.fx-sw { display: inline-flex; width: 22px; height: 22px; border: 0; background: none; } .fx-sw svg { width: 20px; height: 20px; }

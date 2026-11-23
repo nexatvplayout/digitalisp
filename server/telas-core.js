@@ -9,7 +9,8 @@ import {
   LAYOUT_KEYS, isQueueLayout, THEME_COLORS, THEME_MODES, THEME_DEFAULT, WIDGET_KEYS, EXIT_KEYS, DEFAULT_EXIT_SEQ, LIMITS, ALERT_LEVEL_KEYS, MODULE_KEYS, OFFICE_TYPE_KEYS, OFFICE_ROLE_KEYS, officeModules,
 } from '../public/shared/telas-tipos.js';
 import { checkPasswordPolicy } from './authcore.js';
-import { cleanAviso, tickerTexts } from './telas-conteudo-core.js'; // a classificação dos avisos e o modo eleitoral (usados só dentro das funções)
+import { cleanAviso, tickerTexts, tickerRich } from './telas-conteudo-core.js';
+import { cleanTickerStyle } from '../public/shared/faixa.js'; // a classificação dos avisos e o modo eleitoral (usados só dentro das funções)
 
 export const fail = (status, message, extra) => Object.assign(new Error(message), { status, ...(extra ? { extra } : {}) });
 export const sha256 = (s) => createHash('sha256').update(String(s)).digest('hex');
@@ -57,7 +58,8 @@ export function pinRecord(pin) {
 /* ------------------------------------------------------------------ configuração (o que se guarda) */
 /** Padrão de fábrica: o que vale sem nada escolhido na prefeitura, na repartição, no grupo ou na tela. */
 export const FACTORY = Object.freeze({
-  layout: 'full', tickerItems: [], tickerSpeed: 60, widgets: ['clock'], qrUrl: null, sideTitle: null,
+  layout: 'full', tickerItems: [], tickerSpeed: 60, tickerStyle: null, // tickerStyle: cores, negrito, itálico, tamanho, fonte, separador e etiqueta da faixa (public/shared/faixa.js)
+  widgets: ['clock'], qrUrl: null, sideTitle: null,
   pin: null, exitSeq: DEFAULT_EXIT_SEQ, backup: null, volume: 100, muted: false, schedule: null,
   captions: { on: false, lang: null }, // contrato §14: as legendas da programação (desligadas de fábrica)
   theme: THEME_DEFAULT, // contrato §15: a cor principal e o claro/escuro dos painéis de senha novos
@@ -130,6 +132,7 @@ export function cleanTicker(v) {
 const CLEAN = {
   layout: (v) => { if (!LAYOUT_KEYS.includes(v)) throw fail(400, 'Layout inválido.'); return v; },
   tickerItems: cleanTicker,
+  tickerStyle: (v) => { if (typeof v !== 'object' || Array.isArray(v)) throw fail(400, 'Estilo da faixa inválido.'); return cleanTickerStyle(v) || undefined; },
   tickerSpeed: (v) => { const n = Math.round(Number(v)); if (!(n >= LIMITS.tickerSpeedMin && n <= LIMITS.tickerSpeedMax)) throw fail(400, `Velocidade dos avisos: ${LIMITS.tickerSpeedMin} a ${LIMITS.tickerSpeedMax}.`); return n; },
   widgets: (v) => { if (!Array.isArray(v)) throw fail(400, 'Lateral: envie a lista de blocos.'); return WIDGET_KEYS.filter((k) => v.includes(k)); },
   qrUrl: (v) => httpUrl(v, 'QR code'),
@@ -237,7 +240,8 @@ export function contractConfig({ eff, device, office, region, stream, update = n
     device: { id: Number(device.id), name: device.name, office: office.name, officeType: office.type, region: region?.name ?? null },
     stream: { hls: stream?.hls ?? null, backup: eff.backup ?? null, volume: eff.volume, muted: Boolean(eff.muted) },
     layout: isQueueLayout(eff.layout) && !q.enabled ? 'full' : eff.layout, // "queue" e os do §15 só com a senha ligada
-    ticker: { items: tickerTexts(eff.tickerItems, electoral), speed: eff.tickerSpeed },
+    // items: só o texto (o app antigo); style e rich: o estilo da faixa e o de cada aviso (os apps novos; o antigo ignora)
+    ticker: { items: tickerTexts(eff.tickerItems, electoral), speed: eff.tickerSpeed, style: eff.tickerStyle || null, rich: tickerRich(eff.tickerItems, electoral) },
     side: { widgets: (eff.widgets || []).filter((w) => w !== 'queue' || q.enabled), qrUrl: eff.qrUrl ?? null, title: eff.sideTitle ?? null },
     lock: { pinHash: eff.pin?.hash ?? null, pinSalt: eff.pin?.salt ?? null, exitSeq: eff.exitSeq },
     offline: { items: offline, image: offlineImage || null }, // image: a imagem de reserva sem conexão (§7.3, 14/11) ou null
@@ -436,4 +440,4 @@ export const officeActor = (officeName, username = '') => `repartição: ${line(
  * O que o gestor da repartição pode definir numa tela dela. Ficam com a prefeitura: o PIN e a sequência de saída (a trava
  * do aparelho) e os avisos próprios da tela (os avisos da repartição passam pela aprovação da SECOM; os da tela, não).
  */
-export const OFFICE_DEVICE_CONFIG_KEYS = Object.freeze(['layout', 'tickerSpeed', 'widgets', 'qrUrl', 'sideTitle', 'backup', 'volume', 'muted', 'schedule', 'captions', 'theme', 'callSound']);
+export const OFFICE_DEVICE_CONFIG_KEYS = Object.freeze(['layout', 'tickerSpeed', 'tickerStyle', 'widgets', 'qrUrl', 'sideTitle', 'backup', 'volume', 'muted', 'schedule', 'captions', 'theme', 'callSound']);

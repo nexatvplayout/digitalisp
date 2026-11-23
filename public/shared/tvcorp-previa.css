@@ -294,3 +294,5 @@
 .tvc-cd-u b { font-size: 10cqw; line-height: 1; color: var(--tfg); }
 .tvc-cd-u span { font-size: 2.8cqw; color: var(--tdim); }
 .th-light .tvc-cd-u, .tvc-it.th-light .tvc-cd-u { background: rgba(15, 23, 42, 0.08); }
+.tvc-tk-leve { font-weight: 400; }
+.tvc-tk-it span { font-style: italic; }

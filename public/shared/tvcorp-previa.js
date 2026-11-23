@@ -248,8 +248,11 @@ function zoneContent(zone, opts) {
     case 'video': return h('div', 'tvc-z-video', h('span', 'tvc-live', 'AO VIVO'), h('span', 'tvc-z-vt', opts.channel || 'Vídeo do canal'));
     case 'playlist': return it ? itemPreview(it, opts) : h('div', `tvc-z-empty ${th}`, 'Playlist');
     case 'ticker': {
-      const t = (opts.ticker || []).filter(Boolean);
-      return h('div', `tvc-z-ticker ${th}`, h('b', '', 'AVISOS'), h('span', '', t.length ? t.join('  ·  ') : 'Texto rolante'));
+      // os avisos (texto ou { text, … }); a etiqueta à esquerda só quando a faixa tem uma (tickerStyle.label: public/shared/faixa.js)
+      const t = (opts.ticker || []).map((x) => (typeof x === 'string' ? x : x?.text)).filter(Boolean);
+      const s = opts.tickerStyle || null;
+      const sep = s ? ({ ponto: '•', barra: '|', traco: '—', estrela: '★', nada: '' }[s.sep] ?? '•') : '·';
+      return h('div', `tvc-z-ticker ${th}${s?.bold === false ? ' tvc-tk-leve' : ''}${s?.italic ? ' tvc-tk-it' : ''}`, s?.label ? h('b', '', s.label) : null, h('span', '', t.length ? t.join(sep ? `  ${sep}  ` : '   ') : 'Texto rolante'));
     }
     case 'clock': return h('div', `tvc-z-clock ${th}`, h('b', '', opts.clock || nowClock()), h('span', '', opts.date || new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })));
     case 'weather': return h('div', `tvc-z-weather ${th}`, h('b', '', '27°'), h('span', '', opts.city || 'Clima da unidade'));
