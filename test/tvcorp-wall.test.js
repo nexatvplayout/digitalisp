@@ -77,3 +77,12 @@ test('servidor: wallFor dá a posição só para a tela do conjunto (as outras n
   const sg = { tz: 'America/Sao_Paulo', brand: {}, blocks: [], fallback: null };
   assert.deepEqual(antigo({ ...sg, wall: K.wallFor(wall, 9) }), antigo(sg));
 });
+
+test('plataforma pela linha do sistema: Samsung, LG e TV box Android; o Android ainda não faz videowall', () => {
+  assert.equal(W.platformOf('Tizen 6.5'), 'tizen');
+  assert.equal(W.platformOf('webOS 5.0'), 'webos');
+  assert.equal(W.platformOf('11'), 'android');
+  assert.equal(W.platformOf(''), '');
+  assert.ok(W.WALL_UNSUPPORTED.includes('android'));
+  assert.ok(!W.WALL_UNSUPPORTED.includes('tizen') && !W.WALL_UNSUPPORTED.includes('webos'));
+});

@@ -17,6 +17,24 @@ export const WALL_MODES = Object.freeze([
 ]);
 export const WALL_LIMITS = Object.freeze({ maxScreens: 9, maxCols: 6, maxRows: 3, maxBezel: 20 });
 
+/**
+ * A plataforma da tela pelo campo "android" que o app manda no registro: o app Samsung manda "Tizen x", o LG "webOS x"
+ * e a TV box Android a versão do Android ("11"). Vazio: ainda não se registrou.
+ */
+export function platformOf(system) {
+  const s = String(system || '').trim();
+  if (!s) return '';
+  if (/^tizen/i.test(s)) return 'tizen';
+  if (/^webos/i.test(s)) return 'webos';
+  return 'android';
+}
+/**
+ * As plataformas cujo app ainda NÃO desenha o videowall (mostrariam o layout inteiro em cada TV, repetido e sem recorte).
+ * Tire da lista quando o app da plataforma passar a ler signage.wall.
+ */
+export const WALL_UNSUPPORTED = Object.freeze(['android']);
+export const PLATFORM_LABEL = Object.freeze({ tizen: 'Samsung', webos: 'LG', android: 'TV box Android' });
+
 /** A posição (1, 2, 3…) na grade: { col, row } (0 = a primeira), lendo a linha da esquerda para a direita. */
 export const cellOf = (pos, cols) => ({ col: (pos - 1) % cols, row: Math.floor((pos - 1) / cols) });
 

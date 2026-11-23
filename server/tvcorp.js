@@ -473,10 +473,10 @@ export function createTvcorp({
 
   /* ================================================================ resumo */
   async function corpDevices(tenantId) {
-    const rows = await db.all(`SELECT d.id, d.name, d.office_id, d.last_seen, d.state, d.revoked_at, d.online_since, o.name AS office_name, o.type AS office_type
+    const rows = await db.all(`SELECT d.id, d.name, d.office_id, d.last_seen, d.state, d.revoked_at, d.online_since, d.android, o.name AS office_name, o.type AS office_type
       FROM telas_devices d JOIN telas_offices o ON o.id = d.office_id AND o.tenant_id = d.tenant_id WHERE d.tenant_id = ? AND d.revoked_at IS NULL ORDER BY d.id`, [tenantId]);
     return rows.filter((r) => isTvcOfficeType(r.office_type)).map((r) => ({
-      id: Number(r.id), name: r.name, officeId: Number(r.office_id), office: r.office_name, lastSeen: num(r.last_seen),
+      id: Number(r.id), name: r.name, officeId: Number(r.office_id), office: r.office_name, lastSeen: num(r.last_seen), system: r.android || '',
       status: deviceStatus({ revokedAt: num(r.revoked_at), lastSeen: num(r.last_seen), state: r.state }, now()),
     }));
   }
@@ -920,7 +920,8 @@ export function createTvcorp({
         commands: rows.map((c) => ({
           id: Number(c.id), deviceId: Number(c.device_id), device: c.device_name || `Tela #${Number(c.device_id)}`, type: c.type, by: c.created_by || '', at: Number(c.created_at),
           sentAt: num(c.sent_at), doneAt: num(c.done_at), ok: c.ok == null ? null : Number(c.ok) === 1, detail: c.detail || null,
-          result: c.done_at ? (Number(c.ok) === 1 ? 'Feito' : 'Falhou') : c.sent_at ? 'Entregue à tela' : 'Aguardando a tela',
+          // o app antigo responde "Comando desconhecido nesta versão do app": a TV não sabe fazer, não é falha dela
+          result: c.done_at ? (Number(c.ok) === 1 ? 'Feito' : /desconhecido/i.test(c.detail || '') ? 'Não suportado por esta versão do app' : 'Falhou') : c.sent_at ? 'Entregue à tela' : 'Aguardando a tela',
         })),
       });
     }));

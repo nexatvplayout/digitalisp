@@ -21,7 +21,7 @@ export default async function paintComandos(box, ctx) {
     put(out, items.length ? table(['Quando', 'Tela', 'Comando', 'Quem mandou', 'Resultado'], items.map((c) => el('tr', {},
       el('td', { text: when(c.at ?? c.createdAt) }), el('td', { text: c.device || D().devices.find((x) => x.id === c.deviceId)?.name || `#${c.deviceId}` }),
       el('td', {}, chip(cmdLabel(c.type))), el('td', { text: c.by || c.createdBy || '—' }),
-      el('td', {}, c.result || RESULT[c.status] || '—', c.doneAt ? el('div', { class: 'dim small', text: when(c.doneAt) }) : null, c.ok === false && c.detail ? el('div', { class: 'pf-err small', text: c.detail }) : null))))
+      el('td', {}, c.result || RESULT[c.status] || '—', c.doneAt ? el('div', { class: 'dim small', text: when(c.doneAt) }) : null, c.ok === false && c.detail ? el('div', { class: /desconhecido/i.test(c.detail) ? 'dim small' : 'pf-err small', text: c.detail }) : null))))
       : empty('Nenhum comando neste período.'));
   });
   const sendDev = el('select', { 'aria-label': 'Tela do comando' }, ...active().map((x) => opt(x.id, x.name)));

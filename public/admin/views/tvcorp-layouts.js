@@ -8,7 +8,7 @@ import { widgetItem } from './tvcorp-playlists.js';
 import { FACTORY_LAYOUTS, FACTORY_LAYOUT, FACTORY_SETS, LAYOUT_SEGMENTS, ZONE_KINDS, ZONE_KIND, zoneLabel, LIMITS, checkZones, widgetLabel } from './tvcorp-catalogo.js';
 import { themeOf } from './tvcorp-midias.js';
 import { quadroPx, formatoDe, FORMATO_TXT, dicaArte, quadrosDoLayout } from './tvcorp-quadros.js';
-import { WALL_GRIDS, WALL_MODES, bezelPct } from '../../shared/tvcorp-wall.js';
+import { WALL_GRIDS, WALL_MODES, bezelPct, platformOf, WALL_UNSUPPORTED, PLATFORM_LABEL } from '../../shared/tvcorp-wall.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 const sv = (tag, attrs = {}) => { const n = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) if (v != null) n.setAttribute(k, String(v)); return n; };
@@ -304,7 +304,8 @@ async function identify(w) {
   if (!cells.length) { toast('Nenhuma tela neste conjunto ainda.', true); return; }
   let n = 0;
   for (const c of cells) { await tapi(`/api/tvcorp/rede/devices/${c.deviceId}/commands`, { method: 'POST', body: { type: 'identify' } }); n++; }
-  toast(`Pedido enviado a ${n} tela(s): cada uma mostra o número da posição por 10 segundos (o app antigo ignora).`);
+  const old = cells.map((c) => (D().devices || []).find((d) => d.id === c.deviceId)).filter((d) => d && platformOf(d.system || d.android) === 'android').length;
+  toast(`Pedido enviado a ${n} tela(s): cada uma mostra o número da posição por 10 segundos.${old ? ` ${old} delas (TV box Android) ainda não sabe se identificar: na aba Comandos aparece "Não suportado por esta versão do app", não é defeito da TV.` : ''}`);
 }
 function wallCard(w, reload) {
   const d = w.data || {};
@@ -337,6 +338,9 @@ export function wallDialog(w, reload) {
   const layout = el('select', { 'aria-label': 'Layout do videowall' });
   const mkGrade = el('input', { type: 'checkbox', checked: !w, 'aria-label': 'Criar a grade do videowall' });
   const layoutBox = el('div', {}); const cellsBox = el('div', { class: 'pf-grid two' }); const pv = el('div', { class: 'tc-pv-box' }); const hint = el('p', { class: 'dim small' });
+  const warn = el('p', { class: 'pf-err small', 'aria-live': 'polite' });
+  // as TVs cujo app ainda não desenha o videowall (mostrariam o layout inteiro em cada uma)
+  const unsupported = () => Object.values(st.cells).map((id) => devs.find((d) => d.id === id)).filter((d) => d && WALL_UNSUPPORTED.includes(platformOf(d.system || d.android)));
   const paintCells = () => {
     const n = st.cols * st.rows;
     for (const k of Object.keys(st.cells)) if (Number(k) > n) delete st.cells[k];
@@ -357,6 +361,10 @@ export function wallDialog(w, reload) {
     const data = { mode: st.mode, cols: st.cols, rows: st.rows, orientation: st.orientation, bezel: st.bezel, sync: st.sync, layoutId: st.layoutId ? Number(st.layoutId) : null, cells: Object.entries(st.cells).map(([pos, deviceId]) => ({ pos: Number(pos), deviceId })) };
     put(pv, wallPreview({ name: name.value, data }));
     hint.textContent = WALL_MODES.find((m) => m.key === st.mode)?.desc || '';
+    const bad = unsupported(); const names = bad.map((d) => `"${d.name}" (${PLATFORM_LABEL[platformOf(d.system || d.android)]})`).join(', ');
+    warn.textContent = !bad.length ? '' : st.mode === 'wall'
+      ? `O app destas TVs ainda não faz videowall: ${names}. Cada uma mostraria o layout inteiro, repetido. Troque por TVs Samsung ou LG, ou use o cardápio por tela.`
+      : `O app destas TVs ainda não sincroniza a troca: ${names}. Elas mostram o cardápio normalmente, só que sem trocar junto com as outras.`;
   };
   mode.addEventListener('change', () => { st.mode = mode.value; paintLayout(); paint(); });
   grid.addEventListener('change', () => { const g = WALL_GRIDS.find((x) => x.key === grid.value); st.cols = g.cols; st.rows = g.rows; paintCells(); paint(); });
@@ -376,11 +384,12 @@ export function wallDialog(w, reload) {
     el('div', { class: 'pf-grid two' }, f('Moldura na largura (% de uma tela)', bx), f('Moldura na altura (% de uma tela)', by)),
     layoutBox,
     label('Como fica o conjunto'), pv,
-    label('A tela de cada posição'), note('A posição 1 é a de cima, à esquerda; segue pela linha. Use "Identificar" depois de salvar para cada TV mostrar o número dela.'), cellsBox), {
+    label('A tela de cada posição'), note('A posição 1 é a de cima, à esquerda; segue pela linha. Use "Identificar" depois de salvar para cada TV mostrar o número dela.'), cellsBox, warn), {
     wide: true, saveLabel: w ? 'Salvar' : 'Criar o conjunto',
     save: async () => {
       if (!name.value.trim()) throw new Error('Dê um nome ao conjunto.');
       if (st.mode === 'wall' && !st.layoutId) throw new Error('Escolha o layout do videowall.');
+      if (st.mode === 'wall' && unsupported().length) throw new Error(warn.textContent);
       const body = { name: name.value.trim(), mode: st.mode, cols: st.cols, rows: st.rows, orientation: st.orientation, bezel: st.bezel, sync: st.sync, layoutId: st.mode === 'wall' ? Number(st.layoutId) : null, cells: Object.entries(st.cells).map(([pos, deviceId]) => ({ pos: Number(pos), deviceId })) };
       if (w) await tapi(`/api/tvcorp/walls/${w.id}`, { method: 'PATCH', body }); else await tapi('/api/tvcorp/walls', { method: 'POST', body });
       const devices = body.cells.map((c) => c.deviceId);
