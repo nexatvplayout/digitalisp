@@ -44,7 +44,7 @@ export async function abrirPreviaViva(layout, { zonePlaylists = null, titulo = '
   // essas zonas passam exatamente os itens da TV, sem seletor
   const zonasPl = (layout.zones || []).filter((z) => TVC_PLAYLIST_ZONES.includes(z.kind) && !zoneItems?.[z.id]);
   // a zona sem playlist na grade fica sem playlist (como na TV); sem grade nenhuma, começa na primeira playlist
-  const escolha = Object.fromEntries(zonasPl.map((z) => [z.id, zonePlaylists ? zonePlaylists[z.id] ?? null : z.kind === 'news' ? null : playlists[0]?.id ?? null]));
+  const escolha = Object.fromEntries(zonasPl.map((z) => [z.id, zonePlaylists?.[z.id] ?? z.playlist ?? (zonePlaylists || z.kind === 'news' ? null : playlists[0]?.id ?? null)]));
   const canal = el('select', { 'aria-label': 'Canal ao vivo' }, ...listaCanais.map((c, i) => opt(c.url, c.name || `Canal ${i + 1}`, canalUrl ? c.url === canalUrl : i === 0)));
   const aviso = el('p', { class: 'small dim', 'aria-live': 'polite' });
   const palco = el('div', { class: 'tc-live-palco' });

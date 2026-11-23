@@ -353,7 +353,8 @@ export function createTvcorp({
     const audio = audioOf ? audioOf(tenantId, lay.id) : null;
     if (audio && !layout.zones.some((z) => z.kind === 'video')) layout.audio = audio;
     const zones = {};
-    const zp = K.zonePlaylistsFor(lay.zones, s.zonePlaylists);
+    // a playlist escolhida no layout é o padrão da zona; a da grade (ou da programação da tela) vence
+    const zp = { ...Object.fromEntries(lay.zones.filter((z) => z.playlist != null).map((z) => [z.id, z.playlist])), ...K.zonePlaylistsFor(lay.zones, s.zonePlaylists) };
     const today = K.localParts(now(), tzOf(data.settings)).day;
     for (const [zone, pid] of Object.entries(zp)) {
       const pl = data.playlists.get(Number(pid));

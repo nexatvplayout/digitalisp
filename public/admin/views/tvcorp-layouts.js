@@ -22,7 +22,8 @@ const BACKGROUNDS = [['#0b1220', 'Escuro'], ['#eef2f7', 'Claro'], ['#000000', 'P
 const SAMPLE_TICKER = ['Bem-vindo! Use o crachá em todas as áreas', 'Refeitório aberto das 11h às 14h'];
 /** Os gadgets do cliente (contador, dias sem acidente, relógio mundial: aba Barras e blocos), lidos ao abrir a aba. */
 let WIDGETS = [];
-let QRS = []; // os QR codes do menu QR Codes (link curto /q/…, que conta as leituras)
+let QRS = [];
+let PLAYLISTS = []; // as playlists da empresa (a playlist padrão de cada zona, escolhida no layout) // os QR codes do menu QR Codes (link curto /q/…, que conta as leituras)
 /** Há cidade para o clima? (a cidade das telas em Configurações, ou uma fonte de clima em Notícias e dados) */
 let HAS_CITY = true;
 /** O que a zona mostra na prévia: o gadget escolhido nela (o mesmo desenho da TV). */
@@ -192,7 +193,10 @@ export function layoutEditor(lay, reload, factoryKey = null, copyOf = null, { ao
         opt('', 'sem filete', !z.edge), ...EDGE_COLORS.map(([c, t]) => opt(c, `filete ${t.toLowerCase()}`, z.edge?.color === c))) : null,
       z.edge ? el('select', { 'aria-label': `Espessura do filete da zona ${z.id}`, onchange: (e) => { z.edge = { ...z.edge, width: Number(e.target.value) }; paintPv(); } },
         ...[[0.5, 'fino'], [1, 'médio'], [2, 'grosso']].map(([v, t]) => opt(v, t, Number(z.edge.width) === v))) : null);
-    const params = (z) => [shapePick(z), layer(z), ...(ZONE_KIND[z.kind]?.params || []).map((k) => (k === 'widget' ? widgetPick(z) : k === 'qr' ? qrField(z) : el('input', { type: k === 'qr' ? 'url' : 'text', maxlength: String(PARAM[k][1]), value: z[k] || '', placeholder: PARAM[k][0], 'aria-label': `${PARAM[k][0]} da zona ${z.id}`, onchange: (e) => { z[k] = e.target.value.trim(); paintPv(); } })))];
+    // a zona que recebe playlist: escolhe aqui qual toca (a grade e a programação da tela ainda podem trocar)
+    const plPick = (z) => (ZONE_KIND[z.kind]?.playlist ? el('select', { 'aria-label': `Playlist da zona ${z.id}`, onchange: (e) => { z.playlist = e.target.value ? Number(e.target.value) : null; paintPv(); } },
+      opt('', z.kind === 'news' ? 'Notícias automáticas (todas as fontes)' : 'Playlist: a da grade', z.playlist == null), ...PLAYLISTS.map((p) => opt(p.id, `Playlist: ${p.name}`, Number(z.playlist) === Number(p.id)))) : null);
+    const params = (z) => [plPick(z), shapePick(z), layer(z), ...(ZONE_KIND[z.kind]?.params || []).map((k) => (k === 'widget' ? widgetPick(z) : k === 'qr' ? qrField(z) : el('input', { type: k === 'qr' ? 'url' : 'text', maxlength: String(PARAM[k][1]), value: z[k] || '', placeholder: PARAM[k][0], 'aria-label': `${PARAM[k][0]} da zona ${z.id}`, onchange: (e) => { z[k] = e.target.value.trim(); paintPv(); } })))];
     const tam = (z) => { const px = quadroPx(st, z); return el('td', { class: 'small', title: z.kind === 'playlist' ? dicaArte({ px }) : '' }, el('b', { text: `${px.w}×${px.h}` }), el('div', { class: 'dim', text: FORMATO_TXT[formatoDe(px)] })); };
     const dicas = st.zones.filter((z) => z.kind === 'playlist').map((z) => note(`Quadro "${z.id}": ${dicaArte({ px: quadroPx(st, z) })}`, 'small'));
     put(rowsBox, table(['Zona', 'O que mostra', 'Esquerda %', 'Alto %', 'Largura %', 'Altura %', 'Na TV (px)', 'Conteúdo fixo', ''], st.zones.map((z, i) => el('tr', { class: st.sel === i ? 'tc-sel' : '' },
@@ -239,6 +243,7 @@ export default async function paintLayouts(box, ctx) {
   const d = D(); const reload = ctx.reload;
   WIDGETS = listOf(await tapi('/api/tvcorp/widgets').catch(() => null), 'widgets');
   QRS = listOf(await tapi('/api/qrcodes').catch(() => null), 'qrcodes');
+  PLAYLISTS = listOf(await tapi('/api/tvcorp/playlists').catch(() => null), 'playlists');
   const feeds = listOf(await tapi('/api/tvcorp/feeds').catch(() => null), 'feeds');
   const def = d.defaults || {};
   HAS_CITY = Boolean(def.cidade || def.extra?.cidade || def.config?.cidade || feeds.some((x) => x.kind === 'weather'));
