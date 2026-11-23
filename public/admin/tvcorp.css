@@ -217,3 +217,10 @@ tr.tc-sel td { background: var(--c-panel-3); }
 .tc-fx { width: auto; padding: 2px 4px; font-size: .8rem; }
 .tc-fxbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 10px; }
 .tc-fxbar select { width: auto; }
+
+/* rádio de fundo do layout */
+.tc-radio-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.tc-radio-bar input[type=search] { flex: 1; min-width: 180px; }
+.tc-radio-bar select { width: auto; }
+.tc-radio-res { width: 100%; margin: 6px 0; }
+.tc-radio-audio { width: 100%; margin-top: 6px; }

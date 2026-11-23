@@ -70,6 +70,7 @@ const AUTO_LABEL = { birthdays: 'Aniversariantes', news: 'Notícias', quotes: 'C
 export function createTvcorp({
   db, storage, ffmpeg = null, checkImage = null, dataFor = null, labelFor = null, refExists = null, decideOther = null, hasFeature = null, pendingOther = null,
   forget = () => {}, audit = async () => {}, ipOf = (req) => req.ip, now = () => Date.now(), timers = true, artFile = null,
+  audioOf = null, // (tenantId, layoutId) -> o bloco layout.audio (a rádio de fundo) ou null
   storageCheck = null, // (tenantId, bytes): o 402 do armazenamento do plano antes de aceitar um vídeo
 }) {
   if (!db) throw new Error('createTvcorp: falta o banco');
@@ -341,6 +342,9 @@ export function createTvcorp({
       orientation: lay.orientation, background: K.COLOR_RE.test(String(lay.background || '')) ? lay.background : '#000000',
       zones: lay.zones.map(({ hint, ...z }) => ({ ...z })),
     };
+    // a rádio de fundo (layout sem vídeo do canal): o app toca o stream no volume da tela; o app antigo ignora
+    const audio = audioOf ? audioOf(tenantId, lay.id) : null;
+    if (audio && !layout.zones.some((z) => z.kind === 'video')) layout.audio = audio;
     const zones = {};
     const zp = K.zonePlaylistsFor(lay.zones, s.zonePlaylists);
     const today = K.localParts(now(), tzOf(data.settings)).day;

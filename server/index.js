@@ -20,6 +20,7 @@ import { mountGuia } from './guia.js';
 import { mountEnderecos } from './enderecos.js';
 import { bindContas, assertNovaTela } from './contas.js';
 import { mountRevenda } from './revenda.js';
+import { mountRadios, loadRadios, audioOf } from './radios.js';
 import { mountHls, carregarHls, channelsOf as hlsChannels, streamOf as hlsStream } from './hls.js';
 import { createTvcorp } from './tvcorp.js';
 import { TVC_ART } from '../public/shared/tvcorp-tipos.js';
@@ -141,6 +142,8 @@ mountPlataforma(app);
 mountGuia(app, { needs, signedIn, needsPlatform, ah }); // configuração guiada (server/guia.js)
 mountRevenda(app, { needs, signedIn });
 mountHls(app, { needs, ah, onChange: (tid) => telas?.forget(tid) }); // canais ao vivo (HLS) (server/hls.js)
+mountRadios(app, { needs, signedIn, ah, onChange: (tid) => telas?.forget(tid) }); // rádio de fundo dos layouts sem vídeo (server/radios.js)
+await loadRadios();
 
 /* ------------------------------------------------------------------ telas e TV Corporativa */
 const publicOrigin = (req) => config.platform.publicUrl || `${req.protocol}://${req.get('host')}`;
@@ -192,6 +195,7 @@ function artFileOf(key, req) {
 let telas = null;
 const tvcorp = createTvcorp({
   db, storage: graphicsFiles('tvcmedia-', 'tvclogo-'), ffmpeg: config.ffmpeg, artFile: artFileOf,
+  audioOf, // a rádio de fundo do layout (server/radios.js)
   storageCheck: async (tenantId, bytes) => tenancy.assertStorage(tenantId, await tenancy.usageStorageBytes(tenantId), bytes),
   dataFor: tvcorpDados.dataFor, labelFor: tvcorpLabel,
   refExists: async (tenantId, kind, id) => Boolean(await tvcorpLabel(tenantId, kind, id)),

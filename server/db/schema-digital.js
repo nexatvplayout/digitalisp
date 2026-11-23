@@ -129,6 +129,13 @@ CREATE TABLE IF NOT EXISTS isp_hls (
   created_at ${big} NOT NULL
 );
 CREATE INDEX IF NOT EXISTS isp_hls_tenant ON isp_hls(tenant_id);
+-- a rádio de fundo de um layout sem vídeo (server/radios.js; a lista em server/radios-br.json)
+CREATE TABLE IF NOT EXISTS isp_layout_radio (
+  layout_id  ${big} PRIMARY KEY REFERENCES tvcorp_layouts(id) ON DELETE CASCADE,
+  tenant_id  ${big} NOT NULL,
+  station    TEXT NOT NULL,
+  volume     INTEGER NOT NULL DEFAULT 100
+);
 -- o canal ao vivo de UMA tela (vence o da unidade)
 CREATE TABLE IF NOT EXISTS isp_tela_hls (
   device_id  ${big} PRIMARY KEY REFERENCES telas_devices(id) ON DELETE CASCADE,

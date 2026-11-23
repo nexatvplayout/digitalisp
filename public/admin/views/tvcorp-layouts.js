@@ -7,6 +7,7 @@ import { layoutPreview, frameOf } from '../../shared/tvcorp-previa.js';
 import { widgetItem } from './tvcorp-playlists.js';
 import { FACTORY_LAYOUTS, FACTORY_LAYOUT, FACTORY_SETS, LAYOUT_SEGMENTS, ZONE_KINDS, ZONE_KIND, zoneLabel, LIMITS, checkZones, widgetLabel } from './tvcorp-catalogo.js';
 import { themeOf } from './tvcorp-midias.js';
+import { radioPicker } from './tvcorp-radio.js';
 import { wifiQr, vcardQr, qrKind, qrLabel } from '../../shared/qr-conteudo.js';
 import { quadroPx, formatoDe, FORMATO_TXT, dicaArte, quadrosDoLayout } from './tvcorp-quadros.js';
 
@@ -110,7 +111,10 @@ export function layoutEditor(lay, reload, factoryKey = null, copyOf = null) {
   const bg = el('select', {}, ...BACKGROUNDS.map(([v, t]) => opt(v, t, st.background === v)));
   const rowsBox = el('div', {}); const pv = el('div', {}); const err = el('p', { class: 'pf-err small', 'aria-live': 'polite' });
   const canvas = zoneCanvas(st, (why) => { if (why === 'select') paintRows(); else { paintRows(); paintPv(); } });
+  // a rádio de fundo (só em layout sem a zona de vídeo do canal); refresh() a cada mudança das zonas
+  const radio = radioPicker(lay?.id ?? null, () => st.zones.some((z) => z.kind === 'video'));
   const paintPv = () => {
+    radio.refresh();
     put(pv, layoutPreview({ orientation: st.orientation, zones: st.zones, name: st.name }, previewOpts(st)));
     // o clima sem cidade sai vazio na tela: avisa aqui, onde a zona é escolhida
     const semCidade = !HAS_CITY && st.zones.some((z) => z.kind === 'weather' || z.sample === 'weather' || WIDGETS.find((w) => w.id === Number(z.widget))?.kind === 'weather');
@@ -181,13 +185,15 @@ export function layoutEditor(lay, reload, factoryKey = null, copyOf = null) {
       el('div', {}, label('Arraste para ajustar'), canvas.node, note('Arraste a zona para mover; arraste o quadradinho do canto para mudar o tamanho. Com a zona escolhida, as setas movem 1% (com Shift, mudam o tamanho).')),
       el('div', {}, label('Como fica na TV'), pv, err)),
     label('Zonas'), rowsBox,
+    label('Rádio de fundo'), radio.node,
     note('Vídeo do canal: no máximo uma zona, e é sempre o mesmo vídeo de hoje, só que no retângulo da zona. Playlist: a sequência que a grade escolher para a zona. Texto rolante: os avisos e as fontes da aba Barras e blocos.')), {
     wide: true,
     save: async () => {
       const msg = checkZones(st.zones); if (msg) throw new Error(msg);
       if (!name.value.trim()) throw new Error('Dê um nome ao layout.');
       const body = { name: name.value.trim(), orientation: st.orientation, zones: st.zones.map(({ id, kind, x, y, w, h, title, text, qr, hint }) => ({ id, kind, x, y, w, h, ...(title ? { title } : {}), ...(text ? { text } : {}), ...(qr ? { qr } : {}), ...(hint ? { hint } : {}) })), background: st.background, factoryKey: st.factoryKey };
-      if (lay) await tapi(`/api/tvcorp/layouts/${lay.id}`, { method: 'PATCH', body }); else await tapi('/api/tvcorp/layouts', { method: 'POST', body });
+      const saved = lay ? await tapi(`/api/tvcorp/layouts/${lay.id}`, { method: 'PATCH', body }) : await tapi('/api/tvcorp/layouts', { method: 'POST', body });
+      await radio.save(saved?.id ?? lay?.id); // a rádio de fundo, depois que o layout existe
       toast('Layout salvo. As telas com grade neste layout trocam em até 1 minuto.');
       await reload();
     },
