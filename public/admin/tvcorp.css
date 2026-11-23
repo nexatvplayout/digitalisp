@@ -202,3 +202,5 @@ tr.tc-sel td { background: var(--c-panel-3); }
 .tc-set-row.port .tc-set-tv .tvc-previa { max-width: 140px; }
 .tc-set { grid-column: span 2; }
 .pf-chip.tc-tvs { font-weight: 700; }
+.tc-layer { display: inline-flex; align-items: center; gap: 6px; margin-right: 6px; }
+.tc-zg.ov .tc-zr { fill: rgba(245, 179, 28, 0.18); stroke-dasharray: 1.2 0.8; }

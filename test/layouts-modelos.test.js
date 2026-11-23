@@ -50,3 +50,17 @@ test('conjuntos de várias TVs: 2, 3 e 4 telas, deitadas e em pé, cada tela um 
   }
   assert.deepEqual(M.filter((m) => m.set).map((m) => m.key).sort(), [...used].sort(), 'toda tela de conjunto está num conjunto');
 });
+
+test('zonas por cima da imagem: a de cima pode ficar sobre a de baixo, duas da mesma camada não; o vídeo não vai por cima', () => {
+  const base = { id: 'main', kind: 'playlist', x: 0, y: 0, w: 100, h: 100 };
+  const zs = K.cleanZones([{ id: 'clock', kind: 'clock', x: 78, y: 3, w: 20, h: 16, overlay: true, opacity: 40 }, base]);
+  assert.deepEqual(zs.map((z) => z.id), ['main', 'clock'], 'a camada de cima vai por último (ordem de desenhar)');
+  assert.equal(zs[1].opacity, 40); assert.equal(zs[0].overlay, undefined);
+  assert.equal(K.cleanZone({ id: 'q', kind: 'qr', x: 0, y: 0, w: 20, h: 20, qr: 'https://exemplo.com.br', overlay: true }).opacity, 60, 'fundo padrão 60%');
+  assert.throws(() => K.cleanZones([base, { id: 'b', kind: 'clock', x: 10, y: 10, w: 20, h: 20 }]), /uma por cima da outra/);
+  assert.throws(() => K.cleanZones([base, { id: 'a', kind: 'clock', x: 10, y: 10, w: 20, h: 20, overlay: true }, { id: 'b', kind: 'weather', x: 20, y: 20, w: 20, h: 20, overlay: true }]), /uma por cima da outra/);
+  assert.throws(() => K.cleanZone({ id: 'v', kind: 'video', x: 0, y: 0, w: 20, h: 20, overlay: true }), /vídeo/);
+  assert.throws(() => K.cleanZone({ id: 'c', kind: 'clock', x: 0, y: 0, w: 20, h: 20, overlay: true, opacity: 150 }), /0 a 100/);
+  const ov = M.filter((m) => m.zones.some((z) => z.overlay));
+  assert.ok(ov.length >= 5, 'modelos prontos com widgets por cima');
+});

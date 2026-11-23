@@ -350,11 +350,13 @@ export function layoutPreview(layout = {}, opts = {}) {
   wrap.setAttribute('aria-label', `Prévia do layout${layout.name ? ` ${layout.name}` : ''}: ${(layout.zones || []).map((z) => ZONE_NAMES[z.kind] || z.kind).join(', ')}`);
   const svg = s('svg', { class: 'tvc-svg', viewBox: `0 0 ${fr.w} ${fr.h}`, preserveAspectRatio: 'xMidYMid meet' });
   svg.append(s('rect', { class: `tvc-bg ${themeClass(opts.theme)}`, x: 0, y: 0, width: fr.w, height: fr.h }));
-  for (const zone of layout.zones || []) {
+  // a camada de baixo primeiro, a de cima (overlay) por último: ela fica sobre a imagem
+  const ordered = [...(layout.zones || []).filter((z) => !z.overlay), ...(layout.zones || []).filter((z) => z.overlay)];
+  for (const zone of ordered) {
     const x = (zone.x / 100) * fr.w; const y = (zone.y / 100) * fr.h; const w = (zone.w / 100) * fr.w; const hh = (zone.h / 100) * fr.h;
-    const g = s('g', { class: `tvc-zone k-${zone.kind}${opts.selected === zone.id ? ' sel' : ''}`, 'data-zone': zone.id });
+    const g = s('g', { class: `tvc-zone k-${zone.kind}${zone.overlay ? ' ov' : ''}${opts.selected === zone.id ? ' sel' : ''}`, 'data-zone': zone.id });
     const fo = s('foreignObject', { x: x.toFixed(2), y: y.toFixed(2), width: w.toFixed(2), height: hh.toFixed(2) });
-    fo.append(h('div', 'tvc-z', zoneContent(zone, opts)));
+    fo.append(h('div', zone.overlay ? `tvc-z tvc-ov tvc-op-${Math.round(Math.max(0, Math.min(100, zone.opacity ?? 60)) / 20) * 20}` : 'tvc-z', zoneContent(zone, opts)));
     g.append(fo, s('rect', { class: 'tvc-zb', x: (x + 0.3).toFixed(2), y: (y + 0.3).toFixed(2), width: Math.max(0, w - 0.6).toFixed(2), height: Math.max(0, hh - 0.6).toFixed(2), rx: 0.8 }));
     if (opts.labels) {
       const t = s('text', { class: 'tvc-zl', x: (x + 1.5).toFixed(2), y: (y + 4.2).toFixed(2) });

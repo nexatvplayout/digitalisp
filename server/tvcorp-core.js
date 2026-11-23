@@ -116,6 +116,14 @@ export function cleanZone(z, i = 0) {
   if (kind === 'qr' && !out.qr) throw fail(400, `${what}: diga o endereço do QR code.`);
   // o gadget (contador, dias sem acidente, relógio mundial) escolhido direto no layout: o id do bloco do cliente
   if (params.includes('widget') && z.widget != null && z.widget !== '') out.widget = idOf(z.widget, `${what}, gadget`);
+  // DIGITAL ISP: a zona por cima das outras (widget sobre a imagem), com o fundo translúcido (opacity, 0 a 100 %)
+  if (z.overlay === true) {
+    if (kind === 'video') throw fail(400, `${what}: o vídeo não pode ficar por cima das outras zonas.`);
+    out.overlay = true;
+    const op = z.opacity == null || z.opacity === '' ? 60 : Math.round(Number(z.opacity));
+    if (!Number.isFinite(op) || op < 0 || op > 100) throw fail(400, `${what}: a opacidade do fundo vai de 0 a 100.`);
+    out.opacity = op;
+  }
   if (TVC_PLAYLIST_ZONES.includes(kind) && z.hint && TVC_REF_KIND[z.hint]) out.hint = z.hint;
   return out;
 }
@@ -127,10 +135,12 @@ export function cleanZones(list) {
   const zones = list.map(cleanZone);
   if (new Set(zones.map((z) => z.id)).size !== zones.length) throw fail(400, 'Duas zonas com o mesmo nome curto.');
   if (zones.filter((z) => z.kind === 'video').length > L.videoZones) throw fail(400, 'No máximo uma zona de vídeo por layout.');
+  // a de cima pode ficar sobre a de baixo; duas da mesma camada, não
   for (let i = 0; i < zones.length; i++) for (let k = i + 1; k < zones.length; k++) {
-    if (overlap(zones[i], zones[k])) throw fail(400, `As zonas "${zones[i].id}" e "${zones[k].id}" estão uma por cima da outra.`);
+    if (Boolean(zones[i].overlay) === Boolean(zones[k].overlay) && overlap(zones[i], zones[k])) throw fail(400, `As zonas "${zones[i].id}" e "${zones[k].id}" estão uma por cima da outra.`);
   }
-  return zones;
+  // a ordem é a de desenhar: primeiro a camada de baixo, depois a de cima
+  return [...zones.filter((z) => !z.overlay), ...zones.filter((z) => z.overlay)];
 }
 /** Fundo do layout: só uma cor (#rrggbb); o app não desenha imagem de fundo. */
 export function cleanBackground(v) {

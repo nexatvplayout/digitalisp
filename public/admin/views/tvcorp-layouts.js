@@ -17,6 +17,8 @@ const BACKGROUNDS = [['#0b1220', 'Escuro'], ['#eef2f7', 'Claro'], ['#000000', 'P
 const SAMPLE_TICKER = ['Bem-vindo! Use o crachá em todas as áreas', 'Refeitório aberto das 11h às 14h'];
 /** Os gadgets do cliente (contador, dias sem acidente, relógio mundial: aba Barras e blocos), lidos ao abrir a aba. */
 let WIDGETS = [];
+/** Há cidade para o clima? (a cidade das telas em Configurações, ou uma fonte de clima em Notícias e dados) */
+let HAS_CITY = true;
 /** O que a zona mostra na prévia: o gadget escolhido nela (o mesmo desenho da TV). */
 const zoneItems = (zones) => Object.fromEntries((zones || []).map((z) => {
   const w = z.widget != null ? WIDGETS.find((x) => x.id === Number(z.widget)) : null;
@@ -53,9 +55,11 @@ export function zoneCanvas(st, onChange) {
     const kids = [sv('rect', { class: 'tc-zbg', x: 0, y: 0, width: fr.w, height: fr.h })];
     // a grade de 10% para ajudar a alinhar
     for (let i = 1; i < 10; i++) kids.push(sv('line', { class: 'tc-zgrid', x1: (fr.w * i) / 10, y1: 0, x2: (fr.w * i) / 10, y2: fr.h }), sv('line', { class: 'tc-zgrid', x1: 0, y1: (fr.h * i) / 10, x2: fr.w, y2: (fr.h * i) / 10 }));
-    st.zones.forEach((z, i) => {
+    // a camada de cima por último (fica sobre a outra também no quadro de edição)
+    const order = st.zones.map((z, i) => i).sort((a, b) => Number(Boolean(st.zones[a].overlay)) - Number(Boolean(st.zones[b].overlay)));
+    order.forEach((i) => { const z = st.zones[i];
       const x = (z.x / 100) * fr.w; const y = (z.y / 100) * fr.h; const w = (z.w / 100) * fr.w; const h = (z.h / 100) * fr.h;
-      const g = sv('g', { class: `tc-zg k-${z.kind}${st.sel === i ? ' sel' : ''}`, tabindex: '0', role: 'button', 'aria-label': `Zona ${z.id}, ${zoneLabel(z.kind)}: ${z.x}% da esquerda, ${z.y}% do alto, ${z.w}% de largura, ${z.h}% de altura` });
+      const g = sv('g', { class: `tc-zg k-${z.kind}${z.overlay ? ' ov' : ''}${st.sel === i ? ' sel' : ''}`, tabindex: '0', role: 'button', 'aria-label': `Zona ${z.id}, ${zoneLabel(z.kind)}: ${z.x}% da esquerda, ${z.y}% do alto, ${z.w}% de largura, ${z.h}% de altura` });
       const body = sv('rect', { class: 'tc-zr', x: x.toFixed(2), y: y.toFixed(2), width: w.toFixed(2), height: h.toFixed(2), 'data-i': i, 'data-m': 'move' });
       const t = sv('text', { class: 'tc-zt', x: (x + 2).toFixed(2), y: (y + 6).toFixed(2) }); t.textContent = `${z.id} · ${zoneLabel(z.kind)}`;
       const t2 = sv('text', { class: 'tc-zt2', x: (x + 2).toFixed(2), y: (y + 11).toFixed(2) }); const px = quadroPx(st, z); t2.textContent = `${px.w}×${px.h} px`;
@@ -105,7 +109,12 @@ export function layoutEditor(lay, reload, factoryKey = null, copyOf = null) {
   const bg = el('select', {}, ...BACKGROUNDS.map(([v, t]) => opt(v, t, st.background === v)));
   const rowsBox = el('div', {}); const pv = el('div', {}); const err = el('p', { class: 'pf-err small', 'aria-live': 'polite' });
   const canvas = zoneCanvas(st, (why) => { if (why === 'select') paintRows(); else { paintRows(); paintPv(); } });
-  const paintPv = () => { put(pv, layoutPreview({ orientation: st.orientation, zones: st.zones, name: st.name }, previewOpts(st))); err.textContent = checkZones(st.zones) || ''; };
+  const paintPv = () => {
+    put(pv, layoutPreview({ orientation: st.orientation, zones: st.zones, name: st.name }, previewOpts(st)));
+    // o clima sem cidade sai vazio na tela: avisa aqui, onde a zona é escolhida
+    const semCidade = !HAS_CITY && st.zones.some((z) => z.kind === 'weather' || z.sample === 'weather' || WIDGETS.find((w) => w.id === Number(z.widget))?.kind === 'weather');
+    err.textContent = checkZones(st.zones) || (semCidade ? 'Atenção: nenhuma cidade para o clima. Sem ela, a zona de clima fica vazia na tela. Escolha a cidade em Configurações ou cadastre uma fonte de clima em Notícias e dados.' : '');
+  };
   function paintRows() {
     const num = (z, k) => el('input', { type: 'number', min: '0', max: '100', step: '1', value: String(z[k]), class: 'tc-num-in', 'aria-label': `${k} da zona ${z.id}`,
       onchange: (e) => { z[k] = clamp(Math.round(Number(e.target.value) || 0), 0, 100); canvas.paint(); paintPv(); paintRows(); } });
@@ -119,7 +128,11 @@ export function layoutEditor(lay, reload, factoryKey = null, copyOf = null) {
         ...mine.map((w) => opt(w.id, `${z.kind === 'widget' ? `${widgetLabel(w.kind)}: ` : ''}${w.name || w.data?.title || `#${w.id}`}`, Number(z.widget) === w.id)));
       return s;
     };
-    const params = (z) => (ZONE_KIND[z.kind]?.params || []).map((k) => (k === 'widget' ? widgetPick(z) : el('input', { type: k === 'qr' ? 'url' : 'text', maxlength: String(PARAM[k][1]), value: z[k] || '', placeholder: PARAM[k][0], 'aria-label': `${PARAM[k][0]} da zona ${z.id}`, onchange: (e) => { z[k] = e.target.value.trim(); paintPv(); } })));
+    // por cima da imagem: a zona fica sobre as outras, com o fundo translúcido
+    const layer = (z) => (z.kind === 'video' ? null : el('span', { class: 'tc-layer' },
+      el('label', { class: 'pf-check' }, el('input', { type: 'checkbox', checked: Boolean(z.overlay), 'aria-label': `Zona ${z.id} por cima`, onchange: (e) => { if (e.target.checked) { z.overlay = true; z.opacity ??= 60; } else { delete z.overlay; delete z.opacity; } canvas.paint(); paintRows(); paintPv(); } }), el('span', { text: 'Por cima' })),
+      z.overlay ? el('select', { 'aria-label': `Fundo da zona ${z.id}`, onchange: (e) => { z.opacity = Number(e.target.value); paintPv(); } }, ...[0, 20, 40, 60, 80, 100].map((v) => opt(v, v ? `fundo ${v}%` : 'sem fundo', (z.opacity ?? 60) === v))) : null));
+    const params = (z) => [layer(z), ...(ZONE_KIND[z.kind]?.params || []).map((k) => (k === 'widget' ? widgetPick(z) : el('input', { type: k === 'qr' ? 'url' : 'text', maxlength: String(PARAM[k][1]), value: z[k] || '', placeholder: PARAM[k][0], 'aria-label': `${PARAM[k][0]} da zona ${z.id}`, onchange: (e) => { z[k] = e.target.value.trim(); paintPv(); } })))];
     const tam = (z) => { const px = quadroPx(st, z); return el('td', { class: 'small', title: z.kind === 'playlist' ? dicaArte({ px }) : '' }, el('b', { text: `${px.w}×${px.h}` }), el('div', { class: 'dim', text: FORMATO_TXT[formatoDe(px)] })); };
     const dicas = st.zones.filter((z) => z.kind === 'playlist').map((z) => note(`Quadro "${z.id}": ${dicaArte({ px: quadroPx(st, z) })}`, 'small'));
     put(rowsBox, table(['Zona', 'O que mostra', 'Esquerda %', 'Alto %', 'Largura %', 'Altura %', 'Na TV (px)', 'Conteúdo fixo', ''], st.zones.map((z, i) => el('tr', { class: st.sel === i ? 'tc-sel' : '' },
@@ -162,6 +175,9 @@ const quadrosTxt = (l) => quadrosDoLayout(l).map((q) => `${q.zone.id}: ${q.px.w}
 export default async function paintLayouts(box, ctx) {
   const d = D(); const reload = ctx.reload;
   WIDGETS = listOf(await tapi('/api/tvcorp/widgets').catch(() => null), 'widgets');
+  const feeds = listOf(await tapi('/api/tvcorp/feeds').catch(() => null), 'feeds');
+  const def = d.defaults || {};
+  HAS_CITY = Boolean(def.cidade || def.extra?.cidade || def.config?.cidade || feeds.some((x) => x.kind === 'weather'));
   const usedBy = (id) => d.schedules.filter((s) => s.layoutId === id).map((s) => s.name);
   const mine = d.layouts.map((l) => el('div', { class: 'tc-lcard' },
     layoutPreview(l, { ...previewOpts(l), labels: false }),
