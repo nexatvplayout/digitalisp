@@ -227,8 +227,51 @@ textarea { resize: vertical; }
 @media (prefers-reduced-motion: reduce) { .whats-flutuante { transition: none; } .whats-flutuante:hover { transform: none; } }
 @media (max-width: 560px) { .whats-flutuante { right: 14px; bottom: 14px; width: 54px; height: 54px; } .rodape { padding-bottom: 84px; } }
 
-/* Guia de compatibilidade (imagem do dono) */
-.guia { margin: 40px 0 0; }
-.guia a { display: block; border-radius: var(--raio); overflow: hidden; box-shadow: var(--sombra); }
-.guia img { width: 100%; height: auto; }
-.guia figcaption { margin-top: 10px; font-size: .9rem; color: var(--texto-suave); text-align: center; }
+/* Guia de compatibilidade (fotos recortadas da arte enviada pelo dono) */
+.novo {
+  font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; font-style: normal;
+  padding: 2px 8px; border-radius: 999px; background: var(--ciano); color: var(--marinho);
+}
+.guia {
+  margin-top: 48px; border-radius: 20px; overflow: hidden; color: #D7E2F5;
+  background: radial-gradient(700px 360px at 0% 0%, rgba(13,128,255,.28), transparent 60%), var(--marinho);
+}
+.guia-topo { display: grid; grid-template-columns: 1fr 1.15fr; align-items: stretch; }
+.guia-texto { padding: 40px 36px; align-self: center; }
+.guia-texto h3 { font-size: clamp(1.7rem, 3.4vw, 2.6rem); color: #fff; text-transform: uppercase; font-weight: 800; line-height: 1.05; margin-bottom: .5em; }
+.guia-texto h3 span { color: var(--ciano); }
+.guia-texto p:last-child { margin: 0; font-size: 1.08rem; }
+.guia-foto { width: 100%; height: 100%; object-fit: cover; min-height: 220px; }
+.guia-painel { background: #EEF3FB; margin: 0 20px; border-radius: 16px; padding: 22px 20px 20px; color: var(--texto); }
+.guia-painel h4, .guia-check h4 { margin: 0 0 14px; font-size: 1.05rem; text-transform: uppercase; letter-spacing: .02em; }
+.guia-painel h4 { color: var(--marinho); }
+.aparelhos { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+.aparelhos li {
+  position: relative; display: flex; flex-direction: column-reverse; justify-content: flex-end; gap: 6px; padding: 16px 10px 10px;
+  background: #fff; border: 1px solid var(--borda); border-radius: 12px; text-align: center;
+}
+.aparelhos li span { font-weight: 700; font-size: .86rem; color: var(--marinho); text-transform: uppercase; line-height: 1.2; min-height: 2.4em; }
+.aparelhos img { width: 100%; height: auto; }
+.aparelhos .destaque { border: 2px solid var(--ciano); }
+.aparelhos .destaque-breve { border-style: dashed; }
+.aparelhos li > em { font-style: normal; position: absolute; top: -10px; left: 50%; transform: translateX(-50%); white-space: nowrap; }
+.aparelhos .breve { background: #E2F7F8; }
+.guia-rodape { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: center; padding: 28px 36px 36px; }
+.guia-frase { margin: 0; font-size: clamp(1.4rem, 2.6vw, 2rem); font-weight: 800; color: #fff; line-height: 1.15; }
+.guia-frase::after { content: ""; display: block; width: 90px; height: 4px; margin-top: 14px; border-radius: 2px; background: var(--ciano); }
+.guia-check { border: 1px solid rgba(20,196,204,.5); border-radius: 14px; padding: 18px 20px; background: rgba(6,23,58,.4); }
+.guia-check h4 { color: var(--ciano); }
+.guia-check ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.guia-check li { position: relative; padding-left: 28px; }
+.guia-check li::before { content: ""; position: absolute; left: 2px; top: .4em; width: 13px; height: 7px; border: solid var(--ciano); border-width: 0 0 3px 3px; transform: rotate(-45deg); }
+@media (max-width: 1020px) { .aparelhos { grid-template-columns: repeat(3, 1fr); row-gap: 20px; } }
+@media (max-width: 820px) {
+  .guia-topo, .guia-rodape { grid-template-columns: 1fr; }
+  .guia-texto { padding: 32px 24px 24px; }
+  .guia-foto { height: auto; }
+  .guia-rodape { padding: 24px; }
+}
+@media (max-width: 560px) {
+  .aparelhos { grid-template-columns: repeat(2, 1fr); }
+  .guia-painel { margin: 0 12px; padding: 18px 12px 14px; }
+}
