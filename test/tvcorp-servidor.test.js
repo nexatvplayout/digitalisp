@@ -81,6 +81,8 @@ async function roteiro(db, label) {
   const features = new Map([[1, new Set(['tvcorp', 'api'])], [2, new Set(['tvcorp'])]]);
   const make = () => createTvcorp({
     db, storage, ffmpeg: FFMPEG, now: () => clock, timers: false,
+    // a foto de fundo do slide (DIGITAL ISP): o servidor de verdade lê public/tvcorp/arte/foto-*.jpg
+    artFile: (key) => ({ url: `https://cdn.exemplo.test/arte/${key}.jpg`, sha256: 'a'.repeat(64), bytes: 1000 }),
     forget: () => { forgot++; },
     audit: async (e) => { audits.push(JSON.stringify(e)); },
     dataFor: async (tenantId, officeId, ref, ctx) => {
@@ -167,7 +169,7 @@ async function roteiro(db, label) {
     const got = await call('GET', `/api/tvcorp/media/${img.id}/file`);
     assert.equal(got.status, 200); assert.equal(got.headers.get('content-type'), 'image/jpeg'); assert.equal(sha(got.data), imgRow.sha256);
 
-    const slide = await ok('POST', '/api/tvcorp/media', { body: { template: 'comunicado', seconds: 12, fields: { title: 'Férias coletivas', text: 'De 22/12 a 05/01.\nBoas festas!', image: img.id, qr: 'https://rh.exemplo.test/ferias' } } }, 201);
+    const slide = await ok('POST', '/api/tvcorp/media', { body: { template: 'comunicado', seconds: 12, fields: { title: 'Férias coletivas', text: 'De 22/12 a 05/01.\nBoas festas!', image: img.id, qr: 'https://rh.exemplo.test/ferias', art: 'foto-natal', palette: 'verde' } } }, 201);
     assert.equal(slide.kind, 'slide'); assert.equal(slide.title, 'Férias coletivas'); assert.equal(slide.fields.image, img.id);
     assert.equal((await call('POST', '/api/tvcorp/media', { body: { template: 'comunicado', fields: { title: 'T', qr: 'http://inseguro.exemplo' } } })).status, 400);
     assert.equal((await call('POST', '/api/tvcorp/media', { body: { template: 'comunicado', fields: { title: 'T', image: slide.id } } })).status, 400, 'slide não cita slide');
@@ -175,7 +177,7 @@ async function roteiro(db, label) {
     assert.equal((await call('POST', '/api/tvcorp/media', { body: { template: 'comunicado', fields: { title: 'T', image: imgB.id } } })).status, 404, 'imagem de outro cliente');
     assert.equal((await call('POST', '/api/tvcorp/media', { body: { template: 'comunicado', officeId: S.offB, fields: { title: 'T' } } })).status, 404, 'unidade de outro cliente');
     const old = await ok('POST', '/api/tvcorp/media', { body: { template: 'qr', fields: { title: 'Pesquisa', qr: 'https://pesquisa.exemplo.test' } } }, 201);
-    const patched = await ok('PATCH', `/api/tvcorp/media/${slide.id}`, { body: { title: 'Férias de fim de ano', fields: { title: 'Férias coletivas', text: 'De 22/12 a 05/01.', image: img.id, variant: 'light' } } });
+    const patched = await ok('PATCH', `/api/tvcorp/media/${slide.id}`, { body: { title: 'Férias de fim de ano', fields: { title: 'Férias coletivas', text: 'De 22/12 a 05/01.', image: img.id, variant: 'light', art: 'foto-natal', palette: 'verde' } } });
     assert.equal(patched.title, 'Férias de fim de ano'); assert.equal(patched.fields.variant, 'light');
     // isolamento das mídias
     for (const [m, u] of [['GET', `/api/tvcorp/media/${img.id}`], ['GET', `/api/tvcorp/media/${img.id}/file`], ['PATCH', `/api/tvcorp/media/${img.id}`], ['DELETE', `/api/tvcorp/media/${img.id}`]]) {
@@ -238,6 +240,8 @@ async function roteiro(db, label) {
     assert.deepEqual(right[0], { id: `m${img.id}`, kind: 'image', seconds: 10, url: `https://cdn.exemplo.test/graphics/${imgRow.file}`, sha256: imgRow.sha256, bytes: Number(imgRow.bytes), fit: 'contain' });
     assert.equal(right[1].kind, 'slide'); assert.equal(right[1].template, 'comunicado');
     assert.deepEqual(right[1].fields.image, { url: `https://cdn.exemplo.test/graphics/${imgRow.file}`, sha256: imgRow.sha256, bytes: Number(imgRow.bytes) }, 'a imagem do slide vira arquivo do contrato');
+    assert.deepEqual(right[1].fields.artFile, { url: 'https://cdn.exemplo.test/arte/foto-natal.jpg', sha256: 'a'.repeat(64), bytes: 1000, photo: true, tone: 'dark' }, 'a foto de fundo vai como arquivo para o app');
+    assert.equal(right[1].fields.art, 'foto-natal'); assert.equal(right[1].fields.palette, 'verde');
     assert.equal(right[2].kind, 'birthdays'); assert.equal(right[2].people[0].name, 'Ana S.');
     assert.deepEqual(right[3].fields, { title: 'Turnos da semana', text: '1º turno: 6h às 14h\n2º turno: 14h às 22h', lines: ['1º turno: 6h às 14h', '2º turno: 14h às 22h'] });
     assert.equal(right[4].from, 660); assert.equal(right[4].to, 840);
