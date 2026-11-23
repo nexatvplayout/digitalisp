@@ -91,3 +91,11 @@ video.aovivo-el { background: #000; }
 @keyframes tr-zoom { from { opacity: 0; transform: scale(1.08); } to { opacity: 1; transform: scale(1); } }
 img.kenburns { animation: kenburns 10s linear both; transform-origin: 50% 50%; }
 @keyframes kenburns { from { transform: scale(1); } to { transform: scale(1.12) translate(-1.5%, -1%); } }
+
+/* imagem inteira (contain) com a mesma foto desfocada e escurecida atrás: um canvas de 32 px esticado (o navegador suaviza)
+   e um pouco maior que o quadro, para a borda borrada não aparecer */
+.tela-fundo-foto { position: absolute; left: -8%; top: -8%; width: 116%; height: 116%; z-index: 0; }
+.tvc-it-image .tvc-it-img { z-index: 1; }
+.tvc-it-image .tvc-sl-cap { position: relative; z-index: 2; }
+/* o vídeo próprio inteiro (contain) sobre o fundo do layout, sem faixas pretas */
+.item-video video.midia { background: transparent; }

@@ -217,6 +217,34 @@
       return null;
     }
 
+    /**
+     * Imagem com fit 'contain' (o servidor manda em toda imagem): a imagem inteira, sem cortar, e atrás dela a mesma foto
+     * desfocada e escurecida cobrindo o quadro (como a prévia do painel), em vez de faixas pretas. O desfoque é um canvas
+     * pequeno (32 px) ampliado: leve no Tizen 5.5, sem filter: blur. Se a prévia já trouxer o fundo (tvc-it-fill), fica o dela.
+     */
+    function imagemInteira(n, it) {
+      if (!n || !(it.contain || (it.raw && it.raw.fit === 'contain'))) return;
+      var img = n.querySelector('img.tvc-it-img');
+      if (!img || n.querySelector('.tvc-it-fill')) return;
+      img.style.objectFit = 'contain';
+      var fundo = el('canvas', 'tela-fundo-foto');
+      fundo.width = 32; fundo.height = 32;
+      img.parentNode.insertBefore(fundo, img);
+      var pintar = function () {
+        try {
+          var c2 = fundo.getContext('2d');
+          var w = img.naturalWidth || 1, h = img.naturalHeight || 1;
+          // cover no canvas pequeno: o centro da foto preenchendo o quadro
+          var s = Math.max(32 / w, 32 / h);
+          c2.drawImage(img, (32 - w * s) / 2, (32 - h * s) / 2, w * s, h * s);
+          // escurece no próprio canvas (o mesmo que brightness 0.55, sem filtro de CSS)
+          c2.fillStyle = 'rgba(0,0,0,0.45)';
+          c2.fillRect(0, 0, 32, 32);
+        } catch (e) { fundo.style.display = 'none'; }
+      };
+      if (img.complete && img.naturalWidth) pintar(); else img.addEventListener('load', pintar);
+    }
+
     /** A foto de fundo que não veio no pacote (artFile baixado): o mesmo véu escuro das fotos da biblioteca. */
     function fundoReserva(n, o) {
       if (!o._fundo || !n) return;
@@ -276,7 +304,7 @@
               // showSeconds, quando vier, decide
               if (o.showSeconds !== undefined) o.seconds = o.showSeconds === true;
             }
-            if (o) { n = raiz.TelasPrevia.itemPreview(o, { theme: tema(prog) }); iniciais(n, o); fundoReserva(n, o); }
+            if (o) { n = raiz.TelasPrevia.itemPreview(o, { theme: tema(prog) }); iniciais(n, o); fundoReserva(n, o); imagemInteira(n, it); }
           }
         } catch (e) {
           if (ctx.aoErro) ctx.aoErro('desenho do item ' + it.id + ': ' + e.message);
