@@ -57,7 +57,7 @@ test('webOS: .ipk com control, data, appinfo, packageinfo e o player inteiro, co
     assert.deepEqual(dados[base + 'icon.png'], fs.readFileSync(path.join(__dirname, '..', 'marca', 'icone-webos-80.png')));
     assert.ok(dados[base + 'index.html']);
     assert.ok(dados[base + 'icon.png'].subarray(1, 4).toString() === 'PNG');
-    for (const f of fs.readdirSync(path.join(__dirname, '..', 'comum', 'js'))) assert.ok(dados[base + 'js/' + f], f);
+    for (const f of fs.readdirSync(path.join(__dirname, '..', 'comum', 'js'))) if (!/\.tmp$/.test(f)) assert.ok(dados[base + 'js/' + f], f);
     assert.match(dados[base + 'js/config-padrao.js'].toString(), /app\.exemplo\.com\.br/);
     assert.ok(dados['./usr/palm/packages/br.com.digitalisp.telas/packageinfo.json']);
   } finally { fs.rmSync(saida, { recursive: true, force: true }); }

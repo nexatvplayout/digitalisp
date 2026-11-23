@@ -82,6 +82,8 @@ function icone(w, h) {
 function copiar(origem, destino) {
   fs.mkdirSync(destino, { recursive: true });
   for (const nome of fs.readdirSync(origem)) {
+    // os temporários da geração da prévia (outro processo gravando ao mesmo tempo) não vão no pacote
+    if (/\.tmp$/i.test(nome)) continue;
     const o = path.join(origem, nome), d = path.join(destino, nome);
     if (fs.statSync(o).isDirectory()) copiar(o, d);
     else fs.copyFileSync(o, d);
