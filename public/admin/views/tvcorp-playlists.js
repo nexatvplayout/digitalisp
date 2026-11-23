@@ -19,7 +19,7 @@ const secs = (n) => { const m = Math.floor(n / 60); const s = n % 60; return m ?
 async function sources() {
   const get = ([p, key]) => tapi(p).then((r) => listOf(r, key)).catch(() => []);
   const [media, posts, kpis, feeds, widgets, people] = await Promise.all([['/api/tvcorp/media', 'media'], ['/api/tvcorp/posts', 'posts'], ['/api/tvcorp/kpis', 'kpis'], ['/api/tvcorp/feeds', 'feeds'], ['/api/tvcorp/widgets', 'widgets'], ['/api/tvcorp/people?limit=500', 'people']].map(get));
-  return { media: media.filter((m) => m.status !== 'rejected'), posts, kpis, feeds: feeds.filter((x) => x.kind === 'rss' || x.kind === 'quotes'), widgets, people };
+  return { media: media.filter((m) => m.status !== 'rejected'), posts, kpis, feeds: feeds.filter((x) => x.kind === 'rss' || x.kind === 'quotes' || x.kind === 'weather'), widgets, people };
 }
 /** O nome de um item na lista. */
 export function itemTitle(it, src) {
@@ -63,7 +63,7 @@ async function previewOf(it, src) {
     if (it.refKind === 'quotes') return itemPreview({ kind: 'quotes', title: x?.name, at: c.at, source: c.source || '', items: (c.items || []).map((i) => ({ label: i.code, value: i.sell ?? i.buy, change: i.change ?? null, prefix: 'R$', decimals: 2 })) }, { theme });
     return itemPreview({ kind: 'news', title: x?.name, items: (c.items || []).map((i) => ({ ...i, source: c.source })), source: c.source || x?.name || '' }, { theme });
   }
-  if (it.refKind === 'widget') return itemPreview(widgetItem(find(src.widgets)), { theme });
+  if (it.refKind === 'widget') return itemPreview(widgetItem(find(src.widgets), { kpis: src.kpis, feeds: src.feeds }), { theme });
   return itemPreview({ kind: 'none' }, { theme });
 }
 /** Um widget (tvcorp_widgets) no formato do item que o app recebe (contrato §4.1). */
@@ -71,8 +71,20 @@ const ZONE_NAMES = new Map();
 /** O nome da cidade de um fuso (a lista vem do servidor em GET /api/tvcorp/widgets; sem ela, o fim do nome do fuso). */
 export const zoneName = (tz) => ZONE_NAMES.get(tz) || String(tz).split('/').pop().replace(/_/g, ' ');
 export const learnZones = (list) => { for (const z of list || []) ZONE_NAMES.set(z.tz, z.label); };
-export function widgetItem(w) {
+export function widgetItem(w, { kpis = [], feeds = [] } = {}) {
   const d = w?.data || {};
+  // DIGITAL ISP: os gadgets novos (o painel não tem os dados ao vivo do clima: usa o último da fonte, ou um exemplo)
+  if (w?.kind === 'weather') {
+    const f = feeds.find((x) => x.id === Number(d.feedId)) || feeds.find((x) => x.kind === 'weather'); const c = f?.preview || {};
+    const sample = [['seg', 19, 28], ['ter', 18, 27], ['qua', 20, 30], ['qui', 19, 26]].map(([weekday, min, max]) => ({ weekday, min, max }));
+    return { kind: 'weather', title: d.title || c.city || 'Clima', city: c.city, tempC: c.tempC ?? 26, text: c.text || 'Exemplo: a tela mostra o clima da fonte', days: (c.days?.length ? c.days : sample).slice(0, d.days || 4), source: c.source };
+  }
+  if (w?.kind === 'clock') return { kind: 'clock', face: d.face, tz: d.tz || undefined, label: d.label, seconds: d.seconds, date: d.date };
+  if (w?.kind === 'agenda') { const t = new Date(); const today = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`; return { kind: 'agenda', title: d.title, today, events: (d.events || []).filter((e) => e.date >= today) }; }
+  if (w?.kind === 'reviews') return { kind: 'reviews', title: d.title, items: d.items || [], qr: d.qr };
+  if (w?.kind === 'dashboard') return { kind: 'dashboard', title: d.title, items: (d.kpis || []).map((id) => kpis.find((k) => k.id === Number(id))).filter(Boolean).map((k) => ({ name: k.name, value: k.value, target: k.target, unit: k.unit, band: kpiBand(k) })) };
+  if (w?.kind === 'directions') return { kind: 'directions', ...d };
+  if (w?.kind === 'web') return { kind: 'web', url: d.url, refreshMin: d.refreshMin };
   // os dados como o servidor guarda (server/tvcorp-dados.js cleanWidget) no formato do item que a tela recebe
   if (w?.kind === 'menu') { const day = new Date().getDay(); return { kind: 'menu', title: d.title || 'Cardápio de hoje', day: WEEK_SHORT[day], items: (d.days?.[String(day)] || []).map((x) => (d.showPrice ? x : { name: x.name })) }; }
   if (w?.kind === 'worldclock') return { kind: 'worldclock', title: w.name, clocks: (d.zones || []).map((tz) => ({ tz, label: zoneName(tz) })) };

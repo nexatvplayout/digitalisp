@@ -66,6 +66,8 @@ export const TVC_ZONES = Object.freeze([
   { key: 'safety', label: 'Dias sem acidente', desc: 'Os dias sem acidente, o recorde e a meta.', playlist: true, params: ['widget'] },
   { key: 'worldclock', label: 'Relógio mundial', desc: 'A hora em outras cidades.', params: ['title', 'widget'] },
   { key: 'queue', label: 'Chamada de senha', desc: 'A senha chamada e as últimas chamadas (quando a unidade tem a chamada de senha).' },
+  // DIGITAL ISP: qualquer gadget direto na zona (relógio, clima, agenda, indicadores, avaliações, como chegar, página)
+  { key: 'widget', label: 'Gadget', desc: 'Um gadget escolhido na aba Barras e blocos: relógio, clima, agenda, indicadores, avaliações, como chegar, página e outros.', params: ['widget'] },
 ]);
 export const TVC_ZONE = Object.freeze(Object.fromEntries(TVC_ZONES.map((z) => [z.key, z])));
 export const TVC_ZONE_KEYS = Object.freeze(TVC_ZONES.map((z) => z.key));
@@ -81,7 +83,7 @@ export const TVC_ZONE_ID_RE = /^[a-z][a-z0-9-]{0,15}$/;
 export const TVC_REF_KINDS = Object.freeze([
   { key: 'media', label: 'Imagem ou slide', needsId: true },
   { key: 'post', label: 'Comunicado', needsId: true },
-  { key: 'widget', label: 'Contador, dias sem acidente, relógio mundial ou cardápio', needsId: true },
+  { key: 'widget', label: 'Gadget (contador, relógio, clima, agenda, indicadores…)', needsId: true },
   { key: 'kpi', label: 'Indicador', needsId: true },
   { key: 'birthdays', label: 'Aniversariantes', auto: true },
   { key: 'news', label: 'Notícias', auto: true },
@@ -93,7 +95,9 @@ export const TVC_REF_KIND = Object.freeze(Object.fromEntries(TVC_REF_KINDS.map((
 export const TVC_REF_KIND_KEYS = Object.freeze(TVC_REF_KINDS.map((k) => k.key));
 
 /** Os itens que a tela recebe (contrato §4.1 zones[...][].kind). */
-export const TVC_ITEM_KINDS = Object.freeze(['image', 'slide', 'birthdays', 'kpi', 'news', 'quotes', 'post', 'menu', 'countdown', 'safety', 'worldclock']);
+export const TVC_ITEM_KINDS = Object.freeze(['image', 'slide', 'birthdays', 'kpi', 'news', 'quotes', 'post', 'menu', 'countdown', 'safety', 'worldclock',
+  // DIGITAL ISP: os gadgets novos
+  'weather', 'clock', 'agenda', 'reviews', 'dashboard', 'directions', 'web']);
 
 /**
  * O id do item na tela (o mesmo que volta em plays[].ref): m<id> mídia, p<id> comunicado, k<id> indicador, w<id> widget,
@@ -355,6 +359,13 @@ export const TVC_POST_CATEGORY_KEYS = Object.freeze(TVC_POST_CATEGORIES.map((c) 
 /* ------------------------------------------------------------------ widgets (pacote B: tvcorp_widgets.kind) */
 export const TVC_WIDGETS = Object.freeze([
   { key: 'countdown', label: 'Contagem regressiva' },
+  { key: 'clock', label: 'Relógio' },
+  { key: 'weather', label: 'Clima e previsão' },
+  { key: 'agenda', label: 'Agenda e salas' },
+  { key: 'dashboard', label: 'Painel de indicadores' },
+  { key: 'reviews', label: 'Avaliações e depoimentos' },
+  { key: 'directions', label: 'Como chegar' },
+  { key: 'web', label: 'Página da internet' },
   { key: 'safety', label: 'Dias sem acidente' },
   { key: 'worldclock', label: 'Relógio mundial' },
   { key: 'menu', label: 'Cardápio da semana' },

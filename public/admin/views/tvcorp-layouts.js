@@ -5,7 +5,7 @@
 import { el, guard, toast, tapi, put, f, opt, table, label, note, empty, btn, btns, chip, dialog, D, when, listOf } from './tvcorp-base.js';
 import { layoutPreview, frameOf } from '../../shared/tvcorp-previa.js';
 import { widgetItem } from './tvcorp-playlists.js';
-import { FACTORY_LAYOUTS, FACTORY_LAYOUT, ZONE_KINDS, ZONE_KIND, zoneLabel, LIMITS, checkZones } from './tvcorp-catalogo.js';
+import { FACTORY_LAYOUTS, FACTORY_LAYOUT, ZONE_KINDS, ZONE_KIND, zoneLabel, LIMITS, checkZones, widgetLabel } from './tvcorp-catalogo.js';
 import { themeOf } from './tvcorp-midias.js';
 import { quadroPx, formatoDe, FORMATO_TXT, dicaArte, quadrosDoLayout } from './tvcorp-quadros.js';
 
@@ -93,10 +93,10 @@ export function layoutEditor(lay, reload, factoryKey = null, copyOf = null) {
     const PARAM = { title: ['Título', 40], text: ['Texto', 120], qr: ['Endereço do QR (https)', 500] };
     // o gadget da zona (contador, dias sem acidente, relógio mundial): escolhido aqui, vai à tela sem precisar de playlist
     const widgetPick = (z) => {
-      const mine = WIDGETS.filter((w) => w.kind === z.kind);
+      const mine = WIDGETS.filter((w) => z.kind === 'widget' || w.kind === z.kind);
       const s = el('select', { 'aria-label': `Gadget da zona ${z.id}`, onchange: (e) => { if (e.target.value) z.widget = Number(e.target.value); else delete z.widget; paintPv(); } },
-        opt('', mine.length ? (z.kind === 'worldclock' ? 'Escolha o relógio' : 'Pela playlist da grade') : 'Nenhum criado (aba Barras e blocos)', z.widget == null),
-        ...mine.map((w) => opt(w.id, w.name || w.data?.title || `#${w.id}`, Number(z.widget) === w.id)));
+        opt('', mine.length ? (['worldclock', 'widget'].includes(z.kind) ? 'Escolha o gadget' : 'Pela playlist da grade') : 'Nenhum criado (aba Barras e blocos)', z.widget == null),
+        ...mine.map((w) => opt(w.id, `${z.kind === 'widget' ? `${widgetLabel(w.kind)}: ` : ''}${w.name || w.data?.title || `#${w.id}`}`, Number(z.widget) === w.id)));
       return s;
     };
     const params = (z) => (ZONE_KIND[z.kind]?.params || []).map((k) => (k === 'widget' ? widgetPick(z) : el('input', { type: k === 'qr' ? 'url' : 'text', maxlength: String(PARAM[k][1]), value: z[k] || '', placeholder: PARAM[k][0], 'aria-label': `${PARAM[k][0]} da zona ${z.id}`, onchange: (e) => { z[k] = e.target.value.trim(); paintPv(); } })));
