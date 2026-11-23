@@ -20,6 +20,7 @@ const APPS = path.join(__dirname, '..');
 const REPO = path.join(APPS, '..');
 const FONTE_JS = path.join(REPO, 'public', 'shared', 'tvcorp-previa.js');
 const FONTE_QR = path.join(REPO, 'public', 'shared', 'telas-previa.js');
+const FONTE_FAIXA = path.join(REPO, 'public', 'shared', 'faixa.js');
 const FONTE_CSS = path.join(REPO, 'public', 'shared', 'tvcorp-previa.css');
 const FONTE_ARTE = path.join(REPO, 'public', 'tvcorp', 'arte');
 const COMUM = path.join(APPS, 'comum');
@@ -137,7 +138,9 @@ function gerarJs(mins, conteineres) {
   const eb = esbuild();
   const entrada = [
     `export * from ${JSON.stringify(FONTE_JS.replace(/\\/g, '/'))};`,
-    `export { qrSvg } from ${JSON.stringify(FONTE_QR.replace(/\\/g, '/'))};`
+    `export { qrSvg } from ${JSON.stringify(FONTE_QR.replace(/\\/g, '/'))};`,
+    // o estilo da faixa de avisos (o mesmo código do servidor e do painel), quando existir no checkout
+    fs.existsSync(FONTE_FAIXA) ? `export { cleanTickerStyle, sepText, fontCss } from ${JSON.stringify(FONTE_FAIXA.replace(/\\/g, '/'))};` : ''
   ].join('\n');
   const r = eb.buildSync({
     stdin: { contents: entrada, resolveDir: path.dirname(FONTE_JS), loader: 'js', sourcefile: 'previa-entrada.js' },
@@ -145,13 +148,16 @@ function gerarJs(mins, conteineres) {
     legalComments: 'none', charset: 'utf8', minifySyntax: true, logLevel: 'silent'
   });
   const codigo = r.outputFiles[0].text;
-  return POLYFILLS + codigo + `TelasPrevia.MINS = ${JSON.stringify(mins)};\nTelasPrevia.CONTEINERES = ${JSON.stringify(conteineres.join(', '))};\n`;
+  // as artes que vão no pacote (arte/): o app não baixa o artFile delas
+  const artes = fs.existsSync(FONTE_ARTE) ? fs.readdirSync(FONTE_ARTE).filter((f) => /\.(svg|jpe?g|png|webp)$/i.test(f)).map((f) => f.replace(/\.[^.]+$/, '')) : [];
+  return POLYFILLS + codigo + `TelasPrevia.ARTES = ${JSON.stringify(artes)};
+TelasPrevia.MINS = ${JSON.stringify(mins)};\nTelasPrevia.CONTEINERES = ${JSON.stringify(conteineres.join(', '))};\n`;
 }
 
 /** Gera os três; `seNecessario`: só se faltar algum ou a fonte for mais nova. Devolve true se gerou. */
 function gerar(op) {
   op = op || {};
-  const fontes = [FONTE_JS, FONTE_QR, FONTE_CSS, path.join(REPO, 'public', 'shared', 'tvcorp-tipos.js'), __filename].filter((f) => fs.existsSync(f));
+  const fontes = [FONTE_JS, FONTE_QR, FONTE_CSS, FONTE_FAIXA, path.join(REPO, 'public', 'shared', 'tvcorp-tipos.js'), __filename].filter((f) => fs.existsSync(f));
   if (op.seNecessario && fs.existsSync(SAIDA_JS) && fs.existsSync(SAIDA_CSS)) {
     const t = Math.min(fs.statSync(SAIDA_JS).mtimeMs, fs.statSync(SAIDA_CSS).mtimeMs);
     if (fontes.every((f) => fs.statSync(f).mtimeMs <= t)) return false;

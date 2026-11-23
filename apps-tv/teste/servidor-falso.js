@@ -115,6 +115,16 @@ function tzLocal() { return Intl.DateTimeFormat().resolvedOptions().timeZone || 
 /** A grade com um item de cada tipo (teste visual contra a prévia do painel). */
 function blocoTipos() {
   const lateral = est.tipos === 'lateral';
+  if (est.tipos === 'sobre') {
+    // zonas por cima (overlay) sobre o vídeo/playlist: relógio e clima no canto, com o vidro translúcido
+    const tipos = itensTipos(arquivo, Math.floor(Date.now() / 3600000) * 3600000);
+    return { id: 'grade-tipos', layout: { orientation: 'land', background: '#0b1220', zones: [
+      { id: 'main', x: 0, y: 0, w: 100, h: 88, kind: midia['video-teste.mp4'] ? 'video' : 'playlist' },
+      { id: 'faixa', x: 0, y: 88, w: 100, h: 12, kind: 'ticker' },
+      { id: 'hora', x: 2, y: 3, w: 20, h: 16, kind: 'widget', overlay: true, opacity: 60 },
+      { id: 'clima', x: 76, y: 3, w: 22, h: 30, kind: 'widget', overlay: true, opacity: 40 }] }, days: [], from: 0, to: 1440,
+      zones: { main: tipos.filter((t) => t.kind === 'image' || t.kind === 'slide').slice(0, 3), hora: tipos.filter((t) => t.id === 'wclk'), clima: tipos.filter((t) => t.id === 'wwx') } };
+  }
   const zones = lateral
     ? [{ id: 'main', x: 0, y: 0, w: 75, h: 100, kind: midia['video-teste.mp4'] ? 'video' : 'playlist' }, { id: 'right', x: 75, y: 0, w: 25, h: 100, kind: 'playlist' }]
     : [{ id: 'right', x: 0, y: 0, w: 100, h: 100, kind: 'playlist' }];
@@ -152,7 +162,10 @@ function montarConfig(tela) {
     device: { name: tela.name },
     brand: { name: 'Provedor X', logo: arquivo('logo-revenda.svg'), color: '#0ea5e9', background: '#020617' },
     stream: { hls: est.aoVivo, volume: 100, muted: true },
-    ticker: { items: ['Programação versão ' + est.versao, 'Ofertas válidas enquanto durar o estoque'], speed: 60 },
+    ticker: Object.assign({ items: ['Programação versão ' + est.versao, 'Ofertas válidas enquanto durar o estoque'], speed: 60 },
+      // o estilo da faixa e o de cada aviso (public/shared/faixa.js), ligado por /teste/faixa?estilo=1
+      est.faixaEstilo ? { style: { color: '#fde68a', bg: '#7f1d1d', bold: true, italic: false, size: 60, font: 'condensada', sep: 'estrela', label: 'URGENTE', labelColor: '#7f1d1d', labelBg: '#fde68a' },
+        rich: [{ text: 'Programação versão ' + est.versao, color: '#ffffff', bold: true }, { text: 'Ofertas válidas enquanto durar o estoque', italic: true }] } : {}),
     offline: {
       items: midia['video-teste.mp4'] ? [arquivo('video-teste.mp4')] : [],
       image: arquivo('sem-internet.svg')
@@ -352,7 +365,7 @@ function controle(req, res, url) {
     registrar('ao vivo: ' + (est.aoVivo || 'nenhum'));
     return volta();
   }
-  if (p === '/teste/tipos') { est.tipos = ['lateral', 'cheia'].includes(q.get('modo')) ? q.get('modo') : null; est.versao++; registrar('todos os tipos: ' + (est.tipos || 'desligado')); return volta(); }
+  if (p === '/teste/tipos') { est.tipos = ['lateral', 'cheia', 'sobre'].includes(q.get('modo')) ? q.get('modo') : null; est.versao++; registrar('todos os tipos: ' + (est.tipos || 'desligado')); return volta(); }
   if (p === '/teste/tema') { est.tema = { color: q.get('cor') || '#6d28d9', mode: q.get('modo') === 'light' ? 'light' : 'dark' }; est.versao++; return volta(); }
   if (p === '/teste/itens.json') return json(res, 200, { itens: itensTipos(arquivo, Date.now()), tema: est.tema, tz: tzLocal() });
   if (p === '/teste/previa-painel' || p === '/teste/previa-tv' || p === '/teste/comparar') {
@@ -375,8 +388,12 @@ function controle(req, res, url) {
   if (p === '/teste/corromper') { est.corromper = q.get('nome') || null; return volta(); }
   if (p === '/teste/lento') { est.lentidao = Number(q.get('ms') || 0); return volta(); }
   if (p === '/teste/comando') { for (const t of est.telas.values()) est.comandos.push({ id: proxId++, type: q.get('tipo') || 'reload', deviceId: t.deviceId }); return volta(); }
+  if (p === '/teste/faixa') { est.faixaEstilo = q.get('estilo') === '1'; est.versao++; return volta(); }
   if (p === '/teste/alerta') {
-    est.alertas = q.get('fim') ? [] : [{ id: proxId++, level: 2, title: 'Alerta de teste', text: 'Mensagem em tela cheia enviada pelo painel.', until: Date.now() + 5 * 60000 }];
+    // como o servidor real manda (contrato §9): level 'info' | 'warn' | 'critical', header opcional
+    const nivel = ['info', 'warn', 'critical'].includes(q.get('nivel')) ? q.get('nivel') : 'critical';
+    est.alertas = q.get('fim') ? [] : [Object.assign({ id: proxId++, level: nivel, sound: true, title: nivel === 'critical' ? 'EVACUAÇÃO IMEDIATA' : 'Alerta de teste',
+      text: 'Mensagem em tela cheia enviada pelo painel.\nSiga as orientações da brigada.', until: Date.now() + 5 * 60000 }, q.get('cabeca') ? { header: q.get('cabeca') } : {})];
     return volta();
   }
   res.writeHead(404); res.end();

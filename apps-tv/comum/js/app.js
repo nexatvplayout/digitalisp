@@ -399,7 +399,7 @@
   function alertas(lista) {
     var agoraMs = agora();
     var validos = (Array.isArray(lista) ? lista : []).filter(function (a) { return a && (a.title || a.text) && (!a.until || a.until > agoraMs); });
-    validos.sort(function (x, y) { return (y.level || 0) - (x.level || 0) || (y.id || 0) - (x.id || 0); });
+    validos.sort(function (x, y) { return N.nivelAlerta(y.level) - N.nivelAlerta(x.level) || (y.id || 0) - (x.id || 0); });
     var a = validos[0] || null;
     est.alerta = a;
     A.gravar('alerta', a);
@@ -411,7 +411,10 @@
     if (a && a.until && a.until <= agora()) a = est.alerta = null;
     c.hidden = !a;
     if (!a) return;
-    c.className = 'nivel-' + Math.max(0, Math.min(2, a.level || 0));
+    // o nível chega como 'info' | 'warn' | 'critical': sem a conversão a classe virava nivel-NaN (sem fundo, o texto
+    // branco solto por cima do conteúdo, 1.0.9)
+    c.className = 'nivel-' + N.nivelAlerta(a.level);
+    $('alerta-cabeca').textContent = N.cabecaAlerta(a);
     $('alerta-titulo').textContent = String(a.title || '').slice(0, 80);
     $('alerta-texto').textContent = String(a.text || '').slice(0, 400);
   }
@@ -489,6 +492,7 @@
     window.addEventListener('unhandledrejection', function (ev) { erro('js: ' + ((ev.reason && ev.reason.message) || ev.reason)); });
     // a prévia carrega antes deste arquivo: se ela falhou, os itens saem no desenho simples (só o texto); avisa
     if (!window.TelasPrevia) erro('previa.js não carregou: itens no desenho simples');
+    else N.definirArtes(window.TelasPrevia.ARTES);
     P.preparar();
     A.persistir();
     conteudo = $('conteudo');

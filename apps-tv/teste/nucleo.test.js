@@ -359,11 +359,16 @@ test('slide: a imagem de qualquer campo do modelo vai para o pacote', () => {
   assert.deepEqual(N.arquivosDoPacote(p).map((f) => f.sha256), [H('c')]);
 });
 
-test('slide: o artFile (foto de fundo, para o Android) não é baixado; a TV usa a arte do pacote', () => {
-  const p = N.lerConfig(cfg('r', [bloco('a', 0, 1440, [
+test('slide: o artFile só é baixado se a arte não está no pacote, e como opcional', () => {
+  const c = () => cfg('r', [bloco('a', 0, 1440, [
     { id: 's1', kind: 'slide', seconds: 8, template: 'oferta', fields: { title: 'Pão', art: 'foto-padaria',
-      artFile: { url: 'https://x/tvcorp/arte/foto-padaria.jpg', sha256: H('d'), bytes: 9, photo: true, tone: 'dark' } } }])]));
-  assert.deepEqual(N.arquivosDoPacote(p), []);
+      artFile: { url: 'https://x/tvcorp/arte/foto-padaria.jpg', sha256: H('d'), bytes: 9, photo: true, tone: 'dark' } } }])]);
+  N.definirArtes(['foto-padaria', 'ondas']);
+  assert.deepEqual(N.arquivosDoPacote(N.lerConfig(c())), []);
+  N.definirArtes(['ondas']);
+  const fs = N.arquivosDoPacote(N.lerConfig(c()));
+  assert.deepEqual(fs.map((f) => [f.sha256, !!f.opcional]), [[H('d'), true]]);
+  N.definirArtes(null);
 });
 
 test('tema dos slides: signage.theme, signage.brand ou theme do topo', () => {
@@ -383,4 +388,12 @@ test('gadgets: zona widget com o item já preenchido; web só com https', () => 
   assert.equal(p.blocos.length, 1);
   assert.equal(p.blocos[0].layout.zonas[0].kind, 'widget');
   assert.deepEqual(p.blocos[0].itens.gz.map((i) => i.id), ['w1', 'w2', 'w4']);
+});
+
+test('alerta: o nível em texto (info, warn, critical) vira 0, 1 e 2; a linha de cima vem do servidor ou do nível', () => {
+  assert.deepEqual(['info', 'warn', 'critical', 'CRITICAL', 'x', undefined, 2, 7, -1].map(N.nivelAlerta), [0, 1, 2, 2, 0, 0, 2, 2, 0]);
+  assert.equal(N.cabecaAlerta({ level: 'critical' }), 'ALERTA');
+  assert.equal(N.cabecaAlerta({ level: 'warn' }), 'ATENÇÃO');
+  assert.equal(N.cabecaAlerta({ level: 'critical', header: 'EXTREMO · DEFESA CIVIL' }), 'EXTREMO · DEFESA CIVIL');
+  assert.equal(N.cabecaAlerta({ level: 'info', test: true }), 'TESTE DO SISTEMA');
 });

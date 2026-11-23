@@ -109,8 +109,14 @@
         Object.keys(o.fields).forEach(function (k) {
           var sh = shaDe(o.fields[k]);
           if (!sh) return;
-          // a foto de fundo vem da classe tvc-art-* (arte/ do pacote): o artFile não é a imagem do slide
-          if (k === 'artFile') { delete o.fields[k]; return; }
+          // a foto de fundo vem da classe tvc-art-* (arte/ do pacote): o artFile não é a imagem do slide. A arte que não
+          // está no pacote vai por ele, baixada e guardada (aplicada depois do desenho, em fundoReserva)
+          if (k === 'artFile') {
+            var noPacote = (raiz.TelasPrevia.ARTES || []).indexOf(String(o.fields.art || '')) >= 0;
+            if (!noPacote && mapa[sh]) o._fundo = { url: mapa[sh], claro: o.fields[k].tone === 'light' };
+            delete o.fields[k];
+            return;
+          }
           if (mapa[sh] && !o.image) o.image = mapa[sh];
           delete o.fields[k]; // o objeto do arquivo não é texto: não vai para o desenho
         });
@@ -190,6 +196,19 @@
       return null;
     }
 
+    /** A foto de fundo que não veio no pacote (artFile baixado): o mesmo véu escuro das fotos da biblioteca. */
+    function fundoReserva(n, o) {
+      if (!o._fundo || !n) return;
+      var sl = n.classList.contains('tvc-sl') ? n : n.querySelector('.tvc-sl');
+      if (!sl) return;
+      var veu = o._fundo.claro ? 'linear-gradient(90deg, rgba(255,255,255,0.82) 0%, rgba(255,255,255,0.6) 100%)'
+        : 'linear-gradient(90deg, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.6) 100%)';
+      sl.style.backgroundImage = veu + ', url("' + o._fundo.url + '")';
+      sl.style.backgroundSize = 'cover';
+      sl.style.backgroundPosition = '72% 50%';
+      sl.classList.add('tvc-art', 'tvc-photo', o._fundo.claro ? 'tvc-art-light' : 'tvc-art-dark');
+    }
+
     function TelasN(v) { return v !== null && v !== undefined && v !== '' && isFinite(Number(v)); }
 
     /**
@@ -236,14 +255,14 @@
               // showSeconds, quando vier, decide
               if (o.showSeconds !== undefined) o.seconds = o.showSeconds === true;
             }
-            if (o) { n = raiz.TelasPrevia.itemPreview(o, { theme: tema(prog) }); iniciais(n, o); }
+            if (o) { n = raiz.TelasPrevia.itemPreview(o, { theme: tema(prog) }); iniciais(n, o); fundoReserva(n, o); }
           }
         } catch (e) {
           if (ctx.aoErro) ctx.aoErro('desenho do item ' + it.id + ': ' + e.message);
           n = null;
         }
         if (!n) return depois(); // sem o que mostrar (arquivo faltando, dado vazio): o próximo
-        var z = el('div', 'tvc-z');
+        var z = el('div', 'tvc-z' + (caixa._ov || ''));
         z.appendChild(n);
         if (it.kind === 'web') paginaWeb(z, it);
         trocar(caixa, z);
@@ -373,19 +392,57 @@
       else if (m.logoUrl && ctx.online()) { var i = el('img', 'midia contain'); i.src = m.logoUrl; caixa.appendChild(i); }
     }
 
-    function faixa(caixa, textos, velocidade) {
-      if (!textos.length) return;
+    /**
+     * A faixa de avisos rolando. `avisos`: [{ texto, cor?, negrito?, italico? }]. Com o estilo da faixa (prog.faixaEstilo,
+     * limpo pelo mesmo código do painel, public/shared/faixa.js, quando a prévia está no pacote): o fundo, a cor, a fonte,
+     * o tamanho (% da altura da faixa), o separador e a etiqueta. Sem estilo, a faixa de sempre.
+     */
+    function faixa(caixa, avisos, prog) {
+      if (!avisos.length) return;
+      var P = raiz.TelasPrevia;
+      var est = prog.faixaEstilo && P && P.cleanTickerStyle ? P.cleanTickerStyle(prog.faixaEstilo) : null;
       var t = el('div', 'faixa');
-      var s = el('span', null, textos.join('     •     '));
+      var s = el('span');
+      var sep = est ? P.sepText(est.sep) : '•';
+      var ESP = '\u00a0\u00a0\u00a0\u00a0'; // espaços que não somem (o separador fica no meio)
+      avisos.forEach(function (a, i) {
+        if (i) s.appendChild(el('span', 'faixa-sep', sep ? ESP + sep + ESP : ESP + '\u00a0\u00a0'));
+        var p = el('span', 'faixa-aviso', a.texto);
+        if (a.cor) p.style.color = a.cor;
+        if (a.negrito) p.style.fontWeight = '700';
+        if (a.italico) p.style.fontStyle = 'italic';
+        s.appendChild(p);
+      });
       t.appendChild(s);
+      if (est) {
+        caixa.style.background = est.bg;
+        t.style.color = est.color;
+        t.style.fontWeight = est.bold ? '700' : '400';
+        t.style.fontStyle = est.italic ? 'italic' : 'normal';
+        t.style.fontFamily = P.fontCss(est.font);
+        t.style.fontSize = Math.round(caixa.offsetHeight * est.size / 100) + 'px';
+        if (est.label) {
+          var et = el('div', 'faixa-etiqueta', est.label);
+          et.style.color = est.labelColor; et.style.background = est.labelBg;
+          et.style.fontSize = t.style.fontSize; et.style.fontFamily = t.style.fontFamily;
+          caixa.appendChild(et);
+          caixa.classList.add('com-etiqueta');
+        }
+      }
       caixa.appendChild(t);
       // velocidade do contrato: dp/s (60 ≈ 120 px/s em 1080p)
-      var px = velocidade * (window.innerHeight / 540);
+      var px = prog.velocidade * (window.innerHeight / 540);
       setTimeout(function () {
         var dist = s.offsetWidth + t.offsetWidth;
         s.style.animationDuration = Math.max(5, dist / px) + 's';
         s.classList.add('rolando');
       }, 50);
+    }
+
+    /** Os avisos da tela: os com estilo (ticker.rich) quando vierem, senão só o texto (ticker.items). */
+    function avisosDa(prog) {
+      if (prog.avisosRicos) return prog.avisosRicos;
+      return prog.avisos.map(function (x) { return { texto: x }; });
     }
 
     /**
@@ -443,7 +500,7 @@
         ? raiz.TelasPrevia.itemPreview({ kind: 'text', title: zona.title, text: zona.text }, { theme: tema(prog) })
         : zonaPrevia(zona.kind, zona.kind === 'qr' ? { qr: zona.qr, title: zona.title } : null, prog);
       if (!n) return;
-      var z = el('div', 'tvc-z');
+      var z = el('div', 'tvc-z' + (c._ov || ''));
       z.appendChild(n);
       c.appendChild(z);
       medidas(c);
@@ -473,18 +530,20 @@
           var f = el('div', 'zona zona-ticker');
           f.style.left = '0'; f.style.top = '90%'; f.style.width = '100%'; f.style.height = '10%';
           raizEl.appendChild(f);
-          faixa(f, prog.avisos, prog.velocidade);
+          faixa(f, avisosDa(prog), prog);
         }
         return;
       }
       bloco.layout.zonas.forEach(function (zona) {
         var c = el('div', 'zona zona-' + zona.kind);
         c.style.left = zona.x + '%'; c.style.top = zona.y + '%'; c.style.width = zona.w + '%'; c.style.height = zona.h + '%';
+        // a zona por cima: acima da camada do ao vivo (z-index 1) e com o vidro translúcido da prévia (.tvc-ov.tvc-op-N)
+        if (zona.overlay) { c.style.zIndex = '2'; c._ov = ' tvc-ov tvc-op-' + zona.opacidade; c.className += ' zona-ov'; }
         raizEl.appendChild(c);
         var itens = bloco.itens[zona.id] || [];
         if (zona.kind === 'video') zonaVideo(c, prog, { x: zona.x, y: zona.y, w: zona.w, h: zona.h });
         else if (zona.kind === 'playlist') playlist(c, itens, prog);
-        else if (zona.kind === 'ticker') faixa(c, prog.avisos.concat(itens.filter(function (i) { return i.kind === 'text'; }).map(function (i) { return i.title || i.text; })), prog.velocidade);
+        else if (zona.kind === 'ticker') faixa(c, avisosDa(prog).concat(itens.filter(function (i) { return i.kind === 'text'; }).map(function (i) { return { texto: i.title || i.text }; })), prog);
         else if (raiz.TelasPrevia && !itens.length && ['clock', 'logo', 'weather', 'qr', 'text'].indexOf(zona.kind) >= 0) zonaFixa(c, zona, prog);
         else if (zona.kind === 'clock') relogio(c, prog);
         else if (zona.kind === 'logo') logo(c, prog);

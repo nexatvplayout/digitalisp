@@ -12,7 +12,7 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  var VERSAO = '1.0.9';
+  var VERSAO = '1.0.10';
   var TZ_PADRAO = 'America/Sao_Paulo';
   var SHA = /^[0-9a-f]{64}$/;
   var DIA = /^\d{4}-\d{2}-\d{2}$/;
@@ -140,6 +140,10 @@
 
   // ------------------------------------------------------------------ configuração
 
+  // as artes que vão no pacote (TelasPrevia.ARTES, os nomes sem extensão): o artFile delas não é baixado
+  var artesNoPacote = null;
+  function definirArtes(lista) { artesNoPacote = Array.isArray(lista) ? lista.slice() : null; }
+
   function lerItem(o, teste) {
     if (!o || typeof o !== 'object') return null;
     var id = str(o, 'id');
@@ -194,9 +198,15 @@
     // foto é opcional: se não baixar, a tela mostra as iniciais e a programação não espera por ela
     if (o.fields && typeof o.fields === 'object') {
       Object.keys(o.fields).forEach(function (k) {
-        // artFile: a foto de fundo (fields.art), para o Android; a TV já leva as artes no pacote (arte/, pelo CSS)
-        if (k === 'artFile') return;
         var v = o.fields[k];
+        // artFile: a foto de fundo (fields.art). A TV leva as artes no pacote (arte/, pelo CSS); só baixa a que não está
+        // nele (arte nova no servidor depois do pacote), como opcional: sem ela, o slide sai na cor do tema
+        if (k === 'artFile') {
+          if (artesNoPacote && artesNoPacote.indexOf(String(o.fields.art || '')) >= 0) return;
+          var fr = v && typeof v === 'object' && v.sha256 ? arquivo(v, teste) : null;
+          if (fr && !it.files.some(function (x) { return x.sha256 === fr.sha256; })) { fr.opcional = true; it.files.push(fr); }
+          return;
+        }
         var fa = v && typeof v === 'object' && !Array.isArray(v) && v.sha256 ? arquivo(v, teste) : null;
         if (fa && !it.files.some(function (x) { return x.sha256 === fa.sha256; })) it.files.push(fa);
       });
@@ -235,7 +245,10 @@
     if (!(x >= 0 && x <= 99 && y >= 0 && y <= 99)) return null;
     var w = Math.min(num(o, 'w', 0), 100 - x), h = Math.min(num(o, 'h', 0), 100 - y);
     if (w <= 0 || h <= 0) return null;
-    return { id: id.slice(0, 32), kind: kind, x: x, y: y, w: w, h: h, qr: str(o, 'qr'),
+    // overlay: a zona por cima das outras (widget sobre a imagem), com o fundo translúcido em degraus de 20 % (opacity)
+    var ov = o.overlay === true && kind !== 'video';
+    var op = ov ? Math.round(Math.max(0, Math.min(100, num(o, 'opacity', 60))) / 20) * 20 : null;
+    return { id: id.slice(0, 32), kind: kind, x: x, y: y, w: w, h: h, qr: str(o, 'qr'), overlay: ov, opacidade: op,
       title: umaLinha(str(o, 'title') || '', TETO.titulo), text: limpar(str(o, 'text') || '', TETO.texto) };
   }
 
@@ -344,6 +357,10 @@
       horario: horario,
       avisos: Array.isArray(t.items) ? t.items.filter(function (x) { return typeof x === 'string' && x.trim(); }).slice(0, 20).map(function (x) { return umaLinha(x, 200); }) : [],
       velocidade: Math.max(20, Math.min(200, num(t, 'speed', 60))),
+      // o estilo da faixa (public/shared/faixa.js: cor, fundo, negrito, itálico, tamanho, fonte, separador, etiqueta) e o de
+      // cada aviso (rich: { text, color?, bold?, italic? }); sem eles, a faixa de sempre
+      faixaEstilo: t.style && typeof t.style === 'object' && !Array.isArray(t.style) ? t.style : null,
+      avisosRicos: avisosRicos(t.rich),
       marca: marca,
       tema: tema,
       clima: clima
@@ -635,6 +652,38 @@
   function esperaAoVivo(rodada) { return Math.min(300, 30 * Math.pow(2, Math.max(0, rodada))); }
 
   /** A linha de diagnóstico fixa da tela de cadastro (para o dono mandar uma foto). */
+  /** Os avisos com estilo (ticker.rich), limpos: { texto, cor ('#rrggbb' ou null), negrito, italico }. */
+  function avisosRicos(v) {
+    if (!Array.isArray(v)) return null;
+    var out = [];
+    for (var i = 0; i < v.length && out.length < 20; i++) {
+      var x = v[i];
+      if (!x || typeof x !== 'object' || typeof x.text !== 'string' || !x.text.trim()) continue;
+      out.push({ texto: umaLinha(x.text, 200), cor: /^#[0-9a-f]{6}$/i.test(String(x.color || '')) ? String(x.color).toLowerCase() : null,
+        negrito: x.bold === true, italico: x.italic === true });
+    }
+    return out.length ? out : null;
+  }
+
+  /**
+   * O nível do alerta (contrato §9): o servidor manda 'info' | 'warn' | 'critical' (o app antigo esperava 0, 1 ou 2).
+   * Devolve 0 (azul), 1 (âmbar) ou 2 (vermelho); o desconhecido é 0.
+   */
+  function nivelAlerta(v) {
+    if (typeof v === 'number' && isFinite(v)) return Math.max(0, Math.min(2, Math.round(v)));
+    var k = String(v || '').toLowerCase();
+    if (k === 'critical' || k === 'extremo' || k === 'emergencia' || k === 'severe' || k === 'extreme') return 2;
+    if (k === 'warn' || k === 'warning' || k === 'atencao') return 1;
+    return 0;
+  }
+  var CABECA_ALERTA = ['COMUNICADO', 'ATENÇÃO', 'ALERTA'];
+  /** A linha de cima do alerta: a do servidor (header) ou, sem ela, a da prévia do painel pelo nível. */
+  function cabecaAlerta(a) {
+    if (a && a.test) return 'TESTE DO SISTEMA';
+    var h = a && typeof a.header === 'string' ? a.header.trim() : '';
+    return (h || CABECA_ALERTA[nivelAlerta(a && a.level)]).slice(0, 60);
+  }
+
   function linhaDiagnostico(d) {
     var srv = String(d.servidor || '—').replace(/^https?:\/\//, '').replace(/\/+$/, '');
     var partes = ['v' + VERSAO, srv, d.plataforma || '', d.modo || ''];
@@ -655,6 +704,7 @@
     normalizarChave: normalizarChave, editarChave: editarChave,
     contarExibicao: contarExibicao, loteExibicao: loteExibicao, baixarLote: baixarLote, corpoSinal: corpoSinal,
     espera: espera, camadaSemConteudo: camadaSemConteudo, linhaDiagnostico: linhaDiagnostico,
+    nivelAlerta: nivelAlerta, cabecaAlerta: cabecaAlerta, definirArtes: definirArtes,
     vigiaNovo: vigiaNovo, vigiaAoVivo: vigiaAoVivo, vigiaFalhou: vigiaFalhou, esperaAoVivo: esperaAoVivo
   };
 });
