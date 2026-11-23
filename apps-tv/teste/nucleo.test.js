@@ -493,3 +493,9 @@ test('foto do clima que já vem no pacote não é baixada de novo', () => {
   assert.deepEqual(N.arquivosDoPacote(p).map((f) => f.sha256), [H('b')]); // a noturna ainda não está no pacote
   N.definirArtes(null);
 });
+
+test('zona de vídeo: proporcional por padrão; fit cover preenche', () => {
+  const bl = (fit) => ({ id: 'v' + (fit || ''), layout: { zones: [Object.assign({ id: 'a', kind: 'video', x: 0, y: 0, w: 60, h: 100 }, fit ? { fit } : {})] }, days: [], from: 0, to: 1440, zones: {} });
+  const p = N.lerConfig(cfg('r', [bl(null), bl('cover')]));
+  assert.deepEqual(p.blocos.map((x) => x.layout.zonas[0].preencher), [false, true]);
+});

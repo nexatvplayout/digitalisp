@@ -800,7 +800,7 @@
         var recorteCss = recorte(c, zona, alvo);
         var itens = bloco.itens[zona.id] || [];
         // o ao vivo fica na camada dele, posicionada na tela: a zona do quadro do conjunto vira % desta tela (com o recorte)
-        if (zona.kind === 'video') { var rv = N.retanguloNaTela(zona, jan); rv.cobrir = true; if (recorteCss) rv.recorte = recorteCss; zonaVideo(c, prog, rv); }
+        if (zona.kind === 'video') { var rv = N.retanguloNaTela(zona, jan); rv.cobrir = zona.preencher; /* proporcional por padrão; cover só com zone.fit 'cover' */ if (recorteCss) rv.recorte = recorteCss; zonaVideo(c, prog, rv); }
         else if (zona.kind === 'playlist') playlist(c, itens, prog);
         else if (zona.kind === 'ticker') faixa(c, avisosDa(prog).concat(itens.filter(function (i) { return i.kind === 'text'; }).map(function (i) { return { texto: i.title || i.text }; })), prog);
         else if (raiz.TelasPrevia && !itens.length && ['clock', 'logo', 'weather', 'qr', 'text'].indexOf(zona.kind) >= 0) zonaFixa(c, zona, prog);
