@@ -44,13 +44,13 @@ export async function abrirPreviaViva(layout, { zonePlaylists = null, titulo = '
   // essas zonas passam exatamente os itens da TV, sem seletor
   const zonasPl = (layout.zones || []).filter((z) => TVC_PLAYLIST_ZONES.includes(z.kind) && !zoneItems?.[z.id]);
   // a zona sem playlist na grade fica sem playlist (como na TV); sem grade nenhuma, começa na primeira playlist
-  const escolha = Object.fromEntries(zonasPl.map((z) => [z.id, zonePlaylists ? zonePlaylists[z.id] ?? null : playlists[0]?.id ?? null]));
+  const escolha = Object.fromEntries(zonasPl.map((z) => [z.id, zonePlaylists ? zonePlaylists[z.id] ?? null : z.kind === 'news' ? null : playlists[0]?.id ?? null]));
   const canal = el('select', { 'aria-label': 'Canal ao vivo' }, ...listaCanais.map((c, i) => opt(c.url, c.name || `Canal ${i + 1}`, canalUrl ? c.url === canalUrl : i === 0)));
   const aviso = el('p', { class: 'small dim', 'aria-live': 'polite' });
   const palco = el('div', { class: 'tc-live-palco' });
   const seletores = zonasPl.map((z) => {
     const s = el('select', { 'aria-label': `Playlist da zona ${z.id}`, onchange: () => { escolha[z.id] = Number(s.value) || null; montar(); } },
-      opt('', 'Sem playlist', escolha[z.id] == null), ...playlists.map((p) => opt(p.id, p.name, Number(escolha[z.id]) === Number(p.id))));
+      opt('', z.kind === 'news' ? 'Notícias automáticas (todas as fontes)' : 'Sem playlist', escolha[z.id] == null), ...playlists.map((p) => opt(p.id, p.name, Number(escolha[z.id]) === Number(p.id))));
     return el('label', { class: 'tc-live-sel' }, el('span', { class: 'small', text: `Zona ${z.id}` }), s);
   });
 
@@ -77,6 +77,21 @@ export async function abrirPreviaViva(layout, { zonePlaylists = null, titulo = '
         put(box, itemPreview(it, { theme: themeOf() }));
         t = setTimeout(passo, Math.max(3, Number(it.seconds) || 10) * 1000);
       };
+      paradas.push(() => { vivo = false; clearTimeout(t); });
+      passo();
+    }
+    // a zona de Notícias sem playlist: as notícias das fontes ligadas, uma por vez com a foto (como o servidor manda)
+    for (const z of zonasPl.filter((x) => x.kind === 'news' && !escolha[x.id])) {
+      const box = zonaEl(z.id); if (!box) continue;
+      const rss = listOf(feeds, 'feeds').filter((f) => f.kind === 'rss' && f.enabled !== false);
+      const itens = [];
+      for (const f of rss) {
+        const r = await tapi(`/api/tvcorp/feeds/${f.id}/noticias`).catch(() => null);
+        for (const i of (r?.items || []).filter((x) => !x.hidden)) itens.push({ kind: 'news', single: true, title: f.name, source: r.source, image: i.image, items: [{ title: i.title, source: r.source, at: i.at }], seconds: 12 });
+      }
+      if (!itens.length) continue;
+      let i = 0; let vivo = true; let t = null;
+      const passo = () => { if (!vivo) return; const it = itens[i % itens.length]; i++; put(box, itemPreview(it, { theme: themeOf() })); t = setTimeout(passo, 12000); };
       paradas.push(() => { vivo = false; clearTimeout(t); });
       passo();
     }

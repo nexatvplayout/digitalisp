@@ -384,6 +384,16 @@ export function createTvcorp({
         if (items.length) { zones[z.id] = items; break; }
       }
     }
+    // DIGITAL ISP: a zona do tipo Notícias mostra só notícias. Da playlist dela ficam as notícias; sem nenhuma (ou sem
+    // playlist), entram sozinhas as notícias de todas as fontes de notícias ligadas da empresa, uma por vez com a foto
+    for (const z of lay.zones.filter((x) => x.kind === 'news')) {
+      const own = (zones[z.id] || []).filter((x) => x.kind === 'news');
+      if (own.length) { zones[z.id] = own; continue; }
+      const feeds = await db.all("SELECT id FROM tvcorp_feeds WHERE tenant_id = ? AND kind = 'rss' AND enabled = 1 ORDER BY id", [tenantId]).catch(() => []);
+      const out = [];
+      for (const f of feeds) out.push(...await itemsOf(tenantId, officeId, { refKind: 'news', refId: Number(f.id), seconds: 12, params: {} }, data, req, at));
+      if (out.length) zones[z.id] = out.slice(0, L.itemsPerZone); else delete zones[z.id];
+    }
     return {
       id: `s${s.id}`, layout,
       days: fallback || !s.days.length ? ALL_DAYS : s.days,
