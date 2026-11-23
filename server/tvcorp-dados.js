@@ -49,7 +49,7 @@ export const TVC_HEADERS = Object.freeze({
 });
 /** Tipos de unidade corporativa (§5.1). O coordenador pode trocar pelo `corp: true` do catálogo (isCorpOffice). */
 export const CORP_OFFICE_TYPES = Object.freeze(['matriz', 'filial', 'fabrica', 'loja', 'cd', 'refeitorio', 'recepcao', 'ambulatorio', 'treinamento', 'corp-outro']);
-export const DADOS_LIMITS = Object.freeze({ widgets: 100, mobile: 50, feedTestsPerMin: 10, fetchPerTenantHour: 240, concurrent: 3, photoBytes: 15 * 1024 * 1024, suggestImageBytes: 5 * 1024 * 1024, suggestKeepDays: 180, imageWindowMs: 10 * 60_000 });
+export const DADOS_LIMITS = Object.freeze({ widgets: 100, mobile: 50, feedTestsPerMin: 30, fetchPerTenantHour: 240, concurrent: 3, photoBytes: 15 * 1024 * 1024, suggestImageBytes: 5 * 1024 * 1024, suggestKeepDays: 180, imageWindowMs: 10 * 60_000 });
 export const FILE_RE = /^tvc(pessoa|sug)-[0-9a-f-]{36}\.jpg$/;
 
 /* ------------------------------------------------------------------ widgets (contador, dias sem acidente, relógio mundial, cardápio) */

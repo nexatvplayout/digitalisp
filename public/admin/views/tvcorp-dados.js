@@ -107,17 +107,29 @@ export default async function paintDados(box, ctx) {
   const list = listOf(r, 'feeds');
   if (r?.catalog) CAT = { news: r.catalog.news || [], currencies: r.catalog.currencies || {}, ptax: r.catalog.ptax || [], providers: r.catalog.providers || {} };
   const again = () => paintDados(box, ctx);
+  // buscar agora: a mesma busca do servidor, na hora (sem esperar o intervalo); depois a lista mostra a hora e a situação novas
+  const buscar = async (x) => {
+    const r2 = await tapi(`/api/tvcorp/feeds/${x.id}/test`, { method: 'POST', body: {} });
+    if (r2?.error) throw new Error(`${x.name}: ${r2.error}`);
+  };
+  const buscarUma = (x) => guard(async () => { try { await buscar(x); toast(`${x.name}: buscada agora.`); } finally { await again(); } });
+  const buscarTodas = guard(async () => {
+    const erros = [];
+    for (const x of list.filter((y) => y.enabled !== false)) { try { await buscar(x); } catch (e) { erros.push(e.message); } }
+    toast(erros.length ? erros.join(' · ') : 'Todas as fontes foram buscadas agora.', erros.length > 0);
+    await again();
+  });
   const rows = list.map((x) => el('tr', { class: x.enabled === false ? 'pf-gone' : '' },
     el('td', {}, el('b', { text: x.name }), el('div', { class: 'dim small', text: detail(x) })),
     el('td', {}, chip(feedKindLabel(x.kind))),
     el('td', { text: `a cada ${x.refreshMin} min` }),
     el('td', {}, x.fetchedAt ? ago(now() - x.fetchedAt) : 'ainda não buscou', x.preview?.items ? el('div', { class: 'dim small', text: `${x.preview.items.length} item(ns)${x.stale ? ' · antigo' : ''}` }) : null),
     el('td', {}, x.lastError ? el('span', { class: 'pf-err small', text: x.lastError }) : el('span', { class: 'dim small', text: x.enabled === false ? 'desligada' : 'ok' })),
-    el('td', { class: 'pf-actions' }, btn('Testar', () => testFeed(x), 'small'), btn('Editar', () => editFeed(x, again), 'small'),
+    el('td', { class: 'pf-actions' }, btn('Buscar agora', buscarUma(x), 'small primary'), btn('Testar', () => testFeed(x), 'small'), btn('Editar', () => editFeed(x, again), 'small'),
       btn('Apagar', guard(async () => { if (!confirm(`Apagar a fonte "${x.name}"? Os itens dela somem das playlists.`)) return; await tapi(`/api/tvcorp/feeds/${x.id}`, { method: 'DELETE' }); await again(); }), 'small danger'))));
   put(box,
     note('O servidor busca cada fonte sozinho e entrega às telas os itens prontos. Se uma busca falha, a tela continua com o último resultado bom por até 6 horas.'),
-    btns(...FEED_KINDS.map((k) => btn(`+ ${k.label}`, () => editFeed(null, again, k.key), k.key === 'rss' ? 'primary' : '')), el('span', { class: 'dim small', text: `${list.length} de ${LIMITS.feeds}` })),
+    btns(...FEED_KINDS.map((k) => btn(`+ ${k.label}`, () => editFeed(null, again, k.key), k.key === 'rss' ? 'primary' : '')), el('span', { class: 'dim small', text: `${list.length} de ${LIMITS.feeds}` }), list.length ? btn('Buscar todas agora', buscarTodas) : null),
     rows.length ? table(['Fonte', 'Tipo', 'Atualiza', 'Última busca', 'Situação', ''], rows) : empty('Nenhuma fonte ainda. Comece pelas notícias da Agência Brasil ou pelas cotações.'),
     label('Fontes de notícias liberadas'),
     el('ul', { class: 'pf-plain' }, ...CAT.news.map((p) => el('li', { text: `${p.name}: uso livre com o crédito (na tela: "Fonte: ${p.credit}")` }))),
