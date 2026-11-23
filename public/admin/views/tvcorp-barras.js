@@ -22,9 +22,11 @@ function editWidget(w, reload, kindKey = 'countdown') {
   if (kind === 'countdown') {
     const title = el('input', { type: 'text', maxlength: '60', value: d.title || '', placeholder: 'Ex.: Faltam para a SIPAT' });
     const target = el('input', { type: 'datetime-local', value: toLocalInput(d.at) });
+    const until = el('input', { type: 'datetime-local', value: toLocalInput(d.until) });
     const text = el('input', { type: 'text', maxlength: '120', value: d.text || '' });
-    put(box, f('Nome do evento', title), f('Data e hora do evento', target), f('Texto curto (opcional)', text));
-    read = () => ({ title: title.value.trim(), at: fromLocalInput(target.value), text: text.value.trim() });
+    put(box, f('Nome do evento', title), f('Começa em (data e hora)', target, 'Antes disso, a tela mostra quanto falta para começar.'),
+      f('Termina em (opcional)', until, 'Depois de começar, a tela mostra quanto falta para terminar (promoção, inscrições, evento).'), f('Texto curto (opcional)', text));
+    read = () => ({ title: title.value.trim(), at: fromLocalInput(target.value), ...(until.value ? { until: fromLocalInput(until.value) } : {}), text: text.value.trim() });
   } else if (kind === 'safety') {
     const title = el('input', { type: 'text', maxlength: '60', value: d.title || '', placeholder: 'Dias sem acidente' });
     const since = el('input', { type: 'date', value: d.lastAccident || '' });
@@ -50,6 +52,7 @@ function editWidget(w, reload, kindKey = 'countdown') {
       const data = read();
       if (kind === 'countdown' && !data.at) throw new Error('Escolha a data e a hora do evento.');
       if (kind === 'countdown' && data.title.length < 2) throw new Error('Escreva o nome do evento.');
+      if (kind === 'countdown' && data.until && data.until <= data.at) throw new Error('O fim precisa ser depois do começo.');
       if (kind === 'safety' && !data.lastAccident) throw new Error('Escolha a data do último acidente.');
       if (kind === 'worldclock' && !data.zones.length) throw new Error('Escolha pelo menos uma cidade.');
       const body = { kind, name: name.value.trim() || widgetLabel(kind), data };

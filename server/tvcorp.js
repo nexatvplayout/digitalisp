@@ -342,6 +342,12 @@ export function createTvcorp({
       const uniq = out.filter((x) => (seen.has(x.id) ? false : seen.add(x.id)));
       zones[zone] = (pl.shuffle ? K.dayShuffle(uniq, `${seed}:${today}:${pid}`) : uniq).slice(0, L.itemsPerZone);
     }
+    // o gadget escolhido direto na zona do layout (contador, dias sem acidente, relógio mundial): sem playlist
+    for (const z of lay.zones) {
+      if (z.widget == null || zones[z.id]?.length) continue;
+      const items = await itemsOf(tenantId, officeId, { refKind: 'widget', refId: Number(z.widget), seconds: L.secondsMax, params: {} }, data, req, at);
+      if (items.length) zones[z.id] = items;
+    }
     return {
       id: `s${s.id}`, layout,
       days: fallback || !s.days.length ? ALL_DAYS : s.days,

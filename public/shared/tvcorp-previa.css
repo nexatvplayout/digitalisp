@@ -284,3 +284,13 @@
 .tvc-sl.tvc-port.tvc-title-s .tvc-sl-t { font-size: 8.6cqw; }
 .tvc-sl.tvc-port.tvc-title-l .tvc-sl-t { font-size: 12.6cqw; }
 .tvc-sl.tvc-port.tvc-title-xl .tvc-sl-t { font-size: 14.6cqw; }
+
+/* contagem regressiva (DIGITAL ISP): dias, horas, minutos e segundos, cada um numa caixinha; "Começa em" ou "Termina em" */
+.tvc-it-count { align-items: center; justify-content: center; text-align: center; }
+.tvc-it-count .tvc-it-t { border-left: 0; padding-left: 0; }
+.tvc-cd-lbl { font-size: 3.8cqw; color: var(--tdim); }
+.tvc-cd { display: flex; justify-content: center; }
+.tvc-cd-u { display: flex; flex-direction: column; align-items: center; min-width: 15cqw; margin: 0 1.2cqw; padding: 1.4cqw 1cqw; border-radius: 1.2cqw; background: rgba(0, 0, 0, 0.28); }
+.tvc-cd-u b { font-size: 10cqw; line-height: 1; color: var(--tfg); }
+.tvc-cd-u span { font-size: 2.8cqw; color: var(--tdim); }
+.th-light .tvc-cd-u, .tvc-it.th-light .tvc-cd-u { background: rgba(15, 23, 42, 0.08); }

@@ -114,6 +114,8 @@ export function cleanZone(z, i = 0) {
   if (params.includes('text')) { const t = line(z.text, L.zoneText); if (t) out.text = t; }
   if (params.includes('qr') && z.qr) out.qr = cleanUrl(z.qr, `${what}, QR code`);
   if (kind === 'qr' && !out.qr) throw fail(400, `${what}: diga o endereço do QR code.`);
+  // o gadget (contador, dias sem acidente, relógio mundial) escolhido direto no layout: o id do bloco do cliente
+  if (params.includes('widget') && z.widget != null && z.widget !== '') out.widget = idOf(z.widget, `${what}, gadget`);
   if (TVC_PLAYLIST_ZONES.includes(kind) && z.hint && TVC_REF_KIND[z.hint]) out.hint = z.hint;
   return out;
 }

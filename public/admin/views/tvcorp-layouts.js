@@ -2,8 +2,9 @@
 // L, recepção, refeitório, chão de fábrica, totem…) e os layouts da empresa. O editor mostra o quadro 16:9 (ou 9:16, em pé)
 // com as zonas: arrastar a zona move, arrastar o canto ajusta o tamanho; as setas do teclado fazem o mesmo (com Shift,
 // mudam o tamanho). Até 6 zonas e uma só de vídeo, em % da tela. Rotas: GET/POST/PATCH/DELETE /api/tvcorp/layouts[/:id].
-import { el, guard, toast, tapi, put, f, opt, table, label, note, empty, btn, btns, chip, dialog, D, when } from './tvcorp-base.js';
+import { el, guard, toast, tapi, put, f, opt, table, label, note, empty, btn, btns, chip, dialog, D, when, listOf } from './tvcorp-base.js';
 import { layoutPreview, frameOf } from '../../shared/tvcorp-previa.js';
+import { widgetItem } from './tvcorp-playlists.js';
 import { FACTORY_LAYOUTS, FACTORY_LAYOUT, ZONE_KINDS, ZONE_KIND, zoneLabel, LIMITS, checkZones } from './tvcorp-catalogo.js';
 import { themeOf } from './tvcorp-midias.js';
 
@@ -13,7 +14,11 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 /** O fundo do layout é só cor (contrato): o que aparece entre as zonas. */
 const BACKGROUNDS = [['#0b1220', 'Escuro'], ['#eef2f7', 'Claro'], ['#000000', 'Preto'], ['#1d4ed8', 'Azul'], ['#15803d', 'Verde'], ['#334155', 'Grafite']];
 const SAMPLE_TICKER = ['Bem-vindo! Use o crachá em todas as áreas', 'Refeitório aberto das 11h às 14h'];
-const previewOpts = (layout) => ({ theme: { ...themeOf(), mode: layout.background === '#eef2f7' ? 'light' : themeOf().mode }, ticker: SAMPLE_TICKER, labels: true });
+/** Os gadgets do cliente (contador, dias sem acidente, relógio mundial: aba Barras e blocos), lidos ao abrir a aba. */
+let WIDGETS = [];
+/** O que a zona mostra na prévia: o gadget escolhido nela (o mesmo desenho da TV). */
+const zoneItems = (zones) => Object.fromEntries((zones || []).filter((z) => z.widget != null).map((z) => [z.id, WIDGETS.find((w) => w.id === Number(z.widget))]).filter(([, w]) => w).map(([id, w]) => [id, widgetItem(w)]));
+const previewOpts = (layout) => ({ theme: { ...themeOf(), mode: layout.background === '#eef2f7' ? 'light' : themeOf().mode }, ticker: SAMPLE_TICKER, labels: true, items: zoneItems(layout.zones) });
 
 /** O quadro de edição: as zonas como retângulos com a alça no canto. onChange(): a cada mudança (arrastar, teclado). */
 export function zoneCanvas(st, onChange) {
@@ -85,7 +90,15 @@ export function layoutEditor(lay, reload, factoryKey = null, copyOf = null) {
       onchange: (e) => { z[k] = clamp(Math.round(Number(e.target.value) || 0), 0, 100); canvas.paint(); paintPv(); } });
     // os campos próprios da zona (QR code, texto fixo, título do relógio mundial), como o servidor aceita
     const PARAM = { title: ['Título', 40], text: ['Texto', 120], qr: ['Endereço do QR (https)', 500] };
-    const params = (z) => (ZONE_KIND[z.kind]?.params || []).map((k) => el('input', { type: k === 'qr' ? 'url' : 'text', maxlength: String(PARAM[k][1]), value: z[k] || '', placeholder: PARAM[k][0], 'aria-label': `${PARAM[k][0]} da zona ${z.id}`, onchange: (e) => { z[k] = e.target.value.trim(); paintPv(); } }));
+    // o gadget da zona (contador, dias sem acidente, relógio mundial): escolhido aqui, vai à tela sem precisar de playlist
+    const widgetPick = (z) => {
+      const mine = WIDGETS.filter((w) => w.kind === z.kind);
+      const s = el('select', { 'aria-label': `Gadget da zona ${z.id}`, onchange: (e) => { if (e.target.value) z.widget = Number(e.target.value); else delete z.widget; paintPv(); } },
+        opt('', mine.length ? (z.kind === 'worldclock' ? 'Escolha o relógio' : 'Pela playlist da grade') : 'Nenhum criado (aba Barras e blocos)', z.widget == null),
+        ...mine.map((w) => opt(w.id, w.name || w.data?.title || `#${w.id}`, Number(z.widget) === w.id)));
+      return s;
+    };
+    const params = (z) => (ZONE_KIND[z.kind]?.params || []).map((k) => (k === 'widget' ? widgetPick(z) : el('input', { type: k === 'qr' ? 'url' : 'text', maxlength: String(PARAM[k][1]), value: z[k] || '', placeholder: PARAM[k][0], 'aria-label': `${PARAM[k][0]} da zona ${z.id}`, onchange: (e) => { z[k] = e.target.value.trim(); paintPv(); } })));
     put(rowsBox, table(['Zona', 'O que mostra', 'Esquerda %', 'Alto %', 'Largura %', 'Altura %', 'Conteúdo fixo', ''], st.zones.map((z, i) => el('tr', { class: st.sel === i ? 'tc-sel' : '' },
       el('td', {}, el('input', { type: 'text', maxlength: '20', value: z.id, class: 'tc-id-in', 'aria-label': 'Nome da zona', onchange: (e) => { z.id = e.target.value.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 16) || `z${i + 1}`; e.target.value = z.id; canvas.paint(); paintPv(); } })),
       el('td', {}, el('select', { 'aria-label': `Tipo da zona ${z.id}`, onchange: (e) => { z.kind = e.target.value; canvas.paint(); paintRows(); paintPv(); } }, ...ZONE_KINDS.map((k) => opt(k.key, k.label, k.key === z.kind)))),
@@ -123,6 +136,7 @@ export function layoutEditor(lay, reload, factoryKey = null, copyOf = null) {
 
 export default async function paintLayouts(box, ctx) {
   const d = D(); const reload = ctx.reload;
+  WIDGETS = listOf(await tapi('/api/tvcorp/widgets').catch(() => null), 'widgets');
   const usedBy = (id) => d.schedules.filter((s) => s.layoutId === id).map((s) => s.name);
   const mine = d.layouts.map((l) => el('div', { class: 'tc-lcard' },
     layoutPreview(l, { ...previewOpts(l), labels: false }),

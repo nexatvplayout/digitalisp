@@ -49,7 +49,7 @@ export const TVC_FIT_KEYS = Object.freeze(TVC_FITS.map((f) => f.key));
 /* ------------------------------------------------------------------ zonas do layout (contrato §4.1 zones[].kind) */
 /**
  * auto: o conteúdo vem da configuração da tela ou do servidor, sem playlist. playlist: a zona recebe uma playlist na grade.
- * params: os campos que a zona aceita (texto, endereço do QR, rótulo).
+ * params: os campos que a zona aceita (texto, endereço do QR, rótulo; widget = o gadget escolhido direto no layout, sem playlist).
  */
 export const TVC_ZONES = Object.freeze([
   { key: 'video', label: 'Vídeo do canal', desc: 'O canal ao vivo (grade, playout e ao vivo). No máximo um por layout.' },
@@ -62,9 +62,9 @@ export const TVC_ZONES = Object.freeze([
   { key: 'text', label: 'Texto fixo', desc: 'Um título e uma frase fixos.', params: ['title', 'text'] },
   { key: 'news', label: 'Notícias', desc: 'As manchetes das fontes escolhidas, com a fonte e a hora.', playlist: true },
   { key: 'quotes', label: 'Cotações', desc: 'Dólar, euro e outras moedas, com a hora da cotação.', playlist: true },
-  { key: 'countdown', label: 'Contagem regressiva', desc: 'Dias e horas até um evento.', playlist: true },
-  { key: 'safety', label: 'Dias sem acidente', desc: 'Os dias sem acidente, o recorde e a meta.', playlist: true },
-  { key: 'worldclock', label: 'Relógio mundial', desc: 'A hora em outras cidades.', params: ['title'] },
+  { key: 'countdown', label: 'Contagem regressiva', desc: 'Quanto falta para começar ou para terminar um evento: dias, horas, minutos e segundos.', playlist: true, params: ['widget'] },
+  { key: 'safety', label: 'Dias sem acidente', desc: 'Os dias sem acidente, o recorde e a meta.', playlist: true, params: ['widget'] },
+  { key: 'worldclock', label: 'Relógio mundial', desc: 'A hora em outras cidades.', params: ['title', 'widget'] },
   { key: 'queue', label: 'Chamada de senha', desc: 'A senha chamada e as últimas chamadas (quando a unidade tem a chamada de senha).' },
 ]);
 export const TVC_ZONE = Object.freeze(Object.fromEntries(TVC_ZONES.map((z) => [z.key, z])));

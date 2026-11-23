@@ -66,7 +66,7 @@ const ZONE = new Map(WORLD_ZONES.map((z) => [z.tz, z]));
 const WEEK = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
 /**
  * O widget digitado -> { name, data }.
- *   countdown   { title, at (epoch ms), text }
+ *   countdown   { title, at (epoch ms), until? (epoch ms: o fim), text }
  *   safety      { title, lastAccident ('AAAA-MM-DD'), record (dias), goal (dias) }
  *   worldclock  { zones: ['America/Sao_Paulo', …] (até 6, da lista) }
  *   menu        { title, days: { '1': [{ name, price?, note? }], … } (0 = domingo; até 12 itens por dia), showPrice }
@@ -83,7 +83,10 @@ export function cleanWidget(kind, b, { partial = false, cur = null } = {}) {
     if (!Number.isFinite(at) || at < 946684800000) throw fail(400, 'Contador: a data e a hora do evento.');
     const title = line(d.title, 60);
     if (title.length < 2) throw fail(400, 'Contador: o nome do evento.');
-    out.data = { title, at, text: line(d.text, 120) };
+    // o fim (opcional): depois de começar, a tela conta quanto falta para terminar
+    const until = d.until == null || d.until === '' ? null : Math.round(Number(d.until));
+    if (until != null && (!Number.isFinite(until) || until <= at)) throw fail(400, 'Contador: o fim vem depois do começo.');
+    out.data = { title, at, text: line(d.text, 120), ...(until != null ? { until } : {}) };
   } else if (kind === 'safety') {
     const last = R.cleanYmd(d.lastAccident);
     if (!last) throw fail(400, 'Dias sem acidente: a data do último acidente.');
@@ -951,7 +954,7 @@ export function createTvcorpDados({
         if (!w || (kind !== 'widget' && w.kind !== kind)) return null;
         const d = widgetDto(w);
         if (d.kind === 'menu') { const m = menuToday(d, day); return m ? { id: `m${d.id}`, kind: 'menu', ...m } : null; }
-        if (d.kind === 'countdown') return d.data.at > t - 86400_000 ? { id: `w${d.id}`, kind: 'countdown', title: d.data.title, target: d.data.at, text: d.data.text || '' } : null;
+        if (d.kind === 'countdown') return (d.data.until || d.data.at) > t - 86400_000 ? { id: `w${d.id}`, kind: 'countdown', title: d.data.title, target: d.data.at, ...(d.data.until ? { until: d.data.until } : {}), text: d.data.text || '' } : null;
         if (d.kind === 'safety') return { id: `w${d.id}`, kind: 'safety', ...safetyOf(d, day.ymd) };
         return { id: `w${d.id}`, kind: 'worldclock', clocks: d.data.zones.map((z) => ({ tz: z, label: ZONE.get(z)?.label || z })) };
       }
