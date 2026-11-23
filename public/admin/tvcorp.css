@@ -224,3 +224,22 @@ tr.tc-sel td { background: var(--c-panel-3); }
 .tc-radio-bar select { width: auto; }
 .tc-radio-res { width: 100%; margin: 6px 0; }
 .tc-radio-audio { width: 100%; margin-top: 6px; }
+/* editor de layouts: a tabela das zonas rola dentro da caixa, e a prévia "Como fica na TV" cabe inteira */
+.tc-zones-wrap { max-width: 100%; overflow-x: auto; }
+/* o corpo do diálogo é uma grade: sem min-width 0 o filho cresce até a largura da tabela e corta a prévia à direita */
+.tc-dlg .pf-dlg-body > * { min-width: 0; }
+.tc-wall-form .tc-pv-box { max-width: 640px; }
+.tc-two > div { min-width: 0; }
+.tc-pv-box { max-width: 100%; overflow: hidden; }
+/* conjuntos de telas: a grade das TVs (cardápio por tela) */
+.tc-wall-grid { display: grid; gap: 4px; padding: 6px; background: #05070b; }
+.tc-wall-grid.c-1 { grid-template-columns: minmax(0, 1fr); }
+.tc-wall-grid.c-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.tc-wall-grid.c-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.tc-wall-grid.c-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.tc-wall-grid.c-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.tc-wall-grid.c-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.tc-wall-grid .tvc-previa { max-width: none; width: 100%; border-radius: 2px; }
+.tc-wall-empty { display: flex; align-items: center; justify-content: center; width: 100%; aspect-ratio: 16 / 9; border: 1px dashed #334155; border-radius: 2px; color: #64748b; font-weight: 700; font-size: 20px; }
+.tc-wall-empty.port { aspect-ratio: 9 / 16; }
+.tc-wall-form > * + * { margin-top: 10px; }

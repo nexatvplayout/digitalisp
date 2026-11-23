@@ -528,6 +528,8 @@ export const COMMANDS = [
   { key: 'restart-app', label: 'Reiniciar o app' },
   { key: 'reboot', label: 'Reiniciar o aparelho' },
   { key: 'screenshot', label: 'Captura da tela' },
+  // DIGITAL ISP: a tela mostra o nome e, num conjunto, o número da posição, por 10 s (para montar as TVs na ordem)
+  { key: 'identify', label: 'Identificar' },
 ];
 export const COMMAND_KEYS = COMMANDS.map((c) => c.key);
 

@@ -350,8 +350,9 @@ export const frameOf = (orientation) => (orientation === 'port' ? { w: 90, h: 16
  * opts.selected destaca uma zona; opts.labels põe o nome dela no canto; opts.onZone(id) torna as zonas clicáveis.
  */
 export function layoutPreview(layout = {}, opts = {}) {
-  const fr = frameOf(layout.orientation);
-  const wrap = h('div', `tvc-previa ${layout.orientation === 'port' ? 'port' : 'land'}`);
+  // DIGITAL ISP: opts.wall { cols, rows, bezel, orientation } desenha o videowall inteiro (o layout no tamanho do conjunto)
+  const fr = opts.wall ? wallFrame(opts.wall) : frameOf(layout.orientation);
+  const wrap = h('div', `tvc-previa ${opts.wall ? 'wall' : layout.orientation === 'port' ? 'port' : 'land'}`);
   wrap.setAttribute('role', 'img');
   wrap.setAttribute('aria-label', `Prévia do layout${layout.name ? ` ${layout.name}` : ''}: ${(layout.zones || []).map((z) => ZONE_NAMES[z.kind] || z.kind).join(', ')}`);
   const svg = s('svg', { class: 'tvc-svg', viewBox: `0 0 ${fr.w} ${fr.h}`, preserveAspectRatio: 'xMidYMid meet' });
@@ -372,8 +373,25 @@ export function layoutPreview(layout = {}, opts = {}) {
     if (opts.onZone) { g.setAttribute('tabindex', '0'); g.setAttribute('role', 'button'); g.addEventListener('click', () => opts.onZone(zone.id)); g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); opts.onZone(zone.id); } }); }
     svg.append(g);
   }
+  if (opts.wall) wallMarks(svg, opts.wall);
   wrap.append(svg);
   return wrap;
+}
+/** O quadro do videowall: cada TV no tamanho do quadro de uma tela, mais a moldura entre elas. */
+export function wallFrame({ cols = 1, rows = 1, bezel = {}, orientation = 'land' }) {
+  const one = frameOf(orientation); const bx = (Number(bezel.x) || 0) / 100; const by = (Number(bezel.y) || 0) / 100;
+  return { w: one.w * (cols + (cols - 1) * bx), h: one.h * (rows + (rows - 1) * by), one, bx, by };
+}
+// as molduras (a parte do conteúdo que fica escondida atrás das bordas) e o número de cada posição
+function wallMarks(svg, wall) {
+  const fr = wallFrame(wall); const { one } = fr; const bw = Math.max(0.6, fr.bx * one.w); const bh = Math.max(0.6, fr.by * one.h);
+  for (let c = 1; c < wall.cols; c++) svg.append(s('rect', { class: 'tvc-bezel', x: (c * one.w * (1 + fr.bx) - bw).toFixed(2), y: 0, width: bw.toFixed(2), height: fr.h.toFixed(2) }));
+  for (let r = 1; r < wall.rows; r++) svg.append(s('rect', { class: 'tvc-bezel', x: 0, y: (r * one.h * (1 + fr.by) - bh).toFixed(2), width: fr.w.toFixed(2), height: bh.toFixed(2) }));
+  if (wall.numbers === false) return;
+  for (let r = 0; r < wall.rows; r++) for (let c = 0; c < wall.cols; c++) {
+    const t = s('text', { class: 'tvc-wall-n', x: (c * one.w * (1 + fr.bx) + one.w / 2).toFixed(2), y: (r * one.h * (1 + fr.by) + one.h / 2).toFixed(2) });
+    t.textContent = String(r * wall.cols + c + 1); svg.append(t);
+  }
 }
 /** A prévia com a legenda embaixo. */
 export const layoutFigure = (layout, opts = {}, caption = '') => h('figure', 'tvc-fig', layoutPreview(layout, opts), caption ? h('figcaption', '', caption) : null);

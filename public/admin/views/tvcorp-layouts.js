@@ -10,6 +10,7 @@ import { themeOf } from './tvcorp-midias.js';
 import { radioPicker } from './tvcorp-radio.js';
 import { wifiQr, vcardQr, qrKind, qrLabel } from '../../shared/qr-conteudo.js';
 import { quadroPx, formatoDe, FORMATO_TXT, dicaArte, quadrosDoLayout } from './tvcorp-quadros.js';
+import { WALL_GRIDS, WALL_MODES, bezelPct, platformOf, WALL_UNSUPPORTED, PLATFORM_LABEL } from '../../shared/tvcorp-wall.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 const sv = (tag, attrs = {}) => { const n = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) if (v != null) n.setAttribute(k, String(v)); return n; };
@@ -109,7 +110,7 @@ export function layoutEditor(lay, reload, factoryKey = null, copyOf = null) {
   const name = el('input', { type: 'text', maxlength: String(LIMITS.name), value: st.name, placeholder: 'Ex.: Recepção da matriz' });
   const orient = el('select', {}, opt('land', 'Deitada (16:9)', st.orientation === 'land'), opt('port', 'Em pé (9:16, totem)', st.orientation === 'port'));
   const bg = el('select', {}, ...BACKGROUNDS.map(([v, t]) => opt(v, t, st.background === v)));
-  const rowsBox = el('div', {}); const pv = el('div', {}); const err = el('p', { class: 'pf-err small', 'aria-live': 'polite' });
+  const rowsBox = el('div', { class: 'tc-zones-wrap' }); const pv = el('div', { class: 'tc-pv-box' }); const err = el('p', { class: 'pf-err small', 'aria-live': 'polite' });
   const canvas = zoneCanvas(st, (why) => { if (why === 'select') paintRows(); else { paintRows(); paintPv(); } });
   // a rádio de fundo (só em layout sem a zona de vídeo do canal); refresh() a cada mudança das zonas
   const radio = radioPicker(lay?.id ?? null, () => st.zones.some((z) => z.kind === 'video'));
@@ -218,10 +219,15 @@ export default async function paintLayouts(box, ctx) {
       btns(btn('Editar', () => layoutEditor(l, reload), 'small'), btn('Duplicar', () => layoutEditor(null, reload, null, l), 'small'),
         btn('Apagar', guard(async () => { if (usedBy(l.id).length) { toast(`Este layout está em ${usedBy(l.id).length} grade(s). Troque o layout delas antes de apagar.`, true); return; } if (!confirm(`Apagar o layout "${l.name}"?`)) return; await tapi(`/api/tvcorp/layouts/${l.id}`, { method: 'DELETE' }); await reload(); }), 'small danger')))));
   const factoryBox = factoryView(reload);
+  const walls = D().walls || listOf(await tapi('/api/tvcorp/walls').catch(() => null), 'walls');
   put(box,
     note('O layout divide a tela em zonas: o vídeo do canal, playlists, o texto rolante, relógio, clima, QR code, logomarca, a chamada de senha e os widgets. Escolha um modelo pronto e ajuste; a grade diz qual layout vale em cada tela, dia e horário.'),
     label(`Layouts da empresa (${d.layouts.length} de ${LIMITS.layouts})`),
     mine.length ? el('div', { class: 'tc-lgrid' }, ...mine) : empty('Nenhum layout da empresa ainda. Comece por um modelo pronto abaixo.'),
+    label(`Conjuntos de telas (${walls.length})`),
+    note('Várias TVs juntas: no cardápio por tela cada TV tem o seu layout e a troca dos itens acontece junto em todas; no videowall um layout só, do tamanho do conjunto, e cada TV mostra a parte dela. Use "Identificar" para ver o número de cada TV na tela e montar na ordem.'),
+    walls.length ? el('div', { class: 'tc-lgrid' }, ...walls.map((w) => wallCard(w, reload))) : empty('Nenhum conjunto ainda. Crie um, ou use um modelo pronto de várias TVs abaixo.'),
+    btns(btn('+ Conjunto de telas', () => wallDialog(null, reload), 'small primary')),
     label('Modelos prontos'),
     factoryBox);
 }
@@ -285,7 +291,141 @@ function setDialog(x, reload) {
           grades++;
         }
       }
-      toast(`Conjunto criado: ${made} layout(s)${grades ? ` e ${grades} grade(s), uma por TV` : ''}. Agora escolha as playlists de cada zona na aba Grade.`);
+      // as TVs escolhidas viram um conjunto de telas (cardápio por tela): trocam de item juntas e o "Identificar" mostra a posição
+      const cells = picks.map((s, i) => (s.value ? { pos: i + 1, deviceId: Number(s.value) } : null)).filter(Boolean);
+      let wallOk = false;
+      if (cells.length) {
+        try { await tapi('/api/tvcorp/walls', { method: 'POST', body: { name: base.slice(0, LIMITS.name), mode: 'menu', cols: x.screens.length, rows: 1, orientation: x.orientation, cells } }); wallOk = true; } catch (e) { toast(`Layouts criados, mas o conjunto de telas não: ${e.message}`, true); }
+      }
+      toast(`Conjunto criado: ${made} layout(s)${grades ? ` e ${grades} grade(s), uma por TV` : ''}${wallOk ? ', com a troca sincronizada' : ''}. Agora escolha as playlists de cada zona na aba Grade.`);
+      await reload();
+    },
+  });
+}
+
+/* ---------------------------------------------------------------- conjuntos de telas (DIGITAL ISP) */
+const devName = (id) => { const d = (D().devices || []).find((x) => x.id === Number(id)); return d ? d.name || `Tela #${d.id}` : `Tela #${id}`; };
+// o layout que a grade dá a uma tela (a grade só dela, ou a mais específica que a inclui): para a prévia do cardápio
+const layoutOfDevice = (id) => {
+  const s = (D().schedules || []).find((x) => x.scope?.kind === 'devices' && (x.scope.devices || []).map(Number).includes(Number(id)));
+  return s ? (D().layouts || []).find((l) => l.id === s.layoutId) || null : null;
+};
+/** A prévia do conjunto inteiro: no videowall o layout atravessando as TVs; no cardápio, cada TV com o layout dela. */
+export function wallPreview(w) {
+  const d = w.data || {};
+  if (d.mode === 'wall') {
+    const lay = (D().layouts || []).find((l) => l.id === Number(d.layoutId));
+    return layoutPreview(lay || { orientation: d.orientation, zones: [] }, { ...previewOpts(lay || {}), labels: false, wall: { cols: d.cols, rows: d.rows, bezel: d.bezel, orientation: d.orientation } });
+  }
+  const cells = [];
+  for (let pos = 1; pos <= d.cols * d.rows; pos++) {
+    const c = (d.cells || []).find((x) => x.pos === pos); const lay = c ? layoutOfDevice(c.deviceId) : null;
+    cells.push(el('div', { class: 'tc-set-tv' },
+      lay ? layoutPreview(lay, { ...previewOpts(lay), labels: false }) : el('div', { class: `tc-wall-empty ${d.orientation}`, text: String(pos) }),
+      el('span', { class: 'dim small', text: `${pos} · ${c ? devName(c.deviceId) : 'sem tela'}` })));
+  }
+  return el('div', { class: `tc-wall-grid c-${d.cols} ${d.orientation}` }, ...cells);
+}
+const gridLabel = (d) => WALL_GRIDS.find((g) => g.cols === d.cols && g.rows === d.rows)?.label || `${d.cols} × ${d.rows}`;
+// "Identificar": cada TV do conjunto mostra o nome e o número da posição por 10 s
+async function identify(w) {
+  const cells = w.data?.cells || [];
+  if (!cells.length) { toast('Nenhuma tela neste conjunto ainda.', true); return; }
+  let n = 0;
+  for (const c of cells) { await tapi(`/api/tvcorp/rede/devices/${c.deviceId}/commands`, { method: 'POST', body: { type: 'identify' } }); n++; }
+  const old = cells.map((c) => (D().devices || []).find((d) => d.id === c.deviceId)).filter((d) => d && platformOf(d.system || d.android) === 'android').length;
+  toast(`Pedido enviado a ${n} tela(s): cada uma mostra o número da posição por 10 segundos.${old ? ` ${old} delas (TV box Android) ainda não sabe se identificar: na aba Comandos aparece "Não suportado por esta versão do app", não é defeito da TV.` : ''}`);
+}
+function wallCard(w, reload) {
+  const d = w.data || {};
+  return el('div', { class: 'tc-lcard tc-set' }, wallPreview(w),
+    el('div', { class: 'tc-lcard-b' },
+      el('div', {}, chip(d.mode === 'wall' ? 'Videowall' : 'Cardápio por tela', 'tc-tvs'), ' ', chip(gridLabel(d))),
+      el('b', { text: w.name }),
+      el('div', { class: 'dim small', text: `${(d.cells || []).length} de ${d.cols * d.rows} posições com tela · ${d.orientation === 'port' ? 'TVs em pé' : 'TVs deitadas'}${d.sync !== false ? ' · troca sincronizada' : ''}${d.bezel?.x || d.bezel?.y ? ` · moldura ${d.bezel.x}% × ${d.bezel.y}%` : ''}` }),
+      btns(btn('Editar', () => wallDialog(w, reload), 'small'), btn('Identificar', guard(() => identify(w)), 'small'),
+        btn('Apagar', guard(async () => { if (!confirm(`Apagar o conjunto "${w.name}"? As telas, layouts e grades continuam; só deixam de andar juntas.`)) return; await tapi(`/api/tvcorp/walls/${w.id}`, { method: 'DELETE' }); await reload(); }), 'small danger'))));
+}
+/** Criar ou mudar um conjunto: modo, grade, orientação, moldura, sincronia, a tela de cada posição e (videowall) o layout. */
+export function wallDialog(w, reload) {
+  const cur = w?.data || {};
+  const st = { mode: cur.mode || 'menu', cols: cur.cols || 2, rows: cur.rows || 1, orientation: cur.orientation || 'land', bezel: { x: cur.bezel?.x || 0, y: cur.bezel?.y || 0 }, sync: cur.sync !== false, layoutId: cur.layoutId || '', cells: Object.fromEntries((cur.cells || []).map((c) => [c.pos, c.deviceId])) };
+  const devs = (D().devices || []).filter((d) => !d.revokedAt);
+  const otherWall = (id) => (D().walls || []).find((x) => x.id !== w?.id && (x.data?.cells || []).some((c) => c.deviceId === id));
+  const name = el('input', { type: 'text', maxlength: String(LIMITS.name), value: w?.name || '', placeholder: 'Ex.: Cardápio da praça de alimentação' });
+  const mode = el('select', { 'aria-label': 'Modo do conjunto' }, ...WALL_MODES.map((m) => opt(m.key, m.label, st.mode === m.key)));
+  const grid = el('select', { 'aria-label': 'Grade do conjunto' }, ...WALL_GRIDS.map((g) => opt(g.key, g.label, g.cols === st.cols && g.rows === st.rows)));
+  const orient = el('select', { 'aria-label': 'Orientação das TVs' }, opt('land', 'Deitadas (16:9)', st.orientation === 'land'), opt('port', 'Em pé (9:16)', st.orientation === 'port'));
+  const bx = el('input', { type: 'number', min: '0', max: '20', step: '0.1', value: String(st.bezel.x), 'aria-label': 'Moldura na largura (%)' });
+  const by = el('input', { type: 'number', min: '0', max: '20', step: '0.1', value: String(st.bezel.y), 'aria-label': 'Moldura na altura (%)' });
+  const inches = el('input', { type: 'number', min: '10', max: '120', step: '1', placeholder: 'Ex.: 55', 'aria-label': 'Tamanho da TV (polegadas)' });
+  const gap = el('input', { type: 'number', min: '0', max: '200', step: '0.5', placeholder: 'Ex.: 12', 'aria-label': 'Bordas de duas TVs vizinhas (mm)' });
+  const calc = () => { if (!inches.value) return; const b = bezelPct({ inches: inches.value, gapMm: gap.value || 0, orientation: st.orientation }); bx.value = String(b.x); by.value = String(b.y); st.bezel = b; paint(); };
+  inches.addEventListener('input', calc); gap.addEventListener('input', calc);
+  const sync = el('input', { type: 'checkbox', checked: st.sync, 'aria-label': 'Troca sincronizada' });
+  const wallLays = () => (D().layouts || []);
+  const layout = el('select', { 'aria-label': 'Layout do videowall' });
+  const mkGrade = el('input', { type: 'checkbox', checked: !w, 'aria-label': 'Criar a grade do videowall' });
+  const layoutBox = el('div', {}); const cellsBox = el('div', { class: 'pf-grid two' }); const pv = el('div', { class: 'tc-pv-box' }); const hint = el('p', { class: 'dim small' });
+  const warn = el('p', { class: 'pf-err small', 'aria-live': 'polite' });
+  // as TVs cujo app ainda não desenha o videowall (mostrariam o layout inteiro em cada uma)
+  const unsupported = () => Object.values(st.cells).map((id) => devs.find((d) => d.id === id)).filter((d) => d && WALL_UNSUPPORTED.includes(platformOf(d.system || d.android)));
+  const paintCells = () => {
+    const n = st.cols * st.rows;
+    for (const k of Object.keys(st.cells)) if (Number(k) > n) delete st.cells[k];
+    put(cellsBox, ...Array.from({ length: n }, (_, i) => {
+      const pos = i + 1;
+      const s = el('select', { 'aria-label': `Tela da posição ${pos}`, onchange: (e) => { if (e.target.value) st.cells[pos] = Number(e.target.value); else delete st.cells[pos]; paint(); } },
+        opt('', devs.length ? 'Nenhuma (escolher depois)' : 'Nenhuma tela cadastrada ainda', !st.cells[pos]),
+        ...devs.map((d) => opt(d.id, `${d.name || `Tela #${d.id}`}${otherWall(d.id) ? ` (está em "${otherWall(d.id).name}")` : ''}`, st.cells[pos] === d.id)));
+      return f(`Posição ${pos} (linha ${Math.floor(i / st.cols) + 1}, coluna ${(i % st.cols) + 1})`, s);
+    }));
+  };
+  const paintLayout = () => {
+    put(layout, opt('', wallLays().length ? 'Escolha o layout' : 'Nenhum layout criado ainda', !st.layoutId), ...wallLays().map((l) => opt(l.id, l.name, Number(st.layoutId) === l.id)));
+    put(layoutBox, ...(st.mode === 'wall' ? [f('Layout do videowall (no tamanho do conjunto inteiro)', layout, 'As zonas em % valem para o conjunto inteiro: a zona de 0 a 50% de largura, num 2 × 1, ocupa a TV da esquerda.'),
+      el('label', { class: 'pf-check' }, mkGrade, el('span', { text: 'Criar a grade do videowall (o layout em todas as TVs do conjunto, o dia todo)' }))] : []));
+  };
+  const paint = () => {
+    const data = { mode: st.mode, cols: st.cols, rows: st.rows, orientation: st.orientation, bezel: st.bezel, sync: st.sync, layoutId: st.layoutId ? Number(st.layoutId) : null, cells: Object.entries(st.cells).map(([pos, deviceId]) => ({ pos: Number(pos), deviceId })) };
+    put(pv, wallPreview({ name: name.value, data }));
+    hint.textContent = WALL_MODES.find((m) => m.key === st.mode)?.desc || '';
+    const bad = unsupported(); const names = bad.map((d) => `"${d.name}" (${PLATFORM_LABEL[platformOf(d.system || d.android)]})`).join(', ');
+    warn.textContent = !bad.length ? '' : st.mode === 'wall'
+      ? `O app destas TVs ainda não faz videowall: ${names}. Cada uma mostraria o layout inteiro, repetido. Troque por TVs Samsung ou LG, ou use o cardápio por tela.`
+      : `O app destas TVs ainda não sincroniza a troca: ${names}. Elas mostram o cardápio normalmente, só que sem trocar junto com as outras.`;
+  };
+  mode.addEventListener('change', () => { st.mode = mode.value; paintLayout(); paint(); });
+  grid.addEventListener('change', () => { const g = WALL_GRIDS.find((x) => x.key === grid.value); st.cols = g.cols; st.rows = g.rows; paintCells(); paint(); });
+  orient.addEventListener('change', () => { st.orientation = orient.value; calc(); paint(); });
+  const num = (v) => Math.max(0, Math.min(20, Number(v) || 0));
+  bx.addEventListener('change', () => { st.bezel = { ...st.bezel, x: num(bx.value) }; paint(); });
+  by.addEventListener('change', () => { st.bezel = { ...st.bezel, y: num(by.value) }; paint(); });
+  sync.addEventListener('change', () => { st.sync = sync.checked; });
+  layout.addEventListener('change', () => { st.layoutId = layout.value; paint(); });
+  paintCells(); paintLayout(); paint();
+  dialog(w ? `Conjunto · ${w.name}` : 'Novo conjunto de telas', el('div', { class: 'tc-wall-form' },
+    el('div', { class: 'pf-grid' }, f('Nome do conjunto', name)),
+    el('div', { class: 'pf-grid two' }, f('Modo', mode), f('Grade (colunas × linhas)', grid)), hint,
+    el('div', { class: 'pf-grid two' }, f('Cada TV', orient), el('label', { class: 'pf-check' }, sync, el('span', { text: 'Troca sincronizada (todas as TVs trocam de item juntas, pelo relógio)' }))),
+    label('Moldura entre as TVs'),
+    el('div', { class: 'pf-grid two' }, f('Tamanho da TV (polegadas)', inches), f('Bordas de duas TVs vizinhas, somadas (mm)', gap, 'Meça de uma imagem à outra. Preenche a moldura em % ao lado.')),
+    el('div', { class: 'pf-grid two' }, f('Moldura na largura (% de uma tela)', bx), f('Moldura na altura (% de uma tela)', by)),
+    layoutBox,
+    label('Como fica o conjunto'), pv,
+    label('A tela de cada posição'), note('A posição 1 é a de cima, à esquerda; segue pela linha. Use "Identificar" depois de salvar para cada TV mostrar o número dela.'), cellsBox, warn), {
+    wide: true, saveLabel: w ? 'Salvar' : 'Criar o conjunto',
+    save: async () => {
+      if (!name.value.trim()) throw new Error('Dê um nome ao conjunto.');
+      if (st.mode === 'wall' && !st.layoutId) throw new Error('Escolha o layout do videowall.');
+      if (st.mode === 'wall' && unsupported().length) throw new Error(warn.textContent);
+      const body = { name: name.value.trim(), mode: st.mode, cols: st.cols, rows: st.rows, orientation: st.orientation, bezel: st.bezel, sync: st.sync, layoutId: st.mode === 'wall' ? Number(st.layoutId) : null, cells: Object.entries(st.cells).map(([pos, deviceId]) => ({ pos: Number(pos), deviceId })) };
+      if (w) await tapi(`/api/tvcorp/walls/${w.id}`, { method: 'PATCH', body }); else await tapi('/api/tvcorp/walls', { method: 'POST', body });
+      const devices = body.cells.map((c) => c.deviceId);
+      if (st.mode === 'wall' && mkGrade.checked && devices.length) {
+        await tapi('/api/tvcorp/schedules', { method: 'POST', body: { name: `${body.name} · videowall`.slice(0, LIMITS.name), layoutId: body.layoutId, zonePlaylists: {}, scope: { kind: 'devices', devices }, days: [], timeFrom: 0, timeTo: 1440, priority: 50 } });
+      }
+      toast(`Conjunto salvo.${st.mode === 'wall' && mkGrade.checked && devices.length ? ' A grade do videowall foi criada: escolha as playlists das zonas na aba Grade.' : ''} As telas recebem a posição em até 1 minuto.`);
       await reload();
     },
   });
