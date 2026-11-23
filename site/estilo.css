@@ -226,3 +226,9 @@ textarea { resize: vertical; }
 .whats-flutuante svg { width: 30px; height: 30px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
 @media (prefers-reduced-motion: reduce) { .whats-flutuante { transition: none; } .whats-flutuante:hover { transform: none; } }
 @media (max-width: 560px) { .whats-flutuante { right: 14px; bottom: 14px; width: 54px; height: 54px; } .rodape { padding-bottom: 84px; } }
+
+/* Guia de compatibilidade (imagem do dono) */
+.guia { margin: 40px 0 0; }
+.guia a { display: block; border-radius: var(--raio); overflow: hidden; box-shadow: var(--sombra); }
+.guia img { width: 100%; height: auto; }
+.guia figcaption { margin-top: 10px; font-size: .9rem; color: var(--texto-suave); text-align: center; }

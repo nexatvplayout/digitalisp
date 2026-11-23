@@ -9,7 +9,7 @@ Cerca de 115 KB no total. Abre direto do disco: dê dois cliques em `index.html`
 |---|---|
 | `index.html` | A página, com todas as seções e um pequeno script do formulário de contato |
 | `estilo.css` | O visual (cores da marca, responsivo) |
-| `img/` | Logos do kit (`marca/svg`) e a imagem de compartilhamento `og-digitalisp.png` (1200×630, gerada do kit) |
+| `img/` | Logos do kit (`marca/svg`), a imagem de compartilhamento `og-digitalisp.png` (1200×630, gerada do kit) e o guia de compatibilidade `compatibilidade*.webp` (arte enviada pelo dono, em 2000 e 1000 px) |
 | `favicon.*`, `apple-touch-icon.png`, `android-chrome-*.png`, `site.webmanifest` | Ícones copiados de `marca/favicon` |
 
 Seções: o que é, para quem é (revendas e segmentos), como funciona (3 passos), funcionalidades, aplicativos das telas,
