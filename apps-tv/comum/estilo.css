@@ -76,3 +76,13 @@ video.midia { object-fit: contain; }
 #aovivo { position: absolute; left: 0; top: 0; right: 0; bottom: 0; z-index: 1; pointer-events: none; overflow: hidden; }
 .aovivo-el { position: absolute; background: transparent; object-fit: contain; }
 video.aovivo-el { background: #000; }
+
+/* efeitos dos itens da playlist: a entrada e o zoom lento nas fotos (Ken Burns) */
+.tr-fade { animation: tr-fade .8s ease-out both; }
+.tr-slide { animation: tr-slide .7s ease-out both; }
+.tr-zoom { animation: tr-zoom .8s ease-out both; }
+@keyframes tr-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes tr-slide { from { opacity: 0; transform: translateX(8%); } to { opacity: 1; transform: translateX(0); } }
+@keyframes tr-zoom { from { opacity: 0; transform: scale(1.08); } to { opacity: 1; transform: scale(1); } }
+img.kenburns { animation: kenburns 10s linear both; transform-origin: 50% 50%; }
+@keyframes kenburns { from { transform: scale(1); } to { transform: scale(1.12) translate(-1.5%, -1%); } }

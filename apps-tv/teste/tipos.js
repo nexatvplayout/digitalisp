@@ -11,6 +11,8 @@ function itensTipos(arquivo, agora) {
   const s = 4;
   return [
     Object.assign({ id: 'm-img', kind: 'image', seconds: s, caption: 'Oferta da semana', fit: 'contain' }, f('oferta-a.svg')),
+    // os efeitos (entrada e zoom lento na foto)
+    Object.assign({ id: 'm-img-fx', kind: 'image', seconds: s, caption: 'Com zoom lento', transition: 'fade', kenburns: true }, f('oferta-b.svg')),
     { id: 's-comunicado', kind: 'slide', seconds: s, template: 'comunicado', fields: { title: 'Reunião geral', text: 'Quinta, às 9h, no auditório.\nTraga sugestões.', lines: ['Quinta, às 9h, no auditório.', 'Traga sugestões.'], qr: 'https://exemplo.com.br/reuniao' } },
     { id: 's-boasvindas', kind: 'slide', seconds: s, template: 'boas-vindas', fields: { title: 'Seja bem-vinda!', name: 'Ana Souza', sector: 'Financeiro', image: f('foto-ana.svg') } },
     { id: 's-evento', kind: 'slide', seconds: s, template: 'evento', fields: { title: 'Festa de fim de ano', place: 'Salão principal', text: 'Traga a família', target: `${dia(12)}T19:00`, qr: 'https://exemplo.com.br/festa' } },
@@ -49,6 +51,9 @@ function itensTipos(arquivo, agora) {
     { id: 'w1', kind: 'countdown', seconds: s, title: 'Faltam para as férias coletivas', target: agora + 20 * 86400000, text: 'Boas festas!' },
     { id: 'w1b', kind: 'countdown', seconds: s, title: 'Black Friday', target: agora - 3600000, until: agora + 2 * 86400000 + 5 * 3600000, text: 'Termina em breve' },
     { id: 'w2', kind: 'safety', seconds: s, title: 'Dias sem acidente', days: 999, record: 210, goal: 365, since: dia(-128) },
+    { id: 'w2b', kind: 'safety', seconds: s, title: 'Dias desde a inauguração', record: null, since: dia(-40), transition: 'slide' },
+    { id: 'qrw', kind: 'qr', seconds: s, qr: 'WIFI:T:WPA;S:Visitantes;P:senha-de-teste;;', title: 'Wi-Fi dos visitantes' },
+    { id: 'qrv', kind: 'qr', seconds: s, qr: 'BEGIN:VCARD\nVERSION:3.0\nFN:Provedor X\nTEL:+551933334444\nEND:VCARD', title: 'Salve o contato' },
     { id: 'w3', kind: 'worldclock', seconds: s, clocks: [{ tz: 'America/Sao_Paulo', label: 'São Paulo' }, { tz: 'Europe/Lisbon', label: 'Lisboa' }, { tz: 'Asia/Tokyo', label: 'Tóquio' }] },
     { id: 't1', kind: 'text', seconds: s, title: 'Aviso', text: 'Estacionamento fechado amanhã para manutenção.' },
     { id: 'qr1', kind: 'qr', seconds: s, qr: 'https://exemplo.com.br/cardapio', title: 'Veja o cardápio no celular' },

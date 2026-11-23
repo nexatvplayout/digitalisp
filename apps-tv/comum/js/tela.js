@@ -193,7 +193,10 @@
         var dado = o && (o.qr || o.url);
         if (!dado) return null;
         var cq = el('div', 'tvc-z-qr ' + th);
-        cq.appendChild(raiz.TelasPrevia.qrSvg(dado, 'tvc-z-qrc'));
+        // o texto como veio (https, Wi-Fi "WIFI:T:WPA;S:…;P:…;;" ou vCard): grande demais para o QR → sem o desenho
+        var svgQr = raiz.TelasPrevia.qrSvg(String(dado), 'tvc-z-qrc');
+        if (!svgQr) return null;
+        cq.appendChild(svgQr);
         cq.appendChild(el('span', null, (o && (o.title || o.label)) || 'Aponte a câmera'));
         return cq;
       }
@@ -275,6 +278,7 @@
         z.appendChild(n);
         if (it.kind === 'web') paginaWeb(z, it);
         trocar(caixa, z);
+        efeitos(z, it, duracao(it, pos));
         medidas(caixa);
         // relógios e contadores: andam a cada segundo, pelo relógio confiável do app
         var tick = raiz.TelasPrevia.tickWidgets || raiz.TelasPrevia.tickCountdowns;
@@ -299,6 +303,7 @@
           conteudo.appendChild(img);
           if (it.label) conteudo.appendChild(el('div', 'legenda', it.label));
           trocar(caixa, conteudo);
+          efeitos(conteudo, it, duracao(it, pos));
           avancar();
         });
         return;
@@ -307,6 +312,9 @@
         ctx.url(it.file.sha256).then(function (u) {
           if (!u) return depois();
           var v = novoVideo();
+          // vídeo próprio do cliente: sound false → mudo; true → o som da tela (mudo/volume dela) continua valendo
+          if (it.raw && it.raw.sound === false) v.muted = true;
+          if (it.contain || (it.raw && it.raw.fit === 'contain')) v.className += ' contain';
           var fim = false;
           var seguir = function () { if (!fim) { fim = true; depois(); } };
           v.onended = seguir;
@@ -314,6 +322,7 @@
           v.src = u;
           conteudo.appendChild(v);
           trocar(caixa, conteudo);
+          efeitos(conteudo, it, duracao(it, pos));
           tocar(v);
           if (pos) {
             // troca sincronizada: começa onde as outras TVs estão (offset) e sai junto com elas (remaining)
@@ -378,6 +387,22 @@
     function hhmmss(s) {
       var h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, x = s % 60;
       return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m + ':' + (x < 10 ? '0' : '') + x;
+    }
+
+    /**
+     * Os efeitos do item (TV Corporativa): a entrada (transition 'fade' | 'slide' | 'zoom'; sem ela, corte seco) e o zoom
+     * lento nas fotos enquanto o item está na tela (kenburns), em CSS (as TVs de 2018–2020 animam transform e opacity).
+     */
+    function efeitos(novo, it, ms) {
+      var r = (it && it.raw) || {};
+      if (['fade', 'slide', 'zoom'].indexOf(r.transition) >= 0) novo.classList.add('tr-' + r.transition);
+      if (r.kenburns === true) {
+        var fotos = novo.querySelectorAll('img.midia, img.tvc-it-img, img.tvc-sl-img');
+        for (var i = 0; i < fotos.length; i++) {
+          fotos[i].classList.add('kenburns');
+          fotos[i].style.animationDuration = Math.max(3, Math.round((ms || it.seconds * 1000) / 1000)) + 's';
+        }
+      }
     }
 
     function trocar(caixa, novo) {
