@@ -75,6 +75,8 @@ object Engine {
         fun onSignageFiles() {}
         /** A marca da revenda mudou (nome, cores ou a logo ficou pronta no aparelho). */
         fun onBrandChanged() {}
+        /** Comando `identify`: mostrar por 10 s o nome da tela e a posição no conjunto. */
+        fun identify() {}
     }
 
     private const val CLOCK_FLOOR = 1_735_689_600_000L // 2025-01-01: antes disso o relógio do aparelho não é confiável
@@ -462,6 +464,8 @@ object Engine {
         val body = api.config(if (force) null else config?.rev) ?: return
         val parsed = ConfigParser.parse(body)
         setBrand(Brands.update(body))
+        // o último clima bom fica guardado (até 6 h) para a tela não perder a zona de clima numa configuração sem ele
+        if (parsed.weather != null) try { store.weatherJson = JSONObject(body).optJSONObject("weather")?.toString() } catch (_: Exception) { }
         store.configJson = body
         if (parsed.device.name.isNotEmpty()) store.deviceName = parsed.device.name
         config = parsed
@@ -692,6 +696,10 @@ object Engine {
                         done(api, id, false, "Envio da captura recusado (${e.code}): ${e.message}")
                     }
                 }
+            }
+            "identify" -> {
+                toUi { it.identify() }
+                done(api, id, true, "Identificação na tela por 10 s.")
             }
             else -> done(api, id, false, "Comando desconhecido nesta versão do app: ${type.take(40)}")
         }
@@ -1034,6 +1042,13 @@ object Engine {
         }
     }
 
+    /** O clima que vale: o da configuração ou, sem ele, o último bom guardado (até 6 h). */
+    fun weather(): br.com.digitalisp.telas.core.WeatherCfg? {
+        config?.weather?.let { return it }
+        val saved = try { store.weatherJson?.let { ConfigParser.weather(JSONObject(it)) } } catch (_: Exception) { null } ?: return null
+        return saved.takeIf { it.at > 0L && it.fresh(now()) }
+    }
+
     /** O dia (no fuso do modo) para a conta de exibição. */
     fun playsDay(): String = Signage.dayOf(now(), config?.signage?.tz ?: Signage.DEFAULT_TZ)
 
@@ -1053,7 +1068,8 @@ object Engine {
                     signageAgain = false
                     val cfg = config ?: break
                     if (!managed) break
-                    val wanted = cfg.signage?.files().orEmpty()
+                    val wx = weather()
+                    val wanted = cfg.signage?.files().orEmpty() + listOfNotNull(wx?.art, wx?.artPort)
                     val dir = signageDir()
                     if (cfg.signage == null) {
                         // modo desligado (ou servidor sem ele): nada guardado

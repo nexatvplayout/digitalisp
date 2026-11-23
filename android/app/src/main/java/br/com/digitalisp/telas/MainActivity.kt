@@ -362,6 +362,7 @@ class MainActivity : Activity(), Engine.Ui {
         handler.removeCallbacksAndMessages(null)
         if (Engine.ui === this) Engine.ui = null
         player.release()
+        stopRadio()
         soundPool?.release()
         speaker.shutdown()
         clips.stop()
@@ -730,12 +731,13 @@ class MainActivity : Activity(), Engine.Ui {
             if (wantTicker) col.addView(buildTicker(c, ins), LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, tickerH))
             compHost.addView(col, match())
         }
-        player.attach(frame, useTexture = rotate)
+        player.attach(frame, useTexture = rotate || frame.forceTexture)
         val mute = block != null && !block.layout.hasVideo
         if (c != null && mute != signMuted) {
             signMuted = mute
             player.setVolume(c.stream.volume, c.stream.muted || mute)
         }
+        updateRadio()
         // imagem de fora do ar: por cima do vídeo, na mesma área, cobrindo sem distorcer; só aparece quando nada toca
         fallbackView = ImageView(this).apply {
             scaleType = ImageView.ScaleType.CENTER_CROP
@@ -818,10 +820,11 @@ class MainActivity : Activity(), Engine.Ui {
         fun counting() = scheduleOn && visible && shownAlert == null
         return SignEnv(
             SignLook.of(s.brand.theme, signBlock?.layout?.background), s.tz,
-            now = { Engine.now() }, clockOk = { Engine.clockOk() }, weather = { cfg?.weather },
+            now = { Engine.now() }, clockOk = { Engine.clockOk() }, weather = { Engine.weather() },
             file = { Engine.signageFile(it) },
             onShown = { ref -> if (counting()) Engine.plays.shown(Engine.playsDay(), ref) },
             onTime = { ref, ms -> if (counting()) Engine.plays.addTime(Engine.playsDay(), ref, ms) },
+            volume = { val s = cfg?.stream; if (s == null || s.muted) 0f else s.volume / 100f },
         )
     }
 
@@ -830,6 +833,102 @@ class MainActivity : Activity(), Engine.Ui {
         override fun queue(w: Int, h: Int, edge: br.com.digitalisp.telas.core.Insets): View? =
             if (!c.queue.enabled) null else buildSide(c.copy(side = c.side.copy(widgets = listOf("queue"), title = null)), w, h, withQueue = true, withCards = false, edge = edge)
         override fun qrUrl(): String? = c.side.qrUrl
+        override fun weather(): br.com.digitalisp.telas.core.WeatherCfg? = Engine.weather()
+    }
+
+    // ------------------------------------------------------------------ rádio de fundo (layout.audio, DIGITAL ISP)
+
+    private var radio: androidx.media3.exoplayer.ExoPlayer? = null
+    private var radioUrl = ""
+    private var radioGen = 0
+
+    /** Toca a rádio do bloco no ar (sem zona de vídeo), no volume da tela × o da rádio; para quando o bloco muda. */
+    private fun updateRadio() {
+        val c = cfg
+        val a = if (c != null && scheduleOn) signBlock?.layout?.audio else null
+        val url = a?.url.orEmpty()
+        if (url != radioUrl) {
+            stopRadio()
+            radioUrl = url
+            if (url.isNotEmpty()) startRadio(url)
+        }
+        radio?.volume = if (c == null || a == null || c.stream.muted) 0f else (c.stream.volume / 100f) * (a.volume / 100f)
+    }
+
+    private fun startRadio(url: String) {
+        val my = ++radioGen
+        val p = try {
+            androidx.media3.exoplayer.ExoPlayer.Builder(this).build()
+        } catch (_: Throwable) {
+            return
+        }
+        radio = p
+        val item = androidx.media3.common.MediaItem.Builder().setUri(url).apply {
+            if (url.lowercase().contains(".m3u8")) setMimeType(androidx.media3.common.MimeTypes.APPLICATION_M3U8)
+        }.build()
+        p.addListener(object : androidx.media3.common.Player.Listener {
+            override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+                // caiu: tenta de novo em 10 s, enquanto for a mesma rádio
+                handler.postDelayed({ if (my == radioGen && radio === p) { p.setMediaItem(item); p.prepare(); p.playWhenReady = true } }, 10_000L)
+            }
+            override fun onPlaybackStateChanged(state: Int) {
+                // stream ao vivo que "terminou" (o servidor fechou): reconecta
+                if (state == androidx.media3.common.Player.STATE_ENDED) handler.postDelayed({ if (my == radioGen && radio === p) { p.seekToDefaultPosition(); p.prepare(); p.playWhenReady = true } }, 3_000L)
+            }
+        })
+        p.setMediaItem(item)
+        p.prepare()
+        p.playWhenReady = true
+    }
+
+    private fun stopRadio() {
+        radioGen++
+        radio?.let { try { it.release() } catch (_: Throwable) { } }
+        radio = null
+    }
+
+    // ------------------------------------------------------------------ identificar a tela (comando `identify`)
+
+    private var identifyView: View? = null
+
+    /** Por 10 s, por cima de tudo: o nome da tela e, num conjunto, o número grande da posição e o nome do conjunto. */
+    override fun identify() {
+        identifyView?.let { root.removeView(it) }
+        val wall = cfg?.signage?.wall
+        val name = cfg?.device?.name?.ifEmpty { null } ?: Engine.store.deviceName.ifEmpty { "Tela" }
+        val h = resources.displayMetrics.heightPixels.toFloat()
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setBackgroundColor(0xE6020617.toInt())
+            isClickable = true
+            if (wall != null) {
+                addView(TextView(this@MainActivity).apply {
+                    text = wall.pos.toString()
+                    setTextColor(Color.WHITE)
+                    typeface = Typeface.DEFAULT_BOLD
+                    gravity = Gravity.CENTER
+                    setTextSize(TypedValue.COMPLEX_UNIT_PX, h * 0.45f)
+                    includeFontPadding = false
+                }, Ui.lp())
+            }
+            addView(TextView(this@MainActivity).apply {
+                text = name
+                setTextColor(Color.WHITE)
+                typeface = Typeface.DEFAULT_BOLD
+                gravity = Gravity.CENTER
+                setTextSize(TypedValue.COMPLEX_UNIT_PX, h * 0.07f)
+            }, Ui.lp())
+            if (wall != null && wall.name.isNotEmpty()) addView(TextView(this@MainActivity).apply {
+                text = wall.name + " · " + wall.cols + " × " + wall.rows
+                setTextColor(0xFFCBD5E1.toInt())
+                gravity = Gravity.CENTER
+                setTextSize(TypedValue.COMPLEX_UNIT_PX, h * 0.045f)
+            }, Ui.lp())
+        }
+        root.addView(box, match())
+        identifyView = box
+        handler.postDelayed({ if (identifyView === box) { root.removeView(box); identifyView = null } }, 10_000L)
     }
 
     private fun buildCallCard() {
@@ -982,7 +1081,7 @@ class MainActivity : Activity(), Engine.Ui {
 
     private fun buildTicker(c: TelaConfig, ins: Insets = Insets(0, 0, 0, 0)): TickerView = TickerView(this).also {
         it.setPadding(ins.left, 0, ins.right, ins.bottom)
-        it.set(c.ticker.items, c.ticker.speed)
+        it.set(c.ticker.items, c.ticker.speed, c.ticker.style, c.ticker.rich)
         it.running = tickerShouldRun()
         ticker = it
     }
@@ -1799,6 +1898,7 @@ class MainActivity : Activity(), Engine.Ui {
 
     private fun setScheduleOn(on: Boolean) {
         scheduleOn = on
+        handler.post { updateRadio() }
         blackout.visibility = if (on) View.GONE else View.VISIBLE
         refreshCallCard()
         ticker?.running = tickerShouldRun()

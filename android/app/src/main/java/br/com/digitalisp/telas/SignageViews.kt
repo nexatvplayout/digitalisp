@@ -56,6 +56,8 @@ class SignEnv(
     /** item entrou na tela / quanto tempo ficou (relatório de exibição) */
     val onShown: (String) -> Unit,
     val onTime: (String, Long) -> Unit,
+    /** Volume do som próprio da tela (0 a 1; 0 = mudo), para o vídeo próprio com som. */
+    val volume: () -> Float = { 1f },
 )
 
 /** Desenho de texto que cabe na caixa. */
@@ -128,7 +130,7 @@ class SignItemView(
 
     /** Precisa de redesenho a cada segundo? */
     val timed: Boolean
-        get() = item.kind in setOf("clock", "countdown", "safety", "worldclock") || (item.kind == "slide" && item.template == "evento" && item.target > 0) ||
+        get() = item.kind in setOf("clock", "countdown", "safety", "worldclock", "agenda") || (item.kind == "slide" && item.template == "evento" && item.target > 0) ||
             (item.kind == "post" && item.template == "evento" && item.target > 0)
 
     private var lastMinute = -1L
@@ -136,7 +138,7 @@ class SignItemView(
     fun tick() {
         if (!timed) return
         val m = env.now() / 60_000L
-        if (m == lastMinute && item.kind != "clock") return
+        if (m == lastMinute && item.kind != "clock" && item.kind != "countdown") return
         lastMinute = m
         if (item.kind == "safety" || item.template == "evento") preparedW = -1 // o número muda: refaz o desenho
         invalidate()
@@ -234,17 +236,21 @@ class SignItemView(
             "slide", "post" -> slide(w, h)
             "birthdays" -> { background(w, h); birthdays(box(w, h), item.title.ifEmpty { "Aniversariantes" }) }
             "kpi" -> { background(w, h); kpi(box(w, h), item.kpi!!, withHeader = true) }
-            "news" -> { background(w, h); news(box(w, h)) }
+            "news" -> if (item.single) newsOne(w, h) else { background(w, h); news(box(w, h)) }
             "quotes" -> { background(w, h); quotes(box(w, h)) }
             "menu" -> { background(w, h); menu(box(w, h), item.title.ifEmpty { "Cardápio de hoje" }, item.subtitle) }
             "countdown" -> { background(w, h); countdown(box(w, h)) }
             "safety" -> { background(w, h); safety(box(w, h)) }
             "worldclock" -> { background(w, h); worldclock(box(w, h)) }
             "text" -> { background(w, h); textBlock(box(w, h), item.title, item.text) }
-            "clock" -> { background(w, h); clock(box(w, h)) }
+            "clock" -> { background(w, h); if (item.clockFace?.analog == true) analogClock(box(w, h)) else clock(box(w, h)) }
             "qr" -> { background(w, h); qrBlock(box(w, h)) }
             "logo" -> logo(w, h)
-            "weather" -> { background(w, h); weather(box(w, h)) }
+            "weather" -> weatherZone(w, h)
+            "agenda" -> { background(w, h); agenda(box(w, h)) }
+            "reviews" -> { background(w, h); reviews(box(w, h)) }
+            "dashboard" -> { background(w, h); dashboard(box(w, h)) }
+            "directions" -> { background(w, h); directions(box(w, h)) }
             else -> background(w, h)
         }
     }
@@ -263,7 +269,7 @@ class SignItemView(
             y += l.height + px * 0.5f
         }
         if (title.isNotEmpty()) {
-            val px = base * titleK
+            val px = base * titleK * (if (item.kind == "slide") item.titleScale else 1f)
             val l = SignText.fit(title, r.width().toInt(), (r.height() * 0.4f).toInt(), px, px * 0.4f, look.text, true, 3)
             val yy = y
             ops += { c -> SignText.draw(c, l, r.left, yy) }
@@ -336,8 +342,360 @@ class SignItemView(
     private fun image(w: Int, h: Int) {
         val b = bmp(item.file)
         ops += { c -> c.drawColor(Color.BLACK) }
-        if (b != null) ops += { c -> drawCover(c, b, RectF(0f, 0f, w.toFloat(), h.toFloat()), item.contain) }
+        val full = RectF(0f, 0f, w.toFloat(), h.toFloat())
+        if (b != null) {
+            if (item.contain) {
+                // inteira, com a mesma foto desfocada e escurecida atrás (sem faixas pretas)
+                val blur = SignBitmaps.blurred(b)
+                ops += { c ->
+                    if (blur != null) {
+                        drawCover(c, blur, full)
+                        c.drawColor(0x8C000000.toInt())
+                    }
+                    drawCover(c, b, full, contain = true)
+                }
+            } else {
+                ops += { c -> drawCover(c, b, full) }
+            }
+        }
         if (item.label.isNotEmpty()) caption(w, h, item.label, "")
+    }
+
+    /** Deitado ou em pé: o slide com `orient: port` desenha tudo em coluna, mesmo numa caixa larga. */
+    private fun wideBox(r: RectF, k: Float = 1.15f): Boolean = !item.portrait && r.width() > r.height() * k
+
+    // ------------------------------------------------------------------ notícia sozinha (DIGITAL ISP)
+
+    /** A foto em tela cheia e, embaixo, a faixa escura com o nome da fonte, a manchete e a fonte · hora (filete vermelho). */
+    private fun newsOne(w: Int, h: Int) {
+        val n = item.news.first()
+        val full = RectF(0f, 0f, w.toFloat(), h.toFloat())
+        val photo = bmp(item.file)
+        ops += { c ->
+            c.drawColor(if (photo == null) env.look.bg else Color.BLACK)
+            if (photo != null) drawCover(c, photo, full)
+        }
+        val base = minOf(w.toFloat(), h * 1.6f)
+        val pad = base * 0.04f
+        val inner = RectF(edge.left + pad * 1.6f, 0f, w - edge.right - pad, 0f)
+        val kicker = SignText.fit((item.title.ifEmpty { "Notícias" }).uppercase(ptBr), inner.width().toInt(), (base * 0.06f).toInt(), base * 0.032f, base * 0.02f, 0xFFF87171.toInt(), true, 1)
+        val head = SignText.fit(n.title, inner.width().toInt(), (h * 0.34f).toInt(), base * 0.062f, base * 0.03f, Color.WHITE, true, 3)
+        val meta = listOf(n.source.ifEmpty { item.label }, hourOf(n.at)).filter { it.isNotEmpty() }.joinToString(" · ")
+        val metaL = if (meta.isEmpty()) null else SignText.fit(meta, inner.width().toInt(), (base * 0.05f).toInt(), base * 0.03f, base * 0.02f, 0xFFCBD5E1.toInt(), false, 1)
+        val gap = base * 0.012f
+        val bandH = pad + kicker.height + gap + head.height + (metaL?.let { gap + it.height } ?: 0f) + pad + edge.bottom
+        val top = h - bandH
+        ops += { c ->
+            paint.style = Paint.Style.FILL
+            paint.shader = LinearGradient(0f, top - pad * 2, 0f, h.toFloat(), intArrayOf(0x00000000, 0xD9000000.toInt(), 0xF0000000.toInt()), floatArrayOf(0f, 0.25f, 1f), Shader.TileMode.CLAMP)
+            c.drawRect(0f, top - pad * 2, w.toFloat(), h.toFloat(), paint)
+            paint.shader = null
+            paint.color = 0xFFEF4444.toInt()
+            c.drawRect(edge.left + pad * 0.6f, top + pad, edge.left + pad * 0.6f + base * 0.008f, h - edge.bottom - pad, paint)
+            var y = top + pad
+            SignText.draw(c, kicker, inner.left, y); y += kicker.height + gap
+            SignText.draw(c, head, inner.left, y); y += head.height + gap
+            if (metaL != null) SignText.draw(c, metaL, inner.left, y)
+        }
+    }
+
+    // ------------------------------------------------------------------ clima (foto do tempo)
+
+    /**
+     * O clima ocupando a zona: a foto do tempo na forma da zona (em pé: `artPort`), em cover, com o véu escuro de 35%, o
+     * ícone e a temperatura grandes; os próximos dias embaixo, se vierem. Sem clima válido, a zona fica no fundo.
+     */
+    private fun weatherZone(w: Int, h: Int) {
+        val wx = item.weather
+        val portrait = h > w
+        val photo = if (wx != null) bmp(if (portrait) wx.artPort ?: wx.art else wx.art ?: wx.artPort) else null
+        val full = RectF(0f, 0f, w.toFloat(), h.toFloat())
+        if (photo != null) {
+            slideLook = env.look.copy(text = Color.WHITE, dim = 0xFFE2E8F0.toInt(), light = false)
+            ops += { c ->
+                c.drawColor(Color.BLACK)
+                drawCover(c, photo, full)
+                c.drawColor(0x59000000)
+            }
+        } else background(w, h)
+        val r = box(w, h)
+        if (wx == null) {
+            weather(r) // o clima da configuração, do jeito de sempre
+            return
+        }
+        dynamic = draw@{ c ->
+            if (wx.at > 0 && env.now() - wx.at >= br.com.digitalisp.telas.core.WeatherCfg.MAX_AGE_MS) return@draw
+            val hasDays = wx.days.isNotEmpty() && r.height() > r.width() * 0.45f
+            val mainH = if (hasDays) r.height() * 0.62f else r.height()
+            val titleTxt = item.title.ifEmpty { wx.city }
+            var top = r.top
+            if (titleTxt.isNotEmpty()) {
+                tp.typeface = Typeface.DEFAULT_BOLD
+                tp.color = look.text
+                tp.textSize = minOf(r.width(), mainH) * 0.09f
+                SignText.line(c, titleTxt, r.left, top + tp.textSize, r.width(), tp)
+                top += tp.textSize * 1.4f
+            }
+            val temp = wx.tempC?.let { "$it°" } ?: listOfNotNull(wx.min?.let { "$it°" }, wx.max?.let { "$it°" }).joinToString(" / ")
+            val avail = r.top + mainH - top
+            val vertical = r.width() < avail * 1.3f
+            val ico = if (vertical) minOf(r.width() * 0.55f, avail * 0.45f) else minOf(avail * 0.85f, r.width() * 0.4f)
+            tp.typeface = Typeface.DEFAULT_BOLD
+            tp.color = look.text
+            tp.textSize = if (vertical) minOf(avail * 0.32f, r.width() * 0.35f) else minOf(avail * 0.6f, r.width() * 0.3f)
+            while (tp.measureText(temp) > (if (vertical) r.width() else r.width() - ico * 1.1f) && tp.textSize > 10f) tp.textSize *= 0.92f
+            val tw = tp.measureText(temp)
+            if (vertical) {
+                val total = ico + tp.textSize * 1.1f
+                val y0 = top + (avail - total) / 2
+                weatherIcon(c, wx.cond, r.centerX() - ico / 2, y0, ico)
+                c.drawText(temp, r.centerX() - tw / 2, y0 + ico + tp.textSize * 0.95f, tp)
+            } else {
+                val total = ico * 1.1f + tw
+                val x0 = r.left + (r.width() - total) / 2
+                weatherIcon(c, wx.cond, x0, top + (avail - ico) / 2, ico)
+                c.drawText(temp, x0 + ico * 1.1f, top + avail / 2 + tp.textSize * 0.36f, tp)
+            }
+            if (wx.text.isNotEmpty()) {
+                tp.typeface = Typeface.DEFAULT
+                tp.textSize = minOf(r.width(), mainH) * 0.06f
+                val ww = minOf(tp.measureText(wx.text), r.width())
+                SignText.line(c, wx.text, r.centerX() - ww / 2, r.top + mainH - tp.textSize * 0.2f, r.width(), tp)
+            }
+            if (hasDays) {
+                val n = wx.days.size
+                val cw = r.width() / n
+                val dy = r.top + mainH + r.height() * 0.04f
+                val dh = r.bottom - dy
+                for ((i, d) in wx.days.withIndex()) {
+                    val cx = r.left + cw * i + cw / 2
+                    tp.typeface = Typeface.DEFAULT_BOLD
+                    tp.textSize = minOf(cw * 0.16f, dh * 0.2f)
+                    val lw = tp.measureText(d.label)
+                    c.drawText(d.label, cx - lw / 2, dy + tp.textSize, tp)
+                    val s = minOf(cw * 0.45f, dh * 0.45f)
+                    weatherIcon(c, d.cond, cx - s / 2, dy + tp.textSize * 1.3f, s)
+                    val mm = listOfNotNull(d.min?.let { "$it°" }, d.max?.let { "$it°" }).joinToString(" / ")
+                    tp.typeface = Typeface.DEFAULT
+                    val mw = tp.measureText(mm)
+                    c.drawText(mm, cx - mw / 2, dy + tp.textSize * 1.3f + s + tp.textSize * 1.1f, tp)
+                }
+            }
+            if (wx.source.isNotEmpty() && !hasDays) {
+                tp.typeface = Typeface.DEFAULT
+                tp.color = look.dim
+                tp.textSize = minOf(r.width(), r.height()) * 0.035f
+                SignText.line(c, "Fonte: " + wx.source, r.left, r.bottom, r.width(), tp)
+            }
+        }
+    }
+
+    private val iconViews = HashMap<String, WeatherIcon>()
+
+    /** O ícone do tempo desenhado no quadrado (left, top, side). */
+    private fun weatherIcon(c: Canvas, cond: String, left: Float, top: Float, side: Float) {
+        if (side < 4f) return
+        val v = iconViews.getOrPut(cond) { WeatherIcon(context, cond) }
+        val s = side.toInt()
+        if (v.width != s) v.layout(0, 0, s, s)
+        c.save()
+        c.translate(left, top)
+        v.draw(c)
+        c.restore()
+    }
+
+    // ------------------------------------------------------------------ gadgets (DIGITAL ISP)
+
+    private fun agenda(r: RectF) {
+        val y0 = header(r, "", item.title.ifEmpty { "Agenda" }, look.accent, 0.08f)
+        val list = item.events
+        val base = minOf(r.width(), r.height() * 1.4f)
+        if (list.isEmpty()) {
+            val l = SignText.fit("Nenhum compromisso pela frente", r.width().toInt(), (base * 0.12f).toInt(), base * 0.055f, base * 0.035f, look.dim, false, 2)
+            ops += { c -> SignText.draw(c, l, r.left, y0) }
+            return
+        }
+        val slot = (r.bottom - y0) / list.size
+        val whenW = r.width() * 0.26f
+        var y = y0
+        for ((i, e) in list.withIndex()) {
+            val day = if (e.date == item.today && item.today.isNotEmpty()) "Hoje" else e.date.substring(8, 10) + "/" + e.date.substring(5, 7)
+            val hour = if (e.time.isEmpty()) "" else e.time + (if (e.end.isNotEmpty()) "–" + e.end else "")
+            val px = minOf(slot * 0.32f, base * 0.06f)
+            val d = SignText.fit(day, whenW.toInt(), (px * 1.4f).toInt(), px, px * 0.6f, look.accent, true, 1)
+            val hr = if (hour.isEmpty()) null else SignText.fit(hour, whenW.toInt(), (px * 1.2f).toInt(), px * 0.75f, px * 0.5f, look.dim, false, 1)
+            val t = SignText.fit(e.title, (r.width() - whenW).toInt(), (px * 1.4f).toInt(), px, px * 0.6f, look.text, true, 1)
+            val pl = if (e.place.isEmpty()) null else SignText.fit(e.place, (r.width() - whenW).toInt(), (px * 1.2f).toInt(), px * 0.75f, px * 0.5f, look.dim, false, 1)
+            val yy = y
+            ops += { c ->
+                SignText.draw(c, d, r.left, yy)
+                hr?.let { SignText.draw(c, it, r.left, yy + d.height) }
+                SignText.draw(c, t, r.left + whenW, yy)
+                pl?.let { SignText.draw(c, it, r.left + whenW, yy + t.height) }
+                if (i < list.size - 1) {
+                    paint.color = look.line
+                    paint.strokeWidth = 1f
+                    c.drawLine(r.left, yy + slot - 4f, r.right, yy + slot - 4f, paint)
+                }
+            }
+            y += slot
+        }
+    }
+
+    private fun reviews(r: RectF) {
+        val y0 = header(r, "", item.title.ifEmpty { "O que dizem os clientes" }, look.accent, 0.08f)
+        val base = minOf(r.width(), r.height() * 1.4f)
+        val qrUrl = item.qr
+        val qrSide = if (qrUrl == null) 0f else minOf(r.width() * 0.28f, (r.bottom - y0) * 0.7f)
+        val tw = r.width() - (if (qrSide > 0) qrSide * 1.2f else 0f)
+        val list = item.reviews
+        val slot = (r.bottom - y0) / list.size
+        var y = y0
+        for (rv in list) {
+            val px = minOf(base * 0.05f, slot * 0.2f)
+            val stars = "★".repeat(rv.stars)
+            val st = SignText.fit(stars, tw.toInt(), (px * 1.4f).toInt(), px, px * 0.6f, 0xFFFACC15.toInt(), true, 1)
+            val tx = SignText.fit("“" + rv.text + "”", tw.toInt(), (slot - px * 3.2f).toInt().coerceAtLeast(1), px, px * 0.55f, look.text, false, 4)
+            val nm = SignText.fit("— " + rv.name, tw.toInt(), (px * 1.3f).toInt(), px * 0.8f, px * 0.5f, look.dim, false, 1)
+            val yy = y
+            ops += { c ->
+                SignText.draw(c, st, r.left, yy)
+                SignText.draw(c, tx, r.left, yy + st.height)
+                SignText.draw(c, nm, r.left, yy + st.height + tx.height)
+            }
+            y += slot
+        }
+        if (qrUrl != null && qrSide > 40f) qr(qrUrl, r.right - qrSide, y0 + ((r.bottom - y0) - qrSide * 1.2f) / 2, qrSide)
+    }
+
+    private fun dashboard(r: RectF) {
+        val y0 = header(r, "", item.title.ifEmpty { "Indicadores" }, look.accent, 0.08f)
+        val list = item.kpis
+        val cols = if (list.size <= 2) list.size else if (list.size <= 4) 2 else 3
+        val rows = (list.size + cols - 1) / cols
+        val gap = minOf(r.width(), r.height()) * 0.03f
+        val cw = (r.width() - gap * (cols - 1)) / cols
+        val ch = (r.bottom - y0 - gap * (rows - 1)) / rows
+        for ((i, k) in list.withIndex()) {
+            val cx = r.left + (i % cols) * (cw + gap)
+            val cy = y0 + (i / cols) * (ch + gap)
+            val cell = RectF(cx, cy, cx + cw, cy + ch)
+            ops += { c ->
+                paint.style = Paint.Style.FILL
+                paint.color = look.panel
+                c.drawRoundRect(cell, gap * 0.6f, gap * 0.6f, paint)
+            }
+            val inner = RectF(cell.left + gap * 0.6f, cell.top + gap * 0.5f, cell.right - gap * 0.6f, cell.bottom - gap * 0.5f)
+            val base = minOf(inner.width(), inner.height() * 1.6f)
+            val name = SignText.fit(k.name.ifEmpty { "Indicador" }, inner.width().toInt(), (inner.height() * 0.25f).toInt(), base * 0.09f, base * 0.05f, look.dim, false, 2)
+            val color = kpiColor(Signage.kpiBand(k))
+            val value = Signage.kpiNumber(k.value) + (if (k.unit.isNotEmpty()) (if (k.unit == "%") "%" else " " + k.unit) else "")
+            val big = SignText.fit(value, inner.width().toInt(), (inner.height() * 0.4f).toInt(), base * 0.22f, base * 0.08f, color, true, 1)
+            val ratio = Signage.kpiRatio(k)
+            val meta = k.target?.let { "Meta: " + Signage.kpiNumber(it) + (if (k.unit.isNotEmpty()) (if (k.unit == "%") "%" else " " + k.unit) else "") }
+            val metaL = meta?.let { SignText.fit(it, inner.width().toInt(), (inner.height() * 0.18f).toInt(), base * 0.07f, base * 0.04f, look.dim, false, 1) }
+            ops += { c ->
+                SignText.draw(c, name, inner.left, inner.top)
+                SignText.draw(c, big, inner.left, inner.top + name.height)
+                var y = inner.top + name.height + big.height
+                metaL?.let { SignText.draw(c, it, inner.left, y); y += it.height }
+                if (ratio != null) {
+                    val barH = (inner.height() * 0.06f).coerceAtLeast(4f)
+                    val by = minOf(y + barH * 0.5f, inner.bottom - barH)
+                    paint.style = Paint.Style.FILL
+                    paint.color = look.line
+                    c.drawRoundRect(RectF(inner.left, by, inner.right, by + barH), barH / 2, barH / 2, paint)
+                    paint.color = color
+                    if (ratio > 0f) c.drawRoundRect(RectF(inner.left, by, inner.left + maxOf(barH, inner.width() * ratio), by + barH), barH / 2, barH / 2, paint)
+                }
+            }
+        }
+    }
+
+    private fun directions(r: RectF) {
+        val p = item.place ?: return
+        val qrUrl = item.qr
+        val wide = r.width() > r.height()
+        val qrSide = if (qrUrl == null) 0f else if (wide) minOf(r.height() * 0.6f, r.width() * 0.3f) else minOf(r.width() * 0.5f, r.height() * 0.3f)
+        val tr = RectF(r)
+        if (qrSide > 0) { if (wide) tr.right -= qrSide * 1.25f else tr.bottom -= qrSide * 1.35f }
+        var y = header(tr, "", item.title.ifEmpty { "Como chegar" }, look.accent, 0.08f)
+        val base = minOf(tr.width(), tr.height() * 1.4f)
+        val addr = SignText.fit(p.address, tr.width().toInt(), ((tr.bottom - y) * 0.45f).toInt(), base * 0.08f, base * 0.04f, look.text, true, 3)
+        val yy = y
+        ops += { c -> SignText.draw(c, addr, tr.left, yy) }
+        y += addr.height + base * 0.02f
+        for (line in listOf(p.reference, p.hours, p.phone).filter { it.isNotEmpty() }) {
+            val l = SignText.fit(line, tr.width().toInt(), (base * 0.1f).toInt(), base * 0.05f, base * 0.03f, look.dim, false, 2)
+            val ly = y
+            ops += { c -> SignText.draw(c, l, tr.left, ly) }
+            y += l.height + base * 0.01f
+        }
+        if (qrUrl != null && qrSide > 40f) {
+            if (wide) qr(qrUrl, r.right - qrSide, r.top + (r.height() - qrSide * 1.2f) / 2, qrSide)
+            else qr(qrUrl, r.centerX() - qrSide / 2, r.bottom - qrSide * 1.25f, qrSide)
+        }
+    }
+
+    /** Relógio de ponteiros (gadget `clock` com `face: analog`), no fuso do gadget, com a data embaixo. */
+    private fun analogClock(r: RectF) {
+        val f = item.clockFace!!
+        val tz = TimeZone.getTimeZone(f.tz ?: env.tz)
+        val fmt = SimpleDateFormat("EEEE, d 'de' MMMM", ptBr).apply { timeZone = tz }
+        dynamic = { c ->
+            var top = r.top
+            if (f.label.isNotEmpty()) {
+                tp.typeface = Typeface.DEFAULT_BOLD
+                tp.color = look.text
+                tp.textSize = minOf(r.width(), r.height()) * 0.08f
+                val lw = minOf(tp.measureText(f.label), r.width())
+                SignText.line(c, f.label, r.centerX() - lw / 2, top + tp.textSize, r.width(), tp)
+                top += tp.textSize * 1.4f
+            }
+            val dateH = if (f.date) minOf(r.width(), r.height()) * 0.1f else 0f
+            val d = minOf(r.width(), r.bottom - top - dateH)
+            val cx = r.centerX()
+            val cy = top + d / 2
+            val rad = d / 2 * 0.94f
+            paint.style = Paint.Style.FILL
+            paint.color = look.panel
+            c.drawCircle(cx, cy, rad, paint)
+            paint.style = Paint.Style.STROKE
+            paint.strokeCap = Paint.Cap.ROUND
+            paint.color = look.text
+            for (i in 0 until 12) {
+                val a = Math.toRadians(i * 30.0)
+                val inner = rad * (if (i % 3 == 0) 0.78f else 0.86f)
+                paint.strokeWidth = rad * (if (i % 3 == 0) 0.06f else 0.03f)
+                c.drawLine(cx + (Math.sin(a) * inner).toFloat(), cy - (Math.cos(a) * inner).toFloat(), cx + (Math.sin(a) * rad * 0.94f).toFloat(), cy - (Math.cos(a) * rad * 0.94f).toFloat(), paint)
+            }
+            if (env.clockOk()) {
+                val cal = java.util.Calendar.getInstance(tz).apply { timeInMillis = env.now() }
+                val hh = cal.get(java.util.Calendar.HOUR) + cal.get(java.util.Calendar.MINUTE) / 60f
+                val mm = cal.get(java.util.Calendar.MINUTE) + cal.get(java.util.Calendar.SECOND) / 60f
+                val ss = cal.get(java.util.Calendar.SECOND).toFloat()
+                fun hand(deg: Float, len: Float, wdt: Float, color: Int) {
+                    val a = Math.toRadians(deg.toDouble())
+                    paint.color = color
+                    paint.strokeWidth = wdt
+                    c.drawLine(cx, cy, cx + (Math.sin(a) * len).toFloat(), cy - (Math.cos(a) * len).toFloat(), paint)
+                }
+                hand(hh * 30f, rad * 0.5f, rad * 0.09f, look.text)
+                hand(mm * 6f, rad * 0.72f, rad * 0.06f, look.text)
+                if (f.seconds) hand(ss * 6f, rad * 0.8f, rad * 0.025f, look.accent)
+            }
+            paint.style = Paint.Style.FILL
+            paint.color = look.accent
+            c.drawCircle(cx, cy, rad * 0.06f, paint)
+            if (f.date && env.clockOk()) {
+                tp.typeface = Typeface.DEFAULT
+                tp.color = look.dim
+                tp.textSize = dateH * 0.6f
+                val date = fmt.format(Date(env.now()))
+                val dw = minOf(tp.measureText(date), r.width())
+                SignText.line(c, date, r.centerX() - dw / 2, r.bottom - dateH * 0.2f, r.width(), tp)
+            }
+        }
     }
 
     /** Faixa escura embaixo com a legenda (imagem com legenda). */
@@ -440,12 +798,13 @@ class SignItemView(
     /** Oferta e combo: etiqueta, produto, texto ou a lista do combo, validade; o preço numa placa ao lado (ou embaixo). */
     private fun priceSlide(w: Int, h: Int, label: String, color: Int) {
         val r = box(w, h)
-        val wide = r.width() > r.height() * 1.15f
+        val wide = wideBox(r)
         val base = minOf(r.width(), r.height() * 1.4f)
-        val plateW = if (wide) r.width() * 0.34f else r.width()
-        val plateH = if (wide) minOf(r.height() * 0.5f, plateW * 0.75f) else r.height() * 0.24f
+        val ps = item.priceScale.coerceAtMost(1.5f)
+        val plateW = if (wide) r.width() * 0.34f * ps.coerceAtMost(1.4f) else r.width()
+        val plateH = if (wide) minOf(r.height() * 0.5f * ps, plateW * 0.75f) else r.height() * 0.24f * ps
         val qrUrl = item.qr
-        val qrSide = if (qrUrl == null) 0f else if (wide) minOf(plateW * 0.45f, r.height() - plateH - base * 0.12f).coerceAtLeast(0f) else minOf(r.width() * 0.3f, r.height() * 0.18f)
+        val qrSide = if (qrUrl == null) 0f else if (wide) minOf(plateW * 0.45f * item.qrScale, r.height() - plateH - base * 0.12f).coerceAtLeast(0f) else minOf(r.width() * 0.3f * item.qrScale, r.height() * 0.18f * item.qrScale)
         val text = if (wide) RectF(r.left, r.top, r.right - plateW - r.width() * 0.05f, r.bottom)
         else RectF(r.left, r.top, r.right, r.bottom - plateH - base * 0.04f)
         var y = header(text, item.tag.ifEmpty { label }, item.title, color)
@@ -481,7 +840,7 @@ class SignItemView(
         val parts = ArrayList<StaticLayout>()
         val pw = (plate.width() * 0.9f).toInt()
         if (item.oldPrice.isNotEmpty()) parts += SignText.fit("De ${item.oldPrice} por", pw, (plate.height() * 0.2f).toInt(), base * 0.035f, base * 0.02f, plateText, true, 1, TextLayout.Alignment.ALIGN_CENTER)
-        parts += SignText.fit(item.price.ifEmpty { "—" }, pw, (plate.height() * 0.55f).toInt(), base * (if (item.price.length > 10) 0.085f else 0.11f), base * 0.04f, plateText, true, 1, TextLayout.Alignment.ALIGN_CENTER)
+        parts += SignText.fit(item.price.ifEmpty { "—" }, pw, (plate.height() * 0.55f).toInt(), base * (if (item.price.length > 10) 0.085f else 0.11f) * ps, base * 0.04f, plateText, true, 1, TextLayout.Alignment.ALIGN_CENTER)
         if (item.unit.isNotEmpty()) parts += SignText.fit(item.unit, pw, (plate.height() * 0.2f).toInt(), base * 0.035f, base * 0.02f, plateText, true, 1, TextLayout.Alignment.ALIGN_CENTER)
         val gap = base * 0.01f
         val total = parts.sumOf { it.height } + gap * (parts.size - 1)
@@ -501,9 +860,9 @@ class SignItemView(
     private fun rowsSlide(w: Int, h: Int, label: String, color: Int) {
         val r0 = box(w, h)
         val base = minOf(r0.width(), r0.height() * 1.4f)
-        val wide = r0.width() > r0.height()
+        val wide = wideBox(r0, 1f)
         val qrUrl = item.qr
-        val qrSide = if (qrUrl == null) 0f else minOf(r0.width(), r0.height()) * 0.28f
+        val qrSide = if (qrUrl == null) 0f else minOf(r0.width(), r0.height()) * 0.28f * item.qrScale.coerceAtMost(1.4f)
         val r = RectF(r0)
         if (qrSide > 0) { if (wide) r.right -= qrSide * 1.3f else r.bottom -= qrSide * 1.3f }
         var y = header(r, label, item.title, color, 0.09f)
@@ -545,8 +904,9 @@ class SignItemView(
         val r0 = box(w, h)
         val base = minOf(r0.width(), r0.height() * 1.4f)
         val qrUrl = item.qr
-        val wide = r0.width() > r0.height()
-        val qrSide = if (qrUrl == null) 0f else if (wide) minOf(r0.height() * 0.7f, r0.width() * 0.35f) else minOf(r0.width() * 0.6f, r0.height() * 0.36f)
+        val wide = wideBox(r0, 1f)
+        val qs = item.qrScale.coerceAtMost(1.3f)
+        val qrSide = if (qrUrl == null) 0f else if (wide) minOf(r0.height() * 0.7f * qs, r0.width() * 0.35f * qs) else minOf(r0.width() * 0.6f * qs, r0.height() * 0.36f * qs)
         val r = RectF(r0)
         if (qrSide > 0) { if (wide) r.right -= qrSide * 1.2f else r.bottom -= qrSide * 1.3f }
         var y = header(r, label, item.title, color)
@@ -604,16 +964,16 @@ class SignItemView(
         val r0 = box(w, h)
         if (item.template == "seguranca") r0.top += minOf(w, h) * 0.04f
         val img = bmp(item.file)
-        val wide = r0.width() > r0.height() * 1.15f
+        val wide = wideBox(r0)
         var r = RectF(r0)
         if (img != null) {
             if (wide) {
-                val iw = r.width() * 0.42f
+                val iw = r.width() * (0.42f * item.photoScale).coerceAtMost(0.7f)
                 val dst = RectF(r.right - iw, r.top, r.right, r.bottom)
                 ops += { c -> drawCover(c, img, dst, radius = minOf(w, h) * 0.02f) }
                 r = RectF(r.left, r.top, r.right - iw - r0.width() * 0.04f, r.bottom)
             } else {
-                val ih = r.height() * 0.38f
+                val ih = r.height() * (0.38f * item.photoScale).coerceAtMost(0.6f)
                 val dst = RectF(r.left, r.top, r.right, r.top + ih)
                 ops += { c -> drawCover(c, img, dst, radius = minOf(w, h) * 0.02f) }
                 r = RectF(r.left, r.top + ih + r0.height() * 0.04f, r.right, r.bottom)
@@ -623,7 +983,7 @@ class SignItemView(
         val qrUrl = item.qr
         var qrSide = 0f
         if (qrUrl != null) {
-            qrSide = (minOf(r.width(), r.height()) * 0.3f).coerceAtLeast(80f)
+            qrSide = (minOf(r.width(), r.height()) * 0.3f * item.qrScale).coerceAtLeast(80f)
             if (qrSide * 2.2f > r.width()) qrSide = r.width() / 2.6f
         }
         var y = header(r, label, item.title, color)
@@ -733,9 +1093,9 @@ class SignItemView(
         background(w, h)
         accentBar(w, h, color)
         val r = box(w, h)
-        val wide = r.width() > r.height()
+        val wide = wideBox(r, 1f)
         if (wide) {
-            val side = minOf(r.height() * 0.78f, r.width() * 0.4f)
+            val side = minOf(r.height() * 0.78f * minOf(item.qrScale, 1.2f), r.width() * 0.4f * item.qrScale.coerceAtMost(1.3f))
             val left = r.right - side - side * 0.05f
             qr(item.qr!!, left, r.top + (r.height() - side * 1.15f) / 2, side)
             val tr = RectF(r.left, r.top, left - r.width() * 0.05f, r.bottom)
@@ -746,7 +1106,7 @@ class SignItemView(
                 ops += { c -> SignText.draw(c, l, tr.left, y) }
             }
         } else {
-            val side = minOf(r.width() * 0.7f, r.height() * 0.45f)
+            val side = minOf(r.width() * 0.7f * item.qrScale.coerceAtMost(1.3f), r.height() * 0.45f * item.qrScale.coerceAtMost(1.3f))
             val y = header(r, label, item.title, color)
             qr(item.qr!!, r.centerX() - side / 2, r.bottom - side * 1.2f, side)
             if (item.text.isNotEmpty()) {
@@ -996,6 +1356,10 @@ class SignItemView(
 
     // ------------------------------------------------------------------ contador, segurança, relógios
 
+    /**
+     * Contagem: antes do `target`, "Começa em"; entre o `target` e o `until`, "Termina em"; depois, "Encerrado" (sem `until`,
+     * "É hoje!"). Dias, horas, minutos e segundos, andando a cada segundo.
+     */
     private fun countdown(r: RectF) {
         val color = templateColor("evento")
         val y0 = header(r, "Contagem regressiva", item.title, color, 0.08f)
@@ -1003,25 +1367,31 @@ class SignItemView(
         val textL = if (item.text.isNotEmpty()) SignText.fit(item.text, r.width().toInt(), (r.height() * 0.2f).toInt(), base * 0.05f, base * 0.03f, look.dim, false, 3) else null
         dynamic = { c ->
             val ok = env.clockOk()
-            val rem = Signage.remaining(item.target, env.now())
-            val big: String
-            val small: String
-            when {
-                !ok -> { big = "--"; small = dateTime(item.target) }
-                rem.done -> { big = "Chegou o dia!"; small = dateTime(item.target) }
-                rem.days > 0 -> { big = if (rem.days == 1L) "1 dia" else "${rem.days} dias"; small = "${rem.hours} h ${rem.minutes} min" }
-                else -> { big = "${rem.hours} h ${rem.minutes} min"; small = dateTime(item.target) }
-            }
+            val ph = Signage.countPhase(item.target, item.endAt, env.now())
             tp.typeface = Typeface.DEFAULT_BOLD
-            tp.color = color
-            tp.textSize = base * 0.22f
-            while (tp.measureText(big) > r.width() && tp.textSize > 10f) tp.textSize *= 0.9f
-            val by = y0 + tp.textSize
-            c.drawText(big, r.left, by, tp)
-            tp.typeface = Typeface.DEFAULT
             tp.color = look.text
-            tp.textSize = base * 0.07f
-            SignText.line(c, small, r.left, by + tp.textSize * 1.5f, r.width(), tp)
+            tp.textSize = base * 0.065f
+            c.drawText(if (ok) ph.label else "--", r.left, y0 + tp.textSize, tp)
+            val top = y0 + tp.textSize * 1.5f
+            val avail = r.bottom - top - (textL?.height ?: 0).toFloat() - base * 0.03f
+            val units = listOf(ph.days to (if (ph.days == 1L) "dia" else "dias"), ph.hours.toLong() to (if (ph.hours == 1) "hora" else "horas"), ph.minutes.toLong() to "min", ph.seconds.toLong() to "seg")
+            val cw = r.width() / 4
+            for ((i, u) in units.withIndex()) {
+                val cx = r.left + cw * i + cw / 2
+                val num = if (!ok) "--" else if (i == 0) u.first.toString() else String.format(Locale.ROOT, "%02d", u.first)
+                tp.typeface = Typeface.DEFAULT_BOLD
+                tp.color = color
+                tp.textSize = minOf(cw * 0.5f, avail * 0.6f)
+                while (tp.measureText(num) > cw * 0.92f && tp.textSize > 10f) tp.textSize *= 0.9f
+                val nw = tp.measureText(num)
+                val nb = top + tp.textSize
+                c.drawText(num, cx - nw / 2, nb, tp)
+                tp.typeface = Typeface.DEFAULT
+                tp.color = look.dim
+                tp.textSize = minOf(cw * 0.16f, avail * 0.15f)
+                val lw = tp.measureText(u.second)
+                c.drawText(u.second, cx - lw / 2, nb + tp.textSize * 1.3f, tp)
+            }
             if (textL != null) SignText.draw(c, textL, r.left, r.bottom - textL.height)
         }
     }
@@ -1049,7 +1419,7 @@ class SignItemView(
             y += barH + base * 0.03f
         }
         val parts = listOfNotNull(
-            if (item.record > 0) "Recorde: ${Signage.number(item.record.toDouble(), 0)} dias" else null,
+            if (item.hasRecord && item.record > 0) "Recorde: ${Signage.number(item.record.toDouble(), 0)} dias" else null,
             if (goal > 0) "Meta: ${Signage.number(goal.toDouble(), 0)} dias" else null,
         )
         if (parts.isNotEmpty()) {
@@ -1161,22 +1531,27 @@ class SignPlaylistView(
     private val items: List<SignageItem>,
     private val env: SignEnv,
     private val edge: Insets,
+    /** Conjunto de telas com a troca sincronizada: o relógio diz qual item está no ar (core/Wall.syncPosition). */
+    private val syncEpoch: Long? = null,
 ) : FrameLayout(ctx) {
     private val handler = Handler(Looper.getMainLooper())
     private var index = -1
-    private var current: SignItemView? = null
+    private var current: View? = null
+    private var currentItem: SignageItem? = null
     private var shownAt = 0L
     private var gen = 0
     private var running = false
+    /** O vídeo próprio tocando agora (um player por zona, só enquanto o item está no ar). */
+    private var video: SignVideo? = null
 
     init {
-        setBackgroundColor(env.look.bg)
+        // zona por cima (fundo translúcido): o item já pinta o fundo; pintar aqui também dobraria o escuro
+        if (Color.alpha(env.look.bg) == 255) setBackgroundColor(env.look.bg)
     }
 
-    /** Pode aparecer agora? (Imagem só depois de baixada e conferida.) */
+    /** Pode aparecer agora? (Imagem e vídeo só depois de baixados e conferidos.) */
     private fun playable(i: SignageItem): Boolean = when (i.kind) {
-        "image" -> i.file?.let { env.file(it) } != null
-        "logo" -> i.file?.let { env.file(it) } != null
+        "image", "logo", "video" -> i.file?.let { env.file(it) } != null
         else -> true
     }
 
@@ -1191,25 +1566,41 @@ class SignPlaylistView(
         gen++
         handler.removeCallbacksAndMessages(null)
         closeCurrent()
+        video?.release()
+        video = null
+        (current as? android.webkit.WebView)?.destroy()
         super.onDetachedFromWindow()
     }
 
     private fun closeCurrent() {
-        val c = current ?: return
-        if (shownAt > 0) env.onTime(c.item.id, SystemClock.uptimeMillis() - shownAt)
+        val c = currentItem ?: return
+        if (shownAt > 0) env.onTime(c.id, SystemClock.uptimeMillis() - shownAt)
         shownAt = 0L
     }
 
     fun tick() {
-        current?.tick()
+        (current as? SignItemView)?.tick()
     }
+
+    /** Quanto tempo fica o item (ms), na conta sincronizada. */
+    private fun durationMs(i: SignageItem): Long = i.seconds * 1000L
 
     private fun next() {
         if (!running) return
         val my = ++gen
         handler.removeCallbacksAndMessages(null)
         var pick = -1
-        for (step in 1..items.size) {
+        var syncRemaining = -1L
+        val epoch = syncEpoch
+        if (epoch != null && env.clockOk()) {
+            // sincronizado: todas as TVs do conjunto fazem a mesma conta com o mesmo relógio
+            val sp = br.com.digitalisp.telas.core.Wall.syncPosition(items.map { durationMs(it) }, epoch, env.now())
+            if (sp != null && playable(items[sp.index])) {
+                pick = sp.index
+                syncRemaining = sp.remaining.coerceAtLeast(500L)
+            }
+        }
+        if (pick < 0) for (step in 1..items.size) {
             val i = (index + step) % items.size
             if (playable(items[i])) {
                 pick = i
@@ -1226,13 +1617,22 @@ class SignPlaylistView(
         }
         index = pick
         val item = items[pick]
+        nextDelay = if (syncRemaining > 0) syncRemaining else -1L
         val cur = current
-        if (cur != null && cur.item === item) {
+        if (cur != null && currentItem === item && item.kind != "video") {
             // um item só (ou só um pronto): fica, e conta de novo a cada volta
             closeCurrent()
             shownAt = SystemClock.uptimeMillis()
             env.onShown(item.id)
             schedule(item, my)
+            return
+        }
+        if (item.kind == "video") {
+            showVideo(item, my)
+            return
+        }
+        if (item.kind == "web") {
+            showWeb(item, my)
             return
         }
         val files = item.files.filter { env.file(it) != null }
@@ -1260,29 +1660,207 @@ class SignPlaylistView(
             handler.postDelayed({ if (my == gen) next() }, 2_000L)
             return
         }
-        closeCurrent()
-        val old = current
-        val v = SignItemView(context, item, env, bitmaps, edge)
-        v.alpha = 0f
-        addView(v, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
-        current = v
-        shownAt = SystemClock.uptimeMillis()
-        env.onShown(item.id)
-        v.animate().alpha(1f).setDuration(FADE_MS).withEndAction { if (old != null) removeView(old) }.start()
-        schedule(item, my)
+        put(SignItemView(context, item, env, bitmaps, edge), item, my)
     }
 
+    /** Põe a vista nova por cima da antiga com a transição do item (fade, slide ou zoom) e o zoom lento, se pedido. */
+    private fun put(v: View, item: SignageItem, my: Int, scheduleNext: Boolean = true) {
+        closeCurrent()
+        val old = current
+        val oldItem = currentItem
+        addView(v, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+        current = v
+        currentItem = item
+        shownAt = SystemClock.uptimeMillis()
+        env.onShown(item.id)
+        val done = Runnable {
+            if (old != null) removeView(old)
+            if (oldItem?.kind == "video") stopVideo(keep = video?.takeIf { it.view === v })
+            if (old is android.webkit.WebView) old.destroy()
+        }
+        when (item.transition) {
+            "slide" -> {
+                v.translationX = width.toFloat().coerceAtLeast(1f)
+                v.animate().translationX(0f).setDuration(SLIDE_MS).withEndAction(done).start()
+            }
+            "zoom" -> {
+                v.alpha = 0f
+                v.scaleX = 1.12f
+                v.scaleY = 1.12f
+                v.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(SLIDE_MS).withEndAction(done).start()
+            }
+            else -> {
+                v.alpha = 0f
+                v.animate().alpha(1f).setDuration(FADE_MS).withEndAction(done).start()
+            }
+        }
+        if (item.kenburns && item.kind == "image") {
+            // zoom lento na imagem durante o tempo do item (depois da transição)
+            v.postDelayed({
+                if (current === v) v.animate().scaleX(1.08f).scaleY(1.08f).setDuration(item.seconds * 1000L).setInterpolator(android.view.animation.LinearInterpolator()).start()
+            }, SLIDE_MS)
+        }
+        if (scheduleNext) schedule(item, my)
+    }
+
+    /** O tempo do item (ou o que falta na conta sincronizada) e depois o próximo. */
+    private var nextDelay = -1L
+
     private fun schedule(item: SignageItem, my: Int) {
-        handler.postDelayed({ if (my == gen) next() }, item.seconds * 1000L)
+        val ms = if (nextDelay > 0) nextDelay else item.seconds * 1000L
+        nextDelay = -1L
+        handler.postDelayed({ if (my == gen) next() }, ms)
+    }
+
+    // ---- vídeo próprio: o arquivo guardado, inteiro, mudo sem `sound`; no fim (ou erro), o próximo
+
+    private fun showVideo(item: SignageItem, my: Int) {
+        val file = item.file?.let { env.file(it) }
+        if (file == null) {
+            handler.postDelayed({ if (my == gen) next() }, 500L)
+            return
+        }
+        val sv = SignVideo(context, file, item.sound && env.volume() > 0f, env.volume(), item.contain) {
+            // terminou ou falhou: o próximo (na troca sincronizada, só quando a conta mandar)
+            if (my == gen && nextDelay <= 0) handler.post { if (my == gen) next() }
+        }
+        video?.release()
+        video = sv
+        put(sv.view, item, my, scheduleNext = false)
+        // rede de segurança: o tempo do item mais 5 s (o arquivo pode travar sem avisar)
+        val ms = if (nextDelay > 0) nextDelay else item.seconds * 1000L + 5_000L
+        nextDelay = -1L
+        handler.postDelayed({ if (my == gen) next() }, ms)
+    }
+
+    private fun stopVideo(keep: SignVideo?) {
+        val v = video ?: return
+        if (v === keep) return
+        v.release()
+        video = null
+    }
+
+    // ---- página da internet: uma WebView ocupando a zona, recarregada a cada `refreshMin`
+
+    @android.annotation.SuppressLint("SetJavaScriptEnabled")
+    private fun showWeb(item: SignageItem, my: Int) {
+        val url = item.webUrl ?: return handler.post { if (my == gen) next() }.let { }
+        val wv = try {
+            android.webkit.WebView(context).apply {
+                settings.javaScriptEnabled = true
+                settings.domStorageEnabled = true
+                settings.mediaPlaybackRequiresUserGesture = true
+                settings.loadWithOverviewMode = true
+                settings.useWideViewPort = true
+                isFocusable = false
+                isFocusableInTouchMode = false
+                webViewClient = object : android.webkit.WebViewClient() {
+                    // os links da página abrem aqui mesmo, nunca num navegador por cima do quiosque
+                    override fun shouldOverrideUrlLoading(view: android.webkit.WebView?, request: android.webkit.WebResourceRequest?): Boolean = false
+                }
+                loadUrl(url)
+            }
+        } catch (_: Throwable) {
+            null // aparelho sem WebView instalada: pula o item
+        }
+        if (wv == null) {
+            handler.postDelayed({ if (my == gen) next() }, 1_000L)
+            return
+        }
+        put(wv, item, my)
+        if (item.refreshMin > 0) {
+            val every = item.refreshMin * 60_000L
+            val reload = object : Runnable {
+                override fun run() {
+                    if (current !== wv || my != gen) return
+                    wv.reload()
+                    handler.postDelayed(this, every)
+                }
+            }
+            handler.postDelayed(reload, every)
+        }
     }
 
     companion object {
         const val FADE_MS = 700L
+        const val SLIDE_MS = 600L
+    }
+}
+
+/**
+ * O vídeo próprio de uma zona (item `video`, MP4 guardado no aparelho): um ExoPlayer só dele, numa TextureView (respeita o
+ * recorte da zona), inteiro (`contain`, com fundo preto). [onEnd] é chamado no fim e no erro.
+ */
+class SignVideo(ctx: Context, file: java.io.File, sound: Boolean, volume: Float, contain: Boolean, private val onEnd: () -> Unit) {
+    private val player: androidx.media3.exoplayer.ExoPlayer = androidx.media3.exoplayer.ExoPlayer.Builder(ctx).build()
+    private val texture = android.view.TextureView(ctx)
+    val view: FrameLayout = object : FrameLayout(ctx) {
+        override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
+            super.onLayout(changed, l, t, r, b)
+            fit()
+        }
+    }.apply {
+        setBackgroundColor(Color.BLACK)
+        addView(texture, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+    }
+    private var vw = 0
+    private var vh = 0
+    private val contain = contain
+    private var ended = false
+
+    init {
+        player.setVideoTextureView(texture)
+        player.volume = if (sound) volume.coerceIn(0f, 1f) else 0f
+        player.addListener(object : androidx.media3.common.Player.Listener {
+            override fun onPlaybackStateChanged(state: Int) {
+                if (state == androidx.media3.common.Player.STATE_ENDED) end()
+            }
+            override fun onPlayerError(error: androidx.media3.common.PlaybackException) = end()
+            override fun onVideoSizeChanged(size: androidx.media3.common.VideoSize) {
+                vw = size.width
+                vh = size.height
+                fit()
+            }
+        })
+        player.setMediaItem(androidx.media3.common.MediaItem.fromUri(android.net.Uri.fromFile(file)))
+        player.prepare()
+        player.playWhenReady = true
+    }
+
+    private fun end() {
+        if (ended) return
+        ended = true
+        onEnd()
+    }
+
+    /** Inteiro na zona (contain) ou cobrindo (cover), sem distorcer. */
+    private fun fit() {
+        val w = view.width
+        val h = view.height
+        if (w <= 0 || h <= 0 || vw <= 0 || vh <= 0) return
+        val s = if (contain) minOf(w.toFloat() / vw, h.toFloat() / vh) else maxOf(w.toFloat() / vw, h.toFloat() / vh)
+        val m = android.graphics.Matrix()
+        m.setScale(vw * s / w, vh * s / h, w / 2f, h / 2f)
+        texture.setTransform(m)
+    }
+
+    fun release() {
+        ended = true
+        try { player.release() } catch (_: Throwable) { }
     }
 }
 
 /** Leitura das imagens já no tamanho da zona (TV box de 1 a 2 GB: nunca abrir a imagem inteira sem precisar). */
 object SignBitmaps {
+    /** Uma cópia minúscula da imagem: desenhada esticada, vira o fundo desfocado (sem RenderScript, que o Android 12 tirou). */
+    fun blurred(b: Bitmap): Bitmap? = try {
+        val w = 24
+        val h = (24f * b.height / b.width.coerceAtLeast(1)).toInt().coerceIn(4, 96)
+        Bitmap.createScaledBitmap(b, w, h, true)
+    } catch (_: Throwable) {
+        null
+    }
+
     fun decode(file: java.io.File, maxW: Int, maxH: Int, alpha: Boolean = false): Bitmap? = try {
         val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
         android.graphics.BitmapFactory.decodeFile(file.path, bounds)

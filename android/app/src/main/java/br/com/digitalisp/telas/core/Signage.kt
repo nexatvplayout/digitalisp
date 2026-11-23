@@ -28,13 +28,42 @@ data class SignageFile(val url: String, val sha256: String, val bytes: Long) {
 /** Zona do layout, em porcentagem inteira da tela (0 a 100). */
 data class SignageZone(
     val id: String, val x: Int, val y: Int, val w: Int, val h: Int, val kind: String,
-    /** Zona `text`: o texto fixo; zona `qr`: o endereço; qualquer zona: um título opcional. */
+    /** Zona `text`: o texto fixo; zona `qr`: o conteúdo (endereço, Wi-Fi ou vCard); qualquer zona: um título opcional. */
     val text: String = "", val qr: String? = null, val title: String = "",
+    /** Recorte (core/Shapes; "" = retângulo) e o filete na borda: cor e largura em % da altura da tela (0 = sem). */
+    val shape: String = "", val edgeColor: Int = 0, val edgeWidth: Float = 0f,
+    /** Camada de cima (um gadget sobre a imagem ou o vídeo), com o fundo escuro translúcido em [opacity]% (0 a 100). */
+    val overlay: Boolean = false, val opacity: Int = 60,
 )
 
-data class SignageLayoutCfg(val portrait: Boolean, val background: Int?, val zones: List<SignageZone>) {
+data class SignageLayoutCfg(val portrait: Boolean, val background: Int?, val zones: List<SignageZone>, val audio: SignAudio? = null) {
     val hasVideo: Boolean get() = zones.any { it.kind == Signage.ZONE_VIDEO }
 }
+
+/** Rádio de fundo do bloco sem zona de vídeo (`layout.audio`): o stream (http ou https) e o volume (10 a 100). */
+data class SignAudio(val id: String, val name: String, val url: String, val volume: Int)
+
+/** Clima de um item `weather` (DIGITAL ISP): o de agora, os próximos dias e a foto do tempo. */
+data class SignWeather(
+    val city: String, val tempC: Int?, val min: Int?, val max: Int?, val cond: String, val text: String,
+    val days: List<SignWeatherDay>, val source: String, val art: SignageFile?, val artPort: SignageFile?,
+    /** quando o servidor mediu (epoch ms; 0 = sem data): passado o teto do clima, a zona fica sem ele */
+    val at: Long = 0L,
+)
+
+data class SignWeatherDay(val label: String, val min: Int?, val max: Int?, val cond: String, val text: String)
+
+/** Relógio do gadget: digital ou de ponteiros, o fuso (null = o do modo), o rótulo, os segundos e a data. */
+data class SignClockFace(val analog: Boolean, val tz: String?, val label: String, val seconds: Boolean, val date: Boolean)
+
+/** Compromisso da agenda: dia (YYYY-MM-DD), hora e fim ("" = sem), o que é e onde. */
+data class SignEvent(val date: String, val time: String, val end: String, val title: String, val place: String)
+
+/** Avaliação de cliente: o nome, o texto e as estrelas (1 a 5). */
+data class SignReview(val name: String, val text: String, val stars: Int)
+
+/** Como chegar: endereço, referência, horário e telefone. */
+data class SignPlace(val address: String, val reference: String, val hours: String, val phone: String)
 
 /** Aniversariante: só nome e dia/mês (sem ano, LGPD). Foto só quando o servidor manda (consentimento marcado). */
 data class SignPerson(val name: String, val day: Int, val month: Int, val sector: String = "", val photo: SignageFile? = null)
@@ -107,9 +136,38 @@ data class SignageItem(
     val until: String? = null,
     /** vitrine de preços e horário: as linhas "nome | preço" já separadas */
     val rows: List<Pair<String, String>> = emptyList(),
+    /** troca para este item: fade (padrão), slide ou zoom; e o zoom lento na imagem (kenburns) */
+    val transition: String = "fade",
+    val kenburns: Boolean = false,
+    /** slide em pé (`orient: port`): desenha tudo em coluna */
+    val portrait: Boolean = false,
+    /** escalas dos elementos do slide (qrSize, priceSize, photoSize, titleSize: s 0,7; l 1,4; xl 1,8; médio 1) */
+    val qrScale: Float = 1f,
+    val priceScale: Float = 1f,
+    val photoScale: Float = 1f,
+    val titleScale: Float = 1f,
+    /** notícia sozinha: a foto em tela cheia e a faixa com uma manchete */
+    val single: Boolean = false,
+    /** vídeo próprio: com som? (sem: mudo) */
+    val sound: Boolean = false,
+    /** contador: até quando dura o evento (epoch ms; 0 = sem fim) */
+    val endAt: Long = 0L,
+    /** dias sem acidente: há recorde? (`record: null` = "Dias desde", sem recorde) */
+    val hasRecord: Boolean = true,
+    val weather: SignWeather? = null,
+    val clockFace: SignClockFace? = null,
+    val events: List<SignEvent> = emptyList(),
+    /** agenda: o dia de hoje no fuso do servidor (YYYY-MM-DD) */
+    val today: String = "",
+    val reviews: List<SignReview> = emptyList(),
+    val kpis: List<SignKpi> = emptyList(),
+    val place: SignPlace? = null,
+    /** página da internet: o endereço e a recarga (minutos; 0 = não recarrega) */
+    val webUrl: String? = null,
+    val refreshMin: Int = 0,
 ) {
-    /** Arquivos que o item precisa (a imagem, a arte de fundo e as fotos). */
-    val files: List<SignageFile> get() = listOfNotNull(file, art) + people.mapNotNull { it.photo }
+    /** Arquivos que o item precisa (a imagem ou o vídeo, a arte de fundo, a foto do clima e as fotos). */
+    val files: List<SignageFile> get() = listOfNotNull(file, art, weather?.art, weather?.artPort) + people.mapNotNull { it.photo }
 }
 
 /** Cores de uma paleta do slide (as mesmas de `.th-<chave>` em public/shared/tvcorp-previa.css): destaque, começo do fundo escuro e canto do fundo claro. */
@@ -130,7 +188,7 @@ data class SignageBlock(
 
 data class SignageBrand(val logo: SignageFile?, val theme: ThemeCfg)
 
-data class SignageCfg(val tz: String, val brand: SignageBrand, val blocks: List<SignageBlock>, val fallback: String?) {
+data class SignageCfg(val tz: String, val brand: SignageBrand, val blocks: List<SignageBlock>, val fallback: String?, val wall: WallCfg? = null) {
     /** Todos os arquivos (logomarca, imagens, fotos), sem repetir, até o teto do cache. */
     fun files(): List<SignageFile> {
         val out = LinkedHashMap<String, SignageFile>()
@@ -151,12 +209,16 @@ object Signage {
     const val ZONE_QUEUE = "queue"
     val ZONE_KINDS = setOf(
         ZONE_VIDEO, ZONE_PLAYLIST, ZONE_TICKER, "clock", "weather", "qr", "logo", "text", "news", "quotes",
-        "countdown", "safety", "worldclock", ZONE_QUEUE,
+        "countdown", "safety", "worldclock", ZONE_QUEUE, "widget",
     )
     val ITEM_KINDS = setOf(
         "image", "slide", "post", "birthdays", "kpi", "news", "quotes", "menu",
         "countdown", "safety", "worldclock", "text", "clock", "weather", "qr", "logo",
+        // DIGITAL ISP
+        "video", "agenda", "reviews", "dashboard", "directions", "web",
     )
+    val TRANSITIONS = setOf("fade", "slide", "zoom")
+    val WEATHER_CONDS = setOf("clear", "partly", "cloudy", "fog", "rain", "storm")
     val TEMPLATES = listOf(
         "comunicado", "boas-vindas", "aniversariantes", "reconhecimento", "seguranca", "evento",
         "vaga", "indicador", "cardapio", "qr", "imagem-com-legenda", "data-comemorativa",
@@ -203,10 +265,12 @@ object Signage {
 
     // ---- tetos (§4.1) ----
     const val MAX_BLOCKS = 12
-    const val MAX_ZONES = 6
+    const val MAX_ZONES = 16
     const val MAX_ITEMS = 60
     const val MAX_FILES = 200
-    const val MAX_CACHE_BYTES = 80L * 1024 * 1024
+    const val MAX_CACHE_BYTES = 1024L * 1024 * 1024
+    /** Um vídeo próprio (MP4 até 1080p) não passa disto. */
+    const val MAX_VIDEO_BYTES = 400L * 1024 * 1024
     /** Um arquivo só não passa disto (imagem já vem com até 2 MB; logomarca e foto são menores). */
     const val MAX_FILE_BYTES = 8L * 1024 * 1024
     const val MAX_TITLE = 60
@@ -235,7 +299,7 @@ object Signage {
             }
         }
         if (blocks.isEmpty()) return null
-        return SignageCfg(tz, brand, blocks, ConfigParser.str(o, "fallback")?.take(64))
+        return SignageCfg(tz, brand, blocks, ConfigParser.str(o, "fallback")?.take(64), Wall.parse(o.optJSONObject("wall")))
     }
 
     private val TZ_IDS: Set<String> by lazy { TimeZone.getAvailableIDs().toHashSet() }
@@ -243,13 +307,25 @@ object Signage {
     fun validTz(id: String): Boolean = id.length <= 64 && id in TZ_IDS
 
     /** Arquivo do servidor: https, sha256 e tamanho de 1 byte ao teto. */
-    fun file(o: JSONObject?): SignageFile? {
+    fun file(o: JSONObject?, max: Long = MAX_FILE_BYTES): SignageFile? {
         if (o == null) return null
         val url = Urls.clean(ConfigParser.str(o, "url"))?.takeIf { Urls.isHttps(it) } ?: return null
         val sha = ConfigParser.str(o, "sha256")?.lowercase()?.takeIf { SHA.matches(it) } ?: return null
         val bytes = o.optLong("bytes", 0L)
-        if (bytes !in 1..MAX_FILE_BYTES) return null
+        if (bytes !in 1..max) return null
         return SignageFile(url, sha, bytes)
+    }
+
+    /**
+     * O conteúdo de um QR code: endereço https, rede Wi-Fi ("WIFI:...;;") ou cartão de contato ("BEGIN:VCARD ... END:VCARD"),
+     * codificado como veio (até 1000 caracteres). Outro texto = null.
+     */
+    fun qrText(raw: String?): String? {
+        val s = raw?.replace("\r\n", "\n")?.trim() ?: return null
+        if (s.isEmpty() || s.length > 1000) return null
+        if (s.startsWith("WIFI:") && s.contains("S:") && s.endsWith(";") && !s.contains('\n')) return s
+        if (s.startsWith("BEGIN:VCARD\n") && s.endsWith("\nEND:VCARD")) return s
+        return httpsOrNull(s)
     }
 
     private fun txt(o: JSONObject?, k: String, max: Int): String =
@@ -279,7 +355,16 @@ object Signage {
         val w = int(o, "w", 0).coerceAtMost(100 - x)
         val h = int(o, "h", 0).coerceAtMost(100 - y)
         if (w <= 0 || h <= 0) return null
-        return SignageZone(id, x, y, w, h, kind, txt(o, "text", MAX_TEXT), httpsOrNull(ConfigParser.str(o, "qr")), txt(o, "title", MAX_TITLE))
+        val shape = ConfigParser.str(o, "shape")?.lowercase()?.takeIf { it in Shapes.KEYS }.orEmpty()
+        val edge = if (shape.isEmpty()) null else o.optJSONObject("edge")
+        val edgeColor = color(ConfigParser.str(edge, "color")) ?: 0
+        val edgeWidth = (edge?.opt("width") as? Number)?.toFloat()?.takeIf { !it.isNaN() && edgeColor != 0 }?.coerceIn(Shapes.EDGE_MIN, Shapes.EDGE_MAX) ?: 0f
+        val overlay = o.opt("overlay") == true && kind != ZONE_VIDEO // o vídeo nunca vem por cima
+        return SignageZone(
+            id, x, y, w, h, kind, txt(o, "text", MAX_TEXT), qrText(ConfigParser.str(o, "qr")), txt(o, "title", MAX_TITLE),
+            shape = shape, edgeColor = edgeColor, edgeWidth = edgeWidth,
+            overlay = overlay, opacity = int(o, "opacity", 60).coerceIn(0, 100),
+        )
     }
 
     private fun layout(o: JSONObject?): SignageLayoutCfg? {
@@ -300,7 +385,13 @@ object Signage {
         }
         if (zones.isEmpty()) return null
         val portrait = ConfigParser.str(o, "orientation")?.lowercase() == "port"
-        return SignageLayoutCfg(portrait, color(ConfigParser.str(o, "background")), zones)
+        // rádio de fundo: só no bloco sem vídeo (o som do canal manda); http aceito (muitas rádios não têm https)
+        val audio = o.optJSONObject("audio")?.takeIf { !video && ConfigParser.str(it, "kind")?.lowercase() == "radio" }?.let { a ->
+            Urls.clean(ConfigParser.str(a, "url"))?.let { url ->
+                SignAudio(ConfigParser.str(a, "id")?.take(64) ?: url, txt(a, "name", 60), url, int(a, "volume", 100).coerceIn(10, 100))
+            }
+        }
+        return SignageLayoutCfg(portrait, color(ConfigParser.str(o, "background")), zones, audio)
     }
 
     private fun day(raw: String?): String? = raw?.trim()?.takeIf { DAY.matches(it) }
@@ -392,6 +483,71 @@ object Signage {
         return out
     }
 
+    /** s 0,7 · l 1,4 · xl 1,8 · ausente ou outro valor 1 (o médio). */
+    fun sizeOf(f: JSONObject, k: String): Float = when (ConfigParser.str(f, k)?.lowercase()) {
+        "s" -> 0.7f
+        "l" -> 1.4f
+        "xl" -> 1.8f
+        else -> 1f
+    }
+
+    private fun deg(o: JSONObject?, k: String): Int? {
+        val v = (o?.opt(k) as? Number)?.toDouble() ?: return null
+        return if (v.isNaN() || v < -90 || v > 70) null else Math.round(v).toInt()
+    }
+
+    private fun cond(o: JSONObject?): String = ConfigParser.str(o, "cond")?.lowercase()?.takeIf { it in WEATHER_CONDS } ?: "partly"
+
+    private fun weatherItem(o: JSONObject): SignWeather? {
+        val days = ArrayList<SignWeatherDay>()
+        o.optJSONArray("days")?.let { a ->
+            for (i in 0 until a.length()) {
+                if (days.size >= 4) break
+                val d = a.optJSONObject(i) ?: continue
+                val label = txt(d, "weekday", 12).replace('\n', ' ').ifEmpty {
+                    day(ConfigParser.str(d, "date"))?.let { it.substring(8, 10) + "/" + it.substring(5, 7) }.orEmpty()
+                }
+                days.add(SignWeatherDay(label, deg(d, "min"), deg(d, "max"), cond(d), txt(d, "text", 40).replace('\n', ' ')))
+            }
+        }
+        val w = SignWeather(
+            city = listOf(txt(o, "city", 40), txt(o, "uf", 2)).filter { it.isNotEmpty() }.joinToString(" · ").replace('\n', ' '),
+            tempC = deg(o, "tempC"), min = deg(o, "min"), max = deg(o, "max"), cond = cond(o),
+            text = txt(o, "text", 60).replace('\n', ' '), days = days, source = txt(o, "source", 40).replace('\n', ' '),
+            art = file(o.optJSONObject("art")), artPort = file(o.optJSONObject("artPort")),
+        )
+        return if (w.tempC == null && w.min == null && w.max == null && w.days.isEmpty()) null else w
+    }
+
+    private val HHMM = Regex("[0-9]{1,2}:[0-9]{2}")
+
+    private fun events(a: JSONArray?): List<SignEvent> {
+        if (a == null) return emptyList()
+        val out = ArrayList<SignEvent>()
+        for (i in 0 until a.length()) {
+            if (out.size >= 6) break
+            val e = a.optJSONObject(i) ?: continue
+            val d = day(ConfigParser.str(e, "date")) ?: continue
+            val t = txt(e, "title", 80).replace('\n', ' ')
+            if (t.isEmpty()) continue
+            out.add(SignEvent(d, ConfigParser.str(e, "time")?.takeIf { HHMM.matches(it) }.orEmpty(), ConfigParser.str(e, "end")?.takeIf { HHMM.matches(it) }.orEmpty(), t, txt(e, "place", 60).replace('\n', ' ')))
+        }
+        return out
+    }
+
+    private fun reviews(a: JSONArray?): List<SignReview> {
+        if (a == null) return emptyList()
+        val out = ArrayList<SignReview>()
+        for (i in 0 until a.length()) {
+            if (out.size >= 3) break
+            val r = a.optJSONObject(i) ?: continue
+            val t = txt(r, "text", 200).replace('\n', ' ')
+            if (t.isEmpty()) continue
+            out.add(SignReview(txt(r, "name", 40).replace('\n', ' ').ifEmpty { "Cliente" }, t, int(r, "stars", 5).coerceIn(1, 5)))
+        }
+        return out
+    }
+
     private fun quotes(a: JSONArray?): List<SignQuote> {
         if (a == null) return emptyList()
         val out = ArrayList<SignQuote>()
@@ -459,13 +615,46 @@ object Signage {
         if (o == null) return null
         val id = ConfigParser.str(o, "id")?.take(64) ?: return null
         val kind = ConfigParser.str(o, "kind")?.lowercase()?.takeIf { it in ITEM_KINDS } ?: return null
-        val seconds = int(o, "seconds", DEFAULT_SECONDS).let { if (it <= 0) DEFAULT_SECONDS else it.coerceIn(3, 300) }
-        val base = SignageItem(id, kind, seconds)
+        val seconds = int(o, "seconds", DEFAULT_SECONDS).let { if (it <= 0) DEFAULT_SECONDS else it.coerceIn(3, if (kind == "video") 3600 else 300) }
+        val base = SignageItem(
+            id, kind, seconds,
+            transition = ConfigParser.str(o, "transition")?.lowercase()?.takeIf { it in TRANSITIONS } ?: "fade",
+            kenburns = o.opt("kenburns") == true,
+        )
         return when (kind) {
             "image" -> {
                 val f = file(o) ?: return null
                 base.copy(file = f, label = txt(o, "caption", 120).replace('\n', ' '), contain = ConfigParser.str(o, "fit") == "contain")
             }
+            "video" -> {
+                val f = file(o, MAX_VIDEO_BYTES) ?: return null
+                base.copy(file = f, sound = o.opt("sound") == true, contain = ConfigParser.str(o, "fit") != "cover")
+            }
+            "weather" -> base.copy(weather = weatherItem(o), title = txt(o, "title", MAX_TITLE).replace('\n', ' '))
+            "clock" -> if (o.has("face") || o.has("tz") || o.has("label")) base.copy(
+                clockFace = SignClockFace(
+                    analog = ConfigParser.str(o, "face")?.lowercase() == "analog",
+                    tz = ConfigParser.str(o, "tz")?.takeIf { validTz(it) },
+                    label = txt(o, "label", 40).replace('\n', ' '),
+                    seconds = o.opt("seconds") != false && o.opt("showSeconds") != false,
+                    date = o.opt("date") != false,
+                ),
+            ) else base
+            "agenda" -> base.copy(title = txt(o, "title", MAX_TITLE).replace('\n', ' '), today = day(ConfigParser.str(o, "today")).orEmpty(), events = events(o.optJSONArray("events")))
+            "reviews" -> reviews(o.optJSONArray("items")).takeIf { it.isNotEmpty() }?.let {
+                base.copy(title = txt(o, "title", MAX_TITLE).replace('\n', ' '), reviews = it, qr = qrText(ConfigParser.str(o, "qr")))
+            }
+            "dashboard" -> {
+                val a = o.optJSONArray("items")
+                val list = ArrayList<SignKpi>()
+                if (a != null) for (i in 0 until a.length()) { if (list.size >= 6) break; a.optJSONObject(i)?.let { kpi(it) }?.let(list::add) }
+                if (list.isEmpty()) null else base.copy(title = txt(o, "title", MAX_TITLE).replace('\n', ' '), kpis = list)
+            }
+            "directions" -> {
+                val p = SignPlace(txt(o, "address", 160).replace('\n', ' '), txt(o, "reference", 120).replace('\n', ' '), txt(o, "hours", 120).replace('\n', ' '), txt(o, "phone", 40).replace('\n', ' '))
+                if (p.address.isEmpty()) null else base.copy(title = txt(o, "title", MAX_TITLE).replace('\n', ' '), place = p, qr = qrText(ConfigParser.str(o, "qr")))
+            }
+            "web" -> httpsOrNull(ConfigParser.str(o, "url"))?.let { base.copy(webUrl = it, refreshMin = int(o, "refreshMin", 0).coerceIn(0, 1440)) }
             "slide" -> {
                 val f = o.optJSONObject("fields") ?: JSONObject()
                 val tpl = ConfigParser.str(o, "template")?.lowercase()?.takeIf { it in TEMPLATES } ?: "comunicado"
@@ -492,8 +681,13 @@ object Signage {
                     text = txt(f, "text", MAX_TEXT).ifEmpty { lines },
                     subtitle = txt(f, "subtitle", 90).replace('\n', ' ').ifEmpty { txt(f, "name", 60).replace('\n', ' ') },
                     label = txt(f, "label", 30).replace('\n', ' '),
-                    qr = httpsOrNull(ConfigParser.str(f, "qr")),
+                    qr = qrText(ConfigParser.str(f, "qr")),
                     file = file(f.optJSONObject("image")),
+                    portrait = ConfigParser.str(f, "orient")?.lowercase() == "port",
+                    qrScale = sizeOf(f, "qrSize"),
+                    priceScale = sizeOf(f, "priceSize"),
+                    photoScale = sizeOf(f, "photoSize"),
+                    titleScale = sizeOf(f, "titleSize"),
                     target = epoch(f, "target", tz).takeIf { it > 0 } ?: epoch(f, "date", tz),
                     menu = menu(f.optJSONArray("items")),
                     people = people(f.optJSONArray("people")),
@@ -519,7 +713,11 @@ object Signage {
             "kpi" -> kpi(o)?.let { base.copy(kpi = it, title = it.name, at = epoch(o, "at", tz)) }
             "news" -> {
                 val n = news(o.optJSONArray("items") ?: o.optJSONArray("headlines"), tz)
-                if (n.isEmpty()) null else base.copy(news = n, label = txt(o, "source", 40), title = txt(o, "title", MAX_TITLE).replace('\n', ' '))
+                val single = o.opt("single") == true
+                if (n.isEmpty()) null else base.copy(
+                    news = if (single) n.take(1) else n, label = txt(o, "source", 40), title = txt(o, "title", MAX_TITLE).replace('\n', ' '),
+                    single = single, file = if (single) file(o.optJSONObject("image")) else null,
+                )
             }
             "quotes" -> {
                 val q = quotes(o.optJSONArray("items"))
@@ -531,11 +729,17 @@ object Signage {
             }
             "countdown" -> {
                 val t = epoch(o, "target", tz)
-                if (t <= 0) null else base.copy(target = t, title = txt(o, "title", MAX_TITLE).replace('\n', ' '), text = txt(o, "text", 120))
+                if (t <= 0) null else base.copy(
+                    target = t, endAt = epoch(o, "until", tz).takeIf { it > t } ?: 0L,
+                    title = txt(o, "title", MAX_TITLE).replace('\n', ' '), text = txt(o, "text", 120),
+                )
             }
             "safety" -> {
                 val s = day(ConfigParser.str(o, "since"))
-                if (s == null) null else base.copy(since = s, record = int(o, "record", 0).coerceIn(0, 100_000), goal = int(o, "goal", 0).coerceIn(0, 100_000), title = txt(o, "title", MAX_TITLE).replace('\n', ' '))
+                if (s == null) null else base.copy(
+                    since = s, record = int(o, "record", 0).coerceIn(0, 100_000), hasRecord = !o.has("record") || !o.isNull("record"),
+                    goal = int(o, "goal", 0).coerceIn(0, 100_000), title = txt(o, "title", MAX_TITLE).replace('\n', ' '),
+                )
             }
             "worldclock" -> {
                 val c = clocks(o.optJSONArray("clocks"))
@@ -543,7 +747,7 @@ object Signage {
             }
             "text" -> base.copy(title = txt(o, "title", MAX_TITLE).replace('\n', ' '), text = txt(o, "text", MAX_TEXT))
                 .takeIf { it.title.isNotEmpty() || it.text.isNotEmpty() }
-            "qr" -> httpsOrNull(ConfigParser.str(o, "qr") ?: ConfigParser.str(o, "url"))?.let { base.copy(qr = it, title = txt(o, "title", MAX_TITLE).replace('\n', ' ')) }
+            "qr" -> qrText(ConfigParser.str(o, "qr") ?: ConfigParser.str(o, "url"))?.let { base.copy(qr = it, title = txt(o, "title", MAX_TITLE).replace('\n', ' ')) }
             else -> base // clock, weather, logo: desenhados com o que o app já tem
         }
     }
@@ -626,6 +830,20 @@ object Signage {
 
     /** Quanto falta para o contador: dias, horas e minutos (tudo zero depois do alvo). */
     data class Remaining(val days: Long, val hours: Int, val minutes: Int, val done: Boolean)
+
+    /** A fase do contador e quanto falta (dias, horas, minutos, segundos). */
+    data class CountPhase(val label: String, val days: Long, val hours: Int, val minutes: Int, val seconds: Int)
+
+    fun countPhase(target: Long, until: Long, now: Long): CountPhase {
+        val (label, ms) = when {
+            now < target -> "Começa em" to target - now
+            until > 0 && now < until -> "Termina em" to until - now
+            until > 0 -> "Encerrado" to 0L
+            else -> "É hoje!" to 0L
+        }
+        val s = ms / 1000
+        return CountPhase(label, s / 86400, ((s / 3600) % 24).toInt(), ((s / 60) % 60).toInt(), (s % 60).toInt())
+    }
 
     fun remaining(target: Long, nowMs: Long): Remaining {
         val ms = target - nowMs
