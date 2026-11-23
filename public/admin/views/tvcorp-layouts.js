@@ -238,6 +238,10 @@ export function layoutEditor(lay, reload, factoryKey = null, copyOf = null, { ao
   dlgLay.classList.add('tc-lay-dlg'); // o editor usa quase a tela toda: a tabela das zonas cabe sem rolar de lado
 }
 
+/** A miniatura do layout que abre grande, ao vivo, com um clique (sem abrir o editor). */
+const grande = (l, node) => el('div', { class: 'tc-pv-click', role: 'button', tabindex: '0', title: 'Clique para ver grande, ao vivo', 'aria-label': `Ver o layout ${l.name || l.label || ''} grande, ao vivo`,
+  onclick: () => abrirPreviaViva(l, { titulo: `Prévia ao vivo · ${l.name || l.label || ''}` }),
+  onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrirPreviaViva(l, { titulo: `Prévia ao vivo · ${l.name || l.label || ''}` }); } } }, node);
 const quadrosTxt = (l) => quadrosDoLayout(l).map((q) => `${q.zone.id}: ${q.px.w}×${q.px.h} (${FORMATO_TXT[q.formato]})`).join(' · ');
 export default async function paintLayouts(box, ctx) {
   const d = D(); const reload = ctx.reload;
@@ -249,7 +253,7 @@ export default async function paintLayouts(box, ctx) {
   HAS_CITY = Boolean(def.cidade || def.extra?.cidade || def.config?.cidade || feeds.some((x) => x.kind === 'weather'));
   const usedBy = (id) => d.schedules.filter((s) => s.layoutId === id).map((s) => s.name);
   const mine = d.layouts.map((l) => el('div', { class: 'tc-lcard' },
-    layoutPreview(l, { ...previewOpts(l), labels: false }),
+    grande(l, layoutPreview(l, { ...previewOpts(l), labels: false })),
     el('div', { class: 'tc-lcard-b' },
       el('b', { text: l.name }),
       el('div', { class: 'dim small', text: `${l.orientation === 'port' ? 'Em pé' : 'Deitada'} · ${(l.zones || []).length} zona(s)${l.updatedAt ? ` · ${when(l.updatedAt)}` : ''}` }),
@@ -295,7 +299,7 @@ function factoryView(reload) {
         el('div', { class: 'tc-lcard-b' }, el('div', {}, chip(`${x.screens.length} TVs`, 'tc-tvs'), ' ', chip(segLabel(x.segment))), el('b', { text: x.label }), el('div', { class: 'dim small', text: x.desc }),
           btns(btn('Usar este conjunto', () => setDialog(x, reload), 'small primary'))))),
       ...singles.map((l) => el('div', { class: 'tc-lcard' },
-        layoutPreview(l, { ...previewOpts(l), labels: false }),
+        grande(l, layoutPreview(l, { ...previewOpts(l), labels: false })),
         el('div', { class: 'tc-lcard-b' }, el('div', {}, chip('1 TV', 'tc-tvs'), ' ', chip(segLabel(l.segment)), ' ', l.main === 'video' ? chip('Vídeo ao vivo') : l.main === 'playlist' ? chip('Playlist') : null, l.special ? ' ' : null, l.special ? chip('Formato especial') : null), el('b', { text: l.label }), el('div', { class: 'dim small', text: l.desc }),
           quadrosTxt(l) ? el('div', { class: 'small tc-quadros', text: `Quadros das playlists: ${quadrosTxt(l)}` }) : null,
           btns(btn('Usar este modelo', () => layoutEditor(null, reload, l.key), 'small primary'), btn('▶ Ao vivo', () => abrirPreviaViva({ ...l, name: l.label }), 'small'),

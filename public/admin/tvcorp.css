@@ -319,3 +319,6 @@ dialog.pf-dlg.tc-lay-dlg { width: min(97vw, 1560px); max-width: 97vw; }
 .tc-bg-cor { width: 44px; height: 36px; padding: 2px; border-radius: 8px; flex: none; cursor: pointer; }
 .tc-bg-row input.tc-bg-cor, .pf-dlg .tc-bg-row input[type=color] { width: 44px; min-width: 44px; max-width: 44px; flex: 0 0 44px; }
 .pf-dlg .tc-bg-row select { flex: 1 1 auto; width: auto; min-width: 0; }
+/* a miniatura do layout abre grande com um clique */
+.tc-pv-click { cursor: zoom-in; border-radius: 10px; }
+.tc-pv-click:hover, .tc-pv-click:focus-visible { outline: 2px solid #38bdf8; outline-offset: 2px; }
