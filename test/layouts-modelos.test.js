@@ -20,7 +20,7 @@ test('todo modelo passa na validação do servidor e tem um segmento conhecido',
 
 test('30 ou mais modelos novos com gadgets, deitados e em pé, em vários segmentos', () => {
   const gadget = new Set(['widget', 'clock', 'weather', 'countdown', 'safety', 'worldclock', 'news', 'quotes', 'qr', 'queue']);
-  const novos = M.filter((m) => !m.set && m.segment !== 'elevador' && m.zones.some((z) => gadget.has(z.kind))).filter((m) => !['recepcao', 'chao-de-fabrica', 'refeitorio'].includes(m.key));
+  const novos = M.filter((m) => !m.set && !m.family && m.segment !== 'elevador' && m.zones.some((z) => gadget.has(z.kind))).filter((m) => !['recepcao', 'chao-de-fabrica', 'refeitorio'].includes(m.key));
   assert.ok(novos.length >= 30, `só ${novos.length}`);
   assert.ok(novos.some((m) => m.orientation === 'port') && novos.some((m) => m.orientation === 'land'));
   assert.ok(new Set(novos.map((m) => m.segment)).size >= 10, 'vários segmentos');
@@ -33,7 +33,7 @@ test('elevador: em pé e deitado, com hora, avisos (texto rolante) e anúncios',
   assert.ok(el.some((m) => m.orientation === 'port') && el.some((m) => m.orientation === 'land'));
   for (const m of el) {
     assert.ok(m.zones.some((z) => z.kind === 'ticker'), `${m.key}: avisos`);
-    assert.ok(m.zones.some((z) => z.kind === 'playlist'), `${m.key}: anúncios`);
+    assert.ok(m.zones.some((z) => z.kind === 'playlist') || T.layoutMainOf(m) === 'video', `${m.key}: anúncios (ou o canal ao vivo)`);
     assert.ok(m.zones.some((z) => z.kind === 'clock' || z.sample === 'clock'), `${m.key}: hora`);
   }
 });
@@ -63,4 +63,25 @@ test('zonas por cima da imagem: a de cima pode ficar sobre a de baixo, duas da m
   assert.throws(() => K.cleanZone({ id: 'c', kind: 'clock', x: 0, y: 0, w: 20, h: 20, overlay: true, opacity: 150 }), /0 a 100/);
   const ov = M.filter((m) => m.zones.some((z) => z.overlay));
   assert.ok(ov.length >= 5, 'modelos prontos com widgets por cima');
+});
+
+test('por segmento: pelo menos 4 com a playlist e 4 com o vídeo ao vivo como principal, deitados e em pé, sem repetir modelo', () => {
+  for (const s of T.TVC_LAYOUT_SEGMENTS) {
+    const mine = M.filter((m) => !m.set && m.segment === s.key);
+    for (const main of ['playlist', 'video']) {
+      const xs = mine.filter((m) => T.layoutMainOf(m) === main);
+      assert.ok(xs.length >= 4, `${s.key}/${main}: só ${xs.length}`);
+      assert.ok(xs.some((m) => m.orientation === 'port') && xs.some((m) => m.orientation === 'land'), `${s.key}/${main}: deitado e em pé`);
+    }
+    assert.ok(mine.some((m) => m.zones.some((z) => z.overlay)), `${s.key}: algum com gadget por cima`);
+  }
+  const sig = new Map();
+  for (const m of M.filter((x) => !x.set)) {
+    const k = m.orientation + JSON.stringify(m.zones.map((z) => [z.kind, z.x, z.y, z.w, z.h, z.sample || '', z.overlay ? 1 : 0]));
+    assert.ok(!sig.has(k), `${m.key} igual a ${sig.get(k)}`); sig.set(k, m.key);
+  }
+  assert.equal(new Set(M.map((m) => m.label)).size, M.length, 'nomes sem repetir');
+  for (const m of M) assert.ok(m.label.length <= 60, `${m.key}: nome cabe no layout`);
+  assert.equal(T.layoutMainOf(T.TVC_LAYOUT_MODEL['tela-cheia']), 'video');
+  assert.equal(T.layoutMainOf(T.TVC_LAYOUT_MODEL['so-conteudo']), 'playlist');
 });

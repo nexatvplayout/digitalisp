@@ -232,20 +232,22 @@ export default async function paintLayouts(box, ctx) {
     factoryBox);
 }
 /** O filtro dos modelos prontos (segmento, formato e quantas TVs): fica entre uma visita e outra à aba. */
-const FV = { segment: '', orient: '', tvs: '' };
+const FV = { segment: '', orient: '', tvs: '', main: '' };
 /** Os modelos prontos: os de uma TV e os conjuntos de várias TVs (menu board), filtrados. */
 function factoryView(reload) {
   const box = el('div', {});
   const sel = (k, first, options) => el('select', { 'aria-label': first, onchange: (e) => { FV[k] = e.target.value; paint(); } }, opt('', first, !FV[k]), ...options.map(([v, t]) => opt(v, t, FV[k] === v)));
   const bar = el('div', { class: 'pf-bar' }, sel('segment', 'Todos os segmentos', LAYOUT_SEGMENTS.map((x) => [x.key, x.label])), sel('orient', 'Deitado e em pé', [['land', 'Deitado'], ['port', 'Em pé']]),
-    sel('tvs', 'Uma ou várias TVs', [['1', 'Uma TV'], ['n', 'Várias TVs (conjunto)']]));
+    sel('tvs', 'Uma ou várias TVs', [['1', 'Uma TV'], ['n', 'Várias TVs (conjunto)']]),
+    sel('main', 'Principal: qualquer', [['playlist', 'Principal: playlist'], ['video', 'Principal: vídeo ao vivo']]));
   const count = el('span', { class: 'dim small' });
   const grid = el('div', { class: 'tc-lgrid' });
   const segLabel = (k) => LAYOUT_SEGMENTS.find((x) => x.key === k)?.label || '';
   const paint = () => {
     const ok = (x) => (!FV.segment || x.segment === FV.segment) && (!FV.orient || x.orientation === FV.orient);
-    const singles = FV.tvs === 'n' ? [] : FACTORY_LAYOUTS.filter((l) => !l.set && ok(l));
-    const sets = FV.tvs === '1' ? [] : FACTORY_SETS.filter(ok);
+    const singles = FV.tvs === 'n' ? [] : FACTORY_LAYOUTS.filter((l) => !l.set && ok(l) && (!FV.main || l.main === FV.main));
+    // os conjuntos de várias TVs são de playlist (cardápio): somem quando o filtro pede o vídeo ao vivo
+    const sets = FV.tvs === '1' || FV.main === 'video' ? [] : FACTORY_SETS.filter(ok);
     count.textContent = `${singles.length + sets.length} modelo(s)`;
     put(grid,
       ...sets.map((x) => el('div', { class: 'tc-lcard tc-set' },
@@ -254,7 +256,7 @@ function factoryView(reload) {
           btns(btn('Usar este conjunto', () => setDialog(x, reload), 'small primary'))))),
       ...singles.map((l) => el('div', { class: 'tc-lcard' },
         layoutPreview(l, { ...previewOpts(l), labels: false }),
-        el('div', { class: 'tc-lcard-b' }, el('div', {}, chip('1 TV', 'tc-tvs'), ' ', chip(segLabel(l.segment))), el('b', { text: l.label }), el('div', { class: 'dim small', text: l.desc }),
+        el('div', { class: 'tc-lcard-b' }, el('div', {}, chip('1 TV', 'tc-tvs'), ' ', chip(segLabel(l.segment)), ' ', l.main === 'video' ? chip('Vídeo ao vivo') : l.main === 'playlist' ? chip('Playlist') : null), el('b', { text: l.label }), el('div', { class: 'dim small', text: l.desc }),
           quadrosTxt(l) ? el('div', { class: 'small tc-quadros', text: `Quadros das playlists: ${quadrosTxt(l)}` }) : null,
           btns(btn('Usar este modelo', () => layoutEditor(null, reload, l.key), 'small primary'))))));
     if (!sets.length && !singles.length) put(grid, empty('Nenhum modelo com esses filtros.'));

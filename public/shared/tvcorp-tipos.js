@@ -164,6 +164,120 @@ export const TVC_DAYS = Object.freeze([
 
 /* ------------------------------------------------------------------ modelos de layout (de fábrica) */
 const Z = (id, kind, x, y, w, h, extra = {}) => Object.freeze({ id, kind, x, y, w, h, ...extra });
+/* ------------------------------------------------------------------ DIGITAL ISP: modelos por família (formas × segmento) */
+/**
+ * Os modelos gerados: para cada segmento, 4 com a playlist como zona principal e 4 com o vídeo ao vivo (o canal em HLS),
+ * deitados e em pé, alguns com os gadgets por cima da imagem. A forma dá as posições (o principal, as casas dos gadgets e
+ * a faixa); o segmento dá os gadgets que fazem sentido nele, na ordem de importância (a primeira casa recebe o primeiro).
+ * As casas "pequenas" (por cima da imagem) só aceitam gadgets que cabem num canto (relógio, clima, QR, logomarca, contador).
+ */
+function familyLayouts() {
+  const QR = (title) => ({ kind: 'qr', id: 'qr', name: 'QR code', small: true, extra: { qr: 'https://exemplo.com.br', title } });
+  const G = {
+    clock: { kind: 'clock', id: 'clock', name: 'relógio', small: true },
+    weather: { kind: 'weather', id: 'weather', name: 'clima', small: true },
+    logo: { kind: 'logo', id: 'logo', name: 'logomarca', small: true, extra: { opacity: 0 } },
+    countdown: { kind: 'countdown', id: 'countdown', name: 'contador', small: true },
+    quotes: { kind: 'quotes', id: 'quotes', name: 'cotações' },
+    news: { kind: 'news', id: 'news', name: 'notícias' },
+    queue: { kind: 'queue', id: 'queue', name: 'senha' },
+    safety: { kind: 'safety', id: 'safety', name: 'dias sem acidente' },
+    world: { kind: 'worldclock', id: 'world', name: 'relógio mundial', extra: { title: 'Horário pelo mundo' } },
+    agenda: { kind: 'widget', id: 'agenda', name: 'agenda', extra: { sample: 'agenda' } },
+    dash: { kind: 'widget', id: 'dash', name: 'indicadores', extra: { sample: 'dashboard' } },
+    reviews: { kind: 'widget', id: 'reviews', name: 'avaliações', extra: { sample: 'reviews' } },
+    directions: { kind: 'widget', id: 'directions', name: 'como chegar', extra: { sample: 'directions' } },
+    ads: { kind: 'playlist', id: 'ads', name: 'anúncios', extra: { hint: 'media' } },
+  };
+  // os segmentos (as mesmas chaves de TVC_LAYOUT_SEGMENTS) e os gadgets de cada um, do mais ao menos importante
+  const SEG = [
+    ['geral', 'Uso geral', 'Geral', [G.clock, G.weather, G.news, QR('Saiba mais'), G.logo]],
+    ['loja', 'Loja e varejo', 'Loja', [QR('Compre pelo site'), G.countdown, G.reviews, G.clock, G.logo]],
+    ['alimentacao', 'Restaurante e lanchonete', 'Restaurante', [QR('Peça pelo celular'), G.reviews, G.clock, G.directions, G.countdown]],
+    ['saude', 'Clínica e farmácia', 'Clínica', [G.queue, G.clock, QR('Agende sua consulta'), G.weather, G.directions]],
+    ['academia', 'Academia', 'Academia', [G.countdown, G.clock, QR('Baixe o app de treino'), G.dash, G.weather]],
+    ['escola', 'Escola', 'Escola', [G.agenda, G.clock, G.countdown, G.weather, G.news]],
+    ['recepcao', 'Recepção', 'Recepção', [G.queue, G.weather, G.agenda, G.clock, QR('Fale conosco')]],
+    ['corporativo', 'Escritório', 'Escritório', [G.dash, G.agenda, G.quotes, G.clock, G.news]],
+    ['industria', 'Indústria', 'Indústria', [G.safety, G.dash, G.clock, G.news, G.weather]],
+    ['provedor', 'Provedor de internet', 'Provedor', [QR('Assine pelo celular'), G.directions, G.reviews, G.clock, G.weather]],
+    ['igreja', 'Igreja', 'Igreja', [G.agenda, G.countdown, QR('Contribua e participe'), G.clock, G.weather]],
+    ['hotel', 'Hotel', 'Hotel', [G.world, G.weather, QR('Wi-Fi dos hóspedes'), G.directions, G.clock]],
+    ['elevador', 'Elevador e condomínio', 'Elevador', [G.clock, G.ads, G.news, G.weather, QR('Avisos do condomínio')]],
+    ['evento', 'Evento', 'Evento', [G.countdown, G.agenda, QR('Programação completa'), G.clock, G.weather]],
+  ];
+  // as formas: o principal (M), as casas dos gadgets (S, em ordem; small: só gadget de canto, por cima da imagem) e a faixa
+  // small: casa de canto, por cima da imagem; strip: a faixa de cima das telas em pé (só gadget de canto, sem ficar por cima)
+  const S = (x, y, w, h, small = false, strip = false) => ({ x, y, w, h, small, strip });
+  const SHAPES = {
+    playlist: [
+      { key: 'lateral', lab: 'com lateral', name: 'com lateral de gadgets', o: 'land', main: [0, 0, 70, 88], slots: [S(70, 0, 30, 30), S(70, 30, 30, 30), S(70, 60, 30, 28)], bar: [0, 88, 100, 12] },
+      { key: 'rodape', lab: 'com gadgets embaixo', name: 'com gadgets embaixo', o: 'land', main: [0, 0, 100, 64], slots: [S(0, 64, 34, 24), S(34, 64, 33, 24), S(67, 64, 33, 24)], bar: [0, 88, 100, 12] },
+      { key: 'por-cima', lab: 'com gadgets por cima', name: 'em tela cheia com gadgets por cima', o: 'land', main: [0, 0, 100, 88], slots: [S(76, 4, 22, 22, true), S(2, 4, 22, 22, true)], bar: [0, 88, 100, 12], overlay: true },
+      { key: 'em-pe', lab: 'em pé', name: 'em pé com gadgets', o: 'port', main: [0, 10, 100, 58], slots: [S(0, 0, 100, 10, false, true), S(0, 68, 50, 22), S(50, 68, 50, 22)], bar: [0, 90, 100, 10] },
+    ],
+    video: [
+      { key: 'em-l', lab: 'em L', name: 'em L com gadgets', o: 'land', main: [0, 0, 75, 88], slots: [S(75, 0, 25, 44), S(75, 44, 25, 44)], bar: [0, 88, 100, 12] },
+      { key: 'lateral', lab: 'com lateral', name: 'com lateral de três gadgets', o: 'land', main: [0, 0, 72, 88], slots: [S(72, 0, 28, 30), S(72, 30, 28, 29), S(72, 59, 28, 29)], bar: [0, 88, 100, 12] },
+      { key: 'por-cima', lab: 'com gadget por cima', name: 'em tela cheia com gadget por cima', o: 'land', main: [0, 0, 100, 88], slots: [S(76, 4, 22, 22, true)], bar: [0, 88, 100, 12], overlay: true },
+      { key: 'em-pe', lab: 'em pé', name: 'em pé com gadgets', o: 'port', main: [0, 10, 100, 34], slots: [S(0, 0, 100, 10, false, true), S(0, 44, 100, 24), S(0, 68, 100, 22)], bar: [0, 90, 100, 10] },
+    ],
+  };
+  const join = (xs) => (xs.length > 1 ? `${xs.slice(0, -1).join(', ')} e ${xs[xs.length - 1]}` : xs[0] || '');
+  // os cantos das casas por cima da imagem (acima da faixa): a forma "por cima" troca de canto para não repetir modelo
+  const CORNERS = [[76, 4], [2, 4], [76, 62], [2, 62]];
+  const sig = (o, zs) => o + JSON.stringify(zs.map((z) => [z.kind, z.x, z.y, z.w, z.h, z.sample || '', z.overlay ? 1 : 0]));
+  const seen = new Set();
+  const out = [];
+  for (const [seg, segLabel, short, gadgets] of SEG) {
+    for (const mainKind of ['playlist', 'video']) {
+      for (const sh of SHAPES[mainKind]) {
+        // os gadgets da forma: as casas pequenas pegam os de canto; as outras, na ordem do segmento. Se sair igual a um
+        // modelo já feito, gira o canto e o tamanho da casa (forma por cima) e só depois o começo da lista de gadgets
+        const SIZES = [null, [26, 18], [18, 26]];
+        let zones = [];
+        for (let a = 0; a < 60; a++) {
+          const corner = a % 4; const size = SIZES[Math.floor(a / 4) % 3]; const skip = Math.floor(a / 12);
+          const list = [...gadgets.slice(skip), ...gadgets.slice(0, skip)];
+          const used = new Set(); zones = [];
+          sh.slots.forEach((slot, i) => {
+            const g = list.find((x) => !used.has(x.id) && (!(slot.small || slot.strip) || x.small)) || null;
+            if (!g) return;
+            used.add(g.id);
+            const [w, h] = slot.small && size ? size : [slot.w, slot.h];
+            const [cx, cy] = CORNERS[(corner + (i ? 1 : 0)) % 4];
+            // o canto de baixo encosta na faixa (y + altura = 84)
+            const [x, y] = slot.small ? [cx === 76 ? 98 - w : 2, cy === 4 ? 4 : 84 - h] : [slot.x, slot.y];
+            zones.push(Z(g.id, g.kind, x, y, w, h, { ...(g.extra || {}), ...(slot.small ? { overlay: true, opacity: g.id === 'logo' ? 0 : 60 } : {}) }));
+          });
+          if (!seen.has(sig(sh.o, zones))) break;
+        }
+        seen.add(sig(sh.o, zones));
+        const main = Z('main', mainKind, ...sh.main, mainKind === 'playlist' ? { hint: 'media' } : {});
+        const bar = sh.bar ? [Z('bar', 'ticker', ...sh.bar)] : [];
+        const names = zones.map((z) => (gadgets.find((g) => g.id === z.id) || {}).name);
+        const what = mainKind === 'video' ? 'vídeo ao vivo' : 'playlist';
+        out.push({
+          key: `f-${seg}-${mainKind === 'video' ? 'aovivo' : 'playlist'}-${sh.key}`, segment: seg, main: mainKind, family: true,
+          label: `${short}: ${what} ${sh.lab}`.slice(0, 60),
+          desc: `${segLabel}: ${mainKind === 'video' ? 'o canal ao vivo' : 'a playlist'} ${sh.name} (${join(names)})${bar.length ? ' e o texto rolante' : ''}.`,
+          orientation: sh.o, background: '#0b1220',
+          zones: [main, ...zones, ...bar],
+        });
+      }
+    }
+  }
+  return out;
+}
+/**
+ * A zona principal do modelo: a de id "main" ou a maior (o vídeo ao vivo vence quando existe). Para o filtro
+ * "Principal: playlist / vídeo ao vivo" da aba Layouts. Devolve 'video', 'playlist' ou 'other'.
+ */
+export function layoutMainOf(m) {
+  const zs = m?.zones || [];
+  const z = zs.find((x) => x.id === 'main') || [...zs].sort((a, b) => b.w * b.h - a.w * a.h)[0];
+  return z?.kind === 'video' ? 'video' : z?.kind === 'playlist' ? 'playlist' : 'other';
+}
 /**
  * Os layouts prontos. Cada zona em % da tela (inteiros 0 a 100). hint: o conteúdo sugerido para a playlist da zona (o
  * painel abre a playlist já filtrada). O cliente copia um destes para tvcorp_layouts quando personaliza.
@@ -310,6 +424,8 @@ export const TVC_LAYOUT_MODELS = Object.freeze([
     zones: [Z('main', 'playlist', 0, 0, 100, 100, { hint: 'media' })] },
   { key: 'menu3p-3', segment: 'alimentacao', set: 'menu-3-em-pe', label: 'Bebidas (TV 3 de 3, em pé)', desc: 'Em pé: bebidas, sobremesas e o QR code.', orientation: 'port', background: '#0b1220',
     zones: [Z('title', 'text', 0, 0, 100, 8, { title: 'Bebidas e sobremesas' }), Z('main', 'playlist', 0, 8, 100, 74, { hint: 'media' }), Z('qr', 'qr', 0, 82, 100, 18, { qr: 'https://exemplo.com.br', title: 'Aponte a câmera' })] },
+  // DIGITAL ISP: os gerados por família (formas × segmento), 4 com a playlist e 4 com o vídeo ao vivo por segmento
+  ...familyLayouts(),
 ].map((m) => Object.freeze({ segment: 'geral', ...m, zones: Object.freeze(m.zones) })));
 export const TVC_LAYOUT_MODEL = Object.freeze(Object.fromEntries(TVC_LAYOUT_MODELS.map((m) => [m.key, m])));
 export const TVC_LAYOUT_MODEL_KEYS = Object.freeze(TVC_LAYOUT_MODELS.map((m) => m.key));
