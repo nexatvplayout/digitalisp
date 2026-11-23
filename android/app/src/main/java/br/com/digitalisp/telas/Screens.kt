@@ -131,7 +131,7 @@ class SetupScreen(act: MainActivity, private var step: Int, private val message:
         const val CHOOSE = 0
         const val MANAGED = 1
         const val STANDALONE = 2
-        const val NEUTRAL_TITLE = "Configuração da tela"
+        const val NEUTRAL_TITLE = "DIGITAL ISP"
     }
 
     private val built = panel()
@@ -477,7 +477,7 @@ class SettingsScreen(act: MainActivity) : Screen(act) {
         homeText = when {
             Kiosk.isHome(act) -> "é este app (abre sozinho ao ligar)"
             owner -> "fixada pelo administrador"
-            else -> "NÃO é este app: sem isso ele não abre sozinho ao ligar. Use o botão abaixo ou aperte Home e escolha Telas > Sempre"
+            else -> "NÃO é este app: sem isso ele não abre sozinho ao ligar. Use o botão abaixo ou aperte Home e escolha DIGITAL ISP > Sempre"
         }
         kioskIssuesText = act.kioskIssues()
     }
@@ -746,7 +746,7 @@ class DiagScreen(act: MainActivity) : Screen(act) {
             Ui.button(act, "Copiar o texto") {
                 note.text = try {
                     val cm = act.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    cm.setPrimaryClip(ClipData.newPlainText("Telas", act.diagnosticsText()))
+                    cm.setPrimaryClip(ClipData.newPlainText("DIGITAL ISP", act.diagnosticsText()))
                     "Texto copiado (dá para colar em outro app com um teclado ou mouse ligado na TV box)."
                 } catch (_: Exception) {
                     "Este aparelho não deixou copiar; fotografe a tela."

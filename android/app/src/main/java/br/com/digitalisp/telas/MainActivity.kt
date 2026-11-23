@@ -502,10 +502,12 @@ class MainActivity : Activity(), Engine.Ui {
         paintSplash()
     }
 
+    private val DIGITAL_ISP_BG = 0xFF0A2150.toInt()
+
     /** Pinta a abertura com a marca guardada; sem logo pronta, o nome da revenda não entra (a tela fica só na cor). */
     private fun paintSplash() {
         val b = Engine.brand
-        splash.setBackgroundColor(b?.background ?: Color.BLACK)
+        splash.setBackgroundColor(b?.background ?: DIGITAL_ISP_BG)
         val w = resources.displayMetrics.widthPixels
         val h = resources.displayMetrics.heightPixels
         val bmp = brandBmp
@@ -513,9 +515,9 @@ class MainActivity : Activity(), Engine.Ui {
             splashLogo.setImageBitmap(bmp)
             splashLogo.setPadding(w / 4, h * 3 / 10, w / 4, h * 3 / 10)
         } else if (b == null) {
-            // neutro (antes do cadastro): o ícone genérico do app, pequeno
-            splashLogo.setImageResource(R.drawable.ic_launcher)
-            splashLogo.setPadding(w * 9 / 20, h * 2 / 5, w * 9 / 20, h * 2 / 5)
+            // sem revenda (antes do cadastro): o logo DIGITAL ISP (decisão do dono, 23/11/2026)
+            splashLogo.setImageResource(R.drawable.banner)
+            splashLogo.setPadding(w / 5, h / 5, w / 5, h / 5)
         } else {
             splashLogo.setImageDrawable(null)
         }
@@ -1960,7 +1962,7 @@ class MainActivity : Activity(), Engine.Ui {
         list.add(Intent(Settings.ACTION_HOME_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         list.add(Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         list.add(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-        leaveTo("Este aparelho não abriu a escolha da tela inicial; aperte o botão Home do controle e escolha Telas > Sempre.", *list.toTypedArray())
+        leaveTo("Este aparelho não abriu a escolha da tela inicial; aperte o botão Home do controle e escolha DIGITAL ISP > Sempre.", *list.toTypedArray())
     }
 
     fun openDateSettings() = leaveTo(
@@ -2031,7 +2033,7 @@ class MainActivity : Activity(), Engine.Ui {
             line("Tela (área do app)", "${root.width}×${root.height} px · densidade ${dm.densityDpi} dpi")
         } catch (_: Exception) {
         }
-        line("App", "Telas ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})" + if (BuildConfig.DEBUG) " depuração" else "")
+        line("App", "DIGITAL ISP ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})" + if (BuildConfig.DEBUG) " depuração" else "")
         line("Ligado há", "${Engine.uptimeSec() / 60} min")
 
         sec("Quiosque")
@@ -2083,7 +2085,7 @@ class MainActivity : Activity(), Engine.Ui {
         return out
     }
 
-    fun diagnosticsText(): String = DiagReport.text("Telas ${BuildConfig.VERSION_NAME} · diagnóstico", diagnostics())
+    fun diagnosticsText(): String = DiagReport.text("DIGITAL ISP ${BuildConfig.VERSION_NAME} · diagnóstico", diagnostics())
 
     // ------------------------------------------------------------------ teclas e toques
 

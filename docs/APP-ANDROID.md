@@ -3,12 +3,14 @@
 Pasta `android/`. App nativo (Kotlin), white-label, que transforma uma TV box em tela de sinalização. Veio do app que já
 existia no outro produto do dono (a versão 1.3.1) e foi adaptado em 22/11/2026.
 
-- Pacote (`applicationId` e `namespace`): **`br.com.digitalisp.telas`** · versão **0.1.0** (versionCode 1) · Android 7.0+.
-- Nome no aparelho: **"Telas"**. Ícone e faixa do Android TV: um desenho neutro de tela, em cinza.
+- Pacote (`applicationId` e `namespace`): **`br.com.digitalisp.telas`** · versão **0.2.0** (versionCode 2) · Android 7.0+.
+- Nome no aparelho: **"DIGITAL ISP"**, com o logo da DIGITAL ISP no ícone e na faixa do Android TV (decisão do dono de
+  23/11/2026; antes era o nome neutro "Telas"). Vetores feitos a partir de `marca/svg/icone.svg` e
+  `marca/svg/logo-horizontal-fundo-escuro.svg`.
 - **White-label:** na tela só aparece o conteúdo. A logo da revenda aparece na abertura, no cadastro e na imagem sem
   internet. Um APK só para todas as revendas: a marca vem do servidor. O contrato: [CONTRATO-APP-MARCA.md](CONTRATO-APP-MARCA.md).
 - Os detalhes de funcionamento herdados (quiosque, vigia, modo avulso, testes na TV box) continuam descritos em
-  [origem-nexa/TELAS-APP.md](origem-nexa/TELAS-APP.md); os nomes de lá mudaram (o app agora é "Telas" e a chave de
+  [origem-nexa/TELAS-APP.md](origem-nexa/TELAS-APP.md); os nomes de lá mudaram (o app agora é "DIGITAL ISP" e a chave de
   ativação é o "código de cadastro").
 
 ## O que mudou em relação ao app de origem

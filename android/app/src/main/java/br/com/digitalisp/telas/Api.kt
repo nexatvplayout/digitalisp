@@ -36,7 +36,7 @@ class Api(base: String, private val token: String?) {
             conn.instanceFollowRedirects = false
             conn.useCaches = false
             conn.setRequestProperty("Accept", "application/json")
-            conn.setRequestProperty("User-Agent", "Telas/" + BuildConfig.VERSION_NAME)
+            conn.setRequestProperty("User-Agent", "DIGITAL-ISP-Telas/" + BuildConfig.VERSION_NAME)
             if (token != null) conn.setRequestProperty("Authorization", "Bearer $token")
             for ((k, v) in headers) conn.setRequestProperty(k, v)
             if (body != null) {
@@ -122,7 +122,7 @@ class Api(base: String, private val token: String?) {
         conn.useCaches = false
         conn.setRequestProperty("Accept", "text/event-stream")
         conn.setRequestProperty("Cache-Control", "no-cache")
-        conn.setRequestProperty("User-Agent", "Telas/" + BuildConfig.VERSION_NAME)
+        conn.setRequestProperty("User-Agent", "DIGITAL-ISP-Telas/" + BuildConfig.VERSION_NAME)
         if (token != null) conn.setRequestProperty("Authorization", "Bearer $token")
         return conn
     }

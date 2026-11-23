@@ -75,7 +75,7 @@ object Kiosk {
         null
     }
 
-    /** Android 10+: a pergunta do sistema "usar o Telas como tela inicial?". Null se o aparelho não tem. */
+    /** Android 10+: a pergunta do sistema "usar o DIGITAL ISP como tela inicial?". Null se o aparelho não tem. */
     fun homeRoleIntent(ctx: Context): Intent? = try {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) null
         else ctx.getSystemService(RoleManager::class.java)

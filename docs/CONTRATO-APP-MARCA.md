@@ -1,8 +1,12 @@
 # Contrato da marca: o app da TV box e o servidor
 
-Versão 1 · 22/11/2026 · lado do app: `android/` (pacote `br.com.digitalisp.telas`, versão 0.1.0).
+Versão 1 · 22/11/2026 (nome e ícone revistos em 23/11/2026) · lado do app: `android/` (pacote `br.com.digitalisp.telas`, versão 0.2.0).
 
-O app da TV box é **white-label**: na tela não aparece nada do app nem do DIGITAL ISP, só o conteúdo do cliente final.
+> **23/11/2026, decisão do dono:** o app passa a se chamar **DIGITAL ISP** no aparelho, com o logo da DIGITAL ISP no ícone
+> e na faixa do Android TV. Sem revenda (antes do cadastro), a abertura e o cadastro mostram o logo DIGITAL ISP. Com
+> revenda, continua valendo a marca dela, como descrito abaixo.
+
+O app da TV box mostra, no conteúdo, só o que é do cliente final.
 A única marca que aparece é a da **revenda** (o provedor), em três lugares: a abertura, a tela de cadastro e a imagem de
 quando não há o que tocar (sem internet). Há **um APK só** para todas as revendas: a marca chega do servidor quando a
 tela é cadastrada e fica guardada no aparelho, para valer sem internet.
@@ -99,16 +103,16 @@ recebem a mesma marca.
 
 | Lugar | Com logo pronta | Com marca, sem logo pronta | Sem marca (neutro, antes do cadastro) |
 |---|---|---|---|
-| **Abertura** (ao abrir o app: ao ligar a TV box, depois de uma queda) | tela cheia na `corFundo`, a logo no meio | tela cheia só na `corFundo` | preto, com um ícone genérico de tela, pequeno |
-| **Cadastro** (tela do código de uso único) e assistente | a logo no topo, numa placa da `corFundo` | o `nome` no topo, na `corDestaque` | o título "Configuração da tela" (o assistente: nada) |
+| **Abertura** (ao abrir o app: ao ligar a TV box, depois de uma queda) | tela cheia na `corFundo`, a logo no meio | tela cheia só na `corFundo` | o logo DIGITAL ISP sobre o azul-marinho `#0A2150` |
+| **Cadastro** (tela do código de uso único) e assistente | a logo no topo, numa placa da `corFundo` | o `nome` no topo, na `corDestaque` | o título "DIGITAL ISP" (o assistente: nada) |
 | **Sem nada para tocar** (sem internet e sem vídeo guardado) | a imagem `offline.image` do cliente, se houver; senão a logo no meio da área do vídeo, sobre a `corFundo` | `offline.image` ou preto | `offline.image` ou preto |
 
 - A abertura fica pelo menos **3 s** e some quando o conteúdo começa, quando o app ainda não foi cadastrado (vai para a
   tela de cadastro) ou, no máximo, em **15 s**.
 - Na imagem sem internet, a **imagem do cliente** (`offline.image` do `/config`) tem prioridade sobre a logo da
   revenda: é conteúdo do cliente. A ordem é: vídeo guardado > `offline.image` > logo da revenda > preto.
-- Em nenhum lugar o app mostra o nome do app nem "DIGITAL ISP". No aparelho, o nome do app é **"Telas"** e o ícone é
-  um desenho neutro de tela, em cinza.
+- No aparelho, o nome do app é **"DIGITAL ISP"** e o ícone e a faixa do Android TV são o logo da DIGITAL ISP
+  (decisão do dono de 23/11/2026). Com revenda, a abertura, o cadastro e a imagem sem internet mostram a marca dela.
 
 ## 5. Exemplos
 
