@@ -159,3 +159,10 @@ tr.tc-sel td { background: var(--c-panel-3); }
 .tc-cand-pv { margin-bottom: 6px; }
 .tc-quick { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
 .tc-quick:empty { display: none; }
+
+/* os quadros dos layouts: tamanho em pixels e a dica da arte */
+.tc-quadros { margin-top: 4px; color: var(--c-dim, #9fb0c8); }
+.tc-onde { border: 1px solid var(--c-line, #24324a); border-left: 3px solid var(--brand-cyan, #2ec5d3); border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; }
+.tc-onde p { margin: 4px 0 0; }
+.warn { color: #f5c55c; }
+.tp-dica { margin: 6px 0 10px; padding: 8px 12px; border-radius: 8px; background: rgba(46, 197, 211, .1); border: 1px solid rgba(46, 197, 211, .35); }

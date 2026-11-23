@@ -9,10 +9,14 @@ import { slidePreview } from '../../shared/tvcorp-previa.js';
 import { templateCatalog, filterTemplates, GROUPS, ALL_SEGMENTS, PIECES } from '../../shared/templates-catalogo.js';
 import { BY_KEY } from '../../shared/funcionalidades.js';
 import { slideEditor, themeOf } from './tvcorp-midias.js';
+import { todosOsQuadros, dicaArte, FORMATO_TXT } from './tvcorp-quadros.js';
+import { D } from './tvcorp-base.js';
 
 const PAGE = 24;
 /** Os filtros ficam entre uma visita e outra à aba (na mesma sessão). */
-const V = { q: '', group: '', segment: '', piece: '', orient: '', shown: PAGE };
+const V = { q: '', group: '', segment: '', piece: '', orient: '', quadro: '', shown: PAGE };
+/** Vindo de uma playlist: os templates no formato do quadro dela. */
+export function templatesPara(orient, q = null) { V.orient = orient || ''; V.quadro = q && q.layout?.id != null ? `l${q.layout.id}:${q.zone.id}` : ''; V.shown = PAGE; }
 
 /** O plano tem o módulo? Sem a lista do plano (servidor antigo, dados de exemplo): tem. */
 export const hasTemplates = () => T.demo || !state.me?.planFeatures || Boolean(state.me.planFeatures.templates);
@@ -54,6 +58,13 @@ export default async function paintTemplates(box, ctx) {
   const segment = el('select', { 'aria-label': 'Segmento' });
   const piece = el('select', { 'aria-label': 'Peça' }, opt('', 'Todas as peças', !V.piece), ...PIECES.map((p) => opt(p.key, p.label, V.piece === p.key)));
   const orient = el('select', { 'aria-label': 'Formato' }, opt('', 'Deitado e em pé', !V.orient), opt('land', 'Deitado (16:9)', V.orient === 'land'), opt('port', 'Em pé (9:16)', V.orient === 'port'));
+  // para o quadro de um layout: escolhe o formato e mostra o tamanho da arte
+  const quadros = todosOsQuadros(D());
+  const quadro = el('select', { 'aria-label': 'Para o quadro' }, opt('', 'Para qualquer quadro', !V.quadro),
+    ...['Layouts da empresa', 'Modelos prontos'].map((g) => { const qs = quadros.filter((q) => q.grupo === g); return qs.length ? el('optgroup', { label: g }, ...qs.map((q) => opt(q.key, `${q.nome} (${q.px.w}×${q.px.h}, ${FORMATO_TXT[q.formato]})`, V.quadro === q.key))) : null; }).filter(Boolean));
+  const dica = el('p', { class: 'small tp-dica', 'aria-live': 'polite' });
+  const paintDica = () => { const q = quadros.find((x) => x.key === V.quadro); dica.hidden = !q; dica.textContent = q ? `${q.nome}. ${q.formato === 'quad' ? 'Quadro quase quadrado: deitados e em pé servem, com corte nas sobras.' : `Mostrando só os templates ${q.formato === 'port' ? 'em pé' : 'deitados'}.`} ${dicaArte(q)}` : ''; };
+  quadro.addEventListener('change', () => { V.quadro = quadro.value; const q = quadros.find((x) => x.key === V.quadro); V.orient = q && q.formato !== 'quad' ? q.formato : ''; orient.value = V.orient; paintDica(); apply(); });
   const fillSegments = () => put(segment, opt('', 'Todos os segmentos', !V.segment), ...segOptions().map((s) => opt(s.key, s.label, V.segment === s.key)));
   fillSegments();
   const count = el('span', { class: 'dim small', role: 'status' });
@@ -77,10 +88,12 @@ export default async function paintTemplates(box, ctx) {
   segment.addEventListener('change', () => { V.segment = segment.value; apply(); });
   piece.addEventListener('change', () => { V.piece = piece.value; apply(); });
   orient.addEventListener('change', () => { V.orient = orient.value; apply(); });
-  const clear = btn('Limpar filtros', () => { Object.assign(V, { q: '', group: '', segment: '', piece: '', orient: '' }); q.value = ''; group.value = ''; piece.value = ''; orient.value = ''; fillSegments(); apply(); }, 'small');
+  paintDica();
+  const clear = btn('Limpar filtros', () => { Object.assign(V, { q: '', group: '', segment: '', piece: '', orient: '', quadro: '' }); q.value = ''; group.value = ''; piece.value = ''; orient.value = ''; quadro.value = ''; paintDica(); fillSegments(); apply(); }, 'small');
   put(box,
     note('Modelos prontos por segmento, em português, para deitado (16:9) e em pé (9:16). Escolha um, troque os textos, os preços e as cores e salve: ele vai para a biblioteca (Mídias) e entra nas playlists como qualquer slide.'),
-    el('div', { class: 'tp-bar' }, q, group, segment, piece, orient, clear),
+    el('div', { class: 'tp-bar' }, q, quadro, group, segment, piece, orient, clear),
+    dica,
     count, grid, more);
   apply();
   // carregar mais ao chegar perto do fim da lista (rolagem leve: só 24 novos por vez)

@@ -6,6 +6,7 @@ import { el, guard, toast, tapi, put, f, opt, table, label, note, empty, btn, bt
 import { layoutPreview, frameOf } from '../../shared/tvcorp-previa.js';
 import { FACTORY_LAYOUTS, FACTORY_LAYOUT, ZONE_KINDS, ZONE_KIND, zoneLabel, LIMITS, checkZones } from './tvcorp-catalogo.js';
 import { themeOf } from './tvcorp-midias.js';
+import { quadroPx, formatoDe, FORMATO_TXT, dicaArte, quadrosDoLayout } from './tvcorp-quadros.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 const sv = (tag, attrs = {}) => { const n = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) if (v != null) n.setAttribute(k, String(v)); return n; };
@@ -32,7 +33,7 @@ export function zoneCanvas(st, onChange) {
       const g = sv('g', { class: `tc-zg k-${z.kind}${st.sel === i ? ' sel' : ''}`, tabindex: '0', role: 'button', 'aria-label': `Zona ${z.id}, ${zoneLabel(z.kind)}: ${z.x}% da esquerda, ${z.y}% do alto, ${z.w}% de largura, ${z.h}% de altura` });
       const body = sv('rect', { class: 'tc-zr', x: x.toFixed(2), y: y.toFixed(2), width: w.toFixed(2), height: h.toFixed(2), 'data-i': i, 'data-m': 'move' });
       const t = sv('text', { class: 'tc-zt', x: (x + 2).toFixed(2), y: (y + 6).toFixed(2) }); t.textContent = `${z.id} · ${zoneLabel(z.kind)}`;
-      const t2 = sv('text', { class: 'tc-zt2', x: (x + 2).toFixed(2), y: (y + 11).toFixed(2) }); t2.textContent = `${z.w}% × ${z.h}%`;
+      const t2 = sv('text', { class: 'tc-zt2', x: (x + 2).toFixed(2), y: (y + 11).toFixed(2) }); const px = quadroPx(st, z); t2.textContent = `${px.w}×${px.h} px`;
       const hd = sv('rect', { class: 'tc-zh', x: (x + w - 4).toFixed(2), y: (y + h - 4).toFixed(2), width: 4, height: 4, 'data-i': i, 'data-m': 'size' });
       g.append(body, t, t2, hd);
       g.addEventListener('focus', () => { if (st.sel !== i) { st.sel = i; onChange('select'); } });
@@ -82,23 +83,26 @@ export function layoutEditor(lay, reload, factoryKey = null, copyOf = null) {
   const paintPv = () => { put(pv, layoutPreview({ orientation: st.orientation, zones: st.zones, name: st.name }, previewOpts(st))); err.textContent = checkZones(st.zones) || ''; };
   function paintRows() {
     const num = (z, k) => el('input', { type: 'number', min: '0', max: '100', step: '1', value: String(z[k]), class: 'tc-num-in', 'aria-label': `${k} da zona ${z.id}`,
-      onchange: (e) => { z[k] = clamp(Math.round(Number(e.target.value) || 0), 0, 100); canvas.paint(); paintPv(); } });
+      onchange: (e) => { z[k] = clamp(Math.round(Number(e.target.value) || 0), 0, 100); canvas.paint(); paintPv(); paintRows(); } });
     // os campos próprios da zona (QR code, texto fixo, título do relógio mundial), como o servidor aceita
     const PARAM = { title: ['Título', 40], text: ['Texto', 120], qr: ['Endereço do QR (https)', 500] };
     const params = (z) => (ZONE_KIND[z.kind]?.params || []).map((k) => el('input', { type: k === 'qr' ? 'url' : 'text', maxlength: String(PARAM[k][1]), value: z[k] || '', placeholder: PARAM[k][0], 'aria-label': `${PARAM[k][0]} da zona ${z.id}`, onchange: (e) => { z[k] = e.target.value.trim(); paintPv(); } }));
-    put(rowsBox, table(['Zona', 'O que mostra', 'Esquerda %', 'Alto %', 'Largura %', 'Altura %', 'Conteúdo fixo', ''], st.zones.map((z, i) => el('tr', { class: st.sel === i ? 'tc-sel' : '' },
+    const tam = (z) => { const px = quadroPx(st, z); return el('td', { class: 'small', title: z.kind === 'playlist' ? dicaArte({ px }) : '' }, el('b', { text: `${px.w}×${px.h}` }), el('div', { class: 'dim', text: FORMATO_TXT[formatoDe(px)] })); };
+    const dicas = st.zones.filter((z) => z.kind === 'playlist').map((z) => note(`Quadro "${z.id}": ${dicaArte({ px: quadroPx(st, z) })}`, 'small'));
+    put(rowsBox, table(['Zona', 'O que mostra', 'Esquerda %', 'Alto %', 'Largura %', 'Altura %', 'Na TV (px)', 'Conteúdo fixo', ''], st.zones.map((z, i) => el('tr', { class: st.sel === i ? 'tc-sel' : '' },
       el('td', {}, el('input', { type: 'text', maxlength: '20', value: z.id, class: 'tc-id-in', 'aria-label': 'Nome da zona', onchange: (e) => { z.id = e.target.value.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 16) || `z${i + 1}`; e.target.value = z.id; canvas.paint(); paintPv(); } })),
       el('td', {}, el('select', { 'aria-label': `Tipo da zona ${z.id}`, onchange: (e) => { z.kind = e.target.value; canvas.paint(); paintRows(); paintPv(); } }, ...ZONE_KINDS.map((k) => opt(k.key, k.label, k.key === z.kind)))),
       el('td', {}, num(z, 'x')), el('td', {}, num(z, 'y')), el('td', {}, num(z, 'w')), el('td', {}, num(z, 'h')),
+      tam(z),
       el('td', {}, ...params(z)),
       el('td', {}, btn('Tirar', () => { st.zones.splice(i, 1); st.sel = Math.max(0, Math.min(st.sel, st.zones.length - 1)); canvas.paint(); paintRows(); paintPv(); }, 'small danger'))))),
     btns(btn('+ Zona', () => {
       if (st.zones.length >= LIMITS.zones) { toast(`No máximo ${LIMITS.zones} zonas por layout.`, true); return; }
       let n = st.zones.length + 1; while (st.zones.some((z) => z.id === `z${n}`)) n++;
       st.zones.push({ id: `z${n}`, kind: 'playlist', x: 0, y: 0, w: 30, h: 30 }); st.sel = st.zones.length - 1; canvas.paint(); paintRows(); paintPv();
-    }, 'small')));
+    }, 'small')), ...dicas);
   }
-  orient.addEventListener('change', () => { st.orientation = orient.value; canvas.paint(); paintPv(); });
+  orient.addEventListener('change', () => { st.orientation = orient.value; canvas.paint(); paintPv(); paintRows(); });
   bg.addEventListener('change', () => { st.background = bg.value; paintPv(); });
   name.addEventListener('input', () => { st.name = name.value; });
   paintRows(); paintPv();
@@ -121,6 +125,7 @@ export function layoutEditor(lay, reload, factoryKey = null, copyOf = null) {
   });
 }
 
+const quadrosTxt = (l) => quadrosDoLayout(l).map((q) => `${q.zone.id}: ${q.px.w}×${q.px.h} (${FORMATO_TXT[q.formato]})`).join(' · ');
 export default async function paintLayouts(box, ctx) {
   const d = D(); const reload = ctx.reload;
   const usedBy = (id) => d.schedules.filter((s) => s.layoutId === id).map((s) => s.name);
@@ -129,6 +134,7 @@ export default async function paintLayouts(box, ctx) {
     el('div', { class: 'tc-lcard-b' },
       el('b', { text: l.name }),
       el('div', { class: 'dim small', text: `${l.orientation === 'port' ? 'Em pé' : 'Deitada'} · ${(l.zones || []).length} zona(s)${l.updatedAt ? ` · ${when(l.updatedAt)}` : ''}` }),
+      quadrosTxt(l) ? el('div', { class: 'small tc-quadros', text: `Quadros das playlists: ${quadrosTxt(l)}` }) : null,
       el('div', {}, ...(usedBy(l.id).length ? usedBy(l.id).map((n) => chip(n)) : [el('span', { class: 'dim small', text: 'em nenhuma grade' })])),
       btns(btn('Editar', () => layoutEditor(l, reload), 'small'), btn('Duplicar', () => layoutEditor(null, reload, null, l), 'small'),
         btn('Apagar', guard(async () => { if (usedBy(l.id).length) { toast(`Este layout está em ${usedBy(l.id).length} grade(s). Troque o layout delas antes de apagar.`, true); return; } if (!confirm(`Apagar o layout "${l.name}"?`)) return; await tapi(`/api/tvcorp/layouts/${l.id}`, { method: 'DELETE' }); await reload(); }), 'small danger')))));
@@ -140,5 +146,6 @@ export default async function paintLayouts(box, ctx) {
     el('div', { class: 'tc-lgrid' }, ...FACTORY_LAYOUTS.map((l) => el('div', { class: 'tc-lcard' },
       layoutPreview(l, { ...previewOpts(l), labels: false }),
       el('div', { class: 'tc-lcard-b' }, el('b', { text: l.label }), el('div', { class: 'dim small', text: l.desc }),
+        quadrosTxt(l) ? el('div', { class: 'small tc-quadros', text: `Quadros das playlists: ${quadrosTxt(l)}` }) : null,
         btns(btn('Usar este modelo', () => layoutEditor(null, reload, l.key), 'small primary')))))));
 }

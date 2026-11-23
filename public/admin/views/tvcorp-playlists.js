@@ -8,6 +8,9 @@ import {
 import { itemPreview } from '../../shared/tvcorp-previa.js';
 import { ITEM_KINDS, ITEM_KIND, LIMITS, WEEK_SHORT, minToHm, hmToMin, daysOf, daysText, kpiBand, shortName, widgetLabel, feedKindLabel } from './tvcorp-catalogo.js';
 import { themeOf, slideEditor } from './tvcorp-midias.js';
+import { quadrosDaPlaylist, formatoDaMidia, combina, dicaArte, FORMATO_TXT } from './tvcorp-quadros.js';
+import { templatesPara } from './tvcorp-templates.js';
+import { SLIDE_TEMPLATE } from './tvcorp-catalogo.js';
 
 const officeName = (id) => (id == null ? 'Empresa toda' : D().offices.find((o) => o.id === id)?.name || `#${id}`);
 const secs = (n) => { const m = Math.floor(n / 60); const s = n % 60; return m ? `${m} min${s ? ` ${s} s` : ''}` : `${s} s`; };
@@ -83,6 +86,16 @@ async function editItems(pl, reload) {
   const [full, src] = await Promise.all([tapi(`/api/tvcorp/playlists/${pl.id}`), sources()]);
   let items = (full?.items || []).map((x) => ({ ...x, params: x.params || {} }));
   let sel = items.length ? 0 : -1; let dragFrom = null;
+  const quadros = quadrosDaPlaylist(D(), pl.id);
+  const formatos = [...new Set(quadros.map((q) => q.formato))];
+  // o formato pedido pelos quadros (um só formato: ele; quase quadrado ou mistura: nenhum filtro)
+  const alvo = formatos.length === 1 && formatos[0] !== 'quad' ? formatos[0] : null;
+  const serve = (m) => quadros.every((q) => combina(formatoDaMidia(m), q.formato));
+  const ondePassa = quadros.length
+    ? el('div', { class: 'tc-onde' }, el('b', { text: 'Onde esta playlist passa' }),
+      ...quadros.map((q) => note(`${q.grade} · ${q.nome}. ${dicaArte(q)}`, 'small')),
+      formatos.length > 1 ? note('Atenção: ela passa em quadros de formatos diferentes. O que combina com um fica cortado ou com sobras no outro; o ideal é uma playlist para cada formato.', 'small warn') : null)
+    : note('Esta playlist ainda não está em nenhuma grade: quando ela entrar num layout, aqui aparece o tamanho do quadro e as artes que combinam.', 'small');
   const list = el('ol', { class: 'tc-items' });
   const pv = el('div', { class: 'tc-item-pv' });
   const total = el('span', { class: 'dim small' });
@@ -133,7 +146,7 @@ async function editItems(pl, reload) {
   const quick = el('div', { class: 'tc-quick' });
   const candPv = el('div', { class: 'tc-item-pv tc-cand-pv' });
   const candLabel = label('Como vai aparecer');
-  const poolOf = (k) => (k.pick === 'media' ? src.media.map((m) => [m.id, `${m.kind === 'slide' ? 'Slide' : 'Imagem'}: ${m.title}${m.status === 'pending' ? ' (aguardando aprovação)' : ''}`])
+  const poolOf = (k) => (k.pick === 'media' ? [...src.media].sort((a, b) => Number(serve(b)) - Number(serve(a))).map((m) => [m.id, `${serve(m) ? '' : '⚠ '}${m.kind === 'slide' ? 'Slide' : 'Imagem'}: ${m.title}${formatoDaMidia(m) ? ` (${formatoDaMidia(m) === 'port' ? 'em pé' : formatoDaMidia(m) === 'land' ? 'deitado' : 'quadrado'})` : ''}${serve(m) ? '' : ' · formato diferente do quadro'}${m.status === 'pending' ? ' (aguardando aprovação)' : ''}`])
     : k.pick === 'post' ? src.posts.filter((p) => p.status !== 'rejected').map((p) => [p.id, `${p.title} (${p.situation || 'em vigor'})`]) : k.pick === 'kpi' ? src.kpis.map((x) => [x.id, x.name])
       : k.pick === 'feed' ? src.feeds.filter((x) => x.kind === k.feedKind).map((x) => [x.id, x.name]) : k.pick === 'widget' ? src.widgets.map((x) => [x.id, `${widgetLabel(x.kind)}: ${x.name}`]) : []);
   /** O item que entraria agora (o tipo e o registro escolhidos). */
@@ -145,7 +158,9 @@ async function editItems(pl, reload) {
     if (seq !== candSeq) return;
     // sem nada escolhido (lista vazia), a prévia não ocupa espaço: a criação rápida fica logo abaixo do tipo
     candPv.hidden = !node; candLabel.hidden = !node;
-    put(candPv, node);
+    const m = it?.refKind === 'media' ? src.media.find((x) => x.id === it.refId) : null;
+    const aviso = m && !serve(m) ? note(`Este item é ${formatoDaMidia(m) === 'port' ? 'em pé' : 'deitado'} e o quadro é ${quadros.map((q) => FORMATO_TXT[q.formato]).join(' / ')}: na TV ele fica cortado ou com sobras. Prefira um no formato do quadro.`, 'small warn') : null;
+    put(candPv, node, aviso);
   });
   let paintPick = () => {};
   /** Depois de criar algo aqui mesmo: relê as listas e já deixa o novo escolhido. */
@@ -166,7 +181,9 @@ async function editItems(pl, reload) {
     const box = [];
     if (k.pick === 'media') {
       const images = src.media.filter((m) => m.kind === 'image');
-      box.push(btns(btn('+ Criar um slide agora', () => slideEditor(null, images, async () => created(null)), 'small'), btn('Ver os templates prontos', () => { location.hash = '#tvcorp/templates'; }, 'small')),
+      const preset = alvo === 'port' ? { template: 'comunicado', fields: { ...(SLIDE_TEMPLATE.comunicado?.sample || {}), orient: 'port' } } : {};
+      box.push(btns(btn(`+ Criar um slide agora${alvo ? ` (${alvo === 'port' ? 'em pé' : 'deitado'})` : ''}`, () => slideEditor(null, images, async () => created(null), preset), 'small'),
+        btn(alvo ? `Ver os templates ${alvo === 'port' ? 'em pé' : 'deitados'}` : 'Ver os templates prontos', () => { templatesPara(alvo, quadros[0] || null); location.hash = '#tvcorp/templates'; }, 'small')),
         note('Os templates abrem em outra tela: salve a playlist antes de ir.'));
     } else if (k.pick === 'feed' && k.feedKind === 'rss') {
       const free = [['agencia-brasil', 'Agência Brasil'], ['agencia-senado', 'Agência Senado'], ['agencia-camara', 'Agência Câmara'], ['gov-br', 'gov.br']]
@@ -224,10 +241,10 @@ async function editItems(pl, reload) {
     sel = items.length - 1; paint();
   };
   paint();
-  dialog(`Itens da playlist · ${pl.name}`, el('div', { class: 'tc-two' },
+  dialog(`Itens da playlist · ${pl.name}`, el('div', {}, ondePassa, el('div', { class: 'tc-two' },
     el('div', {}, total, list, note('Arraste pela alça (⋮⋮) ou use as setas. Clique no nome para ver a prévia.')),
     el('div', {}, label('Acrescentar'), el('div', { class: 'pf-grid' }, f('Tipo', kind), pick, range, pickHint, quick, candLabel, candPv, btns(btn('+ Acrescentar', add, 'primary'))),
-      label('Prévia do item marcado na lista'), pv)), {
+      label('Prévia do item marcado na lista'), pv))), {
     wide: true, saveLabel: 'Salvar a playlist',
     save: async () => {
       const body = { items: items.map(({ refKind, refId, params, seconds, days, timeFrom, timeTo, validFrom, validTo }) => ({ refKind, refId, params, seconds: Number(seconds) || LIMITS.secondsDefault, days: days || '', timeFrom: timeFrom ?? null, timeTo: timeTo ?? null, validFrom: validFrom || null, validTo: validTo || null })) };
