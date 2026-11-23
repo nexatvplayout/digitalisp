@@ -473,3 +473,23 @@ test('clima: art (deitada) e artPort (em pé) vão no pacote; o tempo vem de wea
   assert.equal(i.cond, 'storm');
   assert.equal(i.artPort.sha256, H('b'));
 });
+
+test('foto do clima: o nome no pacote pelo tempo, forma e noite (a noturna só se estiver no pacote)', () => {
+  const artes = ['clima-rain-land', 'clima-rain-port', 'clima-rain-noite-port'];
+  assert.equal(N.nomeFotoClima('rain', true, false, artes), 'clima-rain-port');
+  assert.equal(N.nomeFotoClima('rain', true, true, artes), 'clima-rain-noite-port');
+  assert.equal(N.nomeFotoClima('rain', false, true, artes), 'clima-rain-land'); // sem a noturna deitada: a do dia
+  assert.equal(N.nomeFotoClima('storm', false, false, artes), null);
+  // 18h e 5h59 são noite; 6h e 17h59 são dia (hora de Brasília)
+  const em = (h) => Date.parse(`2026-11-23T${h}:00-03:00`);
+  assert.deepEqual(['18:00', '05:59', '06:00', '17:59'].map((h) => N.ehNoite(em(h), 'America/Sao_Paulo')), [true, true, false, false]);
+});
+
+test('foto do clima que já vem no pacote não é baixada de novo', () => {
+  N.definirArtes(['clima-rain-land', 'clima-rain-port']);
+  const w = { place: { city: 'X' }, icon: 'rain', now: { temp: 20 },
+    art: { url: 'https://x/tvcorp/arte/clima-rain-land.jpg', sha256: H('a'), bytes: 9 }, artPort: { url: 'https://x/tvcorp/arte/clima-rain-noite-port.jpg?v=2', sha256: H('b'), bytes: 9 } };
+  const p = N.lerConfig(cfg('r', [bloco('a', 0, 1440, [])], { weather: w }));
+  assert.deepEqual(N.arquivosDoPacote(p).map((f) => f.sha256), [H('b')]); // a noturna ainda não está no pacote
+  N.definirArtes(null);
+});

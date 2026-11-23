@@ -12,7 +12,7 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  var VERSAO = '1.0.23';
+  var VERSAO = '1.0.24';
   var TZ_PADRAO = 'America/Sao_Paulo';
   var SHA = /^[0-9a-f]{64}$/;
   var DIA = /^\d{4}-\d{2}-\d{2}$/;
@@ -144,6 +144,12 @@
   var artesNoPacote = null;
   function definirArtes(lista) { artesNoPacote = Array.isArray(lista) ? lista.slice() : null; }
 
+  /** A foto (weather.art e afins) que já vem no pacote do app, pelo nome do arquivo: não é baixada de novo. */
+  function fotoNoPacote(a) {
+    var nome = String(a && a.url || '').split('?')[0].split('/').pop().replace(/\.[^.]+$/, '');
+    return !!(nome && artesNoPacote && artesNoPacote.indexOf(nome) >= 0);
+  }
+
   function lerItem(o, teste) {
     if (!o || typeof o !== 'object') return null;
     var id = str(o, 'id');
@@ -193,7 +199,7 @@
     } else if (kind === 'weather') {
       // as fotos do tempo (fundo do item de clima; deitada e em pé): opcionais, não seguram a troca
       [o.art, o.artPort].forEach(function (a) {
-        var fw = a && typeof a === 'object' ? arquivo(a, teste) : null;
+        var fw = a && typeof a === 'object' && !fotoNoPacote(a) ? arquivo(a, teste) : null;
         if (fw) { fw.opcional = true; it.files.push(fw); }
       });
     } else if (kind === 'web') {
@@ -406,6 +412,25 @@
     return o;
   }
 
+  /** Noite para a foto do clima: das 18h às 5h59 na hora da tela. */
+  function ehNoite(agoraMs, tz) {
+    var h = Math.floor(horaLocal(agoraMs, tz || TZ_PADRAO).minuto / 60);
+    return h >= 18 || h < 6;
+  }
+
+  /**
+   * O nome da foto do tempo que está no pacote (sem extensão): clima-<tempo>[-noite]-<port|land>; a noturna só se ela
+   * estiver no pacote (senão, a do dia). null: não há foto desse tempo no pacote.
+   */
+  function nomeFotoClima(cond, emPe, noite, artes) {
+    var c = ['clear', 'partly', 'cloudy', 'fog', 'rain', 'storm'].indexOf(cond) >= 0 ? cond : 'partly';
+    var forma = emPe ? 'port' : 'land';
+    var lista = artes || [];
+    if (noite && lista.indexOf('clima-' + c + '-noite-' + forma) >= 0) return 'clima-' + c + '-noite-' + forma;
+    if (lista.indexOf('clima-' + c + '-' + forma) >= 0) return 'clima-' + c + '-' + forma;
+    return null;
+  }
+
   // as zonas que só mostram o que vier nos itens (sem item, ficam vazias)
   var SO_COM_ITENS = ['playlist', 'widget', 'news', 'quotes', 'countdown', 'safety', 'worldclock', 'queue'];
 
@@ -503,7 +528,7 @@
     // as fotos do tempo (weather.art deitada, weather.artPort em pé): a tela usa a da forma da zona
     var climaArte = [];
     if (clima) [clima.art, clima.artPort].forEach(function (a) {
-      var fa = a && typeof a === 'object' ? arquivo(a, teste) : null;
+      var fa = a && typeof a === 'object' && !fotoNoPacote(a) ? arquivo(a, teste) : null;
       if (fa) { fa.opcional = true; climaArte.push(fa); }
     });
     return {
@@ -873,7 +898,7 @@
     contarExibicao: contarExibicao, loteExibicao: loteExibicao, baixarLote: baixarLote, corpoSinal: corpoSinal,
     espera: espera, camadaSemConteudo: camadaSemConteudo, linhaDiagnostico: linhaDiagnostico,
     nivelAlerta: nivelAlerta, cabecaAlerta: cabecaAlerta, definirArtes: definirArtes, lerAudio: lerAudio, esperaRadio: esperaRadio,
-    lerConjunto: lerConjunto, janelaConjunto: janelaConjunto, retanguloCobrir: retanguloCobrir, zonasParaTela: zonasParaTela, climaParaItem: climaParaItem, posicaoSincronizada: posicaoSincronizada, retanguloNaTela: retanguloNaTela,
+    lerConjunto: lerConjunto, janelaConjunto: janelaConjunto, retanguloCobrir: retanguloCobrir, zonasParaTela: zonasParaTela, climaParaItem: climaParaItem, ehNoite: ehNoite, nomeFotoClima: nomeFotoClima, posicaoSincronizada: posicaoSincronizada, retanguloNaTela: retanguloNaTela,
     vigiaNovo: vigiaNovo, vigiaAoVivo: vigiaAoVivo, vigiaFalhou: vigiaFalhou, esperaAoVivo: esperaAoVivo
   };
 });
