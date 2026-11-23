@@ -128,7 +128,10 @@ function blocoTipos() {
   const zones = lateral
     ? [{ id: 'main', x: 0, y: 0, w: 75, h: 100, kind: midia['video-teste.mp4'] ? 'video' : 'playlist' }, { id: 'right', x: 75, y: 0, w: 25, h: 100, kind: 'playlist' }]
     : [{ id: 'right', x: 0, y: 0, w: 100, h: 100, kind: 'playlist' }];
-  return { id: 'grade-tipos', layout: { orientation: 'land', background: '#0b1220', zones }, days: [], from: 0, to: 1440,
+  // a rádio de fundo (/teste/radio?ligar=1): só no layout sem vídeo; o "stream" é o áudio do vídeo de teste
+  const audio = est.radio && !zones.some((z) => z.kind === 'video') && midia['video-teste.mp4']
+    ? { kind: 'radio', id: '1', name: 'Rádio de teste', url: `${est.base || ''}/midia/video-teste.mp4`, codec: 'AAC', bitrate: 128, volume: 70 } : undefined;
+  return { id: 'grade-tipos', layout: { orientation: 'land', background: '#0b1220', zones, ...(audio ? { audio } : {}) }, days: [], from: 0, to: 1440,
     // a hora dos dados presa na hora cheia: senão o rev mudaria a cada sinal de vida (o servidor real segura 15 min)
     zones: { right: itensTipos(arquivo, Math.floor(Date.now() / 3600000) * 3600000), main: [] } };
 }
@@ -399,6 +402,7 @@ function controle(req, res, url) {
     est.versao++; registrar('conjunto: ' + (est.conjunto ? `${est.conjunto.mode} ${cols}×${rows} pos ${pos}` : 'desligado'));
     return volta();
   }
+  if (p === '/teste/radio') { est.radio = q.get('ligar') === '1'; est.base = `http://${req.headers.host}`; est.versao++; return volta(); }
   if (p === '/teste/faixa') { est.faixaEstilo = q.get('estilo') === '1'; est.versao++; return volta(); }
   if (p === '/teste/alerta') {
     // como o servidor real manda (contrato §9): level 'info' | 'warn' | 'critical', header opcional

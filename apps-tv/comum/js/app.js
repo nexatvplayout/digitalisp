@@ -483,6 +483,7 @@
         ['Programação', est.atual ? est.atual.rev : '—'],
         ['Chegando', est.baixando ? est.baixando.files + ' arquivo(s), ' + Math.ceil(est.baixando.bytes / 1048576) + ' MB' : '—'],
         ['Bloco agora', est.bloco || '(padrão)'],
+        ['Rádio', ctxTela.radio && ctxTela.radio.atual() ? 'tocando ' + (ctxTela.radio.atual().nome || ctxTela.radio.atual().url) : '—'],
         ['Ao vivo', ctxTela.aoVivo ? ctxTela.aoVivo.motor + (ctxTela.aoVivo.ativo() ? ' · tocando ' + ctxTela.aoVivo.url() : ' · parado') : '—'],
         ['Espaço', esp ? Math.round(esp.used / 1048576) + ' MB usados, ' + Math.round(esp.free / 1048576) + ' MB livres' : 'a TV não informa'],
         ['Hora', new Date(agora()).toLocaleString('pt-BR')],
@@ -519,6 +520,12 @@
       volume: function () { return ctxTela.volume; },
       agora: function () { return Date.now(); },
       aoErro: function (m) { erro('ao vivo (' + ctxTela.aoVivo.motor + '): ' + m); }
+    });
+    // a rádio de fundo do layout sem vídeo (layout.audio)
+    ctxTela.radio = raiz.TelasRadio.criar({
+      mudo: function () { return ctxTela.mudo; },
+      volume: function () { return ctxTela.volume; },
+      aoErro: function (m) { erro(m); }
     });
     telaObj = raiz.TelasTela.criar(conteudo, ctxTela);
     document.addEventListener('keydown', teclas);

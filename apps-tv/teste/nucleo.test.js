@@ -397,3 +397,16 @@ test('alerta: o nível em texto (info, warn, critical) vira 0, 1 e 2; a linha de
   assert.equal(N.cabecaAlerta({ level: 'critical', header: 'EXTREMO · DEFESA CIVIL' }), 'EXTREMO · DEFESA CIVIL');
   assert.equal(N.cabecaAlerta({ level: 'info', test: true }), 'TESTE DO SISTEMA');
 });
+
+test('rádio de fundo: layout.audio só em layout sem vídeo, http ou https, volume de 10 a 100', () => {
+  const lay = (zones, audio) => ({ id: 'r', layout: { zones, audio }, days: [], from: 0, to: 1440, zones: {} });
+  const z = (id, kind) => ({ id, kind, x: 0, y: 0, w: 50, h: 100 });
+  const radio = { kind: 'radio', id: '9', name: 'Rádio Teste FM', url: 'http://stream.exemplo.com:8000/radio.mp3', codec: 'MP3', bitrate: 128, volume: 140 };
+  const p = N.lerConfig(cfg('r', [lay([z('a', 'playlist')], radio)]));
+  assert.deepEqual(p.blocos[0].layout.audio, { id: '9', nome: 'Rádio Teste FM', url: 'http://stream.exemplo.com:8000/radio.mp3', codec: 'MP3', volume: 100 });
+  assert.equal(N.lerConfig(cfg('r', [lay([z('a', 'video')], radio)])).blocos[0].layout.audio, null);
+  assert.equal(N.lerAudio({ kind: 'radio', url: 'ftp://x' }), null);
+  assert.equal(N.lerAudio({ kind: 'tv', url: 'https://x' }), null);
+  assert.equal(N.lerAudio({ kind: 'radio', url: 'https://x/a.m3u8', volume: 3 }).volume, 10);
+  assert.deepEqual([0, 1, 2, 3, 4, 5, 9].map(N.esperaRadio), [3, 6, 12, 24, 48, 60, 60]);
+});

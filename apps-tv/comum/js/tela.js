@@ -314,9 +314,12 @@
           var v = novoVideo();
           // vídeo próprio do cliente: sound false → mudo; true → o som da tela (mudo/volume dela) continua valendo
           if (it.raw && it.raw.sound === false) v.muted = true;
+          // vídeo com som: a rádio de fundo fica abafada enquanto ele toca
+          var comSom = !v.muted && ctx.radio;
+          if (comSom) ctx.radio.abafar(true);
           if (it.contain || (it.raw && it.raw.fit === 'contain')) v.className += ' contain';
           var fim = false;
-          var seguir = function () { if (!fim) { fim = true; depois(); } };
+          var seguir = function () { if (!fim) { fim = true; if (comSom) ctx.radio.abafar(false); depois(); } };
           v.onended = seguir;
           v.onerror = seguir;
           v.src = u;
@@ -570,6 +573,12 @@
       desenharBloco(prog, bloco);
       // o bloco novo não tem zona de vídeo (ou não tem ao vivo): o ao vivo para
       if (!usouVivo && ctx.aoVivo) ctx.aoVivo.parar();
+      // a rádio de fundo: a do layout no ar (a mesma continua tocando); layout sem rádio, ou com vídeo, para
+      if (ctx.radio) {
+        ctx.radio.abafar(false);
+        var audio = bloco && bloco.layout && bloco.layout.audio;
+        if (audio) ctx.radio.tocar(audio); else ctx.radio.parar();
+      }
     }
 
     function desenharBloco(prog, bloco) {
@@ -622,7 +631,7 @@
     return {
       mostrar: mostrar,
       // limpar por fora (tela revogada, TV desligada pelo horário, conteúdo apagado) para também o ao vivo
-      limpar: function () { limpar(); if (ctx.aoVivo) ctx.aoVivo.parar(); },
+      limpar: function () { limpar(); if (ctx.aoVivo) ctx.aoVivo.parar(); if (ctx.radio) ctx.radio.parar(); },
       atual: function () { return atual; }
     };
   }

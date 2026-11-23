@@ -12,7 +12,7 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  var VERSAO = '1.0.12';
+  var VERSAO = '1.0.13';
   var TZ_PADRAO = 'America/Sao_Paulo';
   var SHA = /^[0-9a-f]{64}$/;
   var DIA = /^\d{4}-\d{2}-\d{2}$/;
@@ -252,6 +252,21 @@
       title: umaLinha(str(o, 'title') || '', TETO.titulo), text: limpar(str(o, 'text') || '', TETO.texto) };
   }
 
+  /**
+   * A rádio de fundo do layout (layout.audio, só em layout sem zona de vídeo): { nome, url, codec, volume (10–100) } ou
+   * null. Muitas rádios são http: aceita http e https (o app do pacote não tem a regra de conteúdo misto da página).
+   */
+  /** Quanto esperar para reconectar a rádio que caiu: 3, 6, 12, 24, 48 e 60 s (no máximo). */
+  function esperaRadio(rodada) { return Math.min(60, 3 * Math.pow(2, Math.max(0, rodada | 0))); }
+
+  function lerAudio(a) {
+    if (!a || typeof a !== 'object' || str(a, 'kind') !== 'radio') return null;
+    var url = str(a, 'url');
+    if (!url || !/^https?:\/\/[^\s]+$/i.test(url) || url.length > 1000) return null;
+    return { id: a.id != null ? String(a.id).slice(0, 64) : '', nome: umaLinha(str(a, 'name') || '', 80), url: url,
+      codec: umaLinha(str(a, 'codec') || '', 20), volume: Math.max(10, Math.min(100, Math.round(num(a, 'volume', 100)))) };
+  }
+
   function lerBloco(o, teste) {
     if (!o || typeof o !== 'object') return null;
     var id = str(o, 'id');
@@ -281,7 +296,8 @@
     var to = Math.max(0, Math.min(1440, Math.round(num(o, 'to', 1440))));
     return {
       id: id.slice(0, 64),
-      layout: { retrato: str(lay, 'orientation') === 'port', fundo: cores(str(lay, 'background')), zonas: zonas },
+      layout: { retrato: str(lay, 'orientation') === 'port', fundo: cores(str(lay, 'background')), zonas: zonas,
+        audio: video ? null : lerAudio(lay.audio) },
       days: dias(o.days), from: from, to: to,
       dateFrom: DIA.test(str(o, 'dateFrom') || '') ? str(o, 'dateFrom') : null,
       dateTo: DIA.test(str(o, 'dateTo') || '') ? str(o, 'dateTo') : null,
@@ -770,7 +786,7 @@
     normalizarChave: normalizarChave, editarChave: editarChave,
     contarExibicao: contarExibicao, loteExibicao: loteExibicao, baixarLote: baixarLote, corpoSinal: corpoSinal,
     espera: espera, camadaSemConteudo: camadaSemConteudo, linhaDiagnostico: linhaDiagnostico,
-    nivelAlerta: nivelAlerta, cabecaAlerta: cabecaAlerta, definirArtes: definirArtes,
+    nivelAlerta: nivelAlerta, cabecaAlerta: cabecaAlerta, definirArtes: definirArtes, lerAudio: lerAudio, esperaRadio: esperaRadio,
     lerConjunto: lerConjunto, janelaConjunto: janelaConjunto, posicaoSincronizada: posicaoSincronizada, retanguloNaTela: retanguloNaTela,
     vigiaNovo: vigiaNovo, vigiaAoVivo: vigiaAoVivo, vigiaFalhou: vigiaFalhou, esperaAoVivo: esperaAoVivo
   };
