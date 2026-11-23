@@ -31,6 +31,23 @@ const s = (tag, attrs = {}, ...kids) => {
   for (const k of kids) if (k != null) n.append(k);
   return n;
 };
+/**
+ * O desenho do tempo (cond do servidor: clear, partly, cloudy, fog, rain, storm, unknown): sol, sol entre nuvens, nuvem,
+ * neblina, chuva e tempestade, em SVG (as cores por atributo). night: lua no lugar do sol.
+ */
+export function weatherIcon(cond = 'partly', cls = 'tvc-wx-ico') {
+  const sun = (cx, cy, r) => s('g', {}, s('circle', { cx, cy, r, fill: '#fbbf24' }), ...Array.from({ length: 8 }, (_, i) => { const a = (i * Math.PI) / 4; return s('line', { x1: cx + Math.cos(a) * (r + 3), y1: cy + Math.sin(a) * (r + 3), x2: cx + Math.cos(a) * (r + 8), y2: cy + Math.sin(a) * (r + 8), stroke: '#fbbf24', 'stroke-width': 3, 'stroke-linecap': 'round' }); }));
+  const cloud = (fill = '#e2e8f0', dy = 0) => s('path', { d: `M18 ${46 + dy} a12 12 0 0 1 2-24 a16 16 0 0 1 30-4 a11 11 0 0 1 10 21 z`, fill, transform: `translate(0 ${-dy})` });
+  const kids = {
+    clear: [sun(32, 32, 13)],
+    partly: [sun(24, 22, 10), cloud('#e2e8f0', -4)],
+    cloudy: [s('path', { d: 'M26 34 a10 10 0 0 1 2-20 a13 13 0 0 1 24-3 a9 9 0 0 1 8 17 z', fill: '#94a3b8' }), cloud('#e2e8f0')],
+    fog: [cloud('#cbd5e1', 6), ...[46, 53, 60].map((y) => s('line', { x1: 12, y1: y, x2: 54, y2: y, stroke: '#cbd5e1', 'stroke-width': 3, 'stroke-linecap': 'round' }))],
+    rain: [cloud('#cbd5e1', 8), ...[18, 30, 42].map((x) => s('line', { x1: x, y1: 46, x2: x - 4, y2: 58, stroke: '#38bdf8', 'stroke-width': 3, 'stroke-linecap': 'round' }))],
+    storm: [cloud('#94a3b8', 8), s('path', { d: 'M34 42 L26 54 L32 54 L28 63 L40 49 L34 49 L38 42 Z', fill: '#facc15' }), s('line', { x1: 18, y1: 46, x2: 15, y2: 55, stroke: '#38bdf8', 'stroke-width': 3, 'stroke-linecap': 'round' })],
+  };
+  return s('svg', { class: cls, viewBox: '0 0 64 64', 'aria-hidden': 'true' }, ...(kids[cond] || kids.partly));
+}
 /** As cores do tema (as mesmas chaves de THEME_COLORS em telas-tipos.js); hex desconhecido = azul. */
 const THEME_KEYS = { '#1d4ed8': 'azul', '#15803d': 'verde', '#0f766e': 'petroleo', '#9f1239': 'vinho', '#6d28d9': 'roxo', '#c2410c': 'laranja', '#334155': 'grafite' };
 export const themeClass = (theme) => `th-${THEME_KEYS[String(theme?.color || '').toLowerCase()] || 'azul'}${theme?.mode === 'light' ? ' th-light' : ''}`;
@@ -273,8 +290,8 @@ export function itemPreview(it = {}, opts = {}) {
       const t = (v) => (Number.isFinite(Number(v)) ? `${Math.round(Number(v))}°` : '—');
       const days = (it.days || []).slice(0, 4);
       return box('tvc-it-wx', h('div', 'tvc-it-t', it.title || [it.city, it.uf].filter(Boolean).join(' · ') || 'Clima'),
-        h('div', 'tvc-wx-now', h('b', '', it.tempC != null ? t(it.tempC) : `${t(it.min)} / ${t(it.max)}`), h('span', '', it.text || '')),
-        days.length ? h('ul', 'tvc-wx-days', days.map((d) => h('li', '', h('b', '', String(d.weekday || brDate(d.date).slice(0, 5))), h('span', '', `${t(d.min)} / ${t(d.max)}`), d.text ? h('small', '', d.text) : null))) : null,
+        h('div', 'tvc-wx-now', weatherIcon(it.cond || 'partly'), h('b', '', it.tempC != null ? t(it.tempC) : `${t(it.min)} / ${t(it.max)}`), h('span', '', it.text || '')),
+        days.length ? h('ul', 'tvc-wx-days', days.map((d) => h('li', '', weatherIcon(d.cond || 'partly', 'tvc-wx-ico-s'), h('b', '', String(d.weekday || brDate(d.date).slice(0, 5))), h('span', '', `${t(d.min)} / ${t(d.max)}`), d.text ? h('small', '', d.text) : null))) : null,
         it.source ? h('div', 'tvc-it-credit', `Fonte: ${it.source}`) : null);
     }
     case 'clock': {
@@ -372,7 +389,13 @@ function zoneContent(zone, opts) {
       return h('div', `tvc-z-ticker ${th}${s?.bold === false ? ' tvc-tk-leve' : ''}${s?.italic ? ' tvc-tk-it' : ''}`, s?.label ? h('b', '', s.label) : null, h('span', '', t.length ? t.join(sep ? `  ${sep}  ` : '   ') : 'Texto rolante'));
     }
     case 'clock': return h('div', `tvc-z-clock ${th}`, h('b', '', opts.clock || nowClock()), h('span', '', opts.date || new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })));
-    case 'weather': return h('div', `tvc-z-weather ${th}`, h('b', '', '27°'), h('span', '', opts.city || 'Clima da unidade'));
+    case 'weather': {
+      // o clima de verdade (opts.weather: o mesmo bloco que a TV recebe) ou o exemplo
+      const w = opts.weather || null;
+      const temp = w?.now?.temp ?? w?.today?.max ?? null;
+      return h('div', `tvc-z-weather ${th}`, weatherIcon(w?.now?.cond || w?.today?.cond || 'partly'), h('b', '', temp != null ? `${Math.round(temp)}°` : '27°'),
+        h('span', '', w ? (w.now?.text || w.today?.text || w.place?.city || 'Clima') : opts.city || 'Clima da unidade'));
+    }
     // o texto fixo da zona (boas-vindas, horário, Wi-Fi): o título e a frase que o cliente escreveu
     case 'text': return zone.title || zone.text ? h('div', `tvc-it tvc-it-text ${th}`, zone.title ? h('div', 'tvc-it-t', zone.title) : null, zone.text ? h('div', 'tvc-it-x', zone.text) : null) : h('div', `tvc-z-empty ${th}`, 'Texto');
     case 'qr': return h('div', `tvc-z-qr ${th}`, opts.qr ? qrSvg(opts.qr, 'tvc-z-qrc') : h('div', 'tvc-z-qrph'), h('span', '', opts.qrLabel || 'Aponte a câmera'));

@@ -1054,7 +1054,7 @@ export function createTvcorpDados({
           const fileOf = (i) => {
             if (!newsImageUrl || !i.img || !/^[0-9a-f]{64}$/.test(i.img.sha256 || '')) return null;
             const url = newsImageUrl(i.img.file);
-            return /^https:\/\//.test(url || '') ? { url, sha256: i.img.sha256, bytes: Number(i.img.bytes) } : null;
+            return /^(?:https:\/\/|\/tvcorp\/noticia\/)/.test(url || '') ? { url, sha256: i.img.sha256, bytes: Number(i.img.bytes) } : null;
           };
           return c.items.slice(0, 15).map((i, k) => {
             const img = fileOf(i);

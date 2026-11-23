@@ -73,6 +73,7 @@ export function createTvcorp({
   forget = () => {}, audit = async () => {}, ipOf = (req) => req.ip, now = () => Date.now(), timers = true, artFile = null,
   audioOf = null, // (tenantId, layoutId) -> o bloco layout.audio (a rádio de fundo) ou null
   storageCheck = null, // (tenantId, bytes): o 402 do armazenamento do plano antes de aceitar um vídeo
+  originOf = null, // (req) -> https://site: completa os endereços relativos dos itens (a foto da notícia)
   widgetFallback = null, // (tenantId, sample) -> id de um gadget do cliente: a zona de gadget sem gadget escolhido não fica vazia na TV
 }) {
   if (!db) throw new Error('createTvcorp: falta o banco');
@@ -335,6 +336,7 @@ export function createTvcorp({
       const x = { ...x0 };
       // comunicado com imagem da biblioteca: o pacote B manda o id (mediaId); a tela recebe o arquivo { url, sha256, bytes }
       if (x.mediaId != null) { const f = imageFile(data.media, x.mediaId, req); delete x.mediaId; if (f) x.image = f; }
+      if (typeof x.image?.url === 'string' && x.image.url.startsWith('/')) { const o = originOf && req ? originOf(req) : null; if (o) x.image = { ...x.image, url: `${o}${x.image.url}` }; else delete x.image; }
       const own = x.id != null && parseItemRef(x.id) ? String(x.id) : null;
       return { ...x, id: own || ref, seconds: Number.isInteger(x.seconds) && x.seconds >= L.secondsMin && x.seconds <= L.secondsMax ? x.seconds : it.seconds, ...when };
     });

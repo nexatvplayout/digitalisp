@@ -384,3 +384,7 @@
 .tvc-news-src { font-size: 2.4cqw; color: #94a3b8; }
 .tvc-news-semfoto { background: linear-gradient(135deg, #1e293b, #0b1220); }
 .tvc-port .tvc-news-head, .tvc-z-port .tvc-news-head { font-size: 6cqw; }
+/* o desenho do tempo (weatherIcon): grande na zona de clima, pequeno em cada dia da previsão */
+.tvc-wx-ico { width: min(34cqh, 30cqw); height: min(34cqh, 30cqw); flex: none; }
+.tvc-it-wx .tvc-wx-ico { width: 14cqw; height: 14cqw; }
+.tvc-wx-ico-s { width: 5cqw; height: 5cqw; flex: none; vertical-align: middle; }

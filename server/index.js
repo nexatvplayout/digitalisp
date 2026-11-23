@@ -194,7 +194,7 @@ const graphicsFiles = (...prefixes) => ({
 const newsImages = createNewsImages({ dir: path.join(config.dataDir, 'telas', 'noticias') });
 setInterval(() => { newsImages.prune().catch(() => {}); }, 3600_000).unref();
 const tvcorpDados = createTvcorpDados({
-  newsImages, newsImageUrl: (file) => (config.platform.publicUrl ? `${config.platform.publicUrl}/tvcorp/noticia/${file}` : null),
+  newsImages, newsImageUrl: (file) => `${config.platform.publicUrl || ''}/tvcorp/noticia/${file}`, // sem o endereço público: relativo (tvcorp.js completa pelo pedido)
   db, audit: access.audit, ipOf: clientIp, publicUrl: publicOrigin, available: tvcorpOn,
   weatherOf: (ibge) => weatherForecast(ibge),
   files: { dir: path.join(config.dataDir, 'telas', 'tvcorp') },
@@ -224,6 +224,7 @@ let telas = null;
 const tvcorp = createTvcorp({
   db, storage: graphicsFiles('tvcmedia-', 'tvclogo-'), ffmpeg: config.ffmpeg, artFile: artFileOf,
   audioOf, // a rádio de fundo do layout (server/radios.js)
+  originOf: (req) => publicOrigin(req), // o endereço do site no pedido (completa a foto da notícia)
   // a zona de gadget vazia: o gadget do cliente do mesmo tipo; senão relógio, clima, ou o primeiro que houver
   widgetFallback: async (tenantId, sample) => {
     const rows = await db.all('SELECT id, kind FROM tvcorp_widgets WHERE tenant_id = ? ORDER BY id', [tenantId]);
