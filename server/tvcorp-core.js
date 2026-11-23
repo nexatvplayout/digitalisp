@@ -121,6 +121,8 @@ export function cleanZone(z, i = 0) {
   if (w < L.zoneMinPct || h < L.zoneMinPct) throw fail(400, `${what}: largura e altura de pelo menos ${L.zoneMinPct}% da tela.`);
   if (x + w > 100 || y + h > 100) throw fail(400, `${what}: passa da borda da tela.`);
   const out = { id, kind, x, y, w, h };
+  // DIGITAL ISP: o vídeo ao vivo fica proporcional (com faixas pretas) por padrão; fit 'cover' preenche a zona cortando as bordas
+  if (kind === 'video' && z.fit === 'cover') out.fit = 'cover';
   const params = TVC_ZONE[kind].params || [];
   if (params.includes('title')) { const t = line(z.title, L.label); if (t) out.title = t; }
   if (params.includes('text')) { const t = line(z.text, L.zoneText); if (t) out.text = t; }

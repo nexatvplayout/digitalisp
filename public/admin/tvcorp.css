@@ -261,10 +261,14 @@ dialog.tc-live-dlg { width: min(96vw, 1600px); max-width: 96vw; }
 .tc-live-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin-bottom: 10px; }
 .tc-live-sel { display: grid; gap: 2px; } .tc-live-sel select { width: auto; }
 .tc-live-palco { width: 100%; background: #000; border-radius: 8px; overflow: hidden; }
-.tc-live-palco .tvc-previa { max-width: none; width: 100%; max-height: 78vh; }
-.tc-live-palco:fullscreen { display: grid; place-items: center; }
-.tc-live-palco:fullscreen .tvc-previa { max-height: 100vh; }
+.tc-live-palco .tvc-previa { max-width: none; width: min(100%, calc(78vh * 16 / 9)); margin: 0 auto; }
+/* tela cheia: o desenho inteiro, na proporção da tela (16:9 ou 9:16), centrado no preto, sem esticar */
+.tc-live-palco:fullscreen { display: flex; align-items: center; justify-content: center; width: 100vw; height: 100vh; border-radius: 0; }
+.tc-live-palco:fullscreen .tvc-previa { width: min(100vw, calc(100vh * 16 / 9)); max-width: none; max-height: none; border: 0; border-radius: 0; flex: none; }
+.tc-live-palco.port:fullscreen .tvc-previa { width: min(100vw, calc(100vh * 9 / 16)); }
+.tc-live-palco.port .tvc-previa { width: min(100%, calc(78vh * 9 / 16)); margin: 0 auto; }
 .tc-live-video { width: 100%; height: 100%; object-fit: contain; background: #000; display: block; }
+.tc-live-video.cobrir { object-fit: cover; }
 /* editor de layout largo (quase a tela toda) e a tabela das zonas compacta: sem barra de rolagem de lado */
 dialog.pf-dlg.tc-lay-dlg { width: min(97vw, 1560px); max-width: 97vw; }
 .tc-zones-wrap .tc-num-in { width: 62px; min-width: 0; }

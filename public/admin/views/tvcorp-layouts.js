@@ -196,7 +196,9 @@ export function layoutEditor(lay, reload, factoryKey = null, copyOf = null, { ao
     // a zona que recebe playlist: escolhe aqui qual toca (a grade e a programação da tela ainda podem trocar)
     const plPick = (z) => (ZONE_KIND[z.kind]?.playlist ? el('select', { 'aria-label': `Playlist da zona ${z.id}`, onchange: (e) => { z.playlist = e.target.value ? Number(e.target.value) : null; paintPv(); } },
       opt('', z.kind === 'news' ? 'Notícias automáticas (todas as fontes)' : 'Playlist: a da grade', z.playlist == null), ...PLAYLISTS.map((p) => opt(p.id, `Playlist: ${p.name}`, Number(z.playlist) === Number(p.id)))) : null);
-    const params = (z) => [plPick(z), shapePick(z), layer(z), ...(ZONE_KIND[z.kind]?.params || []).map((k) => (k === 'widget' ? widgetPick(z) : k === 'qr' ? qrField(z) : el('input', { type: k === 'qr' ? 'url' : 'text', maxlength: String(PARAM[k][1]), value: z[k] || '', placeholder: PARAM[k][0], 'aria-label': `${PARAM[k][0]} da zona ${z.id}`, onchange: (e) => { z[k] = e.target.value.trim(); paintPv(); } })))];
+    // o vídeo ao vivo: proporcional (padrão, com faixas pretas se a zona tiver outro formato) ou preenchendo a zona (corta as bordas)
+    const fitPick = (z) => (z.kind === 'video' ? el('label', { class: 'pf-check' }, el('input', { type: 'checkbox', checked: z.fit === 'cover', 'aria-label': `Vídeo da zona ${z.id} preenchendo a zona`, onchange: (e) => { if (e.target.checked) z.fit = 'cover'; else delete z.fit; paintPv(); } }), el('span', { text: 'Preencher a zona (corta as bordas)' })) : null);
+    const params = (z) => [fitPick(z), plPick(z), shapePick(z), layer(z), ...(ZONE_KIND[z.kind]?.params || []).map((k) => (k === 'widget' ? widgetPick(z) : k === 'qr' ? qrField(z) : el('input', { type: k === 'qr' ? 'url' : 'text', maxlength: String(PARAM[k][1]), value: z[k] || '', placeholder: PARAM[k][0], 'aria-label': `${PARAM[k][0]} da zona ${z.id}`, onchange: (e) => { z[k] = e.target.value.trim(); paintPv(); } })))];
     const tam = (z) => { const px = quadroPx(st, z); return el('td', { class: 'small', title: z.kind === 'playlist' ? dicaArte({ px }) : '' }, el('b', { text: `${px.w}×${px.h}` }), el('div', { class: 'dim', text: FORMATO_TXT[formatoDe(px)] })); };
     const dicas = st.zones.filter((z) => z.kind === 'playlist').map((z) => note(`Quadro "${z.id}": ${dicaArte({ px: quadroPx(st, z) })}`, 'small'));
     put(rowsBox, table(['Zona', 'O que mostra', 'Esquerda %', 'Alto %', 'Largura %', 'Altura %', 'Na TV (px)', 'Conteúdo fixo', ''], st.zones.map((z, i) => el('tr', { class: st.sel === i ? 'tc-sel' : '' },
@@ -220,7 +222,7 @@ export function layoutEditor(lay, reload, factoryKey = null, copyOf = null, { ao
     el('div', { class: 'pf-grid' }, f('Nome', name), el('div', { class: 'pf-grid two' }, f('Tela', orient), f('Fundo', el('div', { class: 'tc-bg-row' }, bg, cor)))),
     el('div', { class: 'tc-two' },
       el('div', {}, label('Arraste para ajustar'), canvas.node, note('Arraste a zona para mover; arraste o quadradinho do canto para mudar o tamanho. Com a zona escolhida, as setas movem 1% (com Shift, mudam o tamanho).')),
-      el('div', {}, label('Como fica na TV'), pv, btns(btn('▶ Prévia grande ao vivo', () => abrirPreviaViva({ orientation: st.orientation, zones: st.zones, background: st.background, name: st.name }), 'small primary')), err)),
+      el('div', {}, label('Como fica na TV'), pv, btns(btn('▶ Prévia grande ao vivo', () => abrirPreviaViva({ id: lay?.id, orientation: st.orientation, zones: st.zones, background: st.background, name: st.name }), 'small primary')), err)),
     label('Zonas'), rowsBox,
     label('Rádio de fundo'), radio.node,
     note('Vídeo do canal: no máximo uma zona, e é sempre o mesmo vídeo de hoje, só que no retângulo da zona. Playlist: a sequência que a grade escolher para a zona. Texto rolante: os avisos e as fontes da aba Barras e blocos.')), {

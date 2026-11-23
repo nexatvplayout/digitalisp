@@ -3,8 +3,6 @@
 // cartões) e pela Grade (com as playlists da grade). Fechar para o vídeo e os relógios.
 import { el, tapi, put, opt, label, note, btn, dialog, listOf } from './tvcorp-base.js';
 import { layoutPreview, itemPreview } from '../../shared/tvcorp-previa.js';
-import { TVC_PLAYLIST_ZONES } from '../../shared/tvcorp-tipos.js';
-import { previewOf, sources } from './tvcorp-playlists.js';
 import { themeOf } from './tvcorp-midias.js';
 
 let hlsLib = null;
@@ -24,38 +22,27 @@ async function tocar(video, url, aviso) {
 }
 
 /**
- * Abre a prévia. layout: { orientation, zones, background, name }. zonePlaylists: { zona: playlistId } (da grade), opcional:
- * sem ele, cada zona de playlist ganha um seletor (começa na primeira playlist).
+ * Abre a prévia. layout: { id?, orientation, zones, background, name }. Os itens de cada zona vêm do servidor, montados como
+ * a TV recebe (POST /api/tvcorp/layouts/ao-vivo): a grade que usa o layout, ou as playlists escolhidas no próprio layout.
+ * zonePlaylists: as da grade que está sendo editada. zoneItems: os itens que uma tela recebe agora (Ver a tela agora).
  */
 export async function abrirPreviaViva(layout, { zonePlaylists = null, titulo = '', canalUrl = null, zoneItems = null } = {}) {
   const paradas = [];
   const parar = () => { while (paradas.length) { try { paradas.pop()(); } catch { /* já parou */ } } };
-  const [canais, src, pls, scheds, feeds] = await Promise.all([tapi('/api/hls').catch(() => []), sources(), tapi('/api/tvcorp/playlists').catch(() => null),
-    zonePlaylists || zoneItems ? null : tapi('/api/tvcorp/schedules').catch(() => null), tapi('/api/tvcorp/feeds').catch(() => null)]);
-  // sem grade escolhida: as playlists da grade (ou da programação de uma tela) que usa este layout, como as telas recebem
-  const daGrade = listOf(scheds, 'schedules').find((x) => Number(x.layoutId) === Number(layout.id)) || null;
-  if (!zonePlaylists && daGrade) zonePlaylists = daGrade.zonePlaylists || {};
+  let somLigado = false;
+  const salvo = Number.isInteger(layout.id) && layout.id > 0; // os modelos prontos não têm id
+  const [canais, feeds, vivo] = await Promise.all([tapi('/api/hls').catch(() => []), tapi('/api/tvcorp/feeds').catch(() => null),
+    zoneItems ? null : tapi('/api/tvcorp/layouts/ao-vivo', { method: 'POST', body: { ...(salvo ? { layoutId: layout.id } : {}), layout: { name: layout.name || 'Prévia', orientation: layout.orientation, zones: layout.zones, background: layout.background }, ...(zonePlaylists ? { zonePlaylists } : {}) } }).catch(() => null)]);
+  const itensDaZona = zoneItems || vivo?.zones || {};
   // o clima de verdade (a fonte Clima da empresa), como a TV mostra
   const wf = listOf(feeds, 'feeds').find((f) => f.kind === 'weather' && f.enabled !== false && f.preview?.tempC != null)?.preview || null;
   const clima = wf ? { now: { temp: wf.tempC, cond: wf.cond, text: wf.text }, place: { city: wf.city } } : null;
   const listaCanais = (Array.isArray(canais) ? canais : []).filter((c) => c.ativo !== false);
-  const playlists = listOf(pls, 'playlists');
-  // toda zona que recebe playlist (playlist, notícias, cotações, contador…); com zoneItems (os itens que a TV recebe agora),
-  // essas zonas passam exatamente os itens da TV, sem seletor
-  const zonasPl = (layout.zones || []).filter((z) => TVC_PLAYLIST_ZONES.includes(z.kind) && !zoneItems?.[z.id]);
-  // a zona sem playlist na grade fica sem playlist (como na TV); sem grade nenhuma, começa na primeira playlist
-  const escolha = Object.fromEntries(zonasPl.map((z) => [z.id, zonePlaylists?.[z.id] ?? z.playlist ?? (zonePlaylists || z.kind === 'news' ? null : playlists[0]?.id ?? null)]));
   const canal = el('select', { 'aria-label': 'Canal ao vivo' }, ...listaCanais.map((c, i) => opt(c.url, c.name || `Canal ${i + 1}`, canalUrl ? c.url === canalUrl : i === 0)));
   const aviso = el('p', { class: 'small dim', 'aria-live': 'polite' });
-  const palco = el('div', { class: 'tc-live-palco' });
-  const seletores = zonasPl.map((z) => {
-    const s = el('select', { 'aria-label': `Playlist da zona ${z.id}`, onchange: () => { escolha[z.id] = Number(s.value) || null; montar(); } },
-      opt('', z.kind === 'news' ? 'Notícias automáticas (todas as fontes)' : 'Sem playlist', escolha[z.id] == null), ...playlists.map((p) => opt(p.id, p.name, Number(escolha[z.id]) === Number(p.id))));
-    return el('label', { class: 'tc-live-sel' }, el('span', { class: 'small', text: `Zona ${z.id}` }), s);
-  });
+  const palco = el('div', { class: `tc-live-palco${layout.orientation === 'port' ? ' port' : ''}` });
+  const aplicaSom = () => palco.querySelectorAll('video, audio').forEach((m) => { m.muted = !somLigado; if (somLigado) m.play?.().catch(() => {}); });
 
-  // a versão do slide que a zona pede (como o servidor): mais alta que larga na tela de verdade = em pé
-  const orientOf = (z) => { const [w, h] = layout.orientation === 'port' ? [1080, 1920] : [1920, 1080]; return (h * z.h) / 100 > (w * z.w) / 100 ? 'port' : 'land'; };
   async function montar() {
     parar();
     const pv = layoutPreview(layout, { theme: { ...themeOf(), mode: layout.background === '#eef2f7' ? 'light' : themeOf().mode }, labels: false, ticker: ['Prévia ao vivo: o texto rolante da tela aparece aqui'], weather: clima });
@@ -64,62 +51,43 @@ export async function abrirPreviaViva(layout, { zonePlaylists = null, titulo = '
     // o vídeo ao vivo na zona de vídeo
     for (const z of (layout.zones || []).filter((x) => x.kind === 'video')) {
       const box = zonaEl(z.id); if (!box) continue;
-      const video = el('video', { class: 'tc-live-video', playsinline: true, autoplay: true, muted: true });
+      const video = el('video', { class: `tc-live-video${z.fit === 'cover' ? ' cobrir' : ''}`, playsinline: true, autoplay: true, muted: true });
       put(box, video);
       paradas.push(await tocar(video, canal.value || listaCanais[0]?.url, aviso));
     }
-    // os itens que a TV recebe agora (Ver a tela agora), item por item
-    for (const [zid, lista] of Object.entries(zoneItems || {})) {
+    // a rádio de fundo do layout (sem vídeo), como a TV toca
+    if (vivo?.audio?.url) {
+      const a = el('audio', { src: vivo.audio.url, autoplay: true, muted: true });
+      a.volume = Math.min(1, Math.max(0, (Number(vivo.audio.volume) || 80) / 100));
+      palco.append(a); a.play().catch(() => {});
+      paradas.push(() => { a.pause(); a.removeAttribute('src'); });
+    }
+    // cada zona passa os itens que a TV recebe, item por item, no tempo de cada um
+    for (const [zid, lista] of Object.entries(itensDaZona)) {
       const box = zonaEl(zid); const itens = Array.isArray(lista) ? lista : [];
       if (!box || !itens.length) continue;
-      let i = 0; let vivo = true; let t = null;
+      let i = 0; let ligado = true; let t = null;
       const passo = () => {
-        if (!vivo) return;
+        if (!ligado) return;
         const it = itens[i % itens.length]; i++;
         put(box, itemPreview(it, { theme: themeOf() }));
+        aplicaSom();
         t = setTimeout(passo, Math.max(3, Number(it.seconds) || 10) * 1000);
       };
-      paradas.push(() => { vivo = false; clearTimeout(t); });
+      paradas.push(() => { ligado = false; clearTimeout(t); });
       passo();
     }
-    // a zona de Notícias sem playlist: as notícias das fontes ligadas, uma por vez com a foto (como o servidor manda)
-    for (const z of zonasPl.filter((x) => x.kind === 'news' && !escolha[x.id])) {
-      const box = zonaEl(z.id); if (!box) continue;
-      const rss = listOf(feeds, 'feeds').filter((f) => f.kind === 'rss' && f.enabled !== false);
-      const itens = [];
-      for (const f of rss) {
-        const r = await tapi(`/api/tvcorp/feeds/${f.id}/noticias`).catch(() => null);
-        for (const i of (r?.items || []).filter((x) => !x.hidden && x.image)) itens.push({ kind: 'news', single: true, title: f.name, source: r.source, image: i.image, items: [{ title: i.title, source: r.source, at: i.at }], seconds: 12 });
-      }
-      if (!itens.length) continue;
-      let i = 0; let vivo = true; let t = null;
-      const passo = () => { if (!vivo) return; const it = itens[i % itens.length]; i++; put(box, itemPreview(it, { theme: themeOf() })); t = setTimeout(passo, 12000); };
-      paradas.push(() => { vivo = false; clearTimeout(t); });
-      passo();
-    }
-    // cada playlist passando, item por item, no tempo de cada um
-    for (const z of zonasPl) {
-      const box = zonaEl(z.id); const pid = escolha[z.id]; if (!box || !pid) continue;
-      const full = await tapi(`/api/tvcorp/playlists/${pid}`).catch(() => null);
-      const itens = (full?.items || []).map((x) => ({ ...x, params: x.params || {} }));
-      if (!itens.length) { put(box, el('div', { class: 'tvc-z-empty' }, 'Playlist vazia')); continue; }
-      let i = 0; let vivo = true; let t = null;
-      const passo = async () => {
-        if (!vivo) return;
-        const it = itens[i % itens.length]; i++;
-        put(box, await previewOf(it, src, { orient: orientOf(z) }));
-        t = setTimeout(passo, Math.max(3, Number(it.seconds) || 10) * 1000);
-      };
-      paradas.push(() => { vivo = false; clearTimeout(t); });
-      passo();
-    }
+    aplicaSom();
   }
   canal.addEventListener('change', montar);
+  const som = btn('🔇 Ligar o som', () => { somLigado = !somLigado; som.textContent = somLigado ? '🔊 Desligar o som' : '🔇 Ligar o som'; som.setAttribute('aria-pressed', String(somLigado)); aplicaSom(); }, 'small');
+  som.setAttribute('aria-pressed', 'false');
+  const origem = zoneItems ? null : vivo?.grade ? `Como as telas recebem agora: grade "${vivo.grade.name}".` : vivo ? 'Como as telas recebem: as playlists escolhidas no layout (nenhuma grade usa este layout ainda).' : null;
   const { dlg } = dialog(titulo || `Prévia ao vivo${layout.name ? ` · ${layout.name}` : ''}`, el('div', { class: 'tc-live' },
-    el('div', { class: 'tc-live-bar' }, listaCanais.length && (layout.zones || []).some((z) => z.kind === 'video') ? el('label', { class: 'tc-live-sel' }, el('span', { class: 'small', text: 'Canal' }), canal) : null, ...seletores,
-      btn('Tela cheia', () => palco.requestFullscreen?.().catch(() => {}), 'small')),
-    daGrade ? note(`Com as playlists da grade "${daGrade.name}", que usa este layout.`, 'small dim') : null, palco, aviso,
-    note('A prévia começa sem som (regra do navegador). Os itens passam no tempo de cada um, como na TV; o texto rolante e os gadgets mostram exemplos.', 'small dim')), { wide: true });
+    el('div', { class: 'tc-live-bar' }, listaCanais.length && (layout.zones || []).some((z) => z.kind === 'video') ? el('label', { class: 'tc-live-sel' }, el('span', { class: 'small', text: 'Canal' }), canal) : null,
+      som, btn('Tela cheia', () => palco.requestFullscreen?.().catch(() => {}), 'small')),
+    origem ? note(origem, 'small dim') : null, palco, aviso,
+    note('Os itens passam no tempo de cada um, como na TV. O som começa desligado (regra do navegador): use o botão para ouvir.', 'small dim')), { wide: true });
   dlg.classList.add('tc-live-dlg');
   dlg.addEventListener('close', parar);
   await montar();

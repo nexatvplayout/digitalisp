@@ -1016,6 +1016,26 @@ export function createTvcorp({
       });
     }));
 
+    /* ---- a prévia ao vivo de um layout: os itens que a TV recebe, montados pelo mesmo blockOf (sem escolher nada no painel).
+       layoutId (salvo) ou layout (o do editor, ainda não salvo); zonePlaylists (a grade sendo editada) ou a grade que usa o
+       layout; sem grade, as playlists escolhidas no próprio layout. */
+    app.post(`${B}/layouts/ao-vivo`, M, ah(async (req, res) => {
+      const b = req.body || {};
+      const data = await load(req.tenantId);
+      let layoutId = b.layoutId != null && b.layoutId !== '' ? Number(b.layoutId) : null;
+      let layouts = data.layouts;
+      if (b.layout && typeof b.layout === 'object') {
+        const l = K.cleanLayout({ name: 'Prévia', ...b.layout, factoryKey: undefined });
+        // o do editor (pode ter mudança ainda não salva) no lugar do salvo: a mesma rádio e a mesma grade
+        if (!layoutId || !layouts.has(layoutId)) layoutId = -1;
+        layouts = new Map(data.layouts).set(layoutId, { id: layoutId, name: l.name, orientation: l.orientation, zones: l.zones, background: l.background });
+      } else if (!layoutId || !layouts.has(layoutId)) throw fail(404, 'Layout não encontrado.');
+      const grade = b.zonePlaylists ? null : data.schedules.find((s) => Number(s.layoutId) === Number(b.layoutId ?? -2)) || null;
+      const s = { id: 0, name: 'Prévia', days: [], timeFrom: 0, timeTo: 1440, dateFrom: null, dateTo: null, priority: 0, layoutId, zonePlaylists: b.zonePlaylists && typeof b.zonePlaylists === 'object' ? b.zonePlaylists : (grade?.zonePlaylists || {}) };
+      const blk = await blockOf(req.tenantId, null, s, { ...data, layouts }, req, { seed: 'previa' });
+      noStore(res).json({ zones: blk?.zones || {}, audio: blk?.layout?.audio || null, grade: grade ? { id: grade.id, name: grade.name } : null });
+    }));
+
     /* ---- histórico dos comandos */
     app.get(`${B}/commands`, M, ah(async (req, res) => {
       const q = req.query || {};
