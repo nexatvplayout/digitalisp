@@ -36,7 +36,13 @@ export function parseFeed(xml, max = 15) {
     const rawDesc = tag(b, ['description', 'summary', 'content:encoded', 'content']);
     const descHtml = decodeEntities(rawDesc.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1'));
     const link = stripHtml(tag(b, ['link'])) || attr(b, 'link', 'href');
-    const image = attr(b, 'enclosure', 'url') || attr(b, 'media:content', 'url') || attr(b, 'media:thumbnail', 'url') || (descHtml.match(/<img[^>]+src=["']([^"']+)["']/i)?.[1] ?? '');
+    // a foto da notícia: enclosure, media:content/thumbnail, a tag própria do feed (Agência Brasil: imagem-destaque) e, por
+    // último, a primeira <img> do resumo que não seja logomarca (SVG) nem o pixel de contagem (1×1)
+    const own = stripHtml(tag(b, ['imagem-destaque', 'image', 'thumbnail']));
+    const inDesc = [...descHtml.matchAll(/<img\b[^>]*>/gi)].map((m) => m[0])
+      .filter((t) => !/(?:width|height)\s*:\s*1px|\blogo\b|logo-|\.svg(?:[?"'#]|$)/i.test(t))
+      .map((t) => decodeEntities(t.match(/\bsrc=["']([^"']+)["']/i)?.[1] || ''))[0] || '';
+    const image = attr(b, 'enclosure', 'url') || attr(b, 'media:content', 'url') || attr(b, 'media:thumbnail', 'url') || (/^https?:\/\//i.test(own) ? own : '') || inDesc;
     const date = Date.parse(stripHtml(tag(b, ['pubDate', 'published', 'updated', 'dc:date'])));
     return { title: stripHtml(tag(b, ['title'])).slice(0, 300), summary: stripHtml(rawDesc).slice(0, 600), link: link.slice(0, 500), image: /^https?:\/\//i.test(image) ? image.slice(0, 500) : '', date: Number.isFinite(date) ? date : null };
   }).filter((i) => i.title);

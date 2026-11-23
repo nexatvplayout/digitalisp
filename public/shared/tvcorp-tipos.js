@@ -125,6 +125,8 @@ export function parseItemRef(ref) {
   if (s === 'w:posts') return { refKind: 'posts', refId: 0 };
   if (s === 'n:all') return { refKind: 'news', refId: 0 };
   if (s === 'q:all') return { refKind: 'quotes', refId: 0 };
+  const one = /^n([1-9][0-9]{0,15})-([1-9][0-9]?)$/.exec(s); // uma notícia da fonte (DIGITAL ISP: uma por vez, com a foto)
+  if (one) return { refKind: 'news', refId: Number(one[1]) };
   const m = /^([mpkwcnq])([1-9][0-9]{0,15})$/.exec(s);
   if (!m) return null;
   const kind = { m: 'media', p: 'post', k: 'kpi', w: 'widget', c: 'card', n: 'news', q: 'quotes' }[m[1]];

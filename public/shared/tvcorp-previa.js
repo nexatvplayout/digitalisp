@@ -204,6 +204,16 @@ export function itemPreview(it = {}, opts = {}) {
     case 'kpi': return box(`tvc-it-kpi b-${it.band || 'none'}`, h('div', 'tvc-it-t', it.name || 'Indicador'), h('div', 'tvc-it-big', `${numText(it.value)}${it.unit ? ` ${it.unit}` : ''}`),
       it.target != null ? h('div', 'tvc-it-x', `Meta: ${numText(it.target)}${it.unit ? ` ${it.unit}` : ''}`) : null, it.target != null ? goalBar(it.value, it.target, it.band) : null);
     case 'news': {
+      // DIGITAL ISP: uma notícia sozinha: a foto em tela cheia e a faixa com o nome da fonte, a manchete e a hora
+      if (it.single) {
+        const x = (it.items || [])[0] || {};
+        const src = typeof it.image === 'string' ? it.image : it.image?.url || null;
+        const img = src ? h('img', 'tvc-news-img') : null; if (img) { img.alt = ''; img.src = src; }
+        const hora = x.at ? new Date(x.at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
+        return box(`tvc-it-newsone${src ? '' : ' tvc-news-semfoto'}`, img,
+          h('div', 'tvc-news-band', h('div', 'tvc-news-kicker', it.title || 'Notícias'), h('div', 'tvc-news-head', x.title || 'Sem manchete ainda'),
+            h('div', 'tvc-news-src', [x.source || it.source, hora].filter(Boolean).join(' · '))));
+      }
       const items = (it.items || []).slice(0, 4);
       return box('tvc-it-news', h('div', 'tvc-it-t', it.title || 'Notícias'),
         items.length ? h('ul', 'tvc-it-list', items.map((x) => h('li', '', x.title, h('small', '', [x.source, x.at ? new Date(x.at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''].filter(Boolean).join(' · '))))) : h('div', 'tvc-it-x', 'Sem manchetes ainda'),

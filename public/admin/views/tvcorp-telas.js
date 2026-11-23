@@ -80,6 +80,14 @@ const counterRow = (n, total) => el('div', { class: 'pf-counters' },
   el('div', { class: 'pf-count' }, el('b', { text: String(total) }), el('span', { text: 'telas' })));
 
 /** A chave de uma TV box nova, já ligada à unidade. */
+/** O último erro da TV em português: o 502/503/504 do servidor (reiniciando numa atualização) vira uma frase, e não o JSON técnico. */
+function erroLegivel(e) {
+  const t = String(e || '');
+  if (/\b50[234]\b|bad gateway|origin web server|service unavailable|gateway time-?out/i.test(t)) return 'O servidor estava reiniciando (atualização do sistema) quando a TV tentou falar com ele. Ela tenta de novo sozinha; não precisa fazer nada.';
+  if (/timeout|tempo esgotado|ETIMEDOUT|failed to fetch|network/i.test(t)) return 'A TV ficou sem resposta da internet por um momento. Ela tenta de novo sozinha; se repetir, confira a rede da TV.';
+  return t.length > 160 ? `${t.slice(0, 160)}…` : t;
+}
+
 export function newKey(reload, officeId = null) {
   const d = D();
   if (!d.offices.length) { toast('Cadastre a unidade antes (aba Unidades e grupos).', true); return; }
@@ -143,7 +151,7 @@ function deviceDialog(d, ctx = null) {
       el('dt', { text: 'Situação' }), el('dd', { text: sinceText(d) }),
       el('dt', { text: 'Passando agora' }), el('dd', {}, nowBox, btns(btn('▶ Ver a tela agora', verAgora(d), 'small primary'))),
       el('dt', { text: 'App' }), el('dd', { text: [d.appVersion || '—', d.model, d.android ? `Android ${d.android}` : '', d.net ? `rede ${d.net}` : ''].filter(Boolean).join(' · ') }),
-      d.lastError ? el('dt', { text: 'Último erro' }) : null, d.lastError ? el('dd', { class: 'pf-err', text: d.lastError }) : null),
+      d.lastError ? el('dt', { text: 'Último erro' }) : null, d.lastError ? el('dd', { class: 'pf-err', text: erroLegivel(d.lastError) }) : null),
     programacaoDaTela(d, () => ctx?.reload?.()),
     img, shotNote,
     label('Comandos'),

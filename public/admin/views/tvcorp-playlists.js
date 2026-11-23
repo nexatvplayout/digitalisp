@@ -66,6 +66,11 @@ export async function previewOf(it, src) {
   if (it.refKind === 'news' || it.refKind === 'quotes') {
     const x = find(src.feeds); const c = x?.preview || {};
     if (it.refKind === 'quotes') return itemPreview({ kind: 'quotes', title: x?.name, at: c.at, source: c.source || '', items: (c.items || []).map((i) => ({ label: i.code, value: i.sell ?? i.buy, change: i.change ?? null, prefix: 'R$', decimals: 2 })) }, { theme });
+    // cada notícia sozinha, como na TV: a prévia mostra a primeira (com a cópia da foto guardada pelo servidor)
+    if (it.params?.mode !== 'lista') {
+      const i = (c.items || [])[0];
+      return itemPreview({ kind: 'news', single: true, title: x?.name, source: c.source || '', image: i?.img?.file ? `/tvcorp/noticia/${i.img.file}` : null, items: i ? [{ ...i, source: c.source }] : [] }, { theme });
+    }
     return itemPreview({ kind: 'news', title: x?.name, items: (c.items || []).map((i) => ({ ...i, source: c.source })), source: c.source || x?.name || '' }, { theme });
   }
   if (it.refKind === 'widget') return itemPreview(widgetItem(find(src.widgets), { kpis: src.kpis, feeds: src.feeds }), { theme });

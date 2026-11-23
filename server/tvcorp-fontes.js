@@ -122,6 +122,8 @@ export async function fetchFeed(feed, deps = {}) {
     const items = (feedData.items || []).map((i) => ({
       title: line(i.title, FEED_LIMITS.title), at: Number.isFinite(i.date) ? i.date : null,
       link: /^https:\/\//i.test(String(i.link || '')) ? String(i.link).slice(0, 500) : null,
+      // a foto da manchete (o servidor baixa uma cópia: server/noticias-img.js)
+      ...(/^https?:\/\//i.test(String(i.image || '')) ? { image: String(i.image).slice(0, 500) } : {}),
     })).filter((i) => i.title.length >= 3).slice(0, FEED_LIMITS.items);
     if (!items.length) throw fail(502, 'Nenhuma notícia encontrada: o endereço é mesmo um feed RSS ou Atom?');
     return { source: feedCredit('rss', config), at: t, items };

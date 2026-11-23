@@ -211,6 +211,8 @@ export function createTvcorpDados({
   db, audit = async () => {}, ipOf = (req) => req.ip, publicUrl = () => '', available = async () => true,
   weatherOf = null, trafficOf = null, fetcher = undefined, parseFeed = undefined, settingsOf = null,
   isCorpOffice = (o) => CORP_OFFICE_TYPES.includes(o?.type), files = {}, photoUrl = null, webCheck = checkEmbeddable,
+  newsImages = null, // server/noticias-img.js: a cópia da foto de cada manchete
+  newsImageUrl = null, // (arquivo) -> endereço público https da cópia (/tvcorp/noticia/<arquivo>)
   now = () => Date.now(), tz = 'America/Sao_Paulo', timers = true, tickMs = 60_000, pageDir = TVC_PAGE_DIR, log = (m) => console.warn(m),
 }) {
   if (!db) throw new Error('createTvcorpDados: falta o db.');
@@ -287,6 +289,7 @@ export function createTvcorpDados({
       await db.run('UPDATE tvcorp_feeds SET tried_at = ? WHERE id = ?', [t, row.id]);
       try {
         const cache = await F.fetchFeed(row, fetchDeps());
+        if (row.kind === 'rss' && newsImages && Array.isArray(cache?.items)) cache.items = await newsImages.enrich(cache.items).catch(() => cache.items);
         await db.run('UPDATE tvcorp_feeds SET cache = ?, fetched_at = ?, last_error = NULL WHERE id = ?', [JSON.stringify(cache), now(), row.id]);
         return { ok: true, cache };
       } catch (e) {
@@ -1045,6 +1048,20 @@ export function createTvcorpDados({
         const c = fresh(f);
         if (!c || !c.items?.length) return null;
         if (kind === 'quotes') return { id: `q${id}`, kind: 'quotes', source: SOURCE_SAFE(c.source), note: c.note || 'Valores de referência', at: c.at, items: c.items.map((i) => ({ label: i.code, name: i.name, value: i.sell ?? i.buy, change: i.change ?? null, prefix: 'R$ ', decimals: i.code === 'JPY' ? 4 : i.code === 'BTC' ? 0 : 2, at: i.at ?? null })) };
+        // DIGITAL ISP: cada notícia sozinha na tela (a foto em tela cheia e a faixa com a manchete), uma por item; params.mode
+        // 'lista' mantém a lista de manchetes de antes. O app antigo mostra a manchete única como uma lista de uma linha.
+        if (kind === 'news' && j(ref?.params, {})?.mode !== 'lista') {
+          const fileOf = (i) => {
+            if (!newsImageUrl || !i.img || !/^[0-9a-f]{64}$/.test(i.img.sha256 || '')) return null;
+            const url = newsImageUrl(i.img.file);
+            return /^https:\/\//.test(url || '') ? { url, sha256: i.img.sha256, bytes: Number(i.img.bytes) } : null;
+          };
+          return c.items.slice(0, 15).map((i, k) => {
+            const img = fileOf(i);
+            return { id: `n${id}-${k + 1}`, kind: 'news', title: f.name, source: SOURCE_SAFE(c.source), at: c.at, single: true, ...(img ? { image: img } : {}),
+              items: [{ title: i.title, source: SOURCE_SAFE(c.source), at: i.at ?? null, ...(i.link ? { qr: i.link } : {}) }] };
+          });
+        }
         return { id: `${kind === 'news' ? 'n' : 't'}${id}`, kind: 'news', title: kind === 'traffic' ? 'Trânsito' : f.name, source: SOURCE_SAFE(c.source), at: c.at, items: c.items.slice(0, max(8, 15)).map((i) => ({ title: i.title, source: SOURCE_SAFE(c.source), at: i.at ?? null, ...(i.link ? { qr: i.link } : {}) })) };
       }
       case 'weather': {

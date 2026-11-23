@@ -33,6 +33,7 @@ import { createTelas } from './telas.js';
 import { createGeocoder } from './telas-geocode.js';
 import { geocode } from './web/fontes.js';
 import { getJson as netGetJson } from './web/net.js';
+import { createNewsImages } from './noticias-img.js'; // a cópia da foto de cada notícia (uma por vez na tela)
 import { forecast as weatherForecast } from './weather.js'; // o clima das telas (Open-Meteo/INMET, com cache e cota)
 
 const bootedAt = Date.now();
@@ -190,7 +191,10 @@ const graphicsFiles = (...prefixes) => ({
   list: async () => (await Promise.all(prefixes.map((p) => storage.list('graphics', p)))).flat().map((f) => ({ name: f.name, mtime: f.mtimeMs })),
 });
 
+const newsImages = createNewsImages({ dir: path.join(config.dataDir, 'telas', 'noticias') });
+setInterval(() => { newsImages.prune().catch(() => {}); }, 3600_000).unref();
 const tvcorpDados = createTvcorpDados({
+  newsImages, newsImageUrl: (file) => (config.platform.publicUrl ? `${config.platform.publicUrl}/tvcorp/noticia/${file}` : null),
   db, audit: access.audit, ipOf: clientIp, publicUrl: publicOrigin, available: tvcorpOn,
   weatherOf: (ibge) => weatherForecast(ibge),
   files: { dir: path.join(config.dataDir, 'telas', 'tvcorp') },
@@ -268,6 +272,14 @@ const tvcorpApiKey = ah(async (req, res, next) => {
   return next();
 });
 tvcorpDados.mount(app, { needs, apiKey: tvcorpApiKey });
+// a foto da notícia (pelo hash; pública como as artes: é a foto que a fonte já publicou)
+app.get('/tvcorp/noticia/:name', ah(async (req, res) => {
+  const name = String(req.params.name || '');
+  const buf = await newsImages.read(name);
+  if (!buf) return res.status(404).end();
+  const type = name.endsWith('.png') ? 'image/png' : name.endsWith('.webp') ? 'image/webp' : 'image/jpeg';
+  res.set({ 'Content-Type': type, 'Cache-Control': 'public, max-age=86400, immutable', 'X-Content-Type-Options': 'nosniff' }).send(buf);
+}));
 app.get('/tvcorp/foto/:name', ah(async (req, res) => {
   const name = String(req.params.name || '');
   const row = TVC_FILE_RE.test(name) && name.startsWith('tvcpessoa-') ? await db.get('SELECT tenant_id FROM tvcorp_people WHERE photo = ? AND photo_consent = 1', [name]) : null;

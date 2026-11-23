@@ -375,3 +375,12 @@
 .tvc-sl.tvc-fit-5 > * { zoom: 0.55; }
 .tvc-sl.tvc-fit-6 > * { zoom: 0.48; }
 .tvc-sl.tvc-art > .tvc-sl-img, .tvc-sl > .tvc-sl-img { zoom: 1; }
+/* DIGITAL ISP: a notícia sozinha: a foto cobre o quadro e a faixa escura embaixo traz a fonte, a manchete e a hora */
+.tvc-it-newsone { position: relative; padding: 0; overflow: hidden; justify-content: flex-end; background: #0b1220; }
+.tvc-news-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.tvc-news-band { position: relative; display: flex; flex-direction: column; gap: 0.8cqw; padding: 2.4cqw 4cqw 2.6cqw; background: linear-gradient(to top, rgba(5, 8, 15, 0.94), rgba(5, 8, 15, 0.82)); border-left: 1.4cqw solid #ef4444; color: #fff; }
+.tvc-news-kicker { font-size: 2.6cqw; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #cbd5e1; }
+.tvc-news-head { font-size: 4.4cqw; font-weight: 600; line-height: 1.22; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.tvc-news-src { font-size: 2.4cqw; color: #94a3b8; }
+.tvc-news-semfoto { background: linear-gradient(135deg, #1e293b, #0b1220); }
+.tvc-port .tvc-news-head, .tvc-z-port .tvc-news-head { font-size: 6cqw; }

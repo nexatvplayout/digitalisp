@@ -440,6 +440,17 @@ export function createTelas({
     return cfg.pin;
   }
   /** A configuração do contrato para esta tela, com o rev. */
+  /**
+   * DIGITAL ISP: sem a cidade nas Configurações, o clima da tela vem da fonte Clima (Notícias e dados) da unidade dela (ou a
+   * que vale para todas as unidades). Sem fonte ou sem previsão ainda: null (a zona de clima espera a próxima busca).
+   */
+  async function weatherOfFeed(tenantId, officeId) {
+    if (!weatherOf) return null;
+    const list = await cached(`wxf:${tenantId}`, () => db.all("SELECT config FROM tvcorp_feeds WHERE tenant_id = ? AND kind = 'weather' AND enabled = 1 ORDER BY id", [tenantId]).catch(() => []));
+    const cfgs = list.map((r) => j(r.config, {}) || {}).filter((c) => /^\d{7}$/.test(String(c.ibge || '')));
+    const c = cfgs.find((x) => officeId != null && (x.offices || []).map(Number).includes(officeId)) || cfgs.find((x) => !(x.offices || []).length) || null;
+    return c ? conteudo.weather.get(String(c.ibge)) : null;
+  }
   async function configFor(dev, req, groups = null) {
     const tenantId = Number(dev.tenant_id);
     const g = groups || await deviceGroups(dev);
@@ -469,7 +480,7 @@ export function createTelas({
       stream: await streamOf(tenantId, num(dev.o_channel), req, Number(dev.id)), // DIGITAL ISP: a tela pode ter o canal dela
       // a atualização: a da prefeitura, se ela definiu; senão o APK servido por este servidor (§23 do docs/TELAS.md)
       update: def.update || appStore.update(publicUrl(req)),
-      weather: conteudo.weatherFor(def), cards, queue, offline, offlineImage, electoral, internal, signage,
+      weather: conteudo.weatherFor(def) || await weatherOfFeed(tenantId, num(dev.office_id)), cards, queue, offline, offlineImage, electoral, internal, signage,
     });
     // DIGITAL ISP: as manchetes das fontes de notícias escolhidas entram na faixa, depois dos avisos (o app antigo lê items)
     if (eff.tickerNews?.feeds?.length && tvcorpDados?.headlines) {
