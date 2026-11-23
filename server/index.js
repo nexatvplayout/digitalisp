@@ -21,6 +21,8 @@ import { mountEnderecos } from './enderecos.js';
 import { bindContas, assertNovaTela } from './contas.js';
 import { mountRevenda } from './revenda.js';
 import { mountIntegracoes } from './integracoes.js';
+import { mountDominios, entradaDoDominio } from './dominios.js';
+import { hostTenantId } from './domains.js';
 import { mountRadios, loadRadios, audioOf } from './radios.js';
 import { mountHls, carregarHls, channelsOf as hlsChannels, streamOf as hlsStream } from './hls.js';
 import { createTvcorp } from './tvcorp.js';
@@ -140,7 +142,8 @@ app.post('/api/me/logout', ah(async (req, res) => {
 }));
 
 mountPlataforma(app);
-mountIntegracoes(app, { needsPlatform }); // superadmin: de onde vêm clima, cotações, notícias, CEP, mapa e rádios (server/integracoes.js)
+mountIntegracoes(app, { needsPlatform });
+mountDominios(app, { needs, needsPlatform }); // domínio próprio da revenda e do cliente (server/dominios.js) // superadmin: de onde vêm clima, cotações, notícias, CEP, mapa e rádios (server/integracoes.js)
 mountGuia(app, { needs, signedIn, needsPlatform, ah }); // configuração guiada (server/guia.js)
 mountRevenda(app, { needs, signedIn });
 mountHls(app, { needs, ah, onChange: (tid) => telas?.forget(tid) }); // canais ao vivo (HLS) (server/hls.js)
@@ -311,6 +314,13 @@ app.use('/superadmin', panelStatic);
 const cacheAge = config.production ? '5m' : 0; // em desenvolvimento, sempre o arquivo novo
 app.use('/shared', express.static(pub('shared'), { setHeaders: noCache }));
 app.use('/tvcorp', express.static(pub('tvcorp'), { maxAge: cacheAge }));
+// domínio próprio (white-label): a raiz do endereço do cliente abre a entrada com a marca dele, não o site da DIGITAL ISP
+app.get(['/', '/index.html'], ah(async (req, res, next) => {
+  const h = String(req.hostname || '').toLowerCase();
+  if (!h || /(^|\.)digitalisp\.com\.br$/.test(h) || h === 'localhost' || /^[\d.]+$/.test(h) || h.includes(':')) return next();
+  const tid = await hostTenantId(h);
+  return tid ? res.redirect(302, await entradaDoDominio(tid)) : next();
+}));
 // o site institucional (site/) na raiz: www.digitalisp.com.br vem deste servidor pelo túnel, com o painel em /admin e /superadmin
 app.use(express.static(path.join(config.root, 'site'), { maxAge: cacheAge, index: 'index.html' }));
 

@@ -171,3 +171,10 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
 .ig-chip.wait { background: rgba(245,179,28,.18); color: #f5c55c; }
 .ig-res.ok { color: #5fe39a; } .ig-res.bad { color: #ff8a80; }
 .ig-sec { margin: 22px 0 0; }
+
+/* domínio próprio */
+.dm-add { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.dm-add input { flex: 1; min-width: 220px; }
+.dm-help { margin-top: 12px; } .dm-help li { margin: 4px 0; }
+.dm-tbl code { word-break: break-all; font-size: .8rem; }
+.dm-grid { grid-template-columns: 1fr; }

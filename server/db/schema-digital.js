@@ -129,6 +129,11 @@ CREATE TABLE IF NOT EXISTS isp_hls (
   created_at ${big} NOT NULL
 );
 CREATE INDEX IF NOT EXISTS isp_hls_tenant ON isp_hls(tenant_id);
+-- os registros de DNS e o estado de um domínio próprio (server/dominios.js), como o Cloudflare devolveu
+CREATE TABLE IF NOT EXISTS isp_dominio_dns (
+  domain_id  ${big} PRIMARY KEY,
+  records    TEXT NOT NULL DEFAULT '{}'
+);
 -- a rádio de fundo de um layout sem vídeo (server/radios.js; a lista em server/radios-br.json)
 CREATE TABLE IF NOT EXISTS isp_layout_radio (
   layout_id  ${big} PRIMARY KEY REFERENCES tvcorp_layouts(id) ON DELETE CASCADE,

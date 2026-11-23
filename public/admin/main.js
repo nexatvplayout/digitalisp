@@ -77,6 +77,7 @@ const VIEWS = {
   integracoes: { area: 'plataforma', load: async () => (await import('./views/integracoes.js')).paintIntegracoes($('#igPanel')) },
   cobrancas: { area: 'plataforma', load: async () => (await plat()).paintCobrancas($('#cbPanel')) },
   mapa: { area: 'plataforma', load: async () => (await plat()).paintMapa($('#mpPanel')), leave: async () => (await plat()).leaveMapa() },
+  dominios: { area: ['revenda', 'cliente'], load: async () => (await import('./views/dominios.js')).paintDominios($('#dmPanel')) },
   conta: { area: null, load: () => paintConta() },
 };
 const firstView = () => ({ plataforma: 'revendas', revenda: 'rv-resumo', cliente: 'tvcorp' }[S.area]);

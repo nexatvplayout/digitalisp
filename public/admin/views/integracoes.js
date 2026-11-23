@@ -48,9 +48,33 @@ function climaCard(c, again) {
     (() => { keyBox.append(el('label', { class: 'rv-f' }, el('span', { text: 'Chave' }), key)); return null; })());
 }
 
+function cloudflareCard(c, again) {
+  const zone = el('input', { type: 'text', value: c.zoneId || '', placeholder: 'Zone ID da zona digitalisp.com.br', autocomplete: 'off' });
+  const token = el('input', { type: 'password', autocomplete: 'off', placeholder: c.tokenSet ? (c.tokenReadable === false ? 'O token salvo ficou ilegível: digite de novo' : '•••••••• (salvo; digite para trocar)') : 'Token da API (fica cifrado no servidor)' });
+  const fb = el('input', { type: 'text', value: c.fallback || 'clientes.digitalisp.com.br' });
+  const out = el('p', { class: 'small ig-res' });
+  const salvar = guard(async () => { const body = { zoneId: zone.value.trim(), fallback: fb.value.trim() }; if (token.value.trim()) body.token = token.value.trim(); await api('/api/platform/integracoes/cloudflare', { method: 'PUT', body }); token.value = ''; toast('Integração do Cloudflare salva.'); await again(); });
+  const ligado = Boolean(c.zoneId && c.tokenSet);
+  return card(
+    el('div', { class: 'ig-head' }, el('h3', { text: 'Domínio próprio (Cloudflare for SaaS)' }), chip(ligado ? true : null, ligado ? 'configurada' : 'a ligar')),
+    el('p', { class: 'small dim', text: `Emite o certificado e encaminha o domínio próprio das revendas e dos clientes (aba "Domínio próprio" do painel). Domínios cadastrados: ${c.dominios}.` }),
+    el('details', {}, el('summary', { text: 'Como ligar (uma vez só)' }), el('ol', { class: 'small' },
+      el('li', { text: 'Cloudflare → zona digitalisp.com.br → SSL/TLS → Custom Hostnames → ativar o Cloudflare for SaaS (até 100 domínios sem custo).' }),
+      el('li', { text: `No DNS da zona, crie o registro A de ${c.fallback || 'clientes.digitalisp.com.br'} apontando para o IP do servidor, com a nuvem laranja (proxy). Em Custom Hostnames, defina esse endereço como "Fallback Origin".` }),
+      el('li', { text: 'Crie um token em Meu perfil → Tokens de API → Personalizado, com a permissão "Zona → SSL e certificados → Editar" só para a zona digitalisp.com.br, e cole abaixo junto com o Zone ID (Visão geral da zona, coluna da direita).' }),
+      el('li', { text: 'No servidor (com o usuário administrador): acrescente ao Caddy um site "pega-tudo" que aceita qualquer endereço com o certificado de origem do Cloudflare e manda para o painel (127.0.0.1:3400). O passo exato está em docs/SERVIDOR.md, seção "Domínio próprio".' }))),
+    el('label', { class: 'rv-f' }, el('span', { text: 'Zone ID' }), zone),
+    el('label', { class: 'rv-f' }, el('span', { text: 'Token da API' }), token),
+    el('label', { class: 'rv-f' }, el('span', { text: 'Endereço de entrada (o CNAME dos clientes aponta para ele)' }), fb),
+    el('div', { class: 'pf-btns left' }, el('button', { type: 'button', class: 'btn primary small', onclick: salvar, text: 'Salvar' }),
+      el('button', { type: 'button', class: 'btn small', text: 'Testar agora', onclick: guard(async () => { out.textContent = 'Testando…'; const r = await api('/api/platform/integracoes/cloudflare/testar', { method: 'POST' }); out.className = `small ig-res ${r.ok ? 'ok' : 'bad'}`; out.textContent = `${r.ok ? '✓' : '✗'} ${r.message}`; }) })),
+    out);
+}
+
 export async function paintIntegracoes(root) {
   root.replaceChildren(el('p', { class: 'dim', text: 'Carregando…' }));
   const d = await api('/api/platform/integracoes');
+  const cfc = await api('/api/platform/integracoes/cloudflare').catch(() => null);
   const again = () => paintIntegracoes(root);
   const fixas = d.fixas.map((f) => {
     const out = el('p', { class: 'small ig-res' });
@@ -67,7 +91,7 @@ export async function paintIntegracoes(root) {
     el('p', { class: 'small', text: p.nota })));
   root.replaceChildren(
     el('p', { class: 'dim', text: 'De onde vêm os dados que as telas mostram. As fontes abertas não precisam de chave; as que dependem de contrato aparecem como "a contratar".' }),
-    el('div', { class: 'ig-grid' }, climaCard(d.clima, again), ...fixas),
+    el('div', { class: 'ig-grid' }, climaCard(d.clima, again), cfc ? cloudflareCard(cfc, again) : null, ...fixas),
     el('h3', { class: 'ig-sec', text: 'Armazenamento' }),
     el('div', { class: 'ig-grid' }, card(el('div', { class: 'ig-head' }, el('h3', { text: 'Arquivos das telas (imagens e vídeos)' }), chip(d.armazenamento.driver === 'r2', d.armazenamento.driver === 'r2' ? 'Cloudflare R2' : 'no servidor')), el('p', { class: 'small', text: d.armazenamento.nota }))),
     el('h3', { class: 'ig-sec', text: 'A contratar' }),

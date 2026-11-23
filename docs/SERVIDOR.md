@@ -56,3 +56,31 @@ ssh digitalisp-servidor 'cd /opt/digitalisp && git --git-dir=repo.git --work-tre
 - Bucket R2: configurar `STORAGE_DRIVER=r2` e as chaves no `.env`, e mandar o backup do banco também para o R2.
 - Cache longo dos arquivos do painel (`/admin`), com versão no endereço. Hoje o primeiro carregamento busca uns 45
   arquivos.
+
+## Domínio próprio (Cloudflare for SaaS)
+
+As revendas e os clientes cadastram o próprio endereço (ex.: `telas.provedor.com.br`) na aba **Domínio próprio** do painel.
+O sistema cria o "Custom Hostname" no Cloudflare e mostra a eles o CNAME e os TXT que faltam. Para isso funcionar, uma vez só:
+
+1. **Cloudflare** (zona `digitalisp.com.br`): SSL/TLS → Custom Hostnames → ativar o Cloudflare for SaaS. Criar o registro A
+   `clientes.digitalisp.com.br` para o IP do servidor, com proxy (nuvem laranja), e defini-lo como **Fallback Origin**.
+2. **Token**: Meu perfil → Tokens de API → personalizado, permissão "Zona → SSL e certificados → Editar" só para
+   `digitalisp.com.br`. O Zone ID e o token vão no superadmin, em **Integrações → Domínio próprio**, com "Testar agora".
+3. **Caddy** (precisa do usuário administrador do servidor; o usuário `digitalisp` não tem sudo): o tráfego dos domínios dos
+   clientes chega com o endereço deles, que não está em nenhum site do Caddy. Acrescentar um site "pega-tudo", que só atende o
+   que nenhum outro site atende, com o certificado de origem do Cloudflare (o modo SSL da zona é "Completo", que aceita):
+
+   `/etc/caddy/sites/zz-dominios-clientes.caddy`
+   ```
+   https:// {
+   	tls /etc/caddy/certs/painel.digitalisp.com.br.pem /etc/caddy/certs/painel.digitalisp.com.br.key
+   	reverse_proxy 127.0.0.1:3400
+   }
+   ```
+   e, nas opções globais do `/etc/caddy/Caddyfile` (o bloco `{ … }` do começo), a linha `default_sni painel.digitalisp.com.br`,
+   para o certificado de origem valer também quando o endereço pedido não é da DIGITAL ISP. Depois: `caddy validate --config
+   /etc/caddy/Caddyfile` e `systemctl reload caddy`. Conferir com um domínio de teste já ativo no Cloudflare. O Radar
+   (`radar.ispsummit.com.br`, porta 3333) não muda: o site dele continua mais específico que o pega-tudo.
+
+O servidor reconhece o domínio verificado (`domains`, status `verified`) e abre a entrada com a marca da conta dona
+(`/c/<identificador>`). Sem a integração, o cadastro fica "aguardando a plataforma" e o cliente já pode criar o CNAME.
