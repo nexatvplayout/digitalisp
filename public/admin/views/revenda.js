@@ -197,7 +197,9 @@ export async function paintPlanos(root) {
   const u = r.uso;
   root.replaceChildren(
     el('p', { class: 'hint', text: `Os planos que você vende aos seus clientes. Seu plano com a DIGITAL ISP: ${u.plano?.name || '—'} · ${u.limite == null ? 'telas sem limite' : `${u.limite} telas`} (${u.telas} em uso, ${u.vendidas} vendidas nos planos).` }),
-    ...r.planos.map(card), card(null));
+    // o plano novo fica fechado num botão: a configuração só abre quando a pessoa clica
+    el('div', { class: 'pl-novo' }, el('button', { type: 'button', class: 'primary', text: '+ Novo plano', onclick: (e) => { const box = card(null); e.currentTarget.replaceWith(box); box.scrollIntoView({ behavior: 'smooth', block: 'start' }); box.querySelector('input')?.focus(); } })),
+    ...r.planos.map(card));
 }
 
 /* ================================================================== cobranças dos clientes */
