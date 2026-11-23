@@ -22,6 +22,7 @@ const BACKGROUNDS = [['#0b1220', 'Escuro'], ['#eef2f7', 'Claro'], ['#000000', 'P
 const SAMPLE_TICKER = ['Bem-vindo! Use o crachá em todas as áreas', 'Refeitório aberto das 11h às 14h'];
 /** Os gadgets do cliente (contador, dias sem acidente, relógio mundial: aba Barras e blocos), lidos ao abrir a aba. */
 let WIDGETS = [];
+let QRS = []; // os QR codes do menu QR Codes (link curto /q/…, que conta as leituras)
 /** Há cidade para o clima? (a cidade das telas em Configurações, ou uma fonte de clima em Notícias e dados) */
 let HAS_CITY = true;
 /** O que a zona mostra na prévia: o gadget escolhido nela (o mesmo desenho da TV). */
@@ -162,7 +163,11 @@ export function layoutEditor(lay, reload, factoryKey = null, copyOf = null, { ao
     const qrField = (z) => {
       const special = qrKind(z.qr) === 'wifi' || qrKind(z.qr) === 'vcard';
       const inp = el('input', { type: 'url', maxlength: '600', value: special ? '' : z.qr || '', placeholder: special ? qrLabel(z.qr) : PARAM.qr[0], 'aria-label': `QR da zona ${z.id}`, onchange: (ev) => { z.qr = ev.target.value.trim(); paintPv(); } });
-      return el('div', { class: 'tc-qrf' }, inp, special ? el('span', { class: 'small', text: qrLabel(z.qr) }) : null, btn('Wi-Fi', qrMaker(z, 'wifi'), 'small'), btn('Contato', qrMaker(z, 'vcard'), 'small'));
+      // o QR feito no menu QR Codes: a zona usa o link curto dele (muda o destino lá sem mexer no layout e conta as leituras)
+      const meus = QRS.filter((q) => q.ativo || q.link === z.qr);
+      const pick = meus.length ? el('select', { 'aria-label': `QR code do menu QR Codes para a zona ${z.id}`, onchange: (ev) => { if (!ev.target.value) return; z.qr = ev.target.value; paintRows(); paintPv(); } },
+        opt('', meus.some((q) => q.link === z.qr) ? 'QR do menu QR Codes' : 'Usar um QR do menu QR Codes…', false), ...meus.map((q) => opt(q.link, `${q.nome} (${q.codigo})`, q.link === z.qr))) : null;
+      return el('div', { class: 'tc-qrf' }, pick, inp, special ? el('span', { class: 'small', text: qrLabel(z.qr) }) : null, btn('Wi-Fi', qrMaker(z, 'wifi'), 'small'), btn('Contato', qrMaker(z, 'vcard'), 'small'));
     };
     // o gadget da zona (contador, dias sem acidente, relógio mundial): escolhido aqui, vai à tela sem precisar de playlist
     const widgetPick = (z) => {
@@ -204,7 +209,7 @@ export function layoutEditor(lay, reload, factoryKey = null, copyOf = null, { ao
   bg.addEventListener('change', () => { st.background = bg.value; paintPv(); });
   name.addEventListener('input', () => { st.name = name.value; });
   paintRows(); paintPv();
-  dialog(lay ? `Layout · ${lay.name}` : 'Novo layout', el('div', {},
+  const { dlg: dlgLay } = dialog(lay ? `Layout · ${lay.name}` : 'Novo layout', el('div', {},
     el('div', { class: 'pf-grid' }, f('Nome', name), el('div', { class: 'pf-grid two' }, f('Tela', orient), f('Fundo', bg))),
     el('div', { class: 'tc-two' },
       el('div', {}, label('Arraste para ajustar'), canvas.node, note('Arraste a zona para mover; arraste o quadradinho do canto para mudar o tamanho. Com a zona escolhida, as setas movem 1% (com Shift, mudam o tamanho).')),
@@ -223,12 +228,14 @@ export function layoutEditor(lay, reload, factoryKey = null, copyOf = null, { ao
       await reload();
     },
   });
+  dlgLay.classList.add('tc-lay-dlg'); // o editor usa quase a tela toda: a tabela das zonas cabe sem rolar de lado
 }
 
 const quadrosTxt = (l) => quadrosDoLayout(l).map((q) => `${q.zone.id}: ${q.px.w}×${q.px.h} (${FORMATO_TXT[q.formato]})`).join(' · ');
 export default async function paintLayouts(box, ctx) {
   const d = D(); const reload = ctx.reload;
   WIDGETS = listOf(await tapi('/api/tvcorp/widgets').catch(() => null), 'widgets');
+  QRS = listOf(await tapi('/api/qrcodes').catch(() => null), 'qrcodes');
   const feeds = listOf(await tapi('/api/tvcorp/feeds').catch(() => null), 'feeds');
   const def = d.defaults || {};
   HAS_CITY = Boolean(def.cidade || def.extra?.cidade || def.config?.cidade || feeds.some((x) => x.kind === 'weather'));
