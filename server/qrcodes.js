@@ -131,15 +131,18 @@ export function mountQrcodes(app, { needs, publicUrl, tvcorpFile = null, ipOf = 
   app.get('/q/:code/conteudo', ah(async (req, res) => {
     const r = await doCodigo(String(req.params.code || '').toLowerCase());
     if (!r || r.tipo === 'link') return res.status(404).json({ error: 'Não encontrado.' });
-    const ids = r.tipo === 'midia' ? [Number(r.alvo)]
-      : (await db.all("SELECT ref_id FROM tvcorp_playlist_items WHERE playlist_id = ? AND tenant_id = ? AND ref_kind = 'media' ORDER BY sort", [Number(r.alvo), r.tenant_id])).map((x) => Number(x.ref_id));
+    // a ordem e o tempo de cada item, como na tela (a página do celular passa um por vez)
+    const rows = r.tipo === 'midia' ? [{ ref_id: Number(r.alvo), seconds: null }]
+      : await db.all("SELECT ref_id, seconds FROM tvcorp_playlist_items WHERE playlist_id = ? AND tenant_id = ? AND ref_kind = 'media' ORDER BY sort, id", [Number(r.alvo), r.tenant_id]);
+    const ids = rows.map((x) => Number(x.ref_id)); const secs = new Map(rows.map((x) => [Number(x.ref_id), Number(x.seconds) || null]));
     const itens = [];
     for (const id of ids.slice(0, 40)) {
       const m = await db.get("SELECT id, kind, title, template, fields FROM tvcorp_media WHERE id = ? AND tenant_id = ? AND status = 'ok'", [id, r.tenant_id]);
       if (!m) continue;
       const f = JSON.parse(m.fields || '{}');
-      if (m.kind === 'slide') itens.push({ kind: 'slide', title: m.title, template: m.template, fields: f, image: f.image ? `/q/${r.codigo}/arquivo/${Number(f.image)}` : null });
-      else itens.push({ kind: m.kind, title: m.title, url: `/q/${r.codigo}/arquivo/${m.id}`, ...(m.kind === 'video' && f.poster ? { poster: `/q/${r.codigo}/arquivo/${m.id}?poster=1` } : {}) });
+      const seconds = Math.min(60, Math.max(4, secs.get(id) || 8));
+      if (m.kind === 'slide') itens.push({ kind: 'slide', seconds, title: m.title, template: m.template, fields: f, image: f.image ? `/q/${r.codigo}/arquivo/${Number(f.image)}` : null });
+      else itens.push({ kind: m.kind, seconds, title: m.title, url: `/q/${r.codigo}/arquivo/${m.id}`, ...(m.kind === 'video' && f.poster ? { poster: `/q/${r.codigo}/arquivo/${m.id}?poster=1` } : {}) });
     }
     const pl = r.tipo === 'playlist' ? await db.get('SELECT name FROM tvcorp_playlists WHERE id = ?', [Number(r.alvo)]) : null;
     const t = await db.get('SELECT name FROM tenants WHERE id = ?', [r.tenant_id]);
