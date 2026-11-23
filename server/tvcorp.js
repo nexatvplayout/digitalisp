@@ -29,7 +29,7 @@ import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import express from 'express';
 import {
-  TVC_LIMITS as L, TVC_SLIDE_MODEL, TVC_REF_KIND, TVC_APPROVAL_KINDS, TVC_PLAYLIST_ZONES, isTvcOfficeType, itemRef, parseItemRef,
+  TVC_LIMITS as L, TVC_SLIDE_MODEL, TVC_REF_KIND, TVC_APPROVAL_KINDS, TVC_PLAYLIST_ZONES, TVC_ART, isTvcOfficeType, itemRef, parseItemRef,
 } from '../public/shared/tvcorp-tipos.js';
 import { deviceStatus } from '../public/shared/telas-tipos.js';
 import * as K from './tvcorp-core.js';
@@ -63,11 +63,12 @@ const AUTO_LABEL = { birthdays: 'Aniversariantes', news: 'Notícias', quotes: 'C
  *   hasFeature   (tenantId, chave) -> bool: a rota da chave de integração só monta com ele (tvcorp e api no plano)
  *   pendingOther (tenantId) -> número: o que espera fora da fila deste pacote (comunicados e sugestões do pacote B), no selo e no Resumo
  *   forget       (tenantId): a configuração das telas mudou (server/telas.js refaz o rev)
+ *   artFile      (chave, req) -> { url, sha256, bytes } | null: a foto de fundo do slide (fields.art), que vai como fields.artFile
  *   audit        (entrada) da auditoria (server/auth.js), para as rotas sem sessão do painel; ipOf(req)
  */
 export function createTvcorp({
   db, storage, ffmpeg = null, checkImage = null, dataFor = null, labelFor = null, refExists = null, decideOther = null, hasFeature = null, pendingOther = null,
-  forget = () => {}, audit = async () => {}, ipOf = (req) => req.ip, now = () => Date.now(), timers = true,
+  forget = () => {}, audit = async () => {}, ipOf = (req) => req.ip, now = () => Date.now(), timers = true, artFile = null,
 }) {
   if (!db) throw new Error('createTvcorp: falta o banco');
   const noStore = (res) => res.set('Cache-Control', 'no-store');
@@ -283,6 +284,13 @@ export function createTvcorp({
       const lines = fields.text ? fields.text.split('\n').filter(Boolean) : [];
       if (r.template === 'cardapio') fields.items = lines;
       else if (lines.length > 1) fields.lines = lines;
+      // a foto de fundo (fields.art = foto-*): o arquivo vai junto, para o app baixar, guardar e desenhar atrás do texto com o
+      // véu escuro (Android: o desenho nativo; contrato combinado com a sessão do app, 22/11/2026). Arte SVG: sem arquivo.
+      if (fields.art && artFile) {
+        const a = TVC_ART[fields.art]; const raw = a?.photo ? artFile(fields.art, req) : null;
+        const file = raw ? K.fileContract(raw.url, raw.sha256, raw.bytes) : null;
+        if (file) fields.artFile = { ...file, photo: true, tone: a.tone === 'light' ? 'light' : 'dark' };
+      }
       if (r.template === 'indicador') fields.kpi = { value: fields.value, ...(fields.target ? { target: fields.target } : {}), ...(fields.unit ? { unit: fields.unit } : {}) };
       return [{ id: ref, kind: 'slide', seconds: it.seconds, template: r.template, fields, ...when }];
     }

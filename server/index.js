@@ -22,6 +22,7 @@ import { bindContas, assertNovaTela } from './contas.js';
 import { mountRevenda } from './revenda.js';
 import { mountHls, carregarHls, channelsOf as hlsChannels, streamOf as hlsStream } from './hls.js';
 import { createTvcorp } from './tvcorp.js';
+import { TVC_ART } from '../public/shared/tvcorp-tipos.js';
 import { createTvcorpDados, FILE_RE as TVC_FILE_RE } from './tvcorp-dados.js';
 import { createTelas } from './telas.js';
 import { createGeocoder } from './telas-geocode.js';
@@ -173,9 +174,24 @@ async function tvcorpLabel(tenantId, kind, id) {
   const t = { post: ['tvcorp_posts', 'title'], posts: ['tvcorp_posts', 'title'], kpi: ['tvcorp_kpis', 'name'], widget: ['tvcorp_widgets', 'name'], news: ['tvcorp_feeds', 'name'], quotes: ['tvcorp_feeds', 'name'], weather: ['tvcorp_feeds', 'name'], traffic: ['tvcorp_feeds', 'name'] }[kind];
   return t ? (await db.get(`SELECT ${t[1]} AS n FROM ${t[0]} WHERE id = ? AND tenant_id = ?`, [id, tenantId]))?.n ?? null : null;
 }
+/**
+ * A foto de fundo de um slide (public/tvcorp/arte/foto-*.jpg) no formato de arquivo do contrato, para o app baixar e guardar
+ * como as outras mídias: { url, sha256, bytes }. Só as fotos (o Android não abre SVG; sem ela, o fundo sai da paleta).
+ * A impressão digital é calculada uma vez por arquivo.
+ */
+const artSums = new Map();
+function artFileOf(key, req) {
+  const a = TVC_ART[key];
+  if (!a?.photo || !/^foto-[a-z0-9-]+$/.test(key)) return null;
+  if (!artSums.has(key)) {
+    try { const buf = fs.readFileSync(pub(`tvcorp/arte/${key}.jpg`)); artSums.set(key, { sha256: createHash('sha256').update(buf).digest('hex'), bytes: buf.length }); } catch { artSums.set(key, null); }
+  }
+  const s = artSums.get(key);
+  return s ? { url: `${req ? publicOrigin(req) : config.platform.publicUrl || ''}/tvcorp/arte/${key}.jpg`, ...s } : null;
+}
 let telas = null;
 const tvcorp = createTvcorp({
-  db, storage: graphicsFiles('tvcmedia-', 'tvclogo-'), ffmpeg: config.ffmpeg,
+  db, storage: graphicsFiles('tvcmedia-', 'tvclogo-'), ffmpeg: config.ffmpeg, artFile: artFileOf,
   dataFor: tvcorpDados.dataFor, labelFor: tvcorpLabel,
   refExists: async (tenantId, kind, id) => Boolean(await tvcorpLabel(tenantId, kind, id)),
   hasFeature: (tid, key) => tenancy.hasFeature(tid, key),
