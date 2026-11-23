@@ -190,13 +190,52 @@
       return null;
     }
 
+    function TelasN(v) { return v !== null && v !== undefined && v !== '' && isFinite(Number(v)); }
+
+    /**
+     * Página da internet (item web): um quadro com o endereço por cima da prévia (que mostra o endereço) e recarga a cada
+     * refreshMin minutos. Sem rede, ou se o quadro não carregar em 30 s, fica a prévia. O navegador não deixa o app saber
+     * se o site recusou o quadro (X-Frame-Options/CSP): nesse caso a TV mostra a página de recusa do próprio navegador.
+     */
+    function paginaWeb(z, it) {
+      var r = it.raw || {};
+      z.setAttribute('data-web', it.id + ' ' + r.url);
+      if (ctx.online && !ctx.online()) return;
+      var f = el('iframe', 'tvc-web');
+      f.setAttribute('scrolling', 'no');
+      f.setAttribute('frameborder', '0');
+      var carregou = false;
+      f.onload = function () { carregou = true; };
+      f.src = r.url;
+      z.appendChild(f);
+      timers.push(setTimeout(function () { if (!carregou && f.parentNode) f.parentNode.removeChild(f); }, 30000));
+      var min = Number(r.refreshMin);
+      if (min > 0) enquantoNaTela(f, function () { if (!ctx.online || ctx.online()) f.src = r.url; }, Math.max(1, min) * 60000);
+    }
+
     function desenharPrevia(caixa, it, prog, depois) {
       locais(it).then(function (mapa) {
         var n = null;
         try {
-          if (['clock', 'weather', 'qr', 'logo'].indexOf(it.kind) >= 0) n = zonaPrevia(it.kind, it.raw, prog);
-          else {
+          var r = it.raw || {};
+          // relógio e clima com dados (os gadgets): o desenho de item da prévia; sem dados, o desenho de zona com o
+          // relógio do app e o clima da tela. QR e logomarca: só o de zona
+          var comoZona = it.kind === 'qr' || it.kind === 'logo' ||
+            (it.kind === 'weather' && !(TelasN(r.tempC) || TelasN(r.min) || TelasN(r.max) || (r.days && r.days.length))) ||
+            (it.kind === 'clock' && !raiz.TelasPrevia.tickWidgets);
+          if (comoZona) n = zonaPrevia(it.kind, it.raw, prog);
+          else if (it.kind === 'web' && caixa.firstChild && caixa.firstChild.getAttribute && caixa.firstChild.getAttribute('data-web') === it.id + ' ' + r.url) {
+            // a mesma página já aberta (playlist de um item só): não recarrega a cada volta
+            timers.push(setTimeout(depois, it.seconds * 1000));
+            return;
+          } else {
             var o = paraPrevia(it, mapa);
+            if (o && o.kind === 'clock') {
+              if (!o.tz) o.tz = prog.tz;
+              // `seconds` do item é a duração na playlist (o servidor sobrescreve o "mostrar segundos" do gadget com ela);
+              // showSeconds, quando vier, decide
+              if (o.showSeconds !== undefined) o.seconds = o.showSeconds === true;
+            }
             if (o) { n = raiz.TelasPrevia.itemPreview(o, { theme: tema(prog) }); iniciais(n, o); }
           }
         } catch (e) {
@@ -206,11 +245,13 @@
         if (!n) return depois(); // sem o que mostrar (arquivo faltando, dado vazio): o próximo
         var z = el('div', 'tvc-z');
         z.appendChild(n);
+        if (it.kind === 'web') paginaWeb(z, it);
         trocar(caixa, z);
         medidas(caixa);
-        // contador (dias, horas, minutos e segundos): anda a cada segundo, pelo relógio confiável do app
-        if (raiz.TelasPrevia.tickCountdowns && (n.classList.contains('tvc-it-count') || n.querySelector('.tvc-it-count'))) {
-          var tique = function () { raiz.TelasPrevia.tickCountdowns(n, ctx.agora()); };
+        // relógios e contadores: andam a cada segundo, pelo relógio confiável do app
+        var tick = raiz.TelasPrevia.tickWidgets || raiz.TelasPrevia.tickCountdowns;
+        if (tick && (n.classList.contains('tvc-it-count') || n.classList.contains('tvc-tick') || n.querySelector('.tvc-it-count, .tvc-tick'))) {
+          var tique = function () { tick(n, ctx.agora()); };
           tique(); enquantoNaTela(n, tique, 1000);
         }
         timers.push(setTimeout(depois, it.seconds * 1000));

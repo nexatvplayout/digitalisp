@@ -1,0 +1,1139 @@
+/* gerado por apps-tv/scripts/previa.js a partir de public/shared/tvcorp-previa.js; não edite à mão */
+(function () {
+  if (!Array.prototype.flat) Object.defineProperty(Array.prototype, 'flat', { configurable: true, writable: true, value: function (d) {
+    d = d === undefined ? 1 : Math.floor(d); var out = [];
+    (function f(a, n) { for (var i = 0; i < a.length; i++) { if (Array.isArray(a[i]) && n > 0) f(a[i], n - 1); else out.push(a[i]); } })(this, d);
+    return out; } });
+  // Object.fromEntries é do Chromium 73 (a Samsung 2020, Tizen 5.5, é Chromium 69): sem ele o módulo todo não carrega
+  if (!Object.fromEntries) Object.fromEntries = function (it) { var o = {}; Array.prototype.slice.call(Array.from ? Array.from(it) : it).forEach(function (kv) { o[kv[0]] = kv[1]; }); return o; };
+  if (!Object.values) Object.values = function (o) { return Object.keys(o).map(function (k) { return o[k]; }); };
+  if (!Array.prototype.flatMap) Object.defineProperty(Array.prototype, 'flatMap', { configurable: true, writable: true, value: function (fn, t) {
+    var out = []; for (var i = 0; i < this.length; i++) { var r = fn.call(t, this[i], i, this); if (Array.isArray(r)) out.push.apply(out, r); else out.push(r); } return out; } });
+  if (!String.prototype.padEnd) String.prototype.padEnd = function (n, c) {
+    var s = String(this); c = c === undefined ? ' ' : String(c); while (s.length < n) s = s + c; return s.slice(0, Math.max(n, String(this).length)); };
+  if (!String.prototype.trimStart) String.prototype.trimStart = function () { return String(this).replace(/^\s+/, ''); };
+  if (!String.prototype.trimEnd) String.prototype.trimEnd = function () { return String(this).replace(/\s+$/, ''); };
+  // Intl formatToParts é do Chromium 57 (as LG webOS 4 são 53): o relógio do gadget pede hora, minuto e segundo num fuso
+  if (typeof Intl !== 'undefined' && Intl.DateTimeFormat && !Intl.DateTimeFormat.prototype.formatToParts) {
+    Intl.DateTimeFormat.prototype.formatToParts = function (d) {
+      var ro = this.resolvedOptions(), tipos = ['hour', 'minute', 'second'].filter(function (k) { return ro[k]; });
+      if (ro.year || ro.month || ro.day || ro.weekday) throw new Error('formatToParts: só hora');
+      var out = [], k = 0;
+      (this.format(d).match(/\d+|\D+/g) || []).forEach(function (t) { out.push(/^\d/.test(t) ? { type: tipos[k++] || 'literal', value: t } : { type: 'literal', value: t }); });
+      return out;
+    };
+  }
+  if (!Object.entries) Object.entries = function (o) { return Object.keys(o).map(function (k) { return [k, o[k]]; }); };
+  if (!String.prototype.padStart) String.prototype.padStart = function (n, c) {
+    var s = String(this); c = c === undefined ? ' ' : String(c); while (s.length < n) s = c + s; return s.slice(-Math.max(n, String(this).length)); };
+  if (typeof Element === 'undefined') return; // fora do navegador (o teste da carga, em node)
+  [Element.prototype, Document.prototype, DocumentFragment.prototype].forEach(function (p) {
+    if (p.append) return;
+    Object.defineProperty(p, 'append', { configurable: true, writable: true, value: function () {
+      var frag = document.createDocumentFragment();
+      for (var i = 0; i < arguments.length; i++) { var a = arguments[i]; frag.appendChild(a instanceof Node ? a : document.createTextNode(String(a))); }
+      this.appendChild(frag); } });
+  });
+})();
+var TelasPrevia = (() => {
+  var __defProp = Object.defineProperty, __defProps = Object.defineProperties, __getOwnPropDesc = Object.getOwnPropertyDescriptor, __getOwnPropDescs = Object.getOwnPropertyDescriptors, __getOwnPropNames = Object.getOwnPropertyNames, __getOwnPropSymbols = Object.getOwnPropertySymbols;
+  var __hasOwnProp = Object.prototype.hasOwnProperty, __propIsEnum = Object.prototype.propertyIsEnumerable;
+  var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: !0, configurable: !0, writable: !0, value }) : obj[key] = value, __spreadValues = (a, b) => {
+    for (var prop in b || (b = {}))
+      __hasOwnProp.call(b, prop) && __defNormalProp(a, prop, b[prop]);
+    if (__getOwnPropSymbols)
+      for (var prop of __getOwnPropSymbols(b))
+        __propIsEnum.call(b, prop) && __defNormalProp(a, prop, b[prop]);
+    return a;
+  }, __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
+  var __export = (target, all) => {
+    for (var name in all)
+      __defProp(target, name, { get: all[name], enumerable: !0 });
+  }, __copyProps = (to, from, except, desc) => {
+    if (from && typeof from == "object" || typeof from == "function")
+      for (let key of __getOwnPropNames(from))
+        !__hasOwnProp.call(to, key) && key !== except && __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+    return to;
+  };
+  var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: !0 }), mod);
+
+  // ../public/shared/previa-entrada.js
+  var previa_entrada_exports = {};
+  __export(previa_entrada_exports, {
+    daysSince: () => daysSince,
+    daysUntil: () => daysUntil,
+    frameOf: () => frameOf,
+    itemPreview: () => itemPreview,
+    layoutFigure: () => layoutFigure,
+    layoutPreview: () => layoutPreview,
+    qrSvg: () => qrSvg,
+    slidePreview: () => slidePreview,
+    themeClass: () => themeClass
+  });
+
+  // ../public/shared/telas-tipos.js
+  var MODULES = [
+    { key: "alertas", label: "Alertas em tela cheia", desc: "Os alertas da Defesa Civil e da prefeitura por cima do vídeo, com ou sem som.", fixed: !0 },
+    { key: "avisos", label: "Avisos da repartição", desc: "O texto rolante com os avisos que a própria repartição escreve (pelo painel ou pelo link de controle)." },
+    { key: "senha", label: "Chamada de senha", desc: "A fila de atendimento na tela (senha, guichê, voz da chamada), com o totem de retirada e a página do guichê." },
+    { key: "escala", label: "Escala de plantão", desc: "Os profissionais e as especialidades de plantão no dia.", card: "escala" },
+    { key: "merenda", label: "Cardápio da merenda", desc: "O cardápio da semana: a tela mostra o do dia.", card: "merenda" },
+    { key: "calendario", label: "Calendário escolar", desc: "As datas da escola: provas, reuniões e eventos.", card: "calendario" },
+    { key: "vagas", label: "Vagas de emprego", desc: "As vagas abertas do SINE.", card: "vagas" },
+    { key: "sessao", label: "Pauta da sessão", desc: "A pauta da sessão da Câmara.", card: "pauta" },
+    { key: "agenda", label: "Agenda cultural e esportiva", desc: "A programação dos espaços de cultura e de esporte.", card: "agenda" },
+    { key: "linhas", label: "Horários das linhas", desc: "As partidas do terminal de ônibus.", card: "linhas" },
+    { key: "panico", label: "Botão de pânico", desc: "Um botão no painel da repartição que avisa a Segurança (CCO) em silêncio: nada aparece em tela nenhuma." },
+    { key: "interna", label: "Comunicação interna", desc: 'Telas internas (posto de enfermagem, repouso, copa): avisos da direção com "Li" no celular, escala, treinamentos e os códigos de emergência hospitalar. Nada disso vai às telas do público.' },
+    { key: "aprovacao", label: "Aprovação de avisos", desc: "Os avisos, os cartões e os alertas das repartições passam pela SECOM antes de ir às telas (liga em Padrão da prefeitura).", tenant: !0 }
+  ], MODULE = Object.fromEntries(MODULES.map((m) => [m.key, m])), CODE_COLORS = Object.freeze([
+    { key: "azul", label: "Azul", hex: "#1565c0", fg: "#ffffff" },
+    { key: "vermelho", label: "Vermelho", hex: "#c62828", fg: "#ffffff" },
+    { key: "rosa", label: "Rosa", hex: "#d81b60", fg: "#ffffff" },
+    { key: "laranja", label: "Laranja", hex: "#ef6c00", fg: "#ffffff" },
+    { key: "cinza", label: "Cinza", hex: "#616161", fg: "#ffffff" },
+    { key: "amarelo", label: "Amarelo", hex: "#f9a825", fg: "#1a1a1a" },
+    { key: "verde", label: "Verde", hex: "#2e7d32", fg: "#ffffff" },
+    { key: "roxo", label: "Roxo", hex: "#6a1b9a", fg: "#ffffff" },
+    { key: "marrom", label: "Marrom", hex: "#5d4037", fg: "#ffffff" },
+    { key: "preto", label: "Preto", hex: "#212121", fg: "#ffffff" },
+    { key: "branco", label: "Branco", hex: "#eeeeee", fg: "#1a1a1a" },
+    { key: "turquesa", label: "Turquesa", hex: "#00838f", fg: "#ffffff" }
+  ]);
+  var MODULE_KEYS = MODULES.filter((m) => !m.soon && !m.fixed && !m.tenant).map((m) => m.key), CARD_KINDS = [
+    { key: "merenda", label: "Merenda", module: "merenda", title: "Merenda de hoje", weekly: !0, hint: "Um item do cardápio por linha. Faça um cartão para cada dia da semana: a tela mostra o de hoje." },
+    { key: "escala", label: "Escala do dia", module: "escala", title: "Plantão de hoje", weekly: !0, hint: "Um profissional ou especialidade por linha. Sem dia marcado, vale todos os dias." },
+    { key: "vagas", label: "Vagas de emprego", module: "vagas", title: "Vagas abertas", hint: "Uma vaga por linha (cargo, quantidade, como se candidatar)." },
+    { key: "agenda", label: "Agenda", module: "agenda", title: "Agenda", hint: "Um evento por linha (dia, hora e local)." },
+    { key: "pauta", label: "Pauta", module: "sessao", title: "Pauta da sessão", hint: "Um item da pauta por linha." },
+    { key: "calendario", label: "Calendário escolar", module: "calendario", title: "Calendário escolar", hint: "Uma data por linha." },
+    { key: "linhas", label: "Horários das linhas", module: "linhas", title: "Próximas partidas", hint: "Uma linha de ônibus por linha (número, destino e horários)." },
+    { key: "unidade", label: "Aviso da unidade", module: null, title: "Avisos", hint: "Informação geral da unidade (horário de funcionamento, documentos, telefones)." }
+  ], CARD_KIND = Object.fromEntries(CARD_KINDS.map((k) => [k.key, k])), CARD_KIND_KEYS = CARD_KINDS.map((k) => k.key);
+  var CONTENT_CLASSES = [
+    { key: "utilidade", label: "Utilidade pública" },
+    { key: "institucional", label: "Institucional" },
+    { key: "emergencia", label: "Emergência" }
+  ], CONTENT_CLASS_KEYS = CONTENT_CLASSES.map((c) => c.key);
+  var RISKS = [
+    { key: "vermelho", label: "Vermelho (emergência)", color: "#d92d20" },
+    { key: "laranja", label: "Laranja (muito urgente)", color: "#f08c00" },
+    { key: "amarelo", label: "Amarelo (urgente)", color: "#e6b800" },
+    { key: "verde", label: "Verde (pouco urgente)", color: "#2f9e44" },
+    { key: "azul", label: "Azul (não urgente)", color: "#1c7ed6" }
+  ], RISK_KEYS = RISKS.map((r) => r.key);
+  var OFFICE_TYPES = [
+    { key: "secom", label: "SECOM (comunicação)", short: "SECOM", modules: ["alertas", "avisos", "aprovacao"], alertScope: "wide", desc: "Avisos gerais da prefeitura e a aprovação dos avisos das repartições." },
+    { key: "defesa-civil", label: "Defesa Civil", short: "Defesa Civil", modules: ["alertas", "avisos"], alertScope: "wide", issuer: "Defesa Civil", desc: "Alertas por região, por grupo ou para a cidade toda." },
+    { key: "seguranca", label: "Segurança e Guarda Municipal (CCO)", short: "Segurança", modules: ["alertas", "avisos", "aprovacao"], alertScope: "wide", issuer: "Guarda Municipal", desc: "O centro de controle: recebe o botão de pânico, aprova os emissores conveniados e manda alertas de segurança e de trânsito." },
+    { key: "policia-civil", label: "Polícia Civil (emissor conveniado)", short: "Polícia Civil", modules: ["alertas"], alertScope: "wide", external: !0, issuer: "Polícia Civil", desc: "Órgão estadual, por convênio: desaparecidos e pedidos de informação. O que envia espera a aprovação do CCO." },
+    { key: "policia-militar", label: "Polícia Militar (emissor conveniado)", short: "Polícia Militar", modules: ["alertas"], alertScope: "wide", external: !0, issuer: "Polícia Militar", desc: "Órgão estadual, por convênio: alertas operacionais por área. O que envia espera a aprovação do CCO." },
+    { key: "upa", label: "UPA", short: "UPA", modules: ["alertas", "avisos", "senha", "escala", "panico", "interna"] },
+    { key: "hospital", label: "Hospital", short: "Hospital", modules: ["alertas", "avisos", "senha", "escala", "panico", "interna"] },
+    { key: "ubs", label: "UBS (posto de saúde)", short: "UBS", modules: ["alertas", "avisos", "senha", "panico"] },
+    { key: "caps", label: "CAPS", short: "CAPS", modules: ["alertas", "avisos", "senha", "panico"] },
+    { key: "escola", label: "Escola", short: "Escola", modules: ["alertas", "avisos", "merenda", "calendario", "panico"] },
+    { key: "creche", label: "Creche", short: "Creche", modules: ["alertas", "avisos", "merenda", "panico"] },
+    { key: "cras", label: "CRAS / CREAS", short: "CRAS", modules: ["alertas", "avisos", "senha", "panico"] },
+    { key: "central-cidadao", label: "Central do Cidadão", short: "Central", modules: ["alertas", "avisos", "senha"] },
+    { key: "sine", label: "SINE (emprego)", short: "SINE", modules: ["alertas", "avisos", "vagas", "senha"] },
+    { key: "camara", label: "Câmara Municipal", short: "Câmara", modules: ["alertas", "avisos", "sessao"] },
+    { key: "cultura", label: "Cultura (teatro, biblioteca, museu)", short: "Cultura", modules: ["alertas", "avisos", "agenda"] },
+    { key: "terminal", label: "Terminal de ônibus", short: "Terminal", modules: ["alertas", "avisos", "linhas"] },
+    { key: "outro", label: "Outra repartição", short: "Outro", modules: ["alertas", "avisos"] },
+    // TV Corporativa (docs/TV-CORPORATIVA.md §5.1): as unidades da empresa. corp: true = não aparecem no Painel da Prefeitura
+    // (e os tipos da prefeitura não aparecem na TV Corporativa); família F11 no link da unidade
+    { key: "matriz", label: "Matriz / sede", short: "Matriz", modules: ["alertas", "avisos"], corp: !0, desc: "A sede da empresa." },
+    { key: "filial", label: "Filial / escritório", short: "Filial", modules: ["alertas", "avisos"], corp: !0, desc: "Escritórios e filiais." },
+    { key: "fabrica", label: "Fábrica / planta", short: "Fábrica", modules: ["alertas", "avisos", "interna"], corp: !0, desc: "Chão de fábrica: indicadores, segurança do trabalho e comunicação interna." },
+    { key: "loja", label: "Loja / ponto de venda", short: "Loja", modules: ["alertas", "avisos"], corp: !0, desc: "Telas para clientes e equipe da loja." },
+    { key: "cd", label: "Centro de distribuição", short: "CD", modules: ["alertas", "avisos", "interna"], corp: !0, desc: "Logística e armazém." },
+    { key: "refeitorio", label: "Refeitório", short: "Refeitório", modules: ["alertas", "avisos"], corp: !0, desc: "Cardápio do dia, aniversariantes e comunicados." },
+    { key: "recepcao", label: "Recepção / portaria", short: "Recepção", modules: ["alertas", "avisos", "senha", "panico"], corp: !0, desc: "Boas-vindas aos visitantes, chamada de senha e o botão de pânico." },
+    { key: "ambulatorio", label: "Ambulatório da empresa", short: "Ambulatório", modules: ["alertas", "avisos", "senha"], corp: !0, desc: "Atendimento de saúde ocupacional com chamada de senha." },
+    { key: "treinamento", label: "Sala de treinamento", short: "Treinamento", modules: ["alertas", "avisos"], corp: !0, desc: "Treinamentos e integração de novos funcionários." },
+    { key: "corp-outro", label: "Outra unidade da empresa", short: "Outra", modules: ["alertas", "avisos"], corp: !0 }
+  ].map((t) => __spreadValues({ alertScope: "own", desc: "", external: !1, issuer: null, corp: !1 }, t)), PREF_OFFICE_TYPES = OFFICE_TYPES.filter((t) => !t.corp), CORP_OFFICE_TYPES = OFFICE_TYPES.filter((t) => t.corp);
+  var OFFICE_TYPE = Object.fromEntries(OFFICE_TYPES.map((t) => [t.key, t])), OFFICE_TYPE_KEYS = OFFICE_TYPES.map((t) => t.key);
+  var TYPE_SIGLA = Object.freeze({
+    secom: "SEC",
+    "defesa-civil": "DC",
+    seguranca: "SEG",
+    "policia-civil": "PC",
+    "policia-militar": "PM",
+    upa: "UPA",
+    hospital: "HOSP",
+    ubs: "UBS",
+    caps: "CAPS",
+    escola: "ESC",
+    creche: "CRE",
+    cras: "CRAS",
+    "central-cidadao": "CC",
+    sine: "SINE",
+    camara: "CAM",
+    cultura: "CULT",
+    terminal: "TERM",
+    outro: "REP",
+    matriz: "MTZ",
+    filial: "FIL",
+    fabrica: "FAB",
+    loja: "LOJA",
+    cd: "CD",
+    refeitorio: "REF",
+    recepcao: "REC",
+    ambulatorio: "AMB",
+    treinamento: "TRE",
+    "corp-outro": "UNI"
+  });
+  var LAYOUTS = [
+    { key: "full", label: "Tela cheia", desc: "Só o vídeo do canal." },
+    { key: "ticker", label: "Vídeo + avisos", desc: "O vídeo com o texto rolante dos avisos embaixo." },
+    { key: "side", label: "Vídeo + lateral", desc: "O vídeo com a coluna lateral (relógio, clima, QR)." },
+    { key: "lbar", label: "L (lateral + avisos)", desc: "O vídeo com a lateral e o texto rolante." },
+    { key: "portrait", label: "Em pé (totem)", desc: "A tela na vertical: vídeo em cima, avisos embaixo." },
+    { key: "queue", label: "Chamada de senha", desc: "O painel de senha grande com o canal pequeno no canto (pede a chamada de senha ligada)." },
+    // §15 do contrato (15/11): os painéis de senha novos. Todos pedem a chamada de senha ligada (sem ela a tela recebe "full");
+    // com a TV em pé o app desenha o "queue" de sempre. video: o canal aparece no painel (os sem vídeo deixam só a senha).
+    { key: "queue-table", queue: !0, video: !0, label: "Senha: vídeo + tabela", desc: "O vídeo à esquerda, a tabela SENHA | GUICHÊ com as últimas à direita e o texto rolante com o relógio embaixo." },
+    { key: "queue-big", queue: !0, video: !1, label: "Senha gigante", desc: "Sem vídeo: o tipo no alto, SENHA e GUICHÊ em caixas grandes e, à direita, a tabela das anteriores." },
+    { key: "queue-cards", queue: !0, video: !0, label: "Senha: cartões", desc: "Cabeçalho com o nome e o relógio, o vídeo com a senha atual ao lado e embaixo as últimas senhas em cartões." },
+    { key: "queue-header", queue: !0, video: !0, label: "Senha: cabeçalho e lista", desc: "Cabeçalho com o nome, a hora e a data; a senha atual num cartão grande e, à direita, as últimas chamadas e o canal." },
+    { key: "queue-info", queue: !0, video: !0, label: "Senha em faixas", desc: "SENHA, ATENDIMENTO e LOCAL em faixas rotuladas; à esquerda o nome da repartição, o relógio e o canal." },
+    { key: "queue-mosaic", queue: !0, video: !0, label: "Senha: mosaico", desc: "A senha atual grande e o canal em cima, três cartões das anteriores embaixo e o rodapé com o setor e o relógio." },
+    { key: "queue-duo", queue: !0, video: !1, label: "Duas filas lado a lado", desc: "Sem vídeo: a tela dividida em duas filas, cada uma com a sua senha atual; embaixo as últimas chamadas." },
+    { key: "queue-grid", queue: !0, video: !0, label: "Senha por fila (grade)", desc: "O vídeo à esquerda e uma grade com a última senha de cada fila, na cor da fila; rodapé com a data e o relógio." },
+    { key: "queue-list", queue: !0, video: !0, label: "Últimas chamadas + vídeo", desc: "As últimas chamadas numa coluna à esquerda; à direita a chamada atual no alto, o vídeo embaixo e o texto rolante." }
+  ], LAYOUT_KEYS = LAYOUTS.filter((l) => !l.soon).map((l) => l.key);
+  var QUEUE_LAYOUT_KEYS = LAYOUTS.filter((l) => l.key === "queue" || l.queue).map((l) => l.key);
+  var THEME_DEFAULT = Object.freeze({ color: "#1d4ed8", mode: "dark" });
+  var WIDGETS = [
+    { key: "clock", label: "Relógio e data" },
+    { key: "weather", label: "Clima" },
+    { key: "qr", label: "QR code" },
+    { key: "queue", label: "Senha atual" }
+  ], WIDGET_KEYS = WIDGETS.filter((w) => !w.soon).map((w) => w.key), ALERT_LEVELS = [
+    { key: "info", label: "Informativo" },
+    { key: "warn", label: "Atenção" },
+    { key: "critical", label: "Emergência" }
+  ], ALERT_LEVEL_KEYS = ALERT_LEVELS.map((l) => l.key);
+  var ALERT_SCOPES = [
+    // 'reach' (o alcance que a prefeitura marcou na ficha de uma repartição de emergência) não entra aqui: só o link de
+    // controle da repartição o usa, e o servidor o monta (REACH_TYPES, reachScope abaixo)
+    { key: "city", label: "Cidade toda" },
+    { key: "regions", label: "Regiões" },
+    { key: "groups", label: "Grupos de telas" },
+    { key: "office", label: "Uma repartição" },
+    { key: "radius", label: "Raio no mapa" }
+  ], ALERT_SCOPE_KEYS = ALERT_SCOPES.map((s2) => s2.key);
+  var T = (id, name, level, title, text) => ({ id, name, level, title, text }), ALERT_CATEGORIES = [
+    { key: "meteorologico", label: "Meteorológicos e hidrológicos", short: "Chuva, vento, calor e frio", types: [
+      T("chuva-intensa", "Chuva intensa", "warn", "Chuva intensa", "Chuva forte na região. Evite sair, fique longe de encostas e não atravesse ruas alagadas. Emergência: ligue 199 ou 193."),
+      T("vendaval", "Vendaval", "warn", "Vendaval", "Ventos fortes na região. Fique em local fechado, longe de janelas, árvores, postes e placas. Emergência: 199 ou 193."),
+      T("granizo", "Granizo", "warn", "Chuva de granizo", "Risco de granizo. Abrigue-se em local coberto, afaste-se das janelas e guarde o veículo se puder."),
+      T("enxurrada", "Enxurrada", "critical", "Enxurrada", "Água com força nas ruas. Não atravesse a pé nem de carro: poucos centímetros de água em movimento derrubam uma pessoa. Vá para um lugar alto. Emergência: 193."),
+      T("inundacao", "Inundação", "critical", "Inundação", "Rio fora do leito. Saia das áreas baixas e vá para um lugar alto e seguro. Desligue a energia se a água chegar em casa. Emergência: 199 ou 193."),
+      T("alagamento", "Alagamento", "warn", "Alagamento", "Há pontos de alagamento na região. Evite sair e não tente atravessar ruas alagadas a pé ou de carro. Emergência: 199 ou 193."),
+      T("ciclone", "Ciclone", "critical", "Ciclone", "Ciclone com vento forte e chuva intensa. Fique em casa, longe de janelas, e guarde água, lanterna e documentos. Emergência: 199 ou 193."),
+      T("tornado", "Tornado", "critical", "Risco de tornado", "Abrigue-se agora no cômodo mais interno e baixo do prédio, longe de janelas e portas. Proteja a cabeça. Emergência: 193."),
+      T("onda-calor", "Onda de calor", "warn", "Onda de calor", "Beba água várias vezes ao dia, evite o sol entre 10h e 16h e dê atenção a crianças e idosos. Em caso de mal-estar, procure a unidade de saúde mais próxima."),
+      T("frio-extremo", "Frio extremo", "warn", "Frio intenso", "Temperatura muito baixa. Agasalhe-se, proteja crianças, idosos e animais. Viu alguém em situação de rua precisando de abrigo? Ligue 199.")
+    ] },
+    { key: "geologico", label: "Riscos geológicos", short: "Deslizamento, erosão e tremor", types: [
+      T("deslizamento", "Deslizamento de terra", "critical", "Risco de deslizamento", "Rachaduras, estalos, postes ou árvores inclinados são sinais de perigo. Saia de casa agora e vá para um ponto de apoio. Emergência: 199 ou 193."),
+      T("desmoronamento", "Desmoronamento de encosta", "critical", "Desmoronamento de encosta", "Encosta com risco de desmoronar. Deixe a área agora e não volte para buscar pertences. Emergência: 199 ou 193."),
+      T("erosao", "Erosão grave", "warn", "Erosão grave", "Solo cedendo na região. Não se aproxime da área isolada e avise a Defesa Civil se notar novas rachaduras no chão ou nas paredes: 199."),
+      T("tremor", "Tremor de terra", "warn", "Tremor de terra", "Foi sentido um tremor de terra. Mantenha a calma, afaste-se de janelas e objetos que possam cair e confira se há rachaduras. Dúvidas: 199.")
+    ] },
+    { key: "tecnologico", label: "Desastres tecnológicos e industriais", short: "Barragem, produto químico, incêndio", types: [
+      T("barragem", "Risco ou rompimento de barragem", "critical", "Risco em barragem", "Siga agora pela rota de fuga até o ponto de encontro mais alto. Vá a pé, não volte para casa e ajude quem precisa. Emergência: 199."),
+      T("quimico", "Vazamento de produto químico perigoso", "critical", "Vazamento de produto químico", "Afaste-se da área. Se estiver em casa, feche portas e janelas e desligue o ar-condicionado. Sentiu mal-estar? Procure atendimento. Emergência: 193."),
+      T("radiologico", "Acidente nuclear ou radiológico", "critical", "Emergência radiológica", "Entre em um local fechado, feche portas e janelas e aguarde as orientações oficiais. Não saia para buscar ninguém. Emergência: 199."),
+      T("incendio-urbano", "Incêndio urbano de grandes proporções", "critical", "Incêndio de grandes proporções", "Afaste-se da área e deixe as ruas livres para os bombeiros. Se houver fumaça, feche as janelas. Emergência: 193."),
+      T("colapso", "Colapso de estrutura", "critical", "Risco de colapso de estrutura", "Deixe o prédio e a área isolada agora, sem usar o elevador. Não volte para buscar pertences. Emergência: 193 ou 199.")
+    ] },
+    { key: "incendio-ar", label: "Incêndios florestais e qualidade do ar", short: "Queimada, ar seco e fumaça", types: [
+      T("queimada", "Queimada perto de área habitada", "warn", "Queimada perto de casas", "Fogo em vegetação na região. Feche portas e janelas, afaste-se da fumaça e esteja pronto para sair se for orientado. Emergência: 193."),
+      T("baixa-umidade", "Baixa umidade do ar", "info", "Baixa umidade do ar", "Ar muito seco. Beba bastante água, evite exercícios entre 10h e 16h e não queime lixo nem vegetação."),
+      T("fumaca", "Fumaça tóxica", "critical", "Fumaça tóxica", "Fumaça perigosa na região. Fique em local fechado, com portas e janelas fechadas. Com falta de ar, procure atendimento. Emergência: 193.")
+    ] },
+    { key: "saude", label: "Emergências de saúde pública", short: "Surto, água e medida sanitária", types: [
+      T("surto", "Surto epidêmico", "warn", "Alerta de saúde", "Aumento de casos na cidade. Lave as mãos, mantenha a vacinação em dia e, com sintomas, procure a unidade de saúde mais próxima."),
+      T("agua-contaminada", "Água de abastecimento contaminada", "critical", "Não beba a água da torneira", "A água de abastecimento pode estar contaminada. Não beba nem use para cozinhar até novo aviso. Use água mineral ou fervida."),
+      T("risco-biologico", "Risco biológico com medida sanitária", "warn", "Medida sanitária em vigor", "Há uma medida sanitária em vigor na região. Siga as orientações das equipes de saúde e evite circular sem necessidade.")
+    ] },
+    { key: "seguranca", label: "Segurança pública", short: "Área a evitar, evacuação, isolamento", types: [
+      T("ocorrencia", "Ocorrência policial em andamento", "warn", "Ocorrência em andamento: evite a área", "Há uma ocorrência policial em andamento na região. Evite a área e siga as orientações dos agentes. Emergência: ligue 190."),
+      T("evacuacao-predio", "Evacuação de prédio público", "critical", "Evacuação do prédio", "Saia do prédio agora, com calma, pela saída mais próxima. Não use o elevador e siga as orientações dos agentes."),
+      T("area-isolada", "Área isolada", "warn", "Área isolada", "A área está isolada pelas equipes de segurança. Não se aproxime e siga as orientações dos agentes.")
+    ] },
+    { key: "transito", label: "Trânsito", short: "Bloqueio, interdição e desvio", types: [
+      T("bloqueio-via", "Bloqueio de via", "warn", "Via bloqueada", "Há um bloqueio de via na região. Evite o trecho e use um caminho alternativo. Siga as orientações dos agentes."),
+      T("interdicao", "Interdição", "info", "Via interditada", "A via está interditada. Use um caminho alternativo e siga a sinalização."),
+      T("desvio", "Desvio", "info", "Desvio no trânsito", "O trânsito está desviado na região. Siga a sinalização e as orientações dos agentes.")
+    ] },
+    { key: "teste", label: "Teste e simulação do sistema", short: "Teste programado e simulado", test: !0, types: [
+      T("teste-programado", "Teste programado", "info", "TESTE: teste do sistema de alertas", "Este é apenas um teste do sistema de alertas da Defesa Civil. Não há perigo real. Nenhuma ação é necessária."),
+      T("simulado", "Simulado", "info", "TESTE: simulado da Defesa Civil", "Simulado em andamento. Não há perigo real. Quem participa do exercício deve seguir as orientações das equipes no local.")
+    ] },
+    { key: "outro", label: "Outro", short: "Texto livre", types: [
+      T("outro", "Outro (texto livre)", "warn", "", "")
+    ] }
+  ], ALERT_CATEGORY_KEYS = ALERT_CATEGORIES.map((c) => c.key), ALERT_TYPES = ALERT_CATEGORIES.flatMap((c) => c.types.map((t) => __spreadProps(__spreadValues({}, t), { category: c.key, test: !!c.test }))), ALERT_TYPE = Object.fromEntries(ALERT_TYPES.map((t) => [t.id, t]));
+  var MISSING_KINDS = [
+    { key: "crianca", label: "Criança", head: "CRIANÇA DESAPARECIDA" },
+    { key: "adolescente", label: "Adolescente", head: "ADOLESCENTE DESAPARECIDO(A)" },
+    { key: "adulto", label: "Adulto", head: "PESSOA DESAPARECIDA" },
+    { key: "idoso", label: "Idoso", head: "IDOSO(A) DESAPARECIDO(A)" }
+  ], MISSING_KIND_KEYS = MISSING_KINDS.map((k) => k.key);
+  var MISSING_SHOWS = [
+    { key: "both", label: "Tela cheia e faixa" },
+    { key: "full", label: "Só tela cheia" },
+    { key: "banner", label: "Só faixa" }
+  ], MISSING_SHOW_KEYS = MISSING_SHOWS.map((s2) => s2.key);
+  var MISSING_LIMITS = Object.freeze({
+    active: 5,
+    name: 80,
+    lastSeen: 120,
+    description: 200,
+    contact: 80,
+    report: 40,
+    authName: 80,
+    ageMax: 120,
+    fullSecMin: 8,
+    fullSecMax: 60,
+    fullSec: 15,
+    bannerSecMin: 8,
+    bannerSecMax: 120,
+    bannerSec: 20,
+    everyMinMin: 2,
+    everyMinMax: 60,
+    everyMin: 10,
+    days: 7,
+    daysMax: 30,
+    uploadBytes: 5 * 1024 * 1024,
+    photoBytes: 600 * 1024,
+    photoSide: 1280,
+    keepDays: 90
+  });
+  var OFFICE_ROLES = [
+    { key: "gestor", label: "Gestor", desc: "Tudo da repartição: avisos, cartões, alertas, a chamada de senha e as TV box." },
+    { key: "atendente", label: "Atendente", desc: "Só a chamada de senha: as abas Atendimento e Recepção (a tela do guichê)." }
+  ], OFFICE_ROLE_KEYS = OFFICE_ROLES.map((r) => r.key);
+  var CARD_TAB_LABEL = Object.freeze({ merenda: "Merenda", escala: "Escala", vagas: "Vagas", agenda: "Agenda", pauta: "Pauta da sessão", calendario: "Calendário", linhas: "Horários das linhas", unidade: "Aviso da unidade" });
+  var COMMANDS = [
+    { key: "reload", label: "Recarregar" },
+    { key: "restart-app", label: "Reiniciar o app" },
+    { key: "reboot", label: "Reiniciar o aparelho" },
+    { key: "screenshot", label: "Captura da tela" }
+  ], COMMAND_KEYS = COMMANDS.map((c) => c.key);
+  var LIMITS = {
+    name: 80,
+    address: 200,
+    contact: 120,
+    description: 200,
+    tickerItems: 20,
+    tickerItem: 200,
+    tickerSpeedMin: 20,
+    tickerSpeedMax: 200,
+    alertTitle: 80,
+    alertText: 500,
+    alertMaxMs: 7 * 864e5,
+    alertMinMs: 6e4,
+    radiusMin: 100,
+    radiusMax: 1e5,
+    pinMin: 4,
+    pinMax: 8,
+    exitSeqMin: 4,
+    exitSeqMax: 10,
+    linkPasswordMin: 8,
+    linkPasswordMax: 72,
+    offices: 2e3,
+    regions: 500,
+    groups: 500,
+    devices: 2e4,
+    // cartões de informação (contrato §7.1): o que a tela recebe e o que a repartição guarda
+    cardsSent: 12,
+    cardTitle: 60,
+    cardLines: 8,
+    cardLine: 90,
+    cardsPerOffice: 60,
+    cardSecondsMin: 3,
+    cardSecondsMax: 120,
+    cardSeconds: 10,
+    // chamada de senha
+    queueServices: 20,
+    queueServiceName: 40,
+    queuePrefix: 3,
+    queueDesk: 30,
+    queueTitle: 60,
+    queueRatioMin: 1,
+    queueRatioMax: 5,
+    queueName: 60,
+    queueWaitingMax: 2e3,
+    // vídeos guardados (offline.items): por nível (padrão, grupo, repartição) e o que uma tela recebe
+    offlinePerScope: 10,
+    offlineSent: 20
+  };
+
+  // ../public/shared/qr.js
+  var ECL = { L: { bits: 1, i: 0 }, M: { bits: 0, i: 1 }, Q: { bits: 3, i: 2 }, H: { bits: 2, i: 3 } }, ECC_PER_BLOCK = [
+    [-1, 7, 10, 15, 20, 26, 18, 20, 24, 30, 18, 20, 24, 26, 30, 22, 24, 28, 30, 28, 28, 28, 28, 30, 30, 26, 28, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30],
+    [-1, 10, 16, 26, 18, 24, 16, 18, 22, 22, 26, 30, 22, 22, 24, 24, 28, 28, 26, 26, 26, 26, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28],
+    [-1, 13, 22, 18, 26, 18, 24, 18, 22, 20, 24, 28, 26, 24, 20, 30, 24, 28, 28, 26, 30, 28, 30, 30, 30, 30, 28, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30],
+    [-1, 17, 28, 22, 16, 22, 28, 26, 26, 24, 28, 24, 28, 22, 24, 24, 30, 28, 28, 26, 28, 30, 24, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30]
+  ], NUM_BLOCKS = [
+    [-1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 4, 4, 4, 4, 4, 6, 6, 6, 6, 7, 8, 8, 9, 9, 10, 12, 12, 12, 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 24, 25],
+    [-1, 1, 1, 1, 2, 2, 4, 4, 4, 5, 5, 5, 8, 9, 9, 10, 10, 11, 13, 14, 16, 17, 17, 18, 20, 21, 23, 25, 26, 28, 29, 31, 33, 35, 37, 38, 40, 43, 45, 47, 49],
+    [-1, 1, 1, 2, 2, 4, 4, 6, 6, 8, 8, 8, 10, 12, 16, 12, 17, 16, 18, 21, 20, 23, 23, 25, 27, 29, 34, 34, 35, 38, 40, 43, 45, 48, 51, 53, 56, 59, 62, 65, 68],
+    [-1, 1, 1, 2, 4, 4, 4, 5, 6, 8, 8, 11, 11, 16, 16, 18, 16, 19, 21, 25, 25, 25, 34, 30, 32, 35, 37, 40, 42, 45, 48, 51, 54, 57, 60, 63, 66, 70, 74, 77, 81]
+  ];
+  function rawDataModules(ver) {
+    let r = (16 * ver + 128) * ver + 64;
+    if (ver >= 2) {
+      let n = Math.floor(ver / 7) + 2;
+      r -= (25 * n - 10) * n - 55, ver >= 7 && (r -= 36);
+    }
+    return r;
+  }
+  var dataCodewords = (ver, e) => Math.floor(rawDataModules(ver) / 8) - ECC_PER_BLOCK[e.i][ver] * NUM_BLOCKS[e.i][ver];
+  function gfMul(x, y) {
+    let z = 0;
+    for (let i = 7; i >= 0; i--)
+      z = z << 1 ^ (z >>> 7) * 285, z ^= (y >>> i & 1) * x;
+    return z & 255;
+  }
+  function rsDivisor(degree) {
+    let r = new Array(degree).fill(0);
+    r[degree - 1] = 1;
+    let root = 1;
+    for (let i = 0; i < degree; i++) {
+      for (let j = 0; j < r.length; j++)
+        r[j] = gfMul(r[j], root), j + 1 < r.length && (r[j] ^= r[j + 1]);
+      root = gfMul(root, 2);
+    }
+    return r;
+  }
+  function rsRemainder(data, div) {
+    let r = new Array(div.length).fill(0);
+    for (let b of data) {
+      let f = b ^ r.shift();
+      r.push(0);
+      for (let i = 0; i < div.length; i++) r[i] ^= gfMul(div[i], f);
+    }
+    return r;
+  }
+  var utf8 = (s2) => typeof TextEncoder < "u" ? [...new TextEncoder().encode(s2)] : [...Buffer.from(s2, "utf8")];
+  function encodeQr(text, { ecl = "M", minVersion = 1, maxVersion = 40 } = {}) {
+    let e = ECL[ecl] || ECL.M, bytes = utf8(String(text != null ? text : "")), ver = Math.max(1, minVersion);
+    for (; ; ver++) {
+      if (ver > maxVersion) throw new Error("Texto longo demais para um QR Code.");
+      if (4 + (ver <= 9 ? 8 : 16) + bytes.length * 8 <= dataCodewords(ver, e) * 8) break;
+    }
+    let bits = [], put = (val, len) => {
+      for (let i = len - 1; i >= 0; i--) bits.push(val >>> i & 1);
+    };
+    put(4, 4), put(bytes.length, ver <= 9 ? 8 : 16);
+    for (let b of bytes) put(b, 8);
+    let cap = dataCodewords(ver, e) * 8;
+    put(0, Math.min(4, cap - bits.length)), put(0, (8 - bits.length % 8) % 8);
+    for (let pad = 236; bits.length < cap; pad ^= 253) put(pad, 8);
+    let data = [];
+    for (let i = 0; i < bits.length; i += 8) data.push(bits.slice(i, i + 8).reduce((a, b) => a << 1 | b, 0));
+    let nb = NUM_BLOCKS[e.i][ver], eccLen = ECC_PER_BLOCK[e.i][ver], raw = Math.floor(rawDataModules(ver) / 8), nShort = nb - raw % nb, shortLen = Math.floor(raw / nb), div = rsDivisor(eccLen), blocks = [];
+    for (let i = 0, k = 0; i < nb; i++) {
+      let dat = data.slice(k, k + shortLen - eccLen + (i < nShort ? 0 : 1));
+      k += dat.length;
+      let ecc = rsRemainder(dat, div);
+      i < nShort && dat.push(0), blocks.push(dat.concat(ecc));
+    }
+    let words = [];
+    for (let i = 0; i < blocks[0].length; i++)
+      blocks.forEach((b, j) => {
+        (i !== shortLen - eccLen || j >= nShort) && words.push(b[i]);
+      });
+    let size = ver * 4 + 17, mod = new Uint8Array(size * size), fn = new Uint8Array(size * size), set = (x, y, dark) => {
+      mod[y * size + x] = dark ? 1 : 0, fn[y * size + x] = 1;
+    };
+    for (let i = 0; i < size; i++)
+      set(6, i, i % 2 === 0), set(i, 6, i % 2 === 0);
+    let finder = (cx, cy) => {
+      for (let dy = -4; dy <= 4; dy++)
+        for (let dx = -4; dx <= 4; dx++) {
+          let x = cx + dx, y = cy + dy;
+          if (x < 0 || y < 0 || x >= size || y >= size) continue;
+          let d = Math.max(Math.abs(dx), Math.abs(dy));
+          set(x, y, d !== 2 && d !== 4);
+        }
+    };
+    finder(3, 3), finder(size - 4, 3), finder(3, size - 4);
+    let align = [];
+    if (ver > 1) {
+      let n = Math.floor(ver / 7) + 2, step = Math.floor((ver * 8 + n * 3 + 5) / (n * 4 - 4)) * 2;
+      align.push(6);
+      for (let pos = size - 7; align.length < n; pos -= step) align.splice(1, 0, pos);
+    }
+    let na = align.length;
+    for (let i = 0; i < na; i++)
+      for (let j = 0; j < na; j++)
+        if (!(i === 0 && j === 0 || i === 0 && j === na - 1 || i === na - 1 && j === 0))
+          for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) set(align[i] + dx, align[j] + dy, Math.max(Math.abs(dx), Math.abs(dy)) !== 1);
+    let drawFormat = (mask) => {
+      let d = e.bits << 3 | mask, rem = d;
+      for (let i = 0; i < 10; i++) rem = rem << 1 ^ (rem >>> 9) * 1335;
+      let b = (d << 10 | rem) ^ 21522, bit = (i) => (b >>> i & 1) === 1;
+      for (let i = 0; i <= 5; i++) set(8, i, bit(i));
+      set(8, 7, bit(6)), set(8, 8, bit(7)), set(7, 8, bit(8));
+      for (let i = 9; i < 15; i++) set(14 - i, 8, bit(i));
+      for (let i = 0; i < 8; i++) set(size - 1 - i, 8, bit(i));
+      for (let i = 8; i < 15; i++) set(8, size - 15 + i, bit(i));
+      set(8, size - 8, !0);
+    };
+    if (drawFormat(0), ver >= 7) {
+      let rem = ver;
+      for (let i = 0; i < 12; i++) rem = rem << 1 ^ (rem >>> 11) * 7973;
+      let b = ver << 12 | rem;
+      for (let i = 0; i < 18; i++) {
+        let dark = (b >>> i & 1) === 1, a = size - 11 + i % 3, c = Math.floor(i / 3);
+        set(a, c, dark), set(c, a, dark);
+      }
+    }
+    let bi = 0, total = words.length * 8;
+    for (let right = size - 1; right >= 1; right -= 2) {
+      right === 6 && (right = 5);
+      for (let v = 0; v < size; v++)
+        for (let j = 0; j < 2; j++) {
+          let x = right - j, y = (right + 1 & 2) === 0 ? size - 1 - v : v;
+          fn[y * size + x] || bi >= total || (mod[y * size + x] = words[bi >>> 3] >>> 7 - (bi & 7) & 1, bi++);
+        }
+    }
+    let MASKS = [
+      (x, y) => (x + y) % 2 === 0,
+      (x, y) => y % 2 === 0,
+      (x) => x % 3 === 0,
+      (x, y) => (x + y) % 3 === 0,
+      (x, y) => (Math.floor(x / 3) + Math.floor(y / 2)) % 2 === 0,
+      (x, y) => x * y % 2 + x * y % 3 === 0,
+      (x, y) => (x * y % 2 + x * y % 3) % 2 === 0,
+      (x, y) => ((x + y) % 2 + x * y % 3) % 2 === 0
+    ], applyMask = (m) => {
+      let f = MASKS[m];
+      for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) !fn[y * size + x] && f(x, y) && (mod[y * size + x] ^= 1);
+    }, best = 0, bestScore = 1 / 0;
+    for (let m = 0; m < 8; m++) {
+      applyMask(m), drawFormat(m);
+      let s2 = penalty(mod, size);
+      s2 < bestScore && (bestScore = s2, best = m), applyMask(m);
+    }
+    return applyMask(best), drawFormat(best), { size, version: ver, ecl: ecl in ECL ? ecl : "M", mask: best, get: (x, y) => mod[y * size + x] === 1, modules: mod };
+  }
+  function penalty(m, n) {
+    let s2 = 0, at = (x, y) => m[y * n + x];
+    for (let pass = 0; pass < 2; pass++)
+      for (let a = 0; a < n; a++) {
+        let run = 1, line = [];
+        for (let b = 0; b < n; b++) line.push(pass ? at(a, b) : at(b, a));
+        for (let b = 1; b <= n; b++)
+          b < n && line[b] === line[b - 1] ? run++ : (run >= 5 && (s2 += 3 + (run - 5)), run = 1);
+        let str = line.join("");
+        for (let pat of ["10111010000", "00001011101"]) {
+          let k = str.indexOf(pat);
+          for (; k >= 0; )
+            s2 += 40, k = str.indexOf(pat, k + 1);
+        }
+      }
+    let dark = 0;
+    for (let y = 0; y < n; y++)
+      for (let x = 0; x < n; x++)
+        if (dark += at(x, y), x < n - 1 && y < n - 1) {
+          let c = at(x, y);
+          c === at(x + 1, y) && c === at(x, y + 1) && c === at(x + 1, y + 1) && (s2 += 3);
+        }
+    return s2 += Math.floor(Math.abs(dark * 100 / (n * n) - 50) / 5) * 10, s2;
+  }
+
+  // ../public/shared/telas-previa.js
+  var PREVIEW_LAYOUTS = ["full", "ticker", "side", "lbar", "portrait", ...QUEUE_LAYOUT_KEYS];
+  function qrSvg(data, cls = "qrc") {
+    let qr;
+    try {
+      qr = encodeQr(String(data), { ecl: "M" });
+    } catch (e) {
+      return null;
+    }
+    let NS2 = "http://www.w3.org/2000/svg", pad = 4, side = qr.size + pad * 2, svg = document.createElementNS(NS2, "svg");
+    svg.setAttribute("viewBox", "0 0 ".concat(side, " ").concat(side)), svg.setAttribute("class", cls), svg.setAttribute("role", "img"), svg.setAttribute("aria-label", "QR code de contato"), svg.setAttribute("shape-rendering", "crispEdges");
+    let bg = document.createElementNS(NS2, "rect");
+    bg.setAttribute("width", String(side)), bg.setAttribute("height", String(side)), bg.setAttribute("fill", "#fff"), svg.append(bg);
+    let d = "";
+    for (let y = 0; y < qr.size; y++) for (let x = 0; x < qr.size; x++) qr.get(x, y) && (d += "M".concat(x + pad, " ").concat(y + pad, "h1v1h-1z"));
+    let path = document.createElementNS(NS2, "path");
+    return path.setAttribute("d", d), path.setAttribute("fill", "#000"), svg.append(path), svg;
+  }
+
+  // ../public/shared/tvcorp-tipos.js
+  var TVC_LIMITS = Object.freeze({
+    // por cliente (docs §5.4)
+    media: 2e3,
+    playlists: 200,
+    layouts: 100,
+    schedules: 300,
+    feeds: 50,
+    people: 2e4,
+    posts: 2e3,
+    kpis: 200,
+    // layout por zonas (contrato §4.1)
+    zones: 6,
+    videoZones: 1,
+    zoneMinPct: 5,
+    // o que vai a uma tela
+    itemsPerZone: 60,
+    playlistItems: 60,
+    blocksActive: 2,
+    blocksSent: 12,
+    cacheFiles: 200,
+    cacheBytes: 83886080,
+    // tempo de cada item na tela (segundos)
+    secondsMin: 3,
+    secondsMax: 300,
+    secondsDefault: 10,
+    // textos
+    name: 60,
+    description: 200,
+    title: 60,
+    text: 280,
+    textLines: 8,
+    zoneText: 120,
+    label: 40,
+    url: 500,
+    // prioridade da grade (maior vence)
+    priorityMin: 0,
+    priorityMax: 100,
+    // imagem enviada (conferida pelo conteúdo) e a que vai às telas
+    uploadBytes: 15728640,
+    uploadPixels: 16e6,
+    imageBytes: 2097152,
+    // logomarca: PNG com transparência
+    logoUploadBytes: 5242880,
+    logoSide: 512,
+    logoBytes: 524288,
+    // sinal de vida (relatório de exibição)
+    playsPerBeat: 100,
+    playsMaxN: 1e5,
+    playsMaxSec: 86400,
+    // dados que mudam sozinhos ficam segurados 15 min (o rev não muda a cada minuto)
+    holdMs: 9e5,
+    // guarda do relatório de exibição e das horas em exibição
+    keepDays: 400,
+    // relatórios: no máximo um ano de cada vez
+    reportDays: 400
+  }), TVC_FRAMES = Object.freeze({ land: { width: 1920, height: 1080 }, port: { width: 1080, height: 1920 } }), TVC_ORIENTATIONS = Object.freeze([
+    { key: "land", label: "Deitada (16:9)" },
+    { key: "port", label: "Em pé (9:16)" }
+  ]), TVC_ORIENTATION_KEYS = Object.freeze(TVC_ORIENTATIONS.map((o) => o.key)), TVC_FITS = Object.freeze([
+    { key: "cover", label: "Cobrir a tela (corta as sobras)" },
+    { key: "contain", label: "Mostrar inteira (com fundo)" }
+  ]), TVC_FIT_KEYS = Object.freeze(TVC_FITS.map((f) => f.key)), TVC_ZONES = Object.freeze([
+    { key: "video", label: "Vídeo do canal", desc: "O canal ao vivo (grade, playout e ao vivo). No máximo um por layout." },
+    { key: "playlist", label: "Playlist", desc: "Imagens, slides, comunicados, aniversariantes, indicadores e notícias em sequência.", playlist: !0 },
+    { key: "ticker", label: "Texto rolante", desc: "Os avisos da barra inferior (os mesmos da configuração da tela)." },
+    { key: "clock", label: "Relógio", desc: "Hora e data." },
+    { key: "weather", label: "Clima", desc: "A previsão da cidade da unidade." },
+    { key: "qr", label: "QR code", desc: "Um QR code fixo com um título.", params: ["qr", "title"] },
+    { key: "logo", label: "Logomarca", desc: "A logomarca da empresa." },
+    { key: "text", label: "Texto fixo", desc: "Um título e uma frase fixos.", params: ["title", "text"] },
+    { key: "news", label: "Notícias", desc: "As manchetes das fontes escolhidas, com a fonte e a hora.", playlist: !0 },
+    { key: "quotes", label: "Cotações", desc: "Dólar, euro e outras moedas, com a hora da cotação.", playlist: !0 },
+    { key: "countdown", label: "Contagem regressiva", desc: "Dias e horas até um evento.", playlist: !0 },
+    { key: "safety", label: "Dias sem acidente", desc: "Os dias sem acidente, o recorde e a meta.", playlist: !0 },
+    { key: "worldclock", label: "Relógio mundial", desc: "A hora em outras cidades.", params: ["title"] },
+    { key: "queue", label: "Chamada de senha", desc: "A senha chamada e as últimas chamadas (quando a unidade tem a chamada de senha)." }
+  ]), TVC_ZONE = Object.freeze(Object.fromEntries(TVC_ZONES.map((z) => [z.key, z]))), TVC_ZONE_KEYS = Object.freeze(TVC_ZONES.map((z) => z.key)), TVC_PLAYLIST_ZONES = Object.freeze(TVC_ZONES.filter((z) => z.playlist).map((z) => z.key));
+  var TVC_REF_KINDS = Object.freeze([
+    { key: "media", label: "Imagem ou slide", needsId: !0 },
+    { key: "post", label: "Comunicado", needsId: !0 },
+    { key: "widget", label: "Contador, dias sem acidente, relógio mundial ou cardápio", needsId: !0 },
+    { key: "kpi", label: "Indicador", needsId: !0 },
+    { key: "birthdays", label: "Aniversariantes", auto: !0 },
+    { key: "news", label: "Notícias", auto: !0 },
+    { key: "quotes", label: "Cotações", auto: !0 },
+    { key: "posts", label: "Comunicados em vigor (todos)", auto: !0 },
+    { key: "card", label: "Cartão de informação", needsId: !0 }
+  ]), TVC_REF_KIND = Object.freeze(Object.fromEntries(TVC_REF_KINDS.map((k) => [k.key, k]))), TVC_REF_KIND_KEYS = Object.freeze(TVC_REF_KINDS.map((k) => k.key)), TVC_ITEM_KINDS = Object.freeze(["image", "slide", "birthdays", "kpi", "news", "quotes", "post", "menu", "countdown", "safety", "worldclock"]);
+  var TVC_SCOPES = Object.freeze([
+    { key: "all", label: "Todas as telas da empresa", spec: 0 },
+    { key: "regions", label: "Regiões", spec: 1, list: "regions" },
+    { key: "offices", label: "Unidades", spec: 2, list: "offices" },
+    { key: "groups", label: "Grupos de telas", spec: 3, list: "groups" },
+    { key: "devices", label: "Telas escolhidas", spec: 4, list: "devices" }
+  ]), TVC_SCOPE = Object.freeze(Object.fromEntries(TVC_SCOPES.map((s2) => [s2.key, s2]))), TVC_SCOPE_KEYS = Object.freeze(TVC_SCOPES.map((s2) => s2.key));
+  var TVC_DAYS = Object.freeze([
+    { key: 0, short: "Dom", label: "Domingo" },
+    { key: 1, short: "Seg", label: "Segunda" },
+    { key: 2, short: "Ter", label: "Terça" },
+    { key: 3, short: "Qua", label: "Quarta" },
+    { key: 4, short: "Qui", label: "Quinta" },
+    { key: 5, short: "Sex", label: "Sexta" },
+    { key: 6, short: "Sáb", label: "Sábado" }
+  ]), Z = (id, kind, x, y, w, h2, extra = {}) => Object.freeze(__spreadValues({ id, kind, x, y, w, h: h2 }, extra)), TVC_LAYOUT_MODELS = Object.freeze([
+    { key: "tela-cheia", label: "Tela cheia", desc: "Só o vídeo do canal.", orientation: "land", background: "#000000", zones: [Z("main", "video", 0, 0, 100, 100)] },
+    { key: "so-conteudo", label: "Só conteúdo", desc: "Uma playlist em tela cheia, sem vídeo.", orientation: "land", background: "#0b1220", zones: [Z("main", "playlist", 0, 0, 100, 100)] },
+    {
+      key: "video-lateral",
+      label: "Vídeo + lateral",
+      desc: "O vídeo e uma coluna de conteúdo à direita.",
+      orientation: "land",
+      background: "#0b1220",
+      zones: [Z("main", "video", 0, 0, 75, 100), Z("right", "playlist", 75, 0, 25, 100)]
+    },
+    {
+      key: "video-lateral-barra",
+      label: "Vídeo + lateral + barra",
+      desc: "Em L: o vídeo, a coluna de conteúdo e o texto rolante embaixo.",
+      orientation: "land",
+      background: "#0b1220",
+      zones: [Z("main", "video", 0, 0, 75, 88), Z("right", "playlist", 75, 0, 25, 88), Z("bar", "ticker", 0, 88, 100, 12)]
+    },
+    {
+      key: "video-barra",
+      label: "Vídeo + barra",
+      desc: "O vídeo e o texto rolante embaixo.",
+      orientation: "land",
+      background: "#0b1220",
+      zones: [Z("main", "video", 0, 0, 100, 88), Z("bar", "ticker", 0, 88, 100, 12)]
+    },
+    {
+      key: "conteudo-barra",
+      label: "Conteúdo + barra",
+      desc: "Uma playlist grande e o texto rolante embaixo.",
+      orientation: "land",
+      background: "#0b1220",
+      zones: [Z("main", "playlist", 0, 0, 100, 88), Z("bar", "ticker", 0, 88, 100, 12)]
+    },
+    {
+      key: "dois-quadros",
+      label: "Dois quadros",
+      desc: "Duas playlists lado a lado.",
+      orientation: "land",
+      background: "#0b1220",
+      zones: [Z("left", "playlist", 0, 0, 50, 100), Z("right", "playlist", 50, 0, 50, 100)]
+    },
+    {
+      key: "tres-quadros",
+      label: "Três quadros",
+      desc: "O vídeo grande e duas playlists à direita.",
+      orientation: "land",
+      background: "#0b1220",
+      zones: [Z("main", "video", 0, 0, 66, 100), Z("top", "playlist", 66, 0, 34, 50), Z("bottom", "playlist", 66, 50, 34, 50)]
+    },
+    {
+      key: "recepcao",
+      label: "Recepção",
+      desc: "O vídeo, a chamada de senha e o texto rolante.",
+      orientation: "land",
+      background: "#0b1220",
+      zones: [Z("main", "video", 0, 0, 70, 88), Z("queue", "queue", 70, 0, 30, 88), Z("bar", "ticker", 0, 88, 100, 12)]
+    },
+    {
+      key: "refeitorio",
+      label: "Refeitório",
+      desc: "O cardápio do dia, o vídeo e o texto rolante.",
+      orientation: "land",
+      background: "#0b1220",
+      zones: [Z("menu", "playlist", 0, 0, 40, 88, { hint: "widget" }), Z("main", "video", 40, 0, 60, 88), Z("bar", "ticker", 0, 88, 100, 12)]
+    },
+    {
+      key: "chao-de-fabrica",
+      label: "Chão de fábrica",
+      desc: "Os indicadores, os dias sem acidente e o texto rolante.",
+      orientation: "land",
+      background: "#0b1220",
+      zones: [Z("kpis", "playlist", 0, 0, 65, 88, { hint: "kpi" }), Z("safety", "safety", 65, 0, 35, 88), Z("bar", "ticker", 0, 88, 100, 12)]
+    },
+    {
+      key: "totem",
+      label: "Totem em pé",
+      desc: "Em pé: o vídeo em cima, a playlist embaixo e o texto rolante.",
+      orientation: "port",
+      background: "#0b1220",
+      zones: [Z("main", "video", 0, 0, 100, 45), Z("content", "playlist", 0, 45, 100, 45), Z("bar", "ticker", 0, 90, 100, 10)]
+    }
+  ].map((m) => Object.freeze(__spreadProps(__spreadValues({}, m), { zones: Object.freeze(m.zones) })))), TVC_LAYOUT_MODEL = Object.freeze(Object.fromEntries(TVC_LAYOUT_MODELS.map((m) => [m.key, m]))), TVC_LAYOUT_MODEL_KEYS = Object.freeze(TVC_LAYOUT_MODELS.map((m) => m.key)), TVC_FIELD_TYPES = Object.freeze(["line", "text", "url", "media", "date", "datetime", "color", "choice"]), F = (key, label, type, extra = {}) => Object.freeze(__spreadValues({ key, label, type }, extra)), TITLE = F("title", "Título", "line", { max: 60, required: !0 }), TEXT = F("text", "Texto", "text", { max: 280 }), IMAGE = F("image", "Imagem", "media"), QR = F("qr", "QR code (endereço)", "url"), PRICE = F("price", "Preço", "line", { max: 16, required: !0 }), OLD_PRICE = F("oldPrice", "Preço de (riscado)", "line", { max: 16 }), TAG = F("tag", "Etiqueta", "line", { max: 30 }), TVC_ARTS = Object.freeze([
+    { key: "ondas", label: "Ondas", tone: "dark" },
+    { key: "geometrico", label: "Geométrico", tone: "dark" },
+    { key: "aniversario", label: "Aniversário (confete)", tone: "dark" },
+    { key: "seguranca", label: "Segurança do trabalho (faixas)", tone: "dark" },
+    { key: "fim-de-ano", label: "Fim de ano", tone: "dark" },
+    { key: "conquista", label: "Conquista (raios)", tone: "dark" },
+    { key: "evento", label: "Evento (luzes)", tone: "dark" },
+    { key: "saude", label: "Saúde e bem-estar", tone: "light" },
+    // DIGITAL ISP (templates por segmento)
+    { key: "listras", label: "Listras", tone: "dark" },
+    { key: "pontos", label: "Pontos", tone: "dark" },
+    { key: "folhas", label: "Folhas", tone: "dark" },
+    { key: "circuito", label: "Circuito (tecnologia)", tone: "dark" },
+    { key: "papel", label: "Papel claro", tone: "light" },
+    { key: "foto-supermercado", label: "Foto: hortifrúti", tone: "dark", photo: !0 },
+    { key: "foto-padaria", label: "Foto: pães e café", tone: "dark", photo: !0 },
+    { key: "foto-farmacia", label: "Foto: farmácia", tone: "dark", photo: !0 },
+    { key: "foto-pizzaria", label: "Foto: pizza no forno", tone: "dark", photo: !0 },
+    { key: "foto-cafeteria", label: "Foto: cafeteria", tone: "dark", photo: !0 },
+    { key: "foto-academia", label: "Foto: academia", tone: "dark", photo: !0 },
+    { key: "foto-clinica", label: "Foto: recepção de clínica", tone: "dark", photo: !0 },
+    { key: "foto-barbearia", label: "Foto: barbearia", tone: "dark", photo: !0 },
+    { key: "foto-pet", label: "Foto: cachorro e gato", tone: "dark", photo: !0 },
+    { key: "foto-provedor", label: "Foto: fibra óptica", tone: "dark", photo: !0 },
+    // uso interno da empresa (comunicação interna)
+    { key: "foto-aniversario-baloes", label: "Foto: balões de aniversário", tone: "dark", photo: !0 },
+    { key: "foto-aniversario-bolo", label: "Foto: bolo de aniversário", tone: "dark", photo: !0 },
+    { key: "foto-aniversario-presentes", label: "Foto: presentes e confete", tone: "dark", photo: !0 },
+    { key: "foto-aniversario-cupcakes", label: "Foto: cupcakes na mesa", tone: "dark", photo: !0 },
+    { key: "foto-aviso-megafone", label: "Foto: megafone", tone: "dark", photo: !0 },
+    { key: "foto-aviso-mural", label: "Foto: mural de recados", tone: "dark", photo: !0 },
+    { key: "foto-escritorio", label: "Foto: escritório", tone: "dark", photo: !0 },
+    { key: "foto-seguranca-epi", label: "Foto: EPI na bancada", tone: "dark", photo: !0 },
+    { key: "foto-fabrica", label: "Foto: chão de fábrica", tone: "dark", photo: !0 },
+    { key: "foto-recepcao", label: "Foto: recepção da empresa", tone: "dark", photo: !0 },
+    { key: "foto-boas-vindas", label: "Foto: mesa de boas-vindas", tone: "dark", photo: !0 },
+    { key: "foto-reconhecimento", label: "Foto: troféu e medalha", tone: "dark", photo: !0 },
+    { key: "foto-metas", label: "Foto: gráfico de metas", tone: "dark", photo: !0 },
+    { key: "foto-confraternizacao", label: "Foto: confraternização", tone: "dark", photo: !0 },
+    { key: "foto-natal", label: "Foto: árvore de Natal", tone: "dark", photo: !0 },
+    { key: "foto-vagas", label: "Foto: mesa vaga", tone: "dark", photo: !0 },
+    { key: "foto-treinamento", label: "Foto: sala de treinamento", tone: "dark", photo: !0 },
+    { key: "foto-refeitorio", label: "Foto: prato do almoço", tone: "dark", photo: !0 },
+    { key: "foto-bem-estar", label: "Foto: bem-estar", tone: "dark", photo: !0 },
+    { key: "foto-sustentabilidade", label: "Foto: broto de planta", tone: "dark", photo: !0 }
+  ].map((x) => Object.freeze(x))), TVC_ART = Object.freeze(Object.fromEntries(TVC_ARTS.map((x) => [x.key, x]))), TVC_PALETTES = Object.freeze([
+    { key: "azul", label: "Azul", hex: "#1d4ed8" },
+    { key: "verde", label: "Verde", hex: "#15803d" },
+    { key: "petroleo", label: "Petróleo", hex: "#0f766e" },
+    { key: "vinho", label: "Vinho", hex: "#9f1239" },
+    { key: "roxo", label: "Roxo", hex: "#6d28d9" },
+    { key: "laranja", label: "Laranja", hex: "#c2410c" },
+    { key: "grafite", label: "Grafite", hex: "#334155" },
+    { key: "vermelho", label: "Vermelho", hex: "#b91c1c" },
+    { key: "marrom", label: "Marrom", hex: "#92400e" },
+    { key: "rosa", label: "Rosa", hex: "#be185d" },
+    { key: "dourado", label: "Dourado", hex: "#a16207" }
+  ].map((x) => Object.freeze(x))), TVC_STYLE_FIELDS = Object.freeze([
+    F("variant", "Tema", "choice", { options: ["dark", "light"], labels: ["Escuro", "Claro"] }),
+    F("accent", "Cor de destaque", "color"),
+    F("art", "Arte de fundo", "choice", { options: TVC_ARTS.map((x) => x.key), labels: TVC_ARTS.map((x) => x.label) }),
+    F("palette", "Cor do slide", "choice", { options: TVC_PALETTES.map((x) => x.key), labels: TVC_PALETTES.map((x) => x.label) }),
+    F("orient", "Formato", "choice", { options: ["land", "port"], labels: ["Deitado (16:9)", "Em pé (9:16)"] })
+  ]), TVC_SLIDE_MODELS = Object.freeze([
+    { key: "comunicado", label: "Comunicado", desc: "Título, texto e QR opcional.", fields: [TITLE, TEXT, IMAGE, QR] },
+    { key: "boas-vindas", label: "Boas-vindas", desc: "Para quem chega: visitante ou novo colega.", fields: [TITLE, F("name", "Nome", "line", { max: 60 }), F("sector", "Setor", "line", { max: 40 }), TEXT, IMAGE] },
+    { key: "aniversariantes", label: "Aniversariantes", desc: "A capa da lista de aniversariantes (os nomes vêm do cadastro).", fields: [TITLE, TEXT, IMAGE] },
+    { key: "reconhecimento", label: "Reconhecimento", desc: "Uma conquista ou uma história da equipe.", fields: [TITLE, F("name", "Pessoa ou equipe", "line", { max: 60 }), TEXT, IMAGE] },
+    { key: "seguranca", label: "Segurança do trabalho", desc: "EPI, procedimentos, SIPAT.", fields: [TITLE, TEXT, IMAGE, QR] },
+    { key: "evento", label: "Evento", desc: "Data, local e a contagem regressiva.", fields: [TITLE, F("target", "Quando", "datetime", { required: !0 }), F("place", "Local", "line", { max: 60 }), TEXT, IMAGE, QR] },
+    { key: "vaga", label: "Vaga interna", desc: "Vaga ou processo seletivo.", fields: [TITLE, F("area", "Área", "line", { max: 40 }), TEXT, F("until", "Inscrições até", "date"), QR] },
+    { key: "indicador", label: "Indicador", desc: "Um número grande com a meta.", fields: [TITLE, F("value", "Valor", "line", { max: 20, required: !0 }), F("target", "Meta", "line", { max: 20 }), F("unit", "Unidade", "line", { max: 10 }), TEXT] },
+    { key: "cardapio", label: "Cardápio", desc: "O cardápio do dia (uma linha por prato).", fields: [TITLE, F("text", "Pratos (um por linha)", "text", { max: 280 }), IMAGE] },
+    { key: "qr", label: "Chamada com QR code", desc: "Pesquisa, inscrição ou sugestão pelo celular.", fields: [TITLE, TEXT, F("qr", "QR code (endereço)", "url", { required: !0 })] },
+    { key: "imagem-com-legenda", label: "Imagem com legenda", desc: "Uma imagem grande e uma linha de legenda.", fields: [F("image", "Imagem", "media", { required: !0 }), F("title", "Legenda", "line", { max: 60 })] },
+    { key: "data-comemorativa", label: "Data comemorativa", desc: "Uma data do calendário com mensagem.", fields: [TITLE, F("date", "Data", "date"), TEXT, IMAGE] },
+    // DIGITAL ISP: os modelos do comércio (templates por segmento)
+    { key: "oferta", label: "Oferta", desc: 'Um produto ou serviço com o preço em destaque (e o "de" riscado).', fields: [F("title", "Produto ou serviço", "line", { max: 60, required: !0 }), PRICE, OLD_PRICE, F("unit", "Unidade", "line", { max: 20 }), TAG, F("text", "Texto", "text", { max: 160 }), F("until", "Válido até", "date"), IMAGE, QR] },
+    { key: "precos", label: "Vitrine de preços", desc: "Tabela de preços ou cardápio com preço (uma linha por item: nome | preço).", fields: [TITLE, F("text", "Itens (um por linha: nome | preço)", "text", { max: 400, required: !0 }), F("note", "Observação", "line", { max: 80 }), IMAGE] },
+    { key: "combo", label: "Combo", desc: "Vários itens por um preço só.", fields: [TITLE, F("text", "Itens do combo (um por linha)", "text", { max: 200, required: !0 }), PRICE, OLD_PRICE, TAG, IMAGE, QR] },
+    { key: "horario", label: "Horário de funcionamento", desc: "Os dias e os horários (uma linha por faixa: dias | horário).", fields: [TITLE, F("text", "Horários (um por linha: dias | horário)", "text", { max: 240, required: !0 }), F("note", "Observação", "line", { max: 80 }), QR] },
+    { key: "redes", label: "Redes sociais", desc: "O perfil da empresa nas redes, com o QR code.", fields: [TITLE, F("handle", "Perfil (@)", "line", { max: 40, required: !0 }), TEXT, F("site", "Site", "line", { max: 60 }), QR] }
+  ].map((m) => Object.freeze(__spreadProps(__spreadValues({}, m), { fields: Object.freeze([...m.fields, ...TVC_STYLE_FIELDS]) })))), TVC_SLIDE_MODEL = Object.freeze(Object.fromEntries(TVC_SLIDE_MODELS.map((m) => [m.key, m]))), TVC_SLIDE_MODEL_KEYS = Object.freeze(TVC_SLIDE_MODELS.map((m) => m.key)), TVC_POST_CATEGORIES = Object.freeze([
+    { key: "comunicado", label: "Comunicado", template: "comunicado" },
+    { key: "rh", label: "Recursos humanos", template: "comunicado" },
+    { key: "beneficio", label: "Benefícios", template: "comunicado" },
+    { key: "boas-vindas", label: "Boas-vindas", template: "boas-vindas" },
+    { key: "reconhecimento", label: "Reconhecimento", template: "reconhecimento" },
+    { key: "seguranca", label: "Segurança do trabalho", template: "seguranca" },
+    { key: "vaga", label: "Vaga interna", template: "vaga" },
+    { key: "evento", label: "Evento", template: "evento" },
+    { key: "aviso", label: "Aviso", template: "comunicado" }
+  ]), TVC_POST_CATEGORY = Object.freeze(Object.fromEntries(TVC_POST_CATEGORIES.map((c) => [c.key, c]))), TVC_POST_CATEGORY_KEYS = Object.freeze(TVC_POST_CATEGORIES.map((c) => c.key)), TVC_WIDGETS = Object.freeze([
+    { key: "countdown", label: "Contagem regressiva" },
+    { key: "safety", label: "Dias sem acidente" },
+    { key: "worldclock", label: "Relógio mundial" },
+    { key: "menu", label: "Cardápio da semana" }
+  ]), TVC_WIDGET_KEYS = Object.freeze(TVC_WIDGETS.map((w) => w.key)), TVC_KPI_BANDS = Object.freeze([
+    { key: "ok", label: "Na meta", hex: "#2e7d32" },
+    { key: "warn", label: "Atenção", hex: "#f9a825" },
+    { key: "bad", label: "Fora da meta", hex: "#c62828" }
+  ]), TVC_OFFICE_TYPE_KEYS = Object.freeze(["matriz", "filial", "fabrica", "loja", "cd", "refeitorio", "recepcao", "ambulatorio", "treinamento", "corp-outro"]);
+  var TVC_STATUS = Object.freeze({ ok: "Em uso", pending: "Aguardando aprovação", rejected: "Devolvido" }), TVC_APPROVAL_KINDS = Object.freeze(["tvc-media", "tvc-schedule", "tvc-post"]);
+
+  // ../public/shared/tvcorp-previa.js
+  var NS = "http://www.w3.org/2000/svg", h = (tag, cls, ...kids) => {
+    let n = document.createElement(tag);
+    cls && (n.className = cls);
+    for (let k of kids.flat()) k != null && k !== !1 && k !== "" && n.append(k.nodeType ? k : document.createTextNode(String(k)));
+    return n;
+  }, add = (n, ...kids) => {
+    for (let k of kids.flat()) k != null && k !== !1 && n.append(k);
+  }, s = (tag, attrs = {}, ...kids) => {
+    let n = document.createElementNS(NS, tag);
+    for (let [k, v] of Object.entries(attrs)) v != null && n.setAttribute(k, String(v));
+    for (let k of kids) k != null && n.append(k);
+    return n;
+  }, THEME_KEYS = { "#1d4ed8": "azul", "#15803d": "verde", "#0f766e": "petroleo", "#9f1239": "vinho", "#6d28d9": "roxo", "#c2410c": "laranja", "#334155": "grafite" }, themeClass = (theme) => "th-".concat(THEME_KEYS[String((theme == null ? void 0 : theme.color) || "").toLowerCase()] || "azul").concat((theme == null ? void 0 : theme.mode) === "light" ? " th-light" : ""), PALETTE_KEYS = new Set(TVC_PALETTES.map((x) => x.key)), slideTheme = (theme, palette) => PALETTE_KEYS.has(palette) ? "th-".concat(palette).concat((theme == null ? void 0 : theme.mode) === "light" ? " th-light" : "") : themeClass(theme), rowsOf = (t) => String(t || "").split("\n").map((x) => x.trim()).filter(Boolean).slice(0, 8).map((x) => {
+    let i = x.lastIndexOf("|");
+    return i < 0 ? [x, ""] : [x.slice(0, i).trim(), x.slice(i + 1).trim()];
+  }), ZONE_NAMES = { video: "Vídeo do canal", playlist: "Playlist", ticker: "Texto rolante", clock: "Relógio", weather: "Clima", qr: "QR code", logo: "Logomarca", text: "Texto", news: "Notícias", quotes: "Cotações", countdown: "Contador", safety: "Dias sem acidente", worldclock: "Relógio mundial", queue: "Senha" }, pad2 = (n) => String(n).padStart(2, "0"), nowClock = () => {
+    let d = /* @__PURE__ */ new Date();
+    return "".concat(pad2(d.getHours()), ":").concat(pad2(d.getMinutes()));
+  }, brDate = (iso) => String(iso || "").split("-").reverse().join("/");
+  function daysUntil(iso, now = Date.now()) {
+    let m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ""));
+    if (!m) return null;
+    let t = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).getTime(), d0 = new Date(now), today = new Date(d0.getFullYear(), d0.getMonth(), d0.getDate()).getTime();
+    return Math.max(0, Math.round((t - today) / 864e5));
+  }
+  function daysSince(iso, now = Date.now()) {
+    let m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ""));
+    if (!m) return null;
+    let t = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).getTime(), d0 = new Date(now), today = new Date(d0.getFullYear(), d0.getMonth(), d0.getDate()).getTime();
+    return Math.max(0, Math.round((today - t) / 864e5));
+  }
+  function goalBar(value, target, band) {
+    let v = Number(value), t = Number(target), pct = Number.isFinite(v) && Number.isFinite(t) && t > 0 ? Math.max(0, Math.min(100, v / t * 100)) : 0;
+    return s(
+      "svg",
+      { class: "tvc-bar b-".concat(band || "none"), viewBox: "0 0 100 6", preserveAspectRatio: "none", role: "img", "aria-label": "".concat(Math.round(pct), "% da meta") },
+      s("rect", { class: "tvc-bar-bg", x: 0, y: 0, width: 100, height: 6, rx: 3 }),
+      s("rect", { class: "tvc-bar-fg", x: 0, y: 0, width: pct.toFixed(1), height: 6, rx: 3 })
+    );
+  }
+  var numText = (v) => Number.isFinite(Number(v)) ? Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 2 }) : "—";
+  function slidePreview(template, fields = {}, opts = {}) {
+    let f = fields || {}, lines = (Array.isArray(f.lines) ? f.lines : Array.isArray(f.items) ? f.items : ["cardapio", "aniversariantes"].includes(template) ? String(f.text || "").split("\n") : String(f.lines || "").split("\n")).map((x) => String(typeof x == "object" ? (x == null ? void 0 : x.name) || "" : x).trim()).filter(Boolean).slice(0, 8), known = TVC_ART[f.art], art = /^[a-z0-9-]{1,30}$/.test(String(f.art || "")) ? " tvc-art tvc-art-".concat(f.art).concat(known ? " tvc-art-".concat(known.tone === "light" ? "light" : "dark").concat(known.photo ? " tvc-photo" : "") : "") : "", theme = f.variant === "light" || f.variant === "dark" ? __spreadProps(__spreadValues({}, opts.theme || {}), { mode: f.variant }) : opts.theme, n = h("div", "tvc-sl tvc-sl-".concat(template || "comunicado", " ").concat(slideTheme(theme, f.palette)).concat(art).concat(f.orient === "port" ? " tvc-port" : ""));
+    n.setAttribute("role", "img"), n.setAttribute("aria-label", "Prévia do slide: ".concat(f.title || f.caption || template || ""));
+    let caption = f.caption || (template === "imagem-com-legenda" ? f.title : ""), img = opts.image ? Object.assign(h("img", "tvc-sl-img"), { alt: "", src: opts.image }) : null, qr = f.qr ? qrSvg(f.qr, "tvc-sl-qrc") : null, title = h("div", "tvc-sl-t", f.title || "");
+    switch (template) {
+      case "boas-vindas":
+      case "reconhecimento":
+        add(
+          n,
+          h("div", "tvc-sl-side", img || h("div", "tvc-sl-ini", String(f.name || "?").split(/\s+/).map((p) => p[0] || "").join("").slice(0, 2).toUpperCase())),
+          h("div", "tvc-sl-body", title, h("div", "tvc-sl-name", f.name || "Nome"), f.sector ? h("div", "tvc-sl-x", f.sector) : null, f.text ? h("div", "tvc-sl-x", f.text) : null)
+        );
+        break;
+      case "aniversariantes":
+      case "cardapio":
+        add(n, h("div", "tvc-sl-body", title, lines.length ? h("ul", "tvc-sl-list", lines.map((x) => h("li", "", x))) : h("div", "tvc-sl-x dim", "Sem linhas ainda")));
+        break;
+      case "evento": {
+        let day = String(f.target || f.date || "").slice(0, 10), d = daysUntil(day);
+        add(
+          n,
+          h("div", "tvc-sl-body", title, f.place ? h("div", "tvc-sl-x", f.place) : null, f.text ? h("div", "tvc-sl-x", f.text) : null),
+          h("div", "tvc-sl-count", d == null ? h("span", "tvc-sl-x", "Escolha a data") : [h("b", "", String(d)), h("span", "", d === 1 ? "dia" : "dias"), h("small", "", "".concat(brDate(day)).concat(String(f.target || "").length > 10 ? " · ".concat(String(f.target).slice(11, 16)) : ""))]),
+          qr
+        );
+        break;
+      }
+      case "indicador": {
+        let band = (() => {
+          let v = Number(f.value), t = Number(f.target);
+          if (!Number.isFinite(v) || !Number.isFinite(t) || !t) return "none";
+          let r = v / t;
+          return r >= 1 ? "ok" : r >= 0.8 ? "warn" : "bad";
+        })();
+        add(n, h(
+          "div",
+          "tvc-sl-body",
+          title,
+          h("div", "tvc-sl-big b-".concat(band), "".concat(numText(f.value)).concat(f.unit ? " ".concat(f.unit) : "")),
+          h("div", "tvc-sl-x", "Meta: ".concat(numText(f.target)).concat(f.unit ? " ".concat(f.unit) : "")),
+          goalBar(f.value, f.target, band)
+        ));
+        break;
+      }
+      case "imagem-com-legenda":
+        add(n, img || h("div", "tvc-sl-noimg", "Escolha a imagem"), caption ? h("div", "tvc-sl-cap", caption) : null);
+        break;
+      case "oferta":
+      case "combo": {
+        let price = h("div", "tvc-sl-price", f.oldPrice ? h("span", "tvc-sl-old", "De ", h("del", "", f.oldPrice), " por") : null, h("b", String(f.price || "").length > 10 ? "tvc-sl-long" : "", f.price || "R$ 0,00"), f.unit ? h("small", "", f.unit) : null), list = template === "combo" ? rowsOf(f.text).map(([a, b]) => b ? "".concat(a, " ").concat(b) : a) : [];
+        add(n, h(
+          "div",
+          "tvc-sl-body",
+          f.tag ? h("div", "tvc-sl-tag", f.tag) : null,
+          title,
+          list.length ? h("ul", "tvc-sl-list", list.map((x) => h("li", "", x))) : f.text ? h("div", "tvc-sl-x", f.text) : null,
+          f.until ? h("div", "tvc-sl-x tvc-sl-small", "Válido até ".concat(brDate(f.until), " ou enquanto durar o estoque.")) : null
+        ), price, qr);
+        break;
+      }
+      case "precos":
+      case "horario": {
+        let rows = rowsOf(f.text);
+        add(n, h(
+          "div",
+          "tvc-sl-body",
+          title,
+          rows.length ? h("ul", "tvc-sl-rows", rows.map(([a, b]) => h("li", "", h("span", "", a), b ? h("b", "", b) : null))) : h("div", "tvc-sl-x dim", "Sem linhas ainda"),
+          f.note ? h("div", "tvc-sl-x tvc-sl-small", f.note) : null
+        ), qr);
+        break;
+      }
+      case "redes":
+        add(n, h("div", "tvc-sl-body", title, h("div", "tvc-sl-handle", f.handle || "@perfil"), f.text ? h("div", "tvc-sl-x", f.text) : null, f.site ? h("div", "tvc-sl-x tvc-sl-small", f.site) : null), qr);
+        break;
+      case "seguranca":
+        add(n, h("div", "tvc-sl-body", h("div", "tvc-sl-tag", "SEGURANÇA"), title, f.text ? h("div", "tvc-sl-x", f.text) : null, Array.isArray(f.lines) && lines.length ? h("ul", "tvc-sl-list", lines.map((x) => h("li", "", x))) : null), qr);
+        break;
+      default:
+        add(n, h(
+          "div",
+          "tvc-sl-body",
+          template === "vaga" ? h("div", "tvc-sl-tag", "VAGA INTERNA") : null,
+          title,
+          f.area ? h("div", "tvc-sl-x", f.area) : null,
+          f.text ? h("div", "tvc-sl-x", f.text) : null,
+          f.until ? h("div", "tvc-sl-x", "Inscrições até ".concat(brDate(f.until))) : f.date ? h("div", "tvc-sl-x", brDate(f.date)) : null
+        ), qr);
+    }
+    return n;
+  }
+  function itemPreview(it = {}, opts = {}) {
+    var _a, _b, _c, _d, _e;
+    let th = themeClass(opts.theme), box = (cls, ...kids) => h("div", "tvc-it ".concat(cls, " ").concat(th), ...kids);
+    switch (it.kind) {
+      case "image": {
+        if (!it.url) return box("tvc-it-empty", "Imagem");
+        let img = h("img", "tvc-it-img");
+        return img.alt = it.caption || it.title || "", img.src = it.url, box("tvc-it-image", img, it.caption ? h("div", "tvc-sl-cap", it.caption) : null);
+      }
+      case "slide":
+        return slidePreview(it.template, it.fields, { theme: opts.theme, image: it.image || null });
+      case "post":
+        return slidePreview(it.category === "vaga" ? "vaga" : it.category === "seguranca" ? "seguranca" : "comunicado", { title: it.title, text: (_a = it.body) != null ? _a : it.text, qr: it.qr }, { theme: opts.theme, image: typeof it.image == "string" ? it.image : ((_b = it.image) == null ? void 0 : _b.url) || null });
+      case "text":
+        return box("tvc-it-text", it.title ? h("div", "tvc-it-t", it.title) : null, h("div", "tvc-it-x", it.text || ""));
+      case "birthdays": {
+        let ppl = (it.people || []).slice(0, 8), size = ppl.length <= 1 ? "n1" : ppl.length <= 3 ? "n3" : ppl.length <= 6 ? "n6" : "n8";
+        return box(
+          "tvc-it-bday ".concat(size),
+          h("div", "tvc-it-t", it.title || "Aniversariantes"),
+          ppl.length ? h("ul", "tvc-bday-people", ppl.map((p) => {
+            var _a2;
+            let src = typeof p.photo == "string" ? p.photo : ((_a2 = p.photo) == null ? void 0 : _a2.url) || "", av;
+            return src ? (av = h("img", "tvc-av"), av.src = src, av.alt = "") : av = h("span", "tvc-av tvc-av-ini", p.initials || String(p.name || "").split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase()), h("li", "", av, h("b", "", p.name), h("span", "", "".concat(pad2(p.day), "/").concat(pad2(p.month)).concat(p.sector ? " · ".concat(p.sector) : "")));
+          })) : h("div", "tvc-it-x", "Ninguém faz aniversário nestes dias"),
+          ppl.length ? h("div", "tvc-bday-wish", "Parabéns! Muitas felicidades!") : null
+        );
+      }
+      case "kpi":
+        return box(
+          "tvc-it-kpi b-".concat(it.band || "none"),
+          h("div", "tvc-it-t", it.name || "Indicador"),
+          h("div", "tvc-it-big", "".concat(numText(it.value)).concat(it.unit ? " ".concat(it.unit) : "")),
+          it.target != null ? h("div", "tvc-it-x", "Meta: ".concat(numText(it.target)).concat(it.unit ? " ".concat(it.unit) : "")) : null,
+          it.target != null ? goalBar(it.value, it.target, it.band) : null
+        );
+      case "news": {
+        let items = (it.items || []).slice(0, 4);
+        return box(
+          "tvc-it-news",
+          h("div", "tvc-it-t", it.title || "Notícias"),
+          items.length ? h("ul", "tvc-it-list", items.map((x) => h("li", "", x.title, h("small", "", [x.source, x.at ? new Date(x.at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : ""].filter(Boolean).join(" · "))))) : h("div", "tvc-it-x", "Sem manchetes ainda"),
+          it.source || it.credit ? h("div", "tvc-it-credit", it.credit || "Fonte: ".concat(it.source)) : null
+        );
+      }
+      case "quotes": {
+        let items = (it.items || []).slice(0, 6);
+        return box(
+          "tvc-it-quotes",
+          h("div", "tvc-it-t", it.title || "Cotações"),
+          items.length ? h("ul", "tvc-it-list", items.map((x) => {
+            var _a2;
+            let dec = Number.isInteger(x.decimals) ? x.decimals : 2, val = Number.isFinite(Number(x.value)) ? Number(x.value).toLocaleString("pt-BR", { minimumFractionDigits: dec, maximumFractionDigits: dec }) : "—";
+            return h("li", "", h("b", "", x.label || x.pair), " ".concat((_a2 = x.prefix) != null ? _a2 : "R$", " ").concat(val), x.change != null ? h("span", Number(x.change) >= 0 ? "up" : "down", " ".concat(Number(x.change) >= 0 ? "▲" : "▼", " ").concat(numText(Math.abs(x.change)), "%")) : null);
+          })) : h("div", "tvc-it-x", "Sem cotações ainda"),
+          h("div", "tvc-it-credit", [it.source ? "Fonte: ".concat(it.source) : "", "valores de referência", it.at ? new Date(it.at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : ""].filter(Boolean).join(" · "))
+        );
+      }
+      case "menu": {
+        let list = (it.items || it.lines || []).slice(0, 8).map((x) => typeof x == "string" ? x : "".concat(x.name || "").concat(x.price != null && x.price !== "" ? " · R$ ".concat(numText(x.price)) : "")).filter(Boolean);
+        return box("tvc-it-menu", h("div", "tvc-it-t", it.title || "Cardápio".concat(it.day ? " · ".concat(it.day) : " de hoje")), list.length ? h("ul", "tvc-it-list", list.map((x) => h("li", "", x))) : h("div", "tvc-it-x", "Sem cardápio para hoje"));
+      }
+      case "countdown": {
+        let tg = typeof it.target == "number" ? (() => {
+          let x = new Date(it.target);
+          return "".concat(x.getFullYear(), "-").concat(pad2(x.getMonth() + 1), "-").concat(pad2(x.getDate()));
+        })() : String((_d = (_c = it.target) != null ? _c : it.date) != null ? _d : "").slice(0, 10), d = daysUntil(tg);
+        return box("tvc-it-count", h("div", "tvc-it-t", it.title || "Contagem regressiva"), h("div", "tvc-it-big", d == null ? "—" : String(d)), h("div", "tvc-it-x", "".concat(d === 1 ? "dia" : "dias").concat(it.text ? " · ".concat(it.text) : "")));
+      }
+      case "safety": {
+        let d = (_e = it.days) != null ? _e : daysSince(it.since);
+        return box(
+          "tvc-it-safety",
+          h("div", "tvc-it-t", it.title || "Dias sem acidente"),
+          h("div", "tvc-it-big", d == null ? "—" : String(d)),
+          h("div", "tvc-it-x", [it.record != null ? "Recorde: ".concat(it.record) : "", it.goal != null ? "Meta: ".concat(it.goal) : ""].filter(Boolean).join(" · "))
+        );
+      }
+      case "worldclock": {
+        let clocks = (it.clocks || []).slice(0, 6);
+        return box("tvc-it-world", h("div", "tvc-it-t", it.title || "Relógio mundial"), h("ul", "tvc-it-list", clocks.map(({ tz, label }) => {
+          let t = "—";
+          try {
+            t = (/* @__PURE__ */ new Date()).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: tz });
+          } catch (e) {
+          }
+          return h("li", "", h("b", "", label || tz), " ".concat(t));
+        })));
+      }
+      default:
+        return box("tvc-it-empty", it.title || "Item");
+    }
+  }
+  function zoneContent(zone, opts) {
+    var _a;
+    let it = (_a = opts.items) == null ? void 0 : _a[zone.id], th = themeClass(opts.theme);
+    switch (zone.kind) {
+      case "video":
+        return h("div", "tvc-z-video", h("span", "tvc-live", "AO VIVO"), h("span", "tvc-z-vt", opts.channel || "Vídeo do canal"));
+      case "playlist":
+        return it ? itemPreview(it, opts) : h("div", "tvc-z-empty ".concat(th), "Playlist");
+      case "ticker": {
+        let t = (opts.ticker || []).filter(Boolean);
+        return h("div", "tvc-z-ticker ".concat(th), h("b", "", "AVISOS"), h("span", "", t.length ? t.join("  ·  ") : "Texto rolante"));
+      }
+      case "clock":
+        return h("div", "tvc-z-clock ".concat(th), h("b", "", opts.clock || nowClock()), h("span", "", opts.date || (/* @__PURE__ */ new Date()).toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })));
+      case "weather":
+        return h("div", "tvc-z-weather ".concat(th), h("b", "", "27°"), h("span", "", opts.city || "Clima da unidade"));
+      case "qr":
+        return h("div", "tvc-z-qr ".concat(th), opts.qr ? qrSvg(opts.qr, "tvc-z-qrc") : h("div", "tvc-z-qrph"), h("span", "", opts.qrLabel || "Aponte a câmera"));
+      case "logo":
+        return h("div", "tvc-z-logo ".concat(th), opts.logo ? Object.assign(h("img", ""), { alt: "Logomarca", src: opts.logo }) : h("span", "", opts.brand || "Logomarca"));
+      case "queue":
+        return h("div", "tvc-z-queue ".concat(th), h("span", "", "SENHA"), h("b", "", "A 042"), h("span", "", "Guichê 2"));
+      default:
+        return it ? itemPreview(it, opts) : h("div", "tvc-z-empty ".concat(th), ZONE_NAMES[zone.kind] || zone.kind);
+    }
+  }
+  var frameOf = (orientation) => orientation === "port" ? { w: 90, h: 160 } : { w: 160, h: 90 };
+  function layoutPreview(layout = {}, opts = {}) {
+    let fr = frameOf(layout.orientation), wrap = h("div", "tvc-previa ".concat(layout.orientation === "port" ? "port" : "land"));
+    wrap.setAttribute("role", "img"), wrap.setAttribute("aria-label", "Prévia do layout".concat(layout.name ? " ".concat(layout.name) : "", ": ").concat((layout.zones || []).map((z) => ZONE_NAMES[z.kind] || z.kind).join(", ")));
+    let svg = s("svg", { class: "tvc-svg", viewBox: "0 0 ".concat(fr.w, " ").concat(fr.h), preserveAspectRatio: "xMidYMid meet" });
+    svg.append(s("rect", { class: "tvc-bg ".concat(themeClass(opts.theme)), x: 0, y: 0, width: fr.w, height: fr.h }));
+    for (let zone of layout.zones || []) {
+      let x = zone.x / 100 * fr.w, y = zone.y / 100 * fr.h, w = zone.w / 100 * fr.w, hh = zone.h / 100 * fr.h, g = s("g", { class: "tvc-zone k-".concat(zone.kind).concat(opts.selected === zone.id ? " sel" : ""), "data-zone": zone.id }), fo = s("foreignObject", { x: x.toFixed(2), y: y.toFixed(2), width: w.toFixed(2), height: hh.toFixed(2) });
+      if (fo.append(h("div", "tvc-z", zoneContent(zone, opts))), g.append(fo, s("rect", { class: "tvc-zb", x: (x + 0.3).toFixed(2), y: (y + 0.3).toFixed(2), width: Math.max(0, w - 0.6).toFixed(2), height: Math.max(0, hh - 0.6).toFixed(2), rx: 0.8 })), opts.labels) {
+        let t = s("text", { class: "tvc-zl", x: (x + 1.5).toFixed(2), y: (y + 4.2).toFixed(2) });
+        t.textContent = "".concat(zone.id, " · ").concat(ZONE_NAMES[zone.kind] || zone.kind), g.append(t);
+      }
+      opts.onZone && (g.setAttribute("tabindex", "0"), g.setAttribute("role", "button"), g.addEventListener("click", () => opts.onZone(zone.id)), g.addEventListener("keydown", (e) => {
+        (e.key === "Enter" || e.key === " ") && (e.preventDefault(), opts.onZone(zone.id));
+      })), svg.append(g);
+    }
+    return wrap.append(svg), wrap;
+  }
+  var layoutFigure = (layout, opts = {}, caption = "") => h("figure", "tvc-fig", layoutPreview(layout, opts), caption ? h("figcaption", "", caption) : null);
+  return __toCommonJS(previa_entrada_exports);
+})();
+TelasPrevia.MINS = [[7,"h",4.5,"w"],[9,"h",7,"w"],[26,"h",24,"w"],[9,"h",9,"w"],[60,"h",60,"w"],[60,"h",60,"w"]];
+TelasPrevia.CONTEINERES = ".tvc-sl, .tvc-it, .tc-tpl, .tc-thumb";

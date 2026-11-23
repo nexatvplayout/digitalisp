@@ -53,7 +53,17 @@ function itensTipos(arquivo, agora) {
     { id: 't1', kind: 'text', seconds: s, title: 'Aviso', text: 'Estacionamento fechado amanhã para manutenção.' },
     { id: 'qr1', kind: 'qr', seconds: s, qr: 'https://exemplo.com.br/cardapio', title: 'Veja o cardápio no celular' },
     { id: 'c1', kind: 'weather', seconds: s, city: 'Campinas', uf: 'SP', tempC: 27.4, min: 18, max: 31, text: 'Parcialmente nublado', cond: 'cloudy', source: 'INMET', at: agora },
-    { id: 'clk', kind: 'clock', seconds: s }
+    { id: 'clk', kind: 'clock', seconds: s },
+    // os gadgets (widgets) da TV Corporativa
+    { id: 'wclk', kind: 'clock', seconds: s, face: 'digital', tz: 'Europe/Lisbon', label: 'Lisboa', showSeconds: true, date: true },
+    { id: 'wclka', kind: 'clock', seconds: s, face: 'analog', tz: 'America/Sao_Paulo', label: 'Brasília', date: true },
+    { id: 'wwx', kind: 'weather', seconds: s, city: 'Campinas', uf: 'SP', tempC: 27, text: 'Nublado', source: 'INMET',
+      days: [{ date: dia(1), weekday: 'Ter', min: 17, max: 29, text: 'Sol' }, { date: dia(2), weekday: 'Qua', min: 18, max: 30, text: 'Chuva' }, { date: dia(3), weekday: 'Qui', min: 19, max: 31 }] },
+    { id: 'wag', kind: 'agenda', seconds: s, title: 'Agenda das salas', today: dia(0), events: [{ date: dia(0), time: '09:00', end: '10:00', title: 'Reunião comercial', place: 'Sala 1' }, { date: dia(1), time: '14:00', title: 'Treinamento', place: 'Auditório' }] },
+    { id: 'wrv', kind: 'reviews', seconds: s, title: 'O que dizem os clientes', qr: 'https://exemplo.com.br/avaliar', items: [{ stars: 5, text: 'Internet rápida e suporte atencioso.', name: 'Carla' }, { stars: 4, text: 'Instalação no mesmo dia.', name: 'João' }] },
+    { id: 'wdash', kind: 'dashboard', seconds: s, title: 'Indicadores', items: [{ name: 'Vendas', value: 82, target: 100, unit: '%', band: 'warn' }, { name: 'NPS', value: 71, target: 70, band: 'ok' }, { name: 'Chamados', value: 12, unit: 'abertos', band: 'bad' }] },
+    { id: 'wdir', kind: 'directions', seconds: s, title: 'Como chegar', address: 'Rua das Flores, 123 – Centro', reference: 'Em frente à praça', hours: 'Seg a sex, 8h às 18h', phone: '(19) 3333-4444', qr: 'https://maps.example.com/?q=rua' },
+    { id: 'wweb', kind: 'web', seconds: s, url: 'https://example.com/', refreshMin: 5 }
   ];
 }
 

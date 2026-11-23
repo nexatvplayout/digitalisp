@@ -12,7 +12,7 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  var VERSAO = '1.0.8';
+  var VERSAO = '1.0.9';
   var TZ_PADRAO = 'America/Sao_Paulo';
   var SHA = /^[0-9a-f]{64}$/;
   var DIA = /^\d{4}-\d{2}-\d{2}$/;
@@ -30,10 +30,12 @@
   };
 
   var ZONAS = ['video', 'playlist', 'ticker', 'clock', 'weather', 'qr', 'logo', 'text', 'news', 'quotes',
-    'countdown', 'safety', 'worldclock', 'queue'];
+    'countdown', 'safety', 'worldclock', 'queue', 'widget'];
   // `video` como item de playlist é extensão do DIGITAL ISP (o Android 1.3 ignora o tipo que não conhece).
   var ITENS = ['image', 'video', 'slide', 'post', 'birthdays', 'kpi', 'news', 'quotes', 'menu', 'countdown',
-    'safety', 'worldclock', 'text', 'clock', 'weather', 'qr', 'logo'];
+    'safety', 'worldclock', 'text', 'clock', 'weather', 'qr', 'logo',
+    // os gadgets (widgets) da TV Corporativa: desenhados pela prévia do painel
+    'agenda', 'reviews', 'dashboard', 'directions', 'web'];
 
   function str(o, k) {
     if (!o || typeof o !== 'object') return null;
@@ -180,6 +182,9 @@
         return x && { name: umaLinha(str(x, 'name') || '', 60), day: num(x, 'day', 0), month: num(x, 'month', 0) };
       }).filter(function (x) { return x && x.name && x.day >= 1 && x.day <= 31 && x.month >= 1 && x.month <= 12; });
       if (!it.people.length) return null;
+    } else if (kind === 'web') {
+      // página da internet: só https (o app abre num quadro)
+      if (!/^https:\/\/[^\s]+$/i.test(str(o, 'url') || '')) return null;
     } else if (kind === 'countdown') {
       it.target = epoch(o.target);
       if (!it.target) return null;

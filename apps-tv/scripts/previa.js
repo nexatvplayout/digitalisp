@@ -103,6 +103,16 @@ const POLYFILLS = `/* gerado por apps-tv/scripts/previa.js a partir de public/sh
     var s = String(this); c = c === undefined ? ' ' : String(c); while (s.length < n) s = s + c; return s.slice(0, Math.max(n, String(this).length)); };
   if (!String.prototype.trimStart) String.prototype.trimStart = function () { return String(this).replace(/^\\s+/, ''); };
   if (!String.prototype.trimEnd) String.prototype.trimEnd = function () { return String(this).replace(/\\s+$/, ''); };
+  // Intl formatToParts é do Chromium 57 (as LG webOS 4 são 53): o relógio do gadget pede hora, minuto e segundo num fuso
+  if (typeof Intl !== 'undefined' && Intl.DateTimeFormat && !Intl.DateTimeFormat.prototype.formatToParts) {
+    Intl.DateTimeFormat.prototype.formatToParts = function (d) {
+      var ro = this.resolvedOptions(), tipos = ['hour', 'minute', 'second'].filter(function (k) { return ro[k]; });
+      if (ro.year || ro.month || ro.day || ro.weekday) throw new Error('formatToParts: só hora');
+      var out = [], k = 0;
+      (this.format(d).match(/\\d+|\\D+/g) || []).forEach(function (t) { out.push(/^\\d/.test(t) ? { type: tipos[k++] || 'literal', value: t } : { type: 'literal', value: t }); });
+      return out;
+    };
+  }
   if (!Object.entries) Object.entries = function (o) { return Object.keys(o).map(function (k) { return [k, o[k]]; }); };
   if (!String.prototype.padStart) String.prototype.padStart = function (n, c) {
     var s = String(this); c = c === undefined ? ' ' : String(c); while (s.length < n) s = c + s; return s.slice(-Math.max(n, String(this).length)); };
@@ -148,10 +158,17 @@ function gerar(op) {
   }
   const { css, mins, conteineres } = converterCss(fs.readFileSync(FONTE_CSS, 'utf8'));
   const js = gerarJs(mins, conteineres);
-  fs.writeFileSync(SAIDA_CSS, '/* gerado por apps-tv/scripts/previa.js a partir de public/shared/tvcorp-previa.css; não edite à mão */\n' + css);
-  fs.writeFileSync(SAIDA_JS, js);
+  // escreve num temporário e renomeia: dois testes gerando ao mesmo tempo não leem um arquivo pela metade
+  const gravar = (alvo, txt) => { const tmp = `${alvo}.${process.pid}.tmp`; fs.writeFileSync(tmp, txt); fs.renameSync(tmp, alvo); };
+  gravar(SAIDA_CSS, '/* gerado por apps-tv/scripts/previa.js a partir de public/shared/tvcorp-previa.css; não edite à mão */\n' + css);
+  gravar(SAIDA_JS, js);
   fs.mkdirSync(SAIDA_ARTE, { recursive: true });
-  if (fs.existsSync(FONTE_ARTE)) for (const f of fs.readdirSync(FONTE_ARTE)) if (/\.(svg|jpe?g|png|webp)$/i.test(f)) fs.copyFileSync(path.join(FONTE_ARTE, f), path.join(SAIDA_ARTE, f));
+  // só o que mudou (tamanho diferente ou falta): não reescreve o arquivo que outro processo pode estar copiando
+  const igual = (a, b) => { try { const x = fs.statSync(a), y = fs.statSync(b); return x.size === y.size && x.mtimeMs <= y.mtimeMs; } catch (e) { return false; } };
+  if (fs.existsSync(FONTE_ARTE)) for (const f of fs.readdirSync(FONTE_ARTE)) {
+    const de = path.join(FONTE_ARTE, f), para = path.join(SAIDA_ARTE, f);
+    if (/\.(svg|jpe?g|png|webp)$/i.test(f) && !igual(de, para)) fs.copyFileSync(de, para);
+  }
   return true;
 }
 

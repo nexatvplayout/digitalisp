@@ -21,11 +21,16 @@ test('previa.js carrega sem fromEntries, flat, flatMap, Object.values/entries, p
     delete String.prototype.padStart; delete String.prototype.padEnd;
     delete String.prototype.trimStart; delete String.prototype.trimEnd; delete String.prototype.replaceAll;
     delete String.prototype.matchAll; delete Promise.allSettled; delete Object.hasOwn;
+    delete Intl.DateTimeFormat.prototype.formatToParts;
   `, ctx);
   vm.runInContext(fs.readFileSync(SAIDA_JS, 'utf8') + '\nthis.TelasPrevia = TelasPrevia;', ctx, { filename: 'previa.js' });
   assert.equal(typeof ctx.TelasPrevia.itemPreview, 'function');
   assert.equal(typeof ctx.TelasPrevia.slidePreview, 'function');
   assert.deepEqual(vm.runInContext('Object.fromEntries([["a", 1]])', ctx), { a: 1 });
   assert.equal(vm.runInContext('[[1], [2, [3]]].flatMap(function (x) { return x; }).length', ctx), 3);
+  // o relógio do gadget: hora, minuto e segundo num fuso, sem o formatToParts nativo (Chromium 53)
+  const p = vm.runInContext(`new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
+    .formatToParts(new Date(Date.UTC(2026, 10, 23, 1, 2, 3))).filter(function (x) { return x.type !== 'literal'; }).map(function (x) { return x.type + '=' + x.value; }).join(' ')`, ctx);
+  assert.equal(p, 'hour=22 minute=02 second=03');
   assert.equal(vm.runInContext('" x ".trimStart() + "|" + "7".padEnd(3, "0")', ctx), 'x |700');
 });

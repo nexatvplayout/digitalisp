@@ -371,3 +371,16 @@ test('tema dos slides: signage.theme, signage.brand ou theme do topo', () => {
   assert.deepEqual(N.lerConfig({ signage: { theme: { color: '#6d28d9' }, brand: { color: '#15803d' } } }).tema, { color: '#6d28d9', mode: 'dark' });
   assert.deepEqual(N.lerConfig({}).tema, { color: null, mode: 'dark' });
 });
+
+test('gadgets: zona widget com o item já preenchido; web só com https', () => {
+  const b = { id: 'g', layout: { zones: [{ id: 'gz', kind: 'widget', x: 0, y: 0, w: 50, h: 100 }] }, days: [], from: 0, to: 1440,
+    zones: { gz: [
+      { id: 'w1', kind: 'agenda', seconds: 10, title: 'Agenda', events: [] },
+      { id: 'w2', kind: 'web', seconds: 10, url: 'https://exemplo.com.br/painel', refreshMin: 5 },
+      { id: 'w3', kind: 'web', seconds: 10, url: 'http://exemplo.com.br/' },
+      { id: 'w4', kind: 'clock', seconds: 10, face: 'analog', tz: 'Europe/Lisbon' }] } };
+  const p = N.lerConfig(cfg('r', [b]));
+  assert.equal(p.blocos.length, 1);
+  assert.equal(p.blocos[0].layout.zonas[0].kind, 'widget');
+  assert.deepEqual(p.blocos[0].itens.gz.map((i) => i.id), ['w1', 'w2', 'w4']);
+});
