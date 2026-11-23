@@ -2,6 +2,7 @@
 // manda (layout por zonas, slide de modelo, playlist e itens, grade e alcance, configurações), a resolução da grade (qual
 // bloco vale em cada tela, por prioridade, especificidade e data), a montagem da chave `signage` do /config e a leitura do
 // `plays` do sinal de vida. O banco e as rotas ficam em server/tvcorp.js; o catálogo em public/shared/tvcorp-tipos.js.
+import * as W from '../public/shared/tvcorp-wall.js';
 import {
   TVC_LIMITS as L, TVC_ZONE, TVC_ZONE_KEYS, TVC_ZONE_ID_RE, TVC_PLAYLIST_ZONES, TVC_ORIENTATION_KEYS, TVC_LAYOUT_MODEL, TVC_SLIDE_MODEL,
   TVC_REF_KIND, TVC_SCOPE, TVC_SCOPE_KEYS, TVC_ITEM_KINDS, TVC_FIT_KEYS, TVC_POST_CATEGORY_KEYS, itemRef, parseItemRef, tvcScopeHits,
@@ -148,6 +149,48 @@ export function cleanBackground(v) {
   return cleanColor(v, 'Cor de fundo');
 }
 /** O layout que o painel mandou (cur: o guardado, numa edição; factoryKey sem zonas: copia o modelo de fábrica). */
+/**
+ * O conjunto de telas que o painel mandou (public/shared/tvcorp-wall.js). As telas o servidor confere (do cliente, não
+ * revogadas, em um só conjunto). Devolve { name, data: { mode, cols, rows, orientation, bezel, sync, epoch, cells, layoutId } }.
+ */
+export function cleanWall(b, cur = null, { now = Date.now() } = {}) {
+  const get = (k, d) => (has(b, k) ? b[k] : cur?.data && k in cur.data ? cur.data[k] : d);
+  const name = cleanName(has(b, 'name') ? b.name : cur?.name, 'Nome do conjunto');
+  const mode = get('mode', 'menu');
+  if (!['menu', 'wall'].includes(mode)) throw fail(400, 'Modo do conjunto: cardápio por tela ou videowall.');
+  const cols = Number(get('cols', 2)); const rows = Number(get('rows', 1));
+  if (!W.WALL_GRIDS.some((g) => g.cols === cols && g.rows === rows)) throw fail(400, 'Grade do conjunto inválida (de 2 a 9 TVs: 2×1 a 6×1, 1×2, 1×3, 2×2, 3×2, 2×3 e 3×3).');
+  const orientation = get('orientation', 'land');
+  if (!['land', 'port'].includes(orientation)) throw fail(400, 'Orientação das TVs: deitada ou em pé.');
+  const bz = get('bezel', {}) || {};
+  const bezel = { x: Number(bz.x) || 0, y: Number(bz.y) || 0 };
+  if (bezel.x < 0 || bezel.y < 0 || bezel.x > W.WALL_LIMITS.maxBezel || bezel.y > W.WALL_LIMITS.maxBezel) throw fail(400, `Moldura: de 0 a ${W.WALL_LIMITS.maxBezel}% da tela.`);
+  bezel.x = Math.round(bezel.x * 10) / 10; bezel.y = Math.round(bezel.y * 10) / 10;
+  const raw = get('cells', []);
+  if (!Array.isArray(raw)) throw fail(400, 'Posições das telas inválidas.');
+  const cells = []; const seenPos = new Set(); const seenDev = new Set();
+  for (const c of raw) {
+    if (c?.deviceId == null || c.deviceId === '') continue;
+    const pos = Number(c.pos); const deviceId = idOf(c.deviceId, 'Tela');
+    if (!Number.isInteger(pos) || pos < 1 || pos > cols * rows) throw fail(400, `Posição ${c.pos} fora da grade.`);
+    if (seenPos.has(pos)) throw fail(400, `Duas telas na posição ${pos}.`);
+    if (seenDev.has(deviceId)) throw fail(400, 'A mesma tela está em duas posições.');
+    seenPos.add(pos); seenDev.add(deviceId); cells.push({ pos, deviceId });
+  }
+  cells.sort((a, c) => a.pos - c.pos);
+  const lid = get('layoutId', null);
+  const layoutId = mode === 'wall' && lid != null && lid !== '' ? idOf(lid, 'Layout do videowall') : null;
+  const epoch = Number.isFinite(Number(cur?.data?.epoch)) ? Number(cur.data.epoch) : now;
+  return { name, data: { mode, cols, rows, orientation, bezel, sync: get('sync', true) !== false, epoch, cells, ...(layoutId ? { layoutId } : {}) } };
+}
+/** O que vai à tela que está num conjunto (signage.wall): a posição dela e as contas comuns. */
+export function wallFor(wall, deviceId) {
+  const cell = (wall?.data?.cells || []).find((c) => c.deviceId === Number(deviceId));
+  if (!cell) return null;
+  const d = wall.data; const { col, row } = W.cellOf(cell.pos, d.cols);
+  return { id: Number(wall.id), name: wall.name, mode: d.mode, cols: d.cols, rows: d.rows, pos: cell.pos, col, row, orientation: d.orientation, bezel: d.bezel, sync: d.sync !== false, epoch: d.epoch };
+}
+
 export function cleanLayout(b, cur = null) {
   const model = b?.factoryKey != null && b.factoryKey !== '' ? TVC_LAYOUT_MODEL[b.factoryKey] : null;
   if (b?.factoryKey != null && b.factoryKey !== '' && !model) throw fail(400, 'Modelo de layout inválido.');

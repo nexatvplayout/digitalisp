@@ -353,3 +353,7 @@
 .tvc-ov.tvc-op-80 > * { background: rgba(2, 6, 23, 0.8); }
 .tvc-ov.tvc-op-100 > * { background: #020617; }
 .tvc-zone.ov .tvc-zb { stroke: rgba(245, 179, 28, 0.55); stroke-dasharray: 1 0.8; }
+/* videowall: o conjunto inteiro, com a moldura entre as TVs e o número de cada posição */
+.tvc-previa.wall { max-width: 100%; }
+.tvc-bezel { fill: #05070b; }
+.tvc-wall-n { font: 700 22px/1 "IBM Plex Sans", Arial, sans-serif; fill: rgba(255, 255, 255, 0.55); stroke: rgba(0, 0, 0, 0.6); stroke-width: 0.8px; paint-order: stroke; text-anchor: middle; dominant-baseline: middle; pointer-events: none; }

@@ -47,7 +47,7 @@ test('catálogo: tipos, módulos de fábrica, o que é "em breve", alcance do li
   assert.deepEqual(TT.officeAlertScopes('inventado'), ['office']);
   assert.deepEqual(TT.LAYOUTS.map((l) => l.key), ['full', 'ticker', 'side', 'lbar', 'portrait', 'queue', 'queue-table', 'queue-big', 'queue-cards', 'queue-header', 'queue-info', 'queue-mosaic', 'queue-duo', 'queue-grid', 'queue-list'], 'os layouts do contrato (§2 e §15)');
   assert.ok(TT.LAYOUT_KEYS.includes('queue'), 'queue vale (a tela só o recebe com a chamada de senha ligada na repartição)');
-  assert.deepEqual(TT.COMMAND_KEYS, ['reload', 'restart-app', 'reboot', 'screenshot']);
+  assert.deepEqual(TT.COMMAND_KEYS, ['reload', 'restart-app', 'reboot', 'screenshot', 'identify']);
   assert.deepEqual(TT.ALERT_LEVEL_KEYS, ['info', 'warn', 'critical']);
   assert.equal(TT.OFFLINE_MS, 120000);
   // situação: sem sinal por 120 s = desligada; ligada com erro ou parada = sem imagem

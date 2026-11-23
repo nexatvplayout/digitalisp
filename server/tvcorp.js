@@ -77,18 +77,20 @@ export function createTvcorp({
   /* ================================================================ leituras guardadas por cliente */
   const cache = new Map(); // tenantId -> { at, data }
   function changed(tenantId) { cache.delete(Number(tenantId)); try { forget(Number(tenantId)); } catch { /* o telas.js refaz depois */ } }
+  const wallDto = (r) => ({ id: Number(r.id), name: r.name, data: j(r.data, {}), createdAt: Number(r.created_at), updatedAt: num(r.updated_at) });
   /** Os dados do dia a dia de um cliente (30 s, ou até a próxima mudança). */
   async function load(tenantId) {
     const id = Number(tenantId); const t = now();
     const c = cache.get(id);
     if (c && t - c.at < CACHE_MS) return c.data;
-    const [srow, layouts, schedules, playlists, items, media] = await Promise.all([
+    const [srow, layouts, schedules, playlists, items, media, walls] = await Promise.all([
       db.get('SELECT data FROM tvcorp_settings WHERE tenant_id = ?', [id]),
       db.all('SELECT * FROM tvcorp_layouts WHERE tenant_id = ?', [id]),
       db.all('SELECT * FROM tvcorp_schedules WHERE tenant_id = ?', [id]),
       db.all('SELECT * FROM tvcorp_playlists WHERE tenant_id = ?', [id]),
       db.all('SELECT * FROM tvcorp_playlist_items WHERE tenant_id = ? ORDER BY playlist_id, sort, id', [id]),
       db.all('SELECT * FROM tvcorp_media WHERE tenant_id = ?', [id]),
+      db.all('SELECT * FROM tvcorp_walls WHERE tenant_id = ?', [id]),
     ]);
     const data = {
       settings: j(srow?.data, {}),
@@ -96,6 +98,7 @@ export function createTvcorp({
       schedules: schedules.map(scheduleDto),
       playlists: new Map(playlists.map((r) => [Number(r.id), { ...playlistDto(r), items: [] }])),
       media: new Map(media.map((r) => [Number(r.id), r])),
+      walls: walls.map(wallDto),
     };
     for (const it of items) data.playlists.get(Number(it.playlist_id))?.items.push(itemDto(it));
     cache.set(id, { at: t, data });
@@ -142,7 +145,7 @@ export function createTvcorp({
   async function own(table, id, tenantId, what) {
     const n = Number(id);
     const row = Number.isInteger(n) && n > 0 ? await db.get(`SELECT * FROM ${table} WHERE id = ? AND tenant_id = ?`, [n, tenantId]) : null;
-    if (!row) throw fail(404, `${what} não encontrad${/^(Layout|Grupo|Pedido)/.test(what) ? 'o' : 'a'}.`);
+    if (!row) throw fail(404, `${what} não encontrad${/^(Layout|Grupo|Pedido|Conjunto)/.test(what) ? 'o' : 'a'}.`);
     return row;
   }
   async function under(table, tenantId, max, what) {
@@ -394,7 +397,9 @@ export function createTvcorp({
     K.applyCaps(out);
     const st = K.settingsDto(data.settings);
     const logo = data.settings.logo && LOGO_RE.test(String(data.settings.logo.file || '')) ? K.fileContract(fileUrl(data.settings.logo.file, req), data.settings.logo.sha256, data.settings.logo.bytes, L.logoBytes) : null;
-    const signage = { tz, brand: { logo, color: st.theme.color, mode: st.theme.mode }, blocks: out, fallback: fb ? fb.id : null };
+    // a tela num conjunto (cardápio por tela ou videowall): a posição dela e as contas comuns (o app antigo ignora)
+    const wall = data.walls.map((w) => K.wallFor(w, at.deviceId)).find(Boolean) || null;
+    const signage = { tz, brand: { logo, color: st.theme.color, mode: st.theme.mode }, blocks: out, fallback: fb ? fb.id : null, ...(wall ? { wall } : {}) };
     remember(tid, at.deviceId, signage);
     return signage;
   }
@@ -571,6 +576,7 @@ export function createTvcorp({
         regions: regions.map((r) => ({ id: Number(r.id), name: r.name, color: r.color || null })),
         devices: devs,
         layouts: [...data.layouts.values()].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')),
+        walls: data.walls,
         playlists: [...data.playlists.values()].map(({ items, ...p }) => ({ ...p, items: items.length })).sort((a, b) => (a.sort - b.sort) || a.name.localeCompare(b.name, 'pt-BR')),
         schedules: data.schedules.map((s) => ({ ...s, isDefault: Number(data.settings.defaultSchedule) === s.id })).sort((a, b) => K.blockOrder(a, b)),
         media: { total: data.media.size },
@@ -780,6 +786,45 @@ export function createTvcorp({
       await db.run('DELETE FROM tvcorp_layouts WHERE id = ? AND tenant_id = ?', [cur.id, req.tenantId]);
       changed(req.tenantId);
       res.locals.audit = `tv corporativa: layout "${cur.name}" (#${cur.id}) apagado`;
+      res.json({ ok: true });
+    }));
+
+    /* ---- conjuntos de telas (DIGITAL ISP) */
+    // as telas do conjunto: do cliente, não revogadas e fora de outro conjunto
+    const checkWallDevices = async (tenantId, data, selfId = null) => {
+      const ids = data.cells.map((c) => c.deviceId);
+      if (!ids.length) return;
+      const rows = await db.all(`SELECT id FROM telas_devices WHERE tenant_id = ? AND revoked_at IS NULL AND id IN (${ids.map(() => '?').join(',')})`, [tenantId, ...ids]);
+      if (rows.length !== ids.length) throw fail(404, 'Tela não encontrada.');
+      const other = (await load(tenantId)).walls.find((w) => w.id !== selfId && w.data.cells.some((c) => ids.includes(c.deviceId)));
+      if (other) throw fail(409, `Uma das telas já está no conjunto "${other.name}". Tire de lá antes.`);
+      if (data.layoutId) await own('tvcorp_layouts', data.layoutId, tenantId, 'Layout');
+    };
+    app.get(`${B}/walls`, M, ah(async (req, res) => noStore(res).json({ walls: (await load(req.tenantId)).walls })));
+    app.post(`${B}/walls`, M, ah(async (req, res) => {
+      const w = K.cleanWall(req.body || {}, null, { now: now() });
+      await under('tvcorp_walls', req.tenantId, L.layouts, 'conjuntos');
+      await checkWallDevices(req.tenantId, w.data);
+      const t = now();
+      const id = Number(await db.insert('INSERT INTO tvcorp_walls(tenant_id,name,data,created_at,updated_at) VALUES(?,?,?,?,?)', [req.tenantId, w.name, JSON.stringify(w.data), t, t]));
+      changed(req.tenantId);
+      res.locals.audit = `tv corporativa: conjunto de telas "${w.name}" (#${id}) criado`;
+      noStore(res).status(201).json(wallDto(await own('tvcorp_walls', id, req.tenantId, 'Conjunto')));
+    }));
+    app.patch(`${B}/walls/:id`, M, ah(async (req, res) => {
+      const cur = wallDto(await own('tvcorp_walls', req.params.id, req.tenantId, 'Conjunto'));
+      const w = K.cleanWall(req.body || {}, cur, { now: now() });
+      await checkWallDevices(req.tenantId, w.data, cur.id);
+      await db.run('UPDATE tvcorp_walls SET name = ?, data = ?, updated_at = ? WHERE id = ? AND tenant_id = ?', [w.name, JSON.stringify(w.data), now(), cur.id, req.tenantId]);
+      changed(req.tenantId);
+      res.locals.audit = `tv corporativa: conjunto de telas "${w.name}" (#${cur.id}) alterado`;
+      noStore(res).json(wallDto(await own('tvcorp_walls', cur.id, req.tenantId, 'Conjunto')));
+    }));
+    app.delete(`${B}/walls/:id`, M, ah(async (req, res) => {
+      const cur = wallDto(await own('tvcorp_walls', req.params.id, req.tenantId, 'Conjunto'));
+      await db.run('DELETE FROM tvcorp_walls WHERE id = ? AND tenant_id = ?', [cur.id, req.tenantId]);
+      changed(req.tenantId);
+      res.locals.audit = `tv corporativa: conjunto de telas "${cur.name}" (#${cur.id}) apagado`;
       res.json({ ok: true });
     }));
 
