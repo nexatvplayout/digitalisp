@@ -487,6 +487,8 @@
     // erro de JS não pode sumir calado: vai para a linha de diagnóstico e para o sinal de vida
     window.addEventListener('error', function (ev) { erro('js: ' + (ev.message || 'erro') + (ev.lineno ? ' (' + String(ev.filename || '').split('/').pop() + ':' + ev.lineno + ')' : '')); });
     window.addEventListener('unhandledrejection', function (ev) { erro('js: ' + ((ev.reason && ev.reason.message) || ev.reason)); });
+    // a prévia carrega antes deste arquivo: se ela falhou, os itens saem no desenho simples (só o texto); avisa
+    if (!window.TelasPrevia) erro('previa.js não carregou: itens no desenho simples');
     P.preparar();
     A.persistir();
     conteudo = $('conteudo');

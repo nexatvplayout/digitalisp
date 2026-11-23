@@ -3,7 +3,7 @@
  * Traz o desenho da prévia do painel (public/shared/tvcorp-previa.js e .css) para o app de TV, sem cópia à mão:
  *
  *   comum/js/previa.js   o mesmo código, empacotado pelo esbuild para o Chromium 53 (webOS 4) e com os polyfills que
- *                        ele usa e essas TVs não têm (Array.flat, append, Object.entries, padStart). Global TelasPrevia.
+ *                        ele usa e essas TVs não têm (Object.fromEntries, flat/flatMap, append, Object.entries/values, padStart/padEnd). Global TelasPrevia.
  *   comum/previa.css     o mesmo CSS, com as unidades de container trocadas: as TVs de 2018–2020 não têm cqw/cqh,
  *                        min(), gap no flex, inset nem :has(). Cada `Ncqw` vira calc(N * var(--cqw)) e `min(Acqh, Bcqw)`
  *                        vira var(--mI); o app mede cada zona e põe --cqw, --cqh e as --mI nela (TelasPrevia.MINS).
@@ -94,9 +94,19 @@ const POLYFILLS = `/* gerado por apps-tv/scripts/previa.js a partir de public/sh
     d = d === undefined ? 1 : Math.floor(d); var out = [];
     (function f(a, n) { for (var i = 0; i < a.length; i++) { if (Array.isArray(a[i]) && n > 0) f(a[i], n - 1); else out.push(a[i]); } })(this, d);
     return out; } });
+  // Object.fromEntries é do Chromium 73 (a Samsung 2020, Tizen 5.5, é Chromium 69): sem ele o módulo todo não carrega
+  if (!Object.fromEntries) Object.fromEntries = function (it) { var o = {}; Array.prototype.slice.call(Array.from ? Array.from(it) : it).forEach(function (kv) { o[kv[0]] = kv[1]; }); return o; };
+  if (!Object.values) Object.values = function (o) { return Object.keys(o).map(function (k) { return o[k]; }); };
+  if (!Array.prototype.flatMap) Object.defineProperty(Array.prototype, 'flatMap', { configurable: true, writable: true, value: function (fn, t) {
+    var out = []; for (var i = 0; i < this.length; i++) { var r = fn.call(t, this[i], i, this); if (Array.isArray(r)) out.push.apply(out, r); else out.push(r); } return out; } });
+  if (!String.prototype.padEnd) String.prototype.padEnd = function (n, c) {
+    var s = String(this); c = c === undefined ? ' ' : String(c); while (s.length < n) s = s + c; return s.slice(0, Math.max(n, String(this).length)); };
+  if (!String.prototype.trimStart) String.prototype.trimStart = function () { return String(this).replace(/^\\s+/, ''); };
+  if (!String.prototype.trimEnd) String.prototype.trimEnd = function () { return String(this).replace(/\\s+$/, ''); };
   if (!Object.entries) Object.entries = function (o) { return Object.keys(o).map(function (k) { return [k, o[k]]; }); };
   if (!String.prototype.padStart) String.prototype.padStart = function (n, c) {
     var s = String(this); c = c === undefined ? ' ' : String(c); while (s.length < n) s = c + s; return s.slice(-Math.max(n, String(this).length)); };
+  if (typeof Element === 'undefined') return; // fora do navegador (o teste da carga, em node)
   [Element.prototype, Document.prototype, DocumentFragment.prototype].forEach(function (p) {
     if (p.append) return;
     Object.defineProperty(p, 'append', { configurable: true, writable: true, value: function () {
