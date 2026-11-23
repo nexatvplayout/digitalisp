@@ -226,10 +226,13 @@ function artFileOf(key, req) {
  * contrato: { art (deitada), artPort (em pé) }; a TV usa a da forma da zona, em cover, com um véu escuro por cima.
  */
 const CLIMA_CONDS = ['clear', 'partly', 'cloudy', 'fog', 'rain', 'storm'];
+// de noite (18h às 5h59, hora de Brasília) a foto noturna do mesmo tempo (clima-<tempo>-noite-<forma>.jpg), se existir
+const noiteAgora = () => { const h = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Sao_Paulo', hour: '2-digit', hour12: false }).format(new Date())) % 24; return h >= 18 || h < 6; };
 function climaArtOf(cond, req) {
   if (!CLIMA_CONDS.includes(cond)) return null;
-  const one = (o) => {
-    const key = `clima-${cond}-${o}`;
+  const noite = noiteAgora();
+  const one = (o) => (noite && arte(`clima-${cond}-noite-${o}`)) || arte(`clima-${cond}-${o}`);
+  const arte = (key) => {
     if (!artSums.has(key)) {
       try { const buf = fs.readFileSync(pub(`tvcorp/arte/${key}.jpg`)); artSums.set(key, { sha256: createHash('sha256').update(buf).digest('hex'), bytes: buf.length }); } catch { artSums.set(key, null); }
     }
