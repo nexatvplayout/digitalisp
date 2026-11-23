@@ -340,3 +340,5 @@
 .tvc-it-dir .tvc-sl-qrc { margin-left: 3cqw; }
 .tvc-it-web { align-items: center; justify-content: center; text-align: center; border: 1px dashed rgba(148, 163, 184, 0.5); }
 .tvc-web-warn { font-size: 3cqw; color: var(--tfg); }
+.tvc-tk-leve { font-weight: 400; }
+.tvc-tk-it span { font-style: italic; }

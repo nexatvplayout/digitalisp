@@ -39,7 +39,11 @@ async function previewOf(it, src) {
   const find = (list) => list.find((x) => x.id === it.refId);
   if (it.refKind === 'media') {
     const m = find(src.media); if (!m) return itemPreview({ kind: 'none', title: 'Mídia apagada' }, { theme });
-    if (m.kind === 'slide') return itemPreview({ kind: 'slide', template: m.template, fields: m.fields }, { theme });
+    if (m.kind === 'slide') {
+      // a foto do slide (boas-vindas, oferta…) é outra mídia, guardada pelo número em fields.image
+      const image = m.fields?.image ? await tblob(`/api/tvcorp/media/${m.fields.image}/file`).catch(() => null) : null;
+      return itemPreview({ kind: 'slide', template: m.template, fields: m.fields, image }, { theme });
+    }
     return itemPreview({ kind: 'image', url: await tblob(`/api/tvcorp/media/${m.id}/file`).catch(() => null), title: m.title }, { theme });
   }
   if (it.refKind === 'post') { const p = find(src.posts); return itemPreview({ kind: 'post', category: p?.category, title: p?.title, body: p?.text, qr: p?.qr }, { theme }); }

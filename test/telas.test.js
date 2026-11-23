@@ -152,7 +152,7 @@ test('contrato: o JSON da configuração tem exatamente os campos do contrato e 
   assert.notEqual(C.revOf(C.contractConfig({ ...args, eff: capEff })), C.revOf(cfg), 'mudar as legendas muda o rev');
   assert.deepEqual(cfg.device, { id: 12, name: 'UBS Centro, recepção', office: 'UBS Centro', officeType: 'ubs', region: 'Centro' });
   assert.deepEqual(cfg.stream, { hls: 'https://hls.test/hls/x/master.m3u8', backup: null, volume: 100, muted: false });
-  assert.deepEqual(cfg.ticker, { items: ['A'], speed: 60 }); assert.deepEqual(cfg.side, { widgets: ['clock'], qrUrl: null, title: null });
+  assert.deepEqual(cfg.ticker, { items: ['A'], speed: 60, style: null, rich: [{ text: 'A' }] }); assert.deepEqual(cfg.side, { widgets: ['clock'], qrUrl: null, title: null });
   assert.deepEqual(Object.keys(cfg.lock), ['pinHash', 'pinSalt', 'exitSeq']); assert.equal(cfg.lock.pinHash, sha(`${cfg.lock.pinSalt}1234`));
   assert.deepEqual([cfg.offline, cfg.schedule, cfg.heartbeatSec], [{ items: [], image: null }, null, 30]);
   assert.deepEqual(C.contractConfig({ ...args, region: null, eff: C.effectiveConfig({}) }).lock, { pinHash: null, pinSalt: null, exitSeq: ['UP', 'UP', 'DOWN', 'DOWN', 'OK'] }, 'sem PIN: nulos');
@@ -332,4 +332,17 @@ test('página da repartição: CSP estrita sem inline, nada de fora, a sessão s
   // servidor: nada de segredo em log; as rotas de alto volume fora do log de auditoria
   assert.ok(!/console\.(log|warn|error)\([^)]*(token|key|password|pin)/i.test(srv), 'nenhum segredo em console.*');
   assert.match(read('server/index.js'), /'\/telas\/heartbeat', '\/telas\/screenshot'\]\)/);
+});
+
+test('faixa: estilo da faixa e de cada aviso; o app antigo recebe só o texto', async () => {
+  const { cleanAviso, tickerTexts, tickerRich } = await import('../server/telas-conteudo-core.js');
+  const { cleanTickerStyle } = await import('../public/shared/faixa.js');
+  assert.equal(cleanAviso('[institucional] {c=#FF0000;b} Promoção', 200), '[institucional] {c=#ff0000;b} Promoção');
+  assert.equal(cleanAviso('{b;c=#zz} Só negrito', 200), '{b} Só negrito');
+  assert.deepEqual(tickerTexts(['{c=#ff0000;b;i} Oferta', 'Normal']), ['Oferta', 'Normal']);
+  assert.deepEqual(tickerRich(['{c=#ff0000;b;i} Oferta', 'Normal']), [{ text: 'Oferta', color: '#ff0000', bold: true, italic: true }, { text: 'Normal' }]);
+  assert.equal(tickerRich(['[institucional] {b} Aviso'], true).length, 0); // institucional retido no período eleitoral
+  const st = cleanTickerStyle({ color: '#FFFFFF', bg: 'azul', size: 200, font: 'x', sep: 'barra', label: '  AVISOS  ', bold: false });
+  assert.deepEqual(st, { color: '#ffffff', bg: '#0b1e3a', bold: false, italic: false, size: 90, font: 'sans', sep: 'barra', label: 'AVISOS', labelColor: '#ffffff', labelBg: '#1d4ed8' });
+  assert.equal(cleanTickerStyle(null), null);
 });

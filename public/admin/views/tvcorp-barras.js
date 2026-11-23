@@ -9,6 +9,7 @@ import { WIDGETS, LIMITS as TL } from '../../shared/telas-tipos.js';
 import { WIDGET_KINDS, widgetLabel, WEEK_SHORT } from './tvcorp-catalogo.js';
 import { widgetItem, learnZones } from './tvcorp-playlists.js';
 import { themeOf } from './tvcorp-midias.js';
+import { faixaCard } from './tvcorp-faixa.js';
 
 const MENU_DAYS = [1, 2, 3, 4, 5, 6, 0];
 
@@ -136,24 +137,12 @@ export default async function paintBarras(box, ctx) {
   // os relógios e os contadores andam também aqui (um por segundo, enquanto a aba está aberta)
   clearInterval(paintBarras.tick); paintBarras.tick = setInterval(() => { if (!box.isConnected) { clearInterval(paintBarras.tick); return; } tickWidgets(box); }, 1000);
   const cfg = d.defaults?.config || {};
-  /* barra inferior */
-  const avisos = el('textarea', { rows: '5', maxlength: String(TL.tickerItems * (TL.tickerItem + 1)), placeholder: 'Um aviso por linha' }); avisos.value = (cfg.tickerItems || []).join('\n');
-  const saveTicker = guard(async () => {
-    const items = lines(avisos.value);
-    if (items.length > TL.tickerItems) throw new Error(`No máximo ${TL.tickerItems} avisos.`);
-    await tapi('/api/tvcorp/rede/defaults', { method: 'PUT', body: { config: { tickerItems: items } } });
-    toast('Texto rolante salvo. As telas trocam em até 1 minuto.'); await ctx.reload();
-  });
   /* barra lateral (os layouts de sempre) */
   const wid = new Set(cfg.widgets || []);
   const saveSide = guard(async () => { await tapi('/api/tvcorp/rede/defaults', { method: 'PUT', body: { config: { widgets: [...wid] } } }); toast('Barra lateral salva.'); await ctx.reload(); });
   put(box,
-    el('div', { class: 'card tc-sec' },
-      el('h3', { text: 'Barra inferior (texto rolante)' }),
-      note('Vale em toda zona "Texto rolante" dos layouts. Os avisos escritos aqui são da empresa toda; cada unidade e cada grupo podem ter os seus (aba Unidades e grupos e o link da unidade).'),
-      f(`Avisos (até ${TL.tickerItems}, ${TL.tickerItem} letras cada)`, avisos),
-      note('Notícias e cotações vão às telas como itens de playlist (aba Playlists) ou numa zona própria do layout.'),
-      btns(btn('Salvar o texto rolante', saveTicker, 'primary'))),
+    /* barra inferior: os avisos com estilo e a faixa (tvcorp-faixa.js) */
+    faixaCard(cfg, () => ctx.reload()),
     el('div', { class: 'card tc-sec' },
       el('h3', { text: 'Barra lateral' }),
       note('Nos layouts por zonas, a lateral é uma zona: escolha o que ela mostra na aba Layouts (playlist, relógio, clima, QR code, notícias, cotações, contador…). Aqui ficam os blocos da lateral dos formatos de sempre (quando nenhuma grade vale).'),
