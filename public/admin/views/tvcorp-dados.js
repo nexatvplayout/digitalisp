@@ -23,6 +23,19 @@ function testFeed(x) {
   dialog(`Testar · ${x.name}`, body, { wide: true });
   guard(async () => {
     const r = await tapi(`/api/tvcorp/feeds/${x.id}/test`, { method: 'POST', body: {} });
+    // o clima não tem lista de itens: mostra a temperatura de agora, a mínima e a máxima e os próximos dias
+    if (x.kind === 'weather') {
+      const c = r.cache || r.feed?.preview || null;
+      const deg = (v) => (v == null ? '—' : `${Math.round(v)}°`);
+      const dia = (s) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || '')); return m ? `${m[3]}/${m[2]}` : String(s || ''); };
+      put(body, r.error ? el('p', { class: 'pf-err', text: r.error }) : null,
+        c && c.tempC != null ? el('div', {},
+          el('p', { text: `${c.city || ''}${c.uf ? `/${c.uf}` : ''}: ${deg(c.tempC)}${c.text ? ` · ${c.text}` : ''} (mín. ${deg(c.min)}, máx. ${deg(c.max)})` }),
+          (c.days || []).length ? table(['Dia', 'Mín.', 'Máx.', 'Tempo'], c.days.map((d) => el('tr', {}, el('td', { text: dia(d.date) }), el('td', { text: deg(d.min) }), el('td', { text: deg(d.max) }), el('td', { text: d.text || '' })))) : null,
+          note(`Fonte: ${c.source || '—'}${c.at ? ` · ${when(c.at)}` : ''}. A tela mostra a temperatura e a previsão desta cidade.`, 'small dim'))
+          : r.error ? null : empty('A fonte do clima respondeu sem a previsão. Confira o município (UF e cidade).'));
+      return;
+    }
     const items = (r.cache?.items || r.feed?.preview?.items || []).map((it) => ({ ...it, title: it.title || (it.code ? `${it.code}: ${it.sell ?? it.buy ?? ''}` : '') }));
     put(body, r.error ? el('p', { class: 'pf-err', text: r.error }) : null,
       items.length ? table(['Item', 'Fonte', 'Hora'], items.slice(0, 20).map((it) => el('tr', {}, el('td', { text: it.title || it.label || '—' }), el('td', { text: it.source || '' }), el('td', { text: it.at ? when(it.at) : '' }))))
