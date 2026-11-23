@@ -193,6 +193,12 @@ export function mountRevenda(app, { needs, signedIn }) {
       if (await emailEmUso(novo, { excetoTenant: t.id, excetoUser: login?.id })) throw fail(409, 'Esse e-mail já é usado por outra conta. Use outro e-mail.');
       if (login) { await db.run('UPDATE users SET username = ? WHERE id = ? AND tenant_id = ?', [novo, login.id, t.id]); access.invalidate(); }
     } else delete f.contact_email;
+    // o endereço de entrada do cliente (/c/<identificador>): a revenda personaliza
+    if (b.slug !== undefined && String(b.slug).trim().toLowerCase() !== t.slug) {
+      const slug = T.validSlug(String(b.slug).trim().toLowerCase());
+      if (await db.get('SELECT id FROM tenants WHERE slug = ? AND id <> ?', [slug, t.id])) throw fail(409, 'Esse endereço já é usado por outra conta. Escolha outro.');
+      f.slug = slug;
+    }
     const c = await contaOf(t.id);
     const pessoa = b.pessoa === undefined ? c.pessoa : (b.pessoa === 'pf' ? 'pf' : 'pj');
     if (f.document_type && f.document_type !== (pessoa === 'pf' ? 'cpf' : 'cnpj')) throw fail(400, pessoa === 'pf' ? 'Pessoa física: informe o CPF.' : 'Pessoa jurídica: informe o CNPJ.');

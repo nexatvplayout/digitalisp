@@ -90,7 +90,7 @@ function clienteForm(c, planos, done, box) {
           const r = await api(`/api/revenda/clientes/${c.id}/entrar`, { method: 'POST' });
           // o painel do cliente abre noutra aba, com a sessão de 1 h (a revenda segue logada aqui)
           localStorage.setItem('disp.token.entrar', r.token); // entregue uma vez à aba nova, que guarda só nela
-          window.open(`${location.origin}/admin/#entrar`, '_blank', 'noopener');
+          window.open(`${location.origin}/c/${c.slug}#entrar`, '_blank', 'noopener');
         }) }) : null,
         editando ? el('button', { type: 'button', class: 'small', text: 'Nova senha', onclick: guard(async () => {
           if (!confirm('Gerar uma senha nova para o cliente? A senha atual deixa de valer.')) return;
@@ -99,8 +99,11 @@ function clienteForm(c, planos, done, box) {
           mostrarAcesso(box, 'Nova senha do cliente', { link: d.acesso.link, login: r.login, senha: r.senha });
         }) }) : null,
         el('button', { type: 'button', class: 'small', text: 'Fechar', onclick: () => f.remove() }))),
-    editando ? el('p', { class: 'rv-link' }, 'Endereço de entrada deste cliente: ', el('b', { text: `${location.origin}/c/${c.slug}` }), ' ',
-      el('button', { type: 'button', class: 'small', text: 'Copiar', onclick: () => navigator.clipboard?.writeText(`${location.origin}/c/${c.slug}`).then(() => toast('Copiado.'), () => {}) })) : null,
+    editando ? el('div', { class: 'rv-link' },
+      field('Endereço de entrada deste cliente', el('div', { class: 'rv-slug' }, el('span', { class: 'dim', text: `${location.origin}/c/` }),
+        inp('slug', c.slug, { pattern: '[a-z0-9-]{1,40}', maxlength: 40, autocomplete: 'off', oninput: (e) => { e.target.value = e.target.value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9-]+/g, '-'); } }),
+        el('button', { type: 'button', class: 'small', text: 'Copiar', onclick: (e) => { const v = e.target.closest('form').slug.value; navigator.clipboard?.writeText(`${location.origin}/c/${v}`).then(() => toast('Copiado.'), () => {}); } })),
+        { hint: 'Letras minúsculas, números e hífen. Se trocar, o endereço antigo deixa de funcionar: avise o cliente.' })) : null,
     sec('Cliente',
       field('Tipo', pessoa),
       field('Nome / razão social', inp('name', c?.name, { required: true, maxlength: 80 })),
@@ -133,6 +136,7 @@ function clienteForm(c, planos, done, box) {
     if (Number.isNaN(valor)) { toast('Valor mensal inválido.', true); return; }
     if (!v.planoId) { toast('Escolha o plano do cliente.', true); return; }
     const body = {
+      ...(editando ? { slug: v.slug } : {}),
       contactEmail: v.contactEmail,
       pessoa: v.pessoa, name: v.name, fantasia: v.fantasia, document: v.document, contactName: v.contactName, phone: v.phone, whatsapp: v.whatsapp,
       address: { zip: v.zip, street: v.street, number: v.number, complement: v.complement, district: v.district, city: p.city || '', state: p.uf || '' },

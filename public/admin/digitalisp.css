@@ -157,3 +157,6 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
 .aba.on a { color: var(--c-fg); font-weight: 600; }
 .aba-x { border: 0; background: transparent; color: var(--c-dim); padding: 4px 8px; cursor: pointer; font-size: 1rem; line-height: 1; }
 .aba-x:hover { color: #ff8a80; }
+
+.rv-slug { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.rv-slug input { flex: 1; min-width: 160px; }

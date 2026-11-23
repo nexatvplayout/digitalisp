@@ -11,11 +11,12 @@ const tvcorp = async () => (tvcorpMod ||= (await import('./views/tvcorp.js')).de
 
 // a porta decide quem entra; cada uma guarda a própria sessão (dá para ter as duas abertas em abas diferentes)
 const KIND = location.pathname === '/superadmin' || location.pathname.startsWith('/superadmin/') ? 'plataforma' : 'revenda';
-const TOKEN_KEY = KIND === 'plataforma' ? 'disp.token.plataforma' : 'disp.token.revenda';
 // area: quem entrou — plataforma, revenda (o provedor) ou cliente (o cliente final da revenda)
 const S = { kind: KIND, area: KIND === 'plataforma' ? 'plataforma' : 'revenda', view: null, conta: null };
 // a porta do cliente final: /c/<revenda> (a entrada com a marca da revenda)
 const PORTA_CLIENTE = /^\/c\/([a-z0-9-]+)/.exec(location.pathname)?.[1] || null;
+// cada endereço guarda a própria sessão: /c/<cliente> não reaproveita a da revenda aberta em /admin (nem a de outro cliente)
+const TOKEN_KEY = KIND === 'plataforma' ? 'disp.token.plataforma' : PORTA_CLIENTE ? `disp.token.c.${PORTA_CLIENTE}` : 'disp.token.revenda';
 // a sessão desta aba (sessionStorage: o painel do cliente aberto pela revenda) vence a guardada no navegador
 const lerToken = () => sessionStorage.getItem(TOKEN_KEY) || store.get(TOKEN_KEY);
 const gravarToken = (t) => { if (sessionStorage.getItem(TOKEN_KEY)) { if (t) sessionStorage.setItem(TOKEN_KEY, t); else sessionStorage.removeItem(TOKEN_KEY); } else store.set(TOKEN_KEY, t); };
@@ -37,7 +38,8 @@ $('#loginForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = e.currentTarget;
   const kind = KIND;
-  const body = { username: f.username.value.trim(), password: f.password.value };
+  // no endereço de um cliente só entra quem é daquele cliente
+  const body = { username: f.username.value.trim(), password: f.password.value, ...(PORTA_CLIENTE ? { tenant: PORTA_CLIENTE } : {}) };
   try {
     const r = await api(kind === 'plataforma' ? '/api/platform/login' : '/api/admin/login', { method: 'POST', body });
     state.token = r.token; S.kind = kind;
@@ -45,7 +47,8 @@ $('#loginForm').addEventListener('submit', async (e) => {
     f.password.value = '';
     await start();
   } catch (err) {
-    $('#loginErr').hidden = false; $('#loginErr').textContent = err.message;
+    $('#loginErr').hidden = false;
+    $('#loginErr').textContent = PORTA_CLIENTE && /incorretos/.test(err.message) ? `${err.message} Este endereço é só do cliente dele: a revenda entra em ${location.origin}/admin.` : err.message;
   }
 });
 
@@ -153,6 +156,10 @@ async function start() {
   } catch (e) {
     state.token = null; gravarToken(null);
     return showLogin(e.message === 'Sessão expirada. Entre novamente.' ? '' : e.message);
+  }
+  if (PORTA_CLIENTE && state.me.tenant?.slug !== PORTA_CLIENTE) {
+    state.token = null; gravarToken(null);
+    return showLogin();
   }
   if (KIND === 'revenda') {
     S.conta = await api('/api/conta').catch(() => ({ tipo: 'revenda' }));
