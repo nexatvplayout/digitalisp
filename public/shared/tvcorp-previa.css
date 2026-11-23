@@ -123,12 +123,47 @@
 .tvc-sl.tvc-art-foto-barbearia { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-barbearia.jpg); }
 .tvc-sl.tvc-art-foto-pet { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-pet.jpg); }
 .tvc-sl.tvc-art-foto-provedor { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-provedor.jpg); }
+.tvc-sl.tvc-art-foto-aniversario-baloes { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-aniversario-baloes.jpg); }
+.tvc-sl.tvc-art-foto-aniversario-bolo { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-aniversario-bolo.jpg); }
+.tvc-sl.tvc-art-foto-aniversario-presentes { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-aniversario-presentes.jpg); }
+.tvc-sl.tvc-art-foto-aniversario-cupcakes { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-aniversario-cupcakes.jpg); }
+.tvc-sl.tvc-art-foto-aviso-megafone { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-aviso-megafone.jpg); }
+.tvc-sl.tvc-art-foto-aviso-mural { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-aviso-mural.jpg); }
+.tvc-sl.tvc-art-foto-escritorio { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-escritorio.jpg); }
+.tvc-sl.tvc-art-foto-seguranca-epi { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-seguranca-epi.jpg); }
+.tvc-sl.tvc-art-foto-fabrica { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-fabrica.jpg); }
+.tvc-sl.tvc-art-foto-recepcao { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-recepcao.jpg); }
+.tvc-sl.tvc-art-foto-boas-vindas { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-boas-vindas.jpg); }
+.tvc-sl.tvc-art-foto-reconhecimento { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-reconhecimento.jpg); }
+.tvc-sl.tvc-art-foto-metas { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-metas.jpg); }
+.tvc-sl.tvc-art-foto-confraternizacao { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-confraternizacao.jpg); }
+.tvc-sl.tvc-art-foto-natal { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-natal.jpg); }
+.tvc-sl.tvc-art-foto-vagas { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-vagas.jpg); }
+.tvc-sl.tvc-art-foto-treinamento { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-treinamento.jpg); }
+.tvc-sl.tvc-art-foto-refeitorio { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-refeitorio.jpg); }
+.tvc-sl.tvc-art-foto-bem-estar { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-bem-estar.jpg); }
+.tvc-sl.tvc-art-foto-sustentabilidade { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-sustentabilidade.jpg); }
 
-/* aniversariantes com a foto ou as iniciais (DIGITAL ISP) */
-.tvc-it-people { list-style: none; padding-left: 0; display: grid; gap: 1.4cqw; }
-.tvc-it-people li { display: flex; align-items: center; gap: 1.6cqw; }
-.tvc-av { width: 7cqw; height: 7cqw; border-radius: 50%; object-fit: cover; flex: none; }
-.tvc-av-ini { display: inline-grid; place-items: center; background: var(--tc, #1d4ed8); color: #fff; font-weight: 700; font-size: 2.8cqw; }
+/* aniversariantes (DIGITAL ISP): festivo, com a arte de confete, as pessoas lado a lado e a foto (só com a autorização) ou
+   as iniciais num círculo dourado. Sem gap nem grid (as TVs de 2018 a 2020): o espaço é margem de cada pessoa. */
+.tvc-it-bday { align-items: center; justify-content: center; text-align: center; background-color: #2e1065; background-image: linear-gradient(rgba(46, 16, 101, 0.72), rgba(46, 16, 101, 0.82)), url(/tvcorp/arte/foto-aniversario-baloes.jpg); background-size: cover; background-position: center; --tfg: #ffffff; --tdim: #f5f3ff; }
+.tvc-it-bday .tvc-it-t { border-left: 0; padding-left: 0; color: #fde68a; font-size: 6.4cqw; }
+.tvc-bday-people { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; }
+.tvc-bday-people li { display: flex; flex-direction: column; align-items: center; width: 20cqw; margin: 1.2cqw 1.6cqw; }
+.tvc-bday-people b { font-size: 3cqw; line-height: 1.2; margin-top: 1cqw; color: #ffffff; }
+.tvc-bday-people span { font-size: 2.4cqw; color: #f5f3ff; }
+.tvc-av { width: 14cqw; height: 14cqw; border-radius: 50%; object-fit: cover; flex: none; border: 0.6cqw solid #fbbf24; box-sizing: border-box; background: #4c1d95; }
+.tvc-av-ini { display: inline-flex; align-items: center; justify-content: center; background: #7c3aed; color: #ffffff; font-weight: 700; font-size: 5.4cqw; }
+.tvc-it-bday.n1 li { width: 60cqw; }
+.tvc-it-bday.n1 .tvc-av { width: 26cqw; height: 26cqw; font-size: 10cqw; border-width: 1cqw; }
+.tvc-it-bday.n1 b { font-size: 5.4cqw; }
+.tvc-it-bday.n1 span { font-size: 3.6cqw; }
+.tvc-it-bday.n3 li { width: 26cqw; }
+.tvc-it-bday.n3 .tvc-av { width: 19cqw; height: 19cqw; font-size: 7cqw; }
+.tvc-it-bday.n3 b { font-size: 3.8cqw; }
+.tvc-it-bday.n8 li { width: 17cqw; margin: 0.8cqw 1cqw; }
+.tvc-it-bday.n8 .tvc-av { width: 11cqw; height: 11cqw; font-size: 4.2cqw; }
+.tvc-bday-wish { font-size: 3.4cqw; font-weight: 600; color: #fde68a; }
 
 /* A prévia mede tudo (texto, margens) pela caixa onde ela está (cqw): a caixa de fora precisa ser um "container". Sem
    isso, as medidas iam para a janela inteira, as margens engoliam o conteúdo e a miniatura transbordava (22/11). */

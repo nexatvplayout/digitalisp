@@ -153,14 +153,18 @@ export function itemPreview(it = {}, opts = {}) {
     case 'post': return slidePreview(it.category === 'vaga' ? 'vaga' : it.category === 'seguranca' ? 'seguranca' : 'comunicado', { title: it.title, text: it.body ?? it.text, qr: it.qr }, { theme: opts.theme, image: typeof it.image === 'string' ? it.image : it.image?.url || null });
     case 'text': return box('tvc-it-text', it.title ? h('div', 'tvc-it-t', it.title) : null, h('div', 'tvc-it-x', it.text || ''));
     case 'birthdays': {
+      // festivo: a arte de confete, as pessoas lado a lado com a foto (só com a autorização) ou as iniciais num círculo
+      // dourado; quanto menos gente, maior cada uma (n1, n3, n6, n8)
       const ppl = (it.people || []).slice(0, 8);
-      return box('tvc-it-bday', h('div', 'tvc-it-t', it.title || 'Aniversariantes'),
-        ppl.length ? h('ul', 'tvc-it-list tvc-it-people', ppl.map((p) => {
-          // a foto (só com a autorização) ou as iniciais num círculo, como na TV
+      const size = ppl.length <= 1 ? 'n1' : ppl.length <= 3 ? 'n3' : ppl.length <= 6 ? 'n6' : 'n8';
+      return box(`tvc-it-bday ${size}`, h('div', 'tvc-it-t', it.title || 'Aniversariantes'),
+        ppl.length ? h('ul', 'tvc-bday-people', ppl.map((p) => {
+          const src = typeof p.photo === 'string' ? p.photo : p.photo?.url || '';
           let av;
-          if (p.photo) { av = h('img', 'tvc-av'); av.src = p.photo; av.alt = ''; } else av = h('span', 'tvc-av tvc-av-ini', String(p.name || '').split(/s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase());
-          return h('li', '', av, h('span', '', h('b', '', p.name), ` · ${pad2(p.day)}/${pad2(p.month)}${p.sector ? ` · ${p.sector}` : ''}`));
-        })) : h('div', 'tvc-it-x', 'Ninguém faz aniversário nestes dias'));
+          if (src) { av = h('img', 'tvc-av'); av.src = src; av.alt = ''; } else av = h('span', 'tvc-av tvc-av-ini', p.initials || String(p.name || '').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase());
+          return h('li', '', av, h('b', '', p.name), h('span', '', `${pad2(p.day)}/${pad2(p.month)}${p.sector ? ` · ${p.sector}` : ''}`));
+        })) : h('div', 'tvc-it-x', 'Ninguém faz aniversário nestes dias'),
+        ppl.length ? h('div', 'tvc-bday-wish', 'Parabéns! Muitas felicidades!') : null);
     }
     case 'kpi': return box(`tvc-it-kpi b-${it.band || 'none'}`, h('div', 'tvc-it-t', it.name || 'Indicador'), h('div', 'tvc-it-big', `${numText(it.value)}${it.unit ? ` ${it.unit}` : ''}`),
       it.target != null ? h('div', 'tvc-it-x', `Meta: ${numText(it.target)}${it.unit ? ` ${it.unit}` : ''}`) : null, it.target != null ? goalBar(it.value, it.target, it.band) : null);

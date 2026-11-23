@@ -225,6 +225,27 @@ export const TVC_ARTS = Object.freeze([
   { key: 'foto-cafeteria', label: 'Foto: cafeteria', tone: 'dark', photo: true }, { key: 'foto-academia', label: 'Foto: academia', tone: 'dark', photo: true },
   { key: 'foto-clinica', label: 'Foto: recepção de clínica', tone: 'dark', photo: true }, { key: 'foto-barbearia', label: 'Foto: barbearia', tone: 'dark', photo: true },
   { key: 'foto-pet', label: 'Foto: cachorro e gato', tone: 'dark', photo: true }, { key: 'foto-provedor', label: 'Foto: fibra óptica', tone: 'dark', photo: true },
+  // uso interno da empresa (comunicação interna)
+  { key: 'foto-aniversario-baloes', label: 'Foto: balões de aniversário', tone: 'dark', photo: true },
+  { key: 'foto-aniversario-bolo', label: 'Foto: bolo de aniversário', tone: 'dark', photo: true },
+  { key: 'foto-aniversario-presentes', label: 'Foto: presentes e confete', tone: 'dark', photo: true },
+  { key: 'foto-aniversario-cupcakes', label: 'Foto: cupcakes na mesa', tone: 'dark', photo: true },
+  { key: 'foto-aviso-megafone', label: 'Foto: megafone', tone: 'dark', photo: true },
+  { key: 'foto-aviso-mural', label: 'Foto: mural de recados', tone: 'dark', photo: true },
+  { key: 'foto-escritorio', label: 'Foto: escritório', tone: 'dark', photo: true },
+  { key: 'foto-seguranca-epi', label: 'Foto: EPI na bancada', tone: 'dark', photo: true },
+  { key: 'foto-fabrica', label: 'Foto: chão de fábrica', tone: 'dark', photo: true },
+  { key: 'foto-recepcao', label: 'Foto: recepção da empresa', tone: 'dark', photo: true },
+  { key: 'foto-boas-vindas', label: 'Foto: mesa de boas-vindas', tone: 'dark', photo: true },
+  { key: 'foto-reconhecimento', label: 'Foto: troféu e medalha', tone: 'dark', photo: true },
+  { key: 'foto-metas', label: 'Foto: gráfico de metas', tone: 'dark', photo: true },
+  { key: 'foto-confraternizacao', label: 'Foto: confraternização', tone: 'dark', photo: true },
+  { key: 'foto-natal', label: 'Foto: árvore de Natal', tone: 'dark', photo: true },
+  { key: 'foto-vagas', label: 'Foto: mesa vaga', tone: 'dark', photo: true },
+  { key: 'foto-treinamento', label: 'Foto: sala de treinamento', tone: 'dark', photo: true },
+  { key: 'foto-refeitorio', label: 'Foto: prato do almoço', tone: 'dark', photo: true },
+  { key: 'foto-bem-estar', label: 'Foto: bem-estar', tone: 'dark', photo: true },
+  { key: 'foto-sustentabilidade', label: 'Foto: broto de planta', tone: 'dark', photo: true },
 ].map((x) => Object.freeze(x)));
 export const TVC_ART = Object.freeze(Object.fromEntries(TVC_ARTS.map((x) => [x.key, x])));
 /**
