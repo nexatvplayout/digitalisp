@@ -124,7 +124,7 @@ async function nowText(d) {
 }
 /** Como a tela está agora, em tamanho grande: a grade que vale, o layout, as playlists dela e o canal dela, ao vivo. */
 const verAgora = (d) => guard(async () => {
-  const r = await tapi(`/api/tvcorp/devices/${d.id}/now`);
+  const r = await tapi(`/api/tvcorp/devices/${d.id}/now?full=1`);
   const lay = r?.block ? D().layouts.find((l) => l.id === r.block.layoutId) : null;
   if (!lay) { toast('Esta tela está no formato de sempre (nenhuma grade vale agora): não há layout para mostrar.', true); return; }
   const grade = D().schedules.find((x) => x.id === r.block.id);
@@ -133,7 +133,7 @@ const verAgora = (d) => guard(async () => {
   const hid = porTela?.[d.id] ?? officeOf(d.officeId)?.channelId ?? null;
   const canalUrl = (Array.isArray(canais) ? canais : []).find((c) => c.id === Number(hid))?.url || null;
   const { abrirPreviaViva } = await import('./tvcorp-previa-viva.js');
-  await abrirPreviaViva(lay, { zonePlaylists: grade?.zonePlaylists || null, canalUrl, titulo: `Agora na tela · ${d.name}` });
+  await abrirPreviaViva(lay, { zonePlaylists: grade?.zonePlaylists || null, zoneItems: r.zones || null, canalUrl, titulo: `Agora na tela · ${d.name}` });
 });
 /** Captura, agora e comandos de uma tela. */
 function deviceDialog(d, ctx = null) {

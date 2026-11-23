@@ -2,7 +2,8 @@
 // vídeo e passa a playlist de cada zona item por item, no tempo de cada um, como a TV faz. Abre pelos Layouts (editor e
 // cartões) e pela Grade (com as playlists da grade). Fechar para o vídeo e os relógios.
 import { el, tapi, put, opt, label, note, btn, dialog, listOf } from './tvcorp-base.js';
-import { layoutPreview } from '../../shared/tvcorp-previa.js';
+import { layoutPreview, itemPreview } from '../../shared/tvcorp-previa.js';
+import { TVC_PLAYLIST_ZONES } from '../../shared/tvcorp-tipos.js';
 import { previewOf, sources } from './tvcorp-playlists.js';
 import { themeOf } from './tvcorp-midias.js';
 
@@ -26,13 +27,15 @@ async function tocar(video, url, aviso) {
  * Abre a prévia. layout: { orientation, zones, background, name }. zonePlaylists: { zona: playlistId } (da grade), opcional:
  * sem ele, cada zona de playlist ganha um seletor (começa na primeira playlist).
  */
-export async function abrirPreviaViva(layout, { zonePlaylists = null, titulo = '', canalUrl = null } = {}) {
+export async function abrirPreviaViva(layout, { zonePlaylists = null, titulo = '', canalUrl = null, zoneItems = null } = {}) {
   const paradas = [];
   const parar = () => { while (paradas.length) { try { paradas.pop()(); } catch { /* já parou */ } } };
   const [canais, src, pls] = await Promise.all([tapi('/api/hls').catch(() => []), sources(), tapi('/api/tvcorp/playlists').catch(() => null)]);
   const listaCanais = (Array.isArray(canais) ? canais : []).filter((c) => c.ativo !== false);
   const playlists = listOf(pls, 'playlists');
-  const zonasPl = (layout.zones || []).filter((z) => z.kind === 'playlist');
+  // toda zona que recebe playlist (playlist, notícias, cotações, contador…); com zoneItems (os itens que a TV recebe agora),
+  // essas zonas passam exatamente os itens da TV, sem seletor
+  const zonasPl = (layout.zones || []).filter((z) => TVC_PLAYLIST_ZONES.includes(z.kind) && !zoneItems?.[z.id]);
   const escolha = Object.fromEntries(zonasPl.map((z) => [z.id, zonePlaylists?.[z.id] ?? playlists[0]?.id ?? null]));
   const canal = el('select', { 'aria-label': 'Canal ao vivo' }, ...listaCanais.map((c, i) => opt(c.url, c.name || `Canal ${i + 1}`, canalUrl ? c.url === canalUrl : i === 0)));
   const aviso = el('p', { class: 'small dim', 'aria-live': 'polite' });
@@ -54,6 +57,20 @@ export async function abrirPreviaViva(layout, { zonePlaylists = null, titulo = '
       const video = el('video', { class: 'tc-live-video', playsinline: true, autoplay: true, muted: true });
       put(box, video);
       paradas.push(await tocar(video, canal.value || listaCanais[0]?.url, aviso));
+    }
+    // os itens que a TV recebe agora (Ver a tela agora), item por item
+    for (const [zid, lista] of Object.entries(zoneItems || {})) {
+      const box = zonaEl(zid); const itens = Array.isArray(lista) ? lista : [];
+      if (!box || !itens.length) continue;
+      let i = 0; let vivo = true; let t = null;
+      const passo = () => {
+        if (!vivo) return;
+        const it = itens[i % itens.length]; i++;
+        put(box, itemPreview(it, { theme: themeOf() }));
+        t = setTimeout(passo, Math.max(3, Number(it.seconds) || 10) * 1000);
+      };
+      paradas.push(() => { vivo = false; clearTimeout(t); });
+      passo();
     }
     // cada playlist passando, item por item, no tempo de cada um
     for (const z of zonasPl) {

@@ -975,7 +975,9 @@ export function createTvcorp({
       let zones = null;
       if (r.current && o && isTvcOfficeType(o.type)) {
         const b = await blockOf(req.tenantId, at.officeId, r.current, r.data, req, { fallback: r.fallback?.id === r.current.id, seed: at.deviceId, at });
-        if (b) zones = Object.fromEntries(Object.entries(b.zones).map(([z, items]) => [z, items.map((it) => ({ id: it.id, kind: it.kind, seconds: it.seconds, title: it.fields?.title || it.title || it.name || null }))]));
+        // full=1: os itens inteiros, como a TV recebe (a prévia "Ver a tela agora" monta com eles)
+        const full = req.query.full === '1';
+        if (b) zones = Object.fromEntries(Object.entries(b.zones).map(([z, items]) => [z, items.map((it) => (full ? it : { id: it.id, kind: it.kind, seconds: it.seconds, title: it.fields?.title || it.title || it.name || null }))]));
       }
       const lp = lastPlays.get(`${req.tenantId}:${d.id}`);
       const names = lp ? await namesFor(req.tenantId, lp.list.map((p) => { const x = parseItemRef(p.ref); return { ref_kind: x.refKind, ref_id: x.refId }; })) : new Map();
