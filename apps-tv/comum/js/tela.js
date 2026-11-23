@@ -109,6 +109,8 @@
         Object.keys(o.fields).forEach(function (k) {
           var sh = shaDe(o.fields[k]);
           if (!sh) return;
+          // a foto de fundo vem da classe tvc-art-* (arte/ do pacote): o artFile não é a imagem do slide
+          if (k === 'artFile') { delete o.fields[k]; return; }
           if (mapa[sh] && !o.image) o.image = mapa[sh];
           delete o.fields[k]; // o objeto do arquivo não é texto: não vai para o desenho
         });

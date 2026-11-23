@@ -22,7 +22,7 @@ function itensTipos(arquivo, agora) {
     { id: 's-datas', kind: 'slide', seconds: s, template: 'data-comemorativa', fields: { title: 'Dia do Técnico', text: 'Parabéns a toda a equipe!' } },
     // os modelos com arte e foto de fundo da biblioteca (public/tvcorp/arte: .svg e .jpg), paleta e em pé
     { id: 's-arte', kind: 'slide', seconds: s, template: 'comunicado', fields: { title: 'Arte de fundo', text: 'Listras da biblioteca', art: 'listras' } },
-    { id: 's-oferta', kind: 'slide', seconds: s, template: 'oferta', fields: { title: 'Pão francês', price: 'R$ 12,90', oldPrice: 'R$ 15,90', unit: 'kg', tag: 'Oferta', text: 'Quentinho toda hora', until: dia(3), art: 'foto-padaria', qr: 'https://exemplo.com.br/oferta' } },
+    { id: 's-oferta', kind: 'slide', seconds: s, template: 'oferta', fields: { title: 'Pão francês', price: 'R$ 12,90', oldPrice: 'R$ 15,90', unit: 'kg', tag: 'Oferta', text: 'Quentinho toda hora', until: dia(3), art: 'foto-padaria', artFile: f('foto-marcos.svg'), qr: 'https://exemplo.com.br/oferta' } },
     { id: 's-precos', kind: 'slide', seconds: s, template: 'precos', fields: { title: 'Preços de hoje', text: 'Café | R$ 5,00\nPão de queijo | R$ 6,50\nSuco | R$ 8,00', note: 'Válido hoje', art: 'foto-cafeteria', palette: 'marrom' } },
     { id: 's-combo', kind: 'slide', seconds: s, template: 'combo', fields: { title: 'Combo pizza', text: 'Pizza grande\nRefrigerante 2 L', price: 'R$ 59,90', oldPrice: 'R$ 72,00', tag: 'Combo', art: 'foto-pizzaria', palette: 'vermelho' } },
     { id: 's-horario', kind: 'slide', seconds: s, template: 'horario', fields: { title: 'Horário', text: 'Seg a sex | 6h às 22h\nSábado | 8h às 18h', note: 'Fechado aos domingos', art: 'foto-academia' } },

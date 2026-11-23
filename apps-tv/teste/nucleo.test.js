@@ -359,6 +359,13 @@ test('slide: a imagem de qualquer campo do modelo vai para o pacote', () => {
   assert.deepEqual(N.arquivosDoPacote(p).map((f) => f.sha256), [H('c')]);
 });
 
+test('slide: o artFile (foto de fundo, para o Android) não é baixado; a TV usa a arte do pacote', () => {
+  const p = N.lerConfig(cfg('r', [bloco('a', 0, 1440, [
+    { id: 's1', kind: 'slide', seconds: 8, template: 'oferta', fields: { title: 'Pão', art: 'foto-padaria',
+      artFile: { url: 'https://x/tvcorp/arte/foto-padaria.jpg', sha256: H('d'), bytes: 9, photo: true, tone: 'dark' } } }])]));
+  assert.deepEqual(N.arquivosDoPacote(p), []);
+});
+
 test('tema dos slides: signage.theme, signage.brand ou theme do topo', () => {
   assert.deepEqual(N.lerConfig({ signage: { brand: { color: '#15803D', mode: 'light' } } }).tema, { color: '#15803d', mode: 'light' });
   assert.deepEqual(N.lerConfig({ signage: { theme: { color: '#6d28d9' }, brand: { color: '#15803d' } } }).tema, { color: '#6d28d9', mode: 'dark' });

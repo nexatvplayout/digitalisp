@@ -12,7 +12,7 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  var VERSAO = '1.0.5';
+  var VERSAO = '1.0.6';
   var TZ_PADRAO = 'America/Sao_Paulo';
   var SHA = /^[0-9a-f]{64}$/;
   var DIA = /^\d{4}-\d{2}-\d{2}$/;
@@ -189,6 +189,8 @@
     // foto é opcional: se não baixar, a tela mostra as iniciais e a programação não espera por ela
     if (o.fields && typeof o.fields === 'object') {
       Object.keys(o.fields).forEach(function (k) {
+        // artFile: a foto de fundo (fields.art), para o Android; a TV já leva as artes no pacote (arte/, pelo CSS)
+        if (k === 'artFile') return;
         var v = o.fields[k];
         var fa = v && typeof v === 'object' && !Array.isArray(v) && v.sha256 ? arquivo(v, teste) : null;
         if (fa && !it.files.some(function (x) { return x.sha256 === fa.sha256; })) it.files.push(fa);
