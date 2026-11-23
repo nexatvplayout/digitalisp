@@ -115,6 +115,13 @@ function tzLocal() { return Intl.DateTimeFormat().resolvedOptions().timeZone || 
 /** A grade com um item de cada tipo (teste visual contra a prévia do painel). */
 function blocoTipos() {
   const lateral = est.tipos === 'lateral';
+  if (est.tipos === 'clima') {
+    // a zona de clima (o clima da tela, sem itens) ao lado do vídeo
+    return { id: 'grade-tipos', layout: { orientation: 'land', background: '#0b1220', zones: [
+      { id: 'main', x: 0, y: 0, w: 60, h: 88, kind: midia['video-teste.mp4'] ? 'video' : 'playlist' },
+      { id: 'clima', x: 60, y: 0, w: 40, h: 88, kind: 'weather' },
+      { id: 'bar', kind: 'ticker', x: 0, y: 88, w: 100, h: 12 }] }, days: [], from: 0, to: 1440, zones: {} };
+  }
   if (est.tipos === 'provedor') {
     // o layout 4 da produção ("Provedor com onda e avaliações"), na ordem em que o servidor manda: o ticker primeiro e o
     // vídeo (com formato) por último; a zona "reviews" é um widget sem widget escolhido (sem itens)
@@ -188,6 +195,12 @@ function montarConfig(tela) {
     device: { name: tela.name },
     brand: { name: 'Provedor X', logo: arquivo('logo-revenda.svg'), color: '#0ea5e9', background: '#020617' },
     stream: { hls: est.aoVivo, volume: 100, muted: true },
+    // o clima da tela no formato do servidor (server/weather.js): /teste/clima?cond=clear|partly|cloudy|fog|rain|storm|nada
+    weather: est.clima === 'nada' ? null : { provider: 'teste', source: 'INMET', hasNow: true, place: { ibge: '3304557', city: 'Rio de Janeiro', uf: 'RJ' },
+      updatedAt: Math.floor(Date.now() / 3600000) * 3600000,
+      now: { temp: 27, text: { clear: 'Céu limpo', partly: 'Parcialmente nublado', cloudy: 'Nublado', fog: 'Neblina', rain: 'Chuva', storm: 'Tempestade' }[est.clima || 'clear'], cond: est.clima || 'clear' },
+      today: { min: 21, max: 31, text: 'Sol', cond: est.clima || 'clear' },
+      days: [{ date: '2026-11-24', weekday: 'ter', min: 20, max: 30, text: 'Chuva', cond: 'rain' }, { date: '2026-11-25', weekday: 'qua', min: 19, max: 28, text: 'Nublado', cond: 'cloudy' }, { date: '2026-11-26', weekday: 'qui', min: 21, max: 32, text: 'Sol', cond: 'clear' }] },
     ticker: Object.assign({ items: ['Programação versão ' + est.versao, 'Ofertas válidas enquanto durar o estoque'], speed: 60 },
       // o estilo da faixa e o de cada aviso (public/shared/faixa.js), ligado por /teste/faixa?estilo=1
       est.faixaEstilo ? { style: { color: '#fde68a', bg: '#7f1d1d', bold: true, italic: false, size: 60, font: 'condensada', sep: 'estrela', label: 'URGENTE', labelColor: '#7f1d1d', labelBg: '#fde68a' },
@@ -394,7 +407,7 @@ function controle(req, res, url) {
     registrar('ao vivo: ' + (est.aoVivo || 'nenhum'));
     return volta();
   }
-  if (p === '/teste/tipos') { est.tipos = ['lateral', 'cheia', 'sobre', 'formas', 'provedor'].includes(q.get('modo')) ? q.get('modo') : null; est.versao++; registrar('todos os tipos: ' + (est.tipos || 'desligado')); return volta(); }
+  if (p === '/teste/tipos') { est.tipos = ['lateral', 'cheia', 'sobre', 'formas', 'provedor', 'clima'].includes(q.get('modo')) ? q.get('modo') : null; est.versao++; registrar('todos os tipos: ' + (est.tipos || 'desligado')); return volta(); }
   if (p === '/teste/tema') { est.tema = { color: q.get('cor') || '#6d28d9', mode: q.get('modo') === 'light' ? 'light' : 'dark' }; est.versao++; return volta(); }
   if (p === '/teste/itens.json') return json(res, 200, { itens: itensTipos(arquivo, Date.now()), tema: est.tema, tz: tzLocal() });
   if (p === '/teste/previa-painel' || p === '/teste/previa-tv' || p === '/teste/comparar') {
@@ -426,6 +439,7 @@ function controle(req, res, url) {
     return volta();
   }
   if (p === '/teste/radio') { est.radio = q.get('ligar') === '1'; est.base = `http://${req.headers.host}`; est.versao++; return volta(); }
+  if (p === '/teste/clima') { est.clima = q.get('cond') || 'clear'; est.versao++; return volta(); }
   if (p === '/teste/faixa') { est.faixaEstilo = q.get('estilo') === '1'; est.versao++; return volta(); }
   if (p === '/teste/alerta') {
     // como o servidor real manda (contrato §9): level 'info' | 'warn' | 'critical', header opcional

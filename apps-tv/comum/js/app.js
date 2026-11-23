@@ -284,13 +284,27 @@
     if (!est.atual) mostrarSemConteudo();
   }
 
+  /**
+   * A configuração lida, com o último clima bom: uma configuração que chega sem clima (o servidor que acabou de
+   * reiniciar, a fonte fora do ar) não apaga a zona de clima; o último que veio vale por até 6 h.
+   */
+  function lerCfg(json, op) {
+    var p = N.lerConfig(json, op);
+    if (p.clima && N.climaParaItem(p.clima)) A.gravar('climaBom', { w: p.clima, em: Date.now() });
+    else {
+      var g = A.ler('climaBom', null);
+      if (g && g.w && Date.now() - g.em < 6 * 3600000) p.clima = g.w;
+    }
+    return p;
+  }
+
   function buscarConfig(a) {
     return a.config(est.nova ? est.nova.rev : (est.atual ? est.atual.rev : '')).then(function (r) {
       hora(r.horaServidor);
       if (r.naoMudou) return;
       est.cfgNova = r.json;
       A.gravar('cfgNova', r.json);
-      est.nova = N.lerConfig(r.json, { teste: teste, marcaAtivacao: A.ler('marcaAtivacao', null) });
+      est.nova = lerCfg(r.json, { teste: teste, marcaAtivacao: A.ler('marcaAtivacao', null) });
       return reconciliar();
     }, function (e) {
       if (e && e.status === 403 && e.codigo === 'unavailable') return; // plano sem o módulo: segue com o que tem
@@ -506,7 +520,7 @@
           hora(r.horaServidor);
           if (!r.json) return;
           est.cfgNova = r.json; A.gravar('cfgNova', r.json);
-          est.nova = N.lerConfig(r.json, { teste: teste, marcaAtivacao: A.ler('marcaAtivacao', null) });
+          est.nova = lerCfg(r.json, { teste: teste, marcaAtivacao: A.ler('marcaAtivacao', null) });
           if (est.atual && est.nova.rev === est.atual.rev) { est.nova = null; est.cfgNova = null; A.gravar('cfgNova', null); desenhar(true); return; }
           return reconciliar();
         }).catch(function (e) { erro('recarregar: ' + (e && e.message)); desenhar(true); });
@@ -609,10 +623,10 @@
     est.alerta = A.ler('alerta', null);
     A.abrir().then(function () {
       if (est.cfgAtual) {
-        est.atual = N.lerConfig(est.cfgAtual, { teste: teste, marcaAtivacao: A.ler('marcaAtivacao', null) });
+        est.atual = lerCfg(est.cfgAtual, { teste: teste, marcaAtivacao: A.ler('marcaAtivacao', null) });
         somDa(est.atual);
       }
-      if (est.cfgNova) est.nova = N.lerConfig(est.cfgNova, { teste: teste, marcaAtivacao: A.ler('marcaAtivacao', null) });
+      if (est.cfgNova) est.nova = lerCfg(est.cfgNova, { teste: teste, marcaAtivacao: A.ler('marcaAtivacao', null) });
       setTimeout(function () {
         if (est.atual) desenhar(true);
         else mostrarSemConteudo();

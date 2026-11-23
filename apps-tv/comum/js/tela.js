@@ -194,8 +194,13 @@
         return c;
       }
       if (kind === 'weather') {
-        var w = (o && typeof o.tempC === 'number') ? o : prog.clima;
-        if (!w || typeof w.tempC !== 'number') return null;
+        // o clima do item (gadget) ou o da tela, no formato do item: o desenho da prévia (o ícone de cada tempo, o fundo
+        // em degradê por tempo, a temperatura, o texto e a previsão com ícones pequenos)
+        var wi = N.climaParaItem(o && (o.tempC !== undefined || o.now !== undefined || o.min !== undefined) ? o : prog.clima);
+        if (!wi) return null;
+        if (raiz.TelasPrevia.weatherIcon) return raiz.TelasPrevia.itemPreview(wi, { theme: tema(prog) });
+        var w = wi;
+        if (typeof w.tempC !== 'number') return null;
         var cw = el('div', 'tvc-z-weather ' + th);
         cw.appendChild(el('b', null, Math.round(w.tempC) + '°'));
         cw.appendChild(el('span', null, [w.city, w.text || w.condition].filter(Boolean).join(' · ')));

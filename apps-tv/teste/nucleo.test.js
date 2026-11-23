@@ -441,3 +441,16 @@ test('zona só de itens sem nenhum: some, e a de cima na mesma coluna ocupa o es
   // com itens, fica como veio
   assert.deepEqual(N.zonasParaTela(zonas, { reviews: [{ id: 'w1' }] }).map((x) => x.id), ['bar', 'qr', 'reviews', 'main']);
 });
+
+test('clima: o bloco da configuração (now/today/place) vira o item da prévia; sem temperatura, null', () => {
+  const w = { source: 'INMET', place: { city: 'Rio de Janeiro', uf: 'RJ' }, now: { temp: 27.6, text: 'Sol', cond: 'clear' },
+    today: { min: 21, max: 31, text: 'Sol', cond: 'clear' }, days: [{ date: '2026-11-24', min: 20, max: 30, cond: 'rain' }] };
+  const i = N.climaParaItem(w);
+  assert.deepEqual([i.kind, i.city, i.tempC, i.min, i.max, i.cond, i.days.length], ['weather', 'Rio de Janeiro', 27.6, 21, 31, 'clear', 1]);
+  // sem "agora" (INMET só com a previsão): mínima e máxima do dia
+  assert.equal(N.climaParaItem({ place: { city: 'X' }, now: null, today: { min: 18, max: 25, cond: 'partly' } }).tempC, null);
+  assert.equal(N.climaParaItem({ place: { city: 'X' }, now: null, today: {} }), null);
+  assert.equal(N.climaParaItem(null), null);
+  // o item que já vem no formato da prévia passa
+  assert.equal(N.climaParaItem({ kind: 'weather', tempC: 22, cond: 'fog' }).cond, 'fog');
+});

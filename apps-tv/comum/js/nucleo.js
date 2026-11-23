@@ -12,7 +12,7 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  var VERSAO = '1.0.20';
+  var VERSAO = '1.0.21';
   var TZ_PADRAO = 'America/Sao_Paulo';
   var SHA = /^[0-9a-f]{64}$/;
   var DIA = /^\d{4}-\d{2}-\d{2}$/;
@@ -376,6 +376,28 @@
       t -= lista[i];
     }
     return { index: lista.length - 1, offset: lista[lista.length - 1], remaining: 0 };
+  }
+
+  /**
+   * O clima no formato do item da prévia ({ kind: 'weather', city, uf, tempC, min, max, text, cond, days, source }), a
+   * partir do bloco weather da configuração da tela ({ place, now, today, days, source }) ou de um item que já vem assim.
+   * Sem temperatura nenhuma: null.
+   */
+  function climaParaItem(w) {
+    if (!w || typeof w !== 'object') return null;
+    var n = function (v) { return v === null || v === undefined || v === '' || !isFinite(Number(v)) ? null : Number(v); };
+    if (w.now !== undefined || w.today !== undefined || w.place !== undefined) {
+      var now = w.now || {}, hoje = w.today || {}, lugar = w.place || {};
+      var t = n(now.temp), mi = n(hoje.min), ma = n(hoje.max);
+      if (t === null && mi === null && ma === null) return null;
+      return { kind: 'weather', city: lugar.city || '', uf: lugar.uf || '', tempC: t, min: mi, max: ma,
+        text: now.text || hoje.text || '', cond: now.cond || hoje.cond || 'partly',
+        days: Array.isArray(w.days) ? w.days.slice(0, 4) : [], source: w.source || '' };
+    }
+    if (n(w.tempC) === null && n(w.min) === null && n(w.max) === null) return null;
+    var o = {}; for (var k in w) o[k] = w[k];
+    o.kind = 'weather';
+    return o;
   }
 
   // as zonas que só mostram o que vier nos itens (sem item, ficam vazias)
@@ -837,7 +859,7 @@
     contarExibicao: contarExibicao, loteExibicao: loteExibicao, baixarLote: baixarLote, corpoSinal: corpoSinal,
     espera: espera, camadaSemConteudo: camadaSemConteudo, linhaDiagnostico: linhaDiagnostico,
     nivelAlerta: nivelAlerta, cabecaAlerta: cabecaAlerta, definirArtes: definirArtes, lerAudio: lerAudio, esperaRadio: esperaRadio,
-    lerConjunto: lerConjunto, janelaConjunto: janelaConjunto, retanguloCobrir: retanguloCobrir, zonasParaTela: zonasParaTela, posicaoSincronizada: posicaoSincronizada, retanguloNaTela: retanguloNaTela,
+    lerConjunto: lerConjunto, janelaConjunto: janelaConjunto, retanguloCobrir: retanguloCobrir, zonasParaTela: zonasParaTela, climaParaItem: climaParaItem, posicaoSincronizada: posicaoSincronizada, retanguloNaTela: retanguloNaTela,
     vigiaNovo: vigiaNovo, vigiaAoVivo: vigiaAoVivo, vigiaFalhou: vigiaFalhou, esperaAoVivo: esperaAoVivo
   };
 });
