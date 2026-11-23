@@ -47,19 +47,28 @@
       return v;
     }
 
-    // ---- playlist: um item por vez, cada um os seus segundos (vídeo: até acabar)
+    /** Quanto o item fica: o que falta na troca sincronizada (pos.remaining) ou os segundos dele. */
+    function duracao(it, pos) {
+      return pos ? Math.max(300, pos.remaining) : it.seconds * 1000;
+    }
+
+    // ---- playlist: um item por vez, cada um os seus segundos (vídeo: até acabar). No conjunto de telas sincronizado
+    // (signage.wall.sync), o item e o tempo vêm do relógio confiável: todas as TVs mostram o mesmo índice juntas
     function playlist(caixa, itens, prog) {
       var i = -1, inicio = 0, vistoAgora = null;
+      var cj = prog.conjunto && prog.conjunto.sync ? prog.conjunto : null;
       function proximo() {
         if (vistoAgora) ctx.aoExibir(vistoAgora, (ctx.agora() - inicio) / 1000);
-        var l = N.horaLocal(ctx.agora(), prog.tz);
+        var agora = ctx.agora();
+        var l = N.horaLocal(agora, prog.tz);
         var validos = itens.filter(function (it) { return N.itemVale(it, l); });
         if (!validos.length) { caixa.innerHTML = ''; vistoAgora = null; timers.push(setTimeout(proximo, 30000)); return; }
-        i = (i + 1) % validos.length;
+        var pos = cj ? N.posicaoSincronizada(validos.map(function (it) { return it.seconds * 1000; }), cj.epoch, agora) : null;
+        i = pos ? pos.index : (i + 1) % validos.length;
         var it = validos[i];
-        inicio = ctx.agora();
+        inicio = agora;
         vistoAgora = it.id;
-        desenharItem(caixa, it, prog, proximo);
+        desenharItem(caixa, it, prog, proximo, pos);
       }
       proximo();
     }
@@ -232,7 +241,7 @@
       if (min > 0) enquantoNaTela(f, function () { if (!ctx.online || ctx.online()) f.src = r.url; }, Math.max(1, min) * 60000);
     }
 
-    function desenharPrevia(caixa, it, prog, depois) {
+    function desenharPrevia(caixa, it, prog, depois, pos) {
       locais(it).then(function (mapa) {
         var n = null;
         try {
@@ -245,7 +254,7 @@
           if (comoZona) n = zonaPrevia(it.kind, it.raw, prog);
           else if (it.kind === 'web' && caixa.firstChild && caixa.firstChild.getAttribute && caixa.firstChild.getAttribute('data-web') === it.id + ' ' + r.url) {
             // a mesma página já aberta (playlist de um item só): não recarrega a cada volta
-            timers.push(setTimeout(depois, it.seconds * 1000));
+            timers.push(setTimeout(depois, duracao(it, pos)));
             return;
           } else {
             var o = paraPrevia(it, mapa);
@@ -273,15 +282,15 @@
           var tique = function () { tick(n, ctx.agora()); };
           tique(); enquantoNaTela(n, tique, 1000);
         }
-        timers.push(setTimeout(depois, it.seconds * 1000));
+        timers.push(setTimeout(depois, duracao(it, pos)));
       });
     }
 
-    function desenharItem(caixa, it, prog, depois) {
+    function desenharItem(caixa, it, prog, depois, pos) {
       // tudo que não é vídeo vai pelo desenho do painel; sem ele (prévia não gerada), o desenho simples abaixo
-      if (it.kind !== 'video' && raiz.TelasPrevia) return desenharPrevia(caixa, it, prog, depois);
+      if (it.kind !== 'video' && raiz.TelasPrevia) return desenharPrevia(caixa, it, prog, depois, pos);
       var conteudo = el('div', 'item item-' + it.kind);
-      var avancar = function () { timers.push(setTimeout(depois, it.seconds * 1000)); };
+      var avancar = function () { timers.push(setTimeout(depois, duracao(it, pos))); };
       if (it.kind === 'image' || ((it.kind === 'slide' || it.kind === 'post') && it.file && !it.title && !it.text)) {
         ctx.url(it.file.sha256).then(function (u) {
           if (!u) return depois();
@@ -306,6 +315,13 @@
           conteudo.appendChild(v);
           trocar(caixa, conteudo);
           tocar(v);
+          if (pos) {
+            // troca sincronizada: começa onde as outras TVs estão (offset) e sai junto com elas (remaining)
+            v.onloadedmetadata = function () { try { if (isFinite(v.duration) && pos.offset / 1000 < v.duration) v.currentTime = pos.offset / 1000; } catch (e) { /* nada */ } };
+            v.onended = function () { v.pause(); };
+            timers.push(setTimeout(seguir, duracao(it, pos)));
+            return;
+          }
           // vídeo travado não prende a playlist: no máximo a duração mais 10 s, ou 10 min sem duração
           timers.push(setTimeout(seguir, 600000));
           v.onloadedmetadata = function () { if (isFinite(v.duration)) timers.push(setTimeout(seguir, (v.duration + 10) * 1000)); };
@@ -432,6 +448,21 @@
       caixa.appendChild(t);
       // velocidade do contrato: dp/s (60 ≈ 120 px/s em 1080p)
       var px = prog.velocidade * (window.innerHeight / 540);
+      if (prog.conjunto && prog.conjunto.modo === 'wall') {
+        // videowall: a faixa atravessa as TVs; a posição do texto sai do relógio confiável (o mesmo nas outras TVs), quadro
+        // a quadro, em vez da animação de CSS (que cada TV começaria na sua hora)
+        var epoch = prog.conjunto.epoch;
+        var passo = function () {
+          if (!document.documentElement.contains(s)) return;
+          var vao = t.offsetWidth + s.offsetWidth;
+          var d = vao > 0 ? ((ctx.agora() - epoch) / 1000 * px) % vao : 0;
+          if (d < 0) d += vao;
+          s.style.transform = 'translateX(' + (-d).toFixed(1) + 'px)';
+          (raiz.requestAnimationFrame || function (f) { return setTimeout(f, 33); })(passo);
+        };
+        setTimeout(passo, 50);
+        return;
+      }
       setTimeout(function () {
         var dist = s.offsetWidth + t.offsetWidth;
         s.style.animationDuration = Math.max(5, dist / px) + 's';
@@ -534,14 +565,25 @@
         }
         return;
       }
+      // videowall (signage.wall.mode 'wall'): o layout vale para o conjunto inteiro; esta TV desenha o quadro todo (com a
+      // moldura) e mostra só a janela dela. Sem grid/clamp: position absolute em % (TVs de 2018–2020)
+      var alvo = raizEl, jan = null;
+      if (prog.conjunto && prog.conjunto.modo === 'wall') {
+        jan = N.janelaConjunto(prog.conjunto);
+        alvo = el('div', 'quadro-conjunto');
+        alvo.style.left = jan.offsetX + '%'; alvo.style.top = jan.offsetY + '%';
+        alvo.style.width = jan.scaleX + '%'; alvo.style.height = jan.scaleY + '%';
+        raizEl.appendChild(alvo);
+      }
       bloco.layout.zonas.forEach(function (zona) {
         var c = el('div', 'zona zona-' + zona.kind);
         c.style.left = zona.x + '%'; c.style.top = zona.y + '%'; c.style.width = zona.w + '%'; c.style.height = zona.h + '%';
         // a zona por cima: acima da camada do ao vivo (z-index 1) e com o vidro translúcido da prévia (.tvc-ov.tvc-op-N)
         if (zona.overlay) { c.style.zIndex = '2'; c._ov = ' tvc-ov tvc-op-' + zona.opacidade; c.className += ' zona-ov'; }
-        raizEl.appendChild(c);
+        alvo.appendChild(c);
         var itens = bloco.itens[zona.id] || [];
-        if (zona.kind === 'video') zonaVideo(c, prog, { x: zona.x, y: zona.y, w: zona.w, h: zona.h });
+        // o ao vivo fica na camada dele, posicionada na tela: a zona do quadro do conjunto vira % desta tela
+        if (zona.kind === 'video') zonaVideo(c, prog, N.retanguloNaTela(zona, jan));
         else if (zona.kind === 'playlist') playlist(c, itens, prog);
         else if (zona.kind === 'ticker') faixa(c, avisosDa(prog).concat(itens.filter(function (i) { return i.kind === 'text'; }).map(function (i) { return { texto: i.title || i.text }; })), prog);
         else if (raiz.TelasPrevia && !itens.length && ['clock', 'logo', 'weather', 'qr', 'text'].indexOf(zona.kind) >= 0) zonaFixa(c, zona, prog);

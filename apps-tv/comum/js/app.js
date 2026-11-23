@@ -419,6 +419,23 @@
     $('alerta-texto').textContent = String(a.text || '').slice(0, 400);
   }
 
+  /** Comando identify: por 10 s, por cima de tudo, o nome da TV e, num conjunto, o número grande da posição e o nome dele. */
+  var identTimer = null;
+  function identificar() {
+    var prog = est.atual || est.nova || {};
+    var cj = prog.conjunto || null;
+    var c = $('identifica');
+    if (!c) { c = document.createElement('div'); c.id = 'identifica'; document.body.appendChild(c); }
+    c.innerHTML = '';
+    var linha = function (cls, txt) { var d = document.createElement('div'); d.className = cls; d.textContent = txt; c.appendChild(d); };
+    if (cj) linha('id-pos', String(cj.pos));
+    linha('id-nome', prog.nome || 'Tela');
+    if (cj) linha('id-conj', (cj.nome || 'Conjunto') + ' · ' + cj.cols + ' × ' + cj.rows + (cj.modo === 'wall' ? ' · videowall' : ' · cardápio'));
+    c.hidden = false;
+    if (identTimer) clearTimeout(identTimer);
+    identTimer = setTimeout(function () { c.hidden = true; }, 10000);
+  }
+
   function comandos(a, lista) {
     (Array.isArray(lista) ? lista : []).forEach(function (c) {
       var t = c && c.type;
@@ -430,6 +447,7 @@
           est.nova = est.atual; est.cfgNova = est.cfgAtual; est.atual = null; telaObj.limpar(); reconciliar();
         });
       }
+      else if (t === 'identify') { identificar(); a.comandoFeito(c.id, true, 'identificada por 10 s'); }
       else if (t === 'reboot') a.comandoFeito(c.id, false, 'esta TV não deixa o app reiniciar o aparelho');
       else if (t === 'screenshot') a.comandoFeito(c.id, false, 'captura de tela indisponível no app da TV');
       else if (c && c.id) a.comandoFeito(c.id, false, 'comando desconhecido');

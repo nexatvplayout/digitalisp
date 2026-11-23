@@ -170,7 +170,10 @@ function montarConfig(tela) {
       items: midia['video-teste.mp4'] ? [arquivo('video-teste.mp4')] : [],
       image: arquivo('sem-internet.svg')
     },
-    signage: { tz: tzLocal(), brand: { logo: arquivo('logo-revenda.svg'), color: est.tema.color, mode: est.tema.mode }, blocks: (est.tipos ? [blocoTipos()] : []).concat([blocoA, blocoB]), fallback: 'grade-a' },
+    signage: { tz: tzLocal(), brand: { logo: arquivo('logo-revenda.svg'), color: est.tema.color, mode: est.tema.mode },
+      // o conjunto de telas (/teste/conjunto?modo=wall|menu&cols=2&rows=1&pos=2&moldura=2): só quando ligado
+      ...(est.conjunto ? { wall: est.conjunto } : {}),
+      blocks: (est.tipos ? [blocoTipos()] : []).concat([blocoA, blocoB]), fallback: 'grade-a' },
     versao: est.versao
   };
   cfg.rev = sha(Buffer.from(JSON.stringify(cfg))).slice(0, 12);
@@ -388,6 +391,14 @@ function controle(req, res, url) {
   if (p === '/teste/corromper') { est.corromper = q.get('nome') || null; return volta(); }
   if (p === '/teste/lento') { est.lentidao = Number(q.get('ms') || 0); return volta(); }
   if (p === '/teste/comando') { for (const t of est.telas.values()) est.comandos.push({ id: proxId++, type: q.get('tipo') || 'reload', deviceId: t.deviceId }); return volta(); }
+  if (p === '/teste/conjunto') {
+    const cols = Number(q.get('cols') || 2), rows = Number(q.get('rows') || 1), pos = Number(q.get('pos') || 1), mb = Number(q.get('moldura') || 0);
+    est.conjunto = q.get('modo') ? { id: 7, name: 'Parede da vitrine', mode: q.get('modo') === 'wall' ? 'wall' : 'menu', cols, rows, pos,
+      col: (pos - 1) % cols, row: Math.floor((pos - 1) / cols), orientation: 'land', bezel: { x: mb, y: mb }, sync: q.get('sync') !== '0',
+      epoch: Date.UTC(2026, 0, 1) } : null;
+    est.versao++; registrar('conjunto: ' + (est.conjunto ? `${est.conjunto.mode} ${cols}×${rows} pos ${pos}` : 'desligado'));
+    return volta();
+  }
   if (p === '/teste/faixa') { est.faixaEstilo = q.get('estilo') === '1'; est.versao++; return volta(); }
   if (p === '/teste/alerta') {
     // como o servidor real manda (contrato §9): level 'info' | 'warn' | 'critical', header opcional

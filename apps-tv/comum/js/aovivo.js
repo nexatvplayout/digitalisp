@@ -138,8 +138,19 @@
    * @param op      { mudo() → bool, volume() → 0..100, agora() → ms, aoErro(msg) }
    */
   function criar(camada, op) {
-    var motor = temAvplay() ? motorAvplay(camada) : motorVideo(camada, op);
+    var padrao = temAvplay() ? motorAvplay(camada) : motorVideo(camada, op), comoVideo = null;
+    var motor = padrao;
     var url = null, ret = null, vigia = null, timer = null, aoReserva = null, ativo = false;
+
+    /**
+     * O retângulo passa da tela (videowall: esta TV mostra só um pedaço do vídeo do conjunto). O AVPlay só desenha dentro
+     * da tela (setDisplayRect), sem recortar: aí vai o <video>, que a página recorta, quando a TV toca HLS nele.
+     */
+    function motorPara(r) {
+      var fora = r && (r.x < 0 || r.y < 0 || r.x + r.w > 100.01 || r.y + r.h > 100.01);
+      if (fora && padrao.nome === 'avplay' && temHlsNativo()) return comoVideo || (comoVideo = motorVideo(camada, op));
+      return padrao;
+    }
 
     function falha(msg) {
       if (!ativo) return;
@@ -158,8 +169,9 @@
     /** Toca `u` no retângulo `r` (% da tela). Já tocando o mesmo endereço: só reposiciona. */
     function tocar(u, r, quandoReserva) {
       aoReserva = quandoReserva;
-      if (ativo && u === url) { ret = r; motor.posicionar(r); return; }
+      if (ativo && u === url && motorPara(r) === motor) { ret = r; motor.posicionar(r); return; }
       parar();
+      motor = motorPara(r);
       url = u; ret = r; ativo = true;
       vigia = N.vigiaNovo(op.agora());
       motor.abrir(u, r, falha);
@@ -184,7 +196,7 @@
     return {
       motor: motor.nome,
       // HLS precisa do AVPlay ou do HLS nativo do <video>; um vídeo comum (mp4) toca em qualquer um
-      suporta: function (u) { return motor.nome === 'avplay' || temHlsNativo() || !/\.m3u8(\?|$)/i.test(String(u || '')); },
+      suporta: function (u) { return padrao.nome === 'avplay' || temHlsNativo() || !/\.m3u8(\?|$)/i.test(String(u || '')); },
       tocar: tocar,
       parar: parar,
       ativo: function () { return ativo; },

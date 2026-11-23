@@ -12,7 +12,7 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  var VERSAO = '1.0.10';
+  var VERSAO = '1.0.11';
   var TZ_PADRAO = 'America/Sao_Paulo';
   var SHA = /^[0-9a-f]{64}$/;
   var DIA = /^\d{4}-\d{2}-\d{2}$/;
@@ -297,6 +297,70 @@
     return h * 60 + mi;
   }
 
+  // ------------------------------------------------------------------ conjunto de telas (signage.wall)
+  // As contas são as de public/shared/tvcorp-wall.js (o painel e o servidor fazem iguais; o teste compara as duas).
+
+  var GRADES_CONJUNTO = ['2x1', '3x1', '4x1', '5x1', '6x1', '1x2', '1x3', '2x2', '3x2', '2x3', '3x3'];
+
+  /** signage.wall limpo: { id, nome, modo: 'menu'|'wall', cols, rows, pos, col, row, retrato, moldura {x,y}, sync, epoch } ou null. */
+  function lerConjunto(w) {
+    if (!w || typeof w !== 'object') return null;
+    var cols = Math.round(num(w, 'cols', 0)), rows = Math.round(num(w, 'rows', 0));
+    if (GRADES_CONJUNTO.indexOf(cols + 'x' + rows) < 0) return null;
+    var pos = Math.round(num(w, 'pos', 0));
+    if (!(pos >= 1 && pos <= cols * rows)) return null;
+    var modo = str(w, 'mode') === 'wall' ? 'wall' : 'menu';
+    var bz = w.bezel && typeof w.bezel === 'object' ? w.bezel : {};
+    var lim = function (v) { return Math.max(0, Math.min(20, v)); };
+    return {
+      id: w.id != null ? String(w.id).slice(0, 40) : '', nome: umaLinha(str(w, 'name') || '', 60), modo: modo,
+      cols: cols, rows: rows, pos: pos, col: (pos - 1) % cols, row: Math.floor((pos - 1) / cols),
+      retrato: str(w, 'orientation') === 'port',
+      moldura: { x: lim(num(bz, 'x', 0)), y: lim(num(bz, 'y', 0)) },
+      // o videowall troca junto por padrão; o cardápio, só com sync
+      sync: modo === 'wall' ? w.sync !== false : w.sync === true,
+      epoch: num(w, 'epoch', 0)
+    };
+  }
+
+  /**
+   * A janela desta TV no videowall (wallWindow): o quadro do conjunto inteiro, com a moldura, em % de uma tela.
+   * { canvasW, canvasH, left, top, scaleX, scaleY, offsetX, offsetY }.
+   */
+  function janelaConjunto(c) {
+    var bx = Math.max(0, Number(c.moldura && c.moldura.x) || 0) / 100, by = Math.max(0, Number(c.moldura && c.moldura.y) || 0) / 100;
+    var canvasW = c.cols + (c.cols - 1) * bx, canvasH = c.rows + (c.rows - 1) * by;
+    var left = c.col * (1 + bx), top = c.row * (1 + by);
+    var r = function (v) { return Math.round(v * 10000) / 10000; };
+    return { canvasW: r(canvasW), canvasH: r(canvasH), left: r(left), top: r(top), scaleX: r(canvasW * 100), scaleY: r(canvasH * 100),
+      offsetX: r(-left * 100), offsetY: r(-top * 100) };
+  }
+
+  /**
+   * A troca sincronizada (syncPosition): todas as TVs fazem a mesma conta com o mesmo relógio e o mesmo epoch.
+   * duracoes em ms, na ordem da playlist → { index, offset, remaining } ou null.
+   */
+  function posicaoSincronizada(duracoes, epoch, agora) {
+    var lista = (duracoes || []).map(function (x) { return Math.max(0, Number(x) || 0); });
+    var total = lista.reduce(function (a, b) { return a + b; }, 0);
+    if (!lista.length || total <= 0) return null;
+    var t = (Number(agora) - Number(epoch)) % total;
+    if (t < 0) t += total;
+    for (var i = 0; i < lista.length; i++) {
+      if (t < lista[i]) return { index: i, offset: t, remaining: lista[i] - t };
+      t -= lista[i];
+    }
+    return { index: lista.length - 1, offset: lista[lista.length - 1], remaining: 0 };
+  }
+
+  /** O retângulo de uma zona (em % do quadro do conjunto) em % da tela desta TV. Sem videowall: o mesmo. */
+  function retanguloNaTela(z, jan) {
+    if (!jan) return { x: z.x, y: z.y, w: z.w, h: z.h };
+    var r = function (v) { return Math.round(v * 1000) / 1000; };
+    return { x: r(jan.offsetX + z.x * jan.scaleX / 100), y: r(jan.offsetY + z.y * jan.scaleY / 100),
+      w: r(z.w * jan.scaleX / 100), h: r(z.h * jan.scaleY / 100) };
+  }
+
   /**
    * A configuração inteira do servidor (JSON do /api/telas/config) no formato que o app usa.
    * Nunca lança: o que não se entende fica de fora.
@@ -346,6 +410,8 @@
       rev: str(o, 'rev') || '',
       tz: tz,
       nome: umaLinha((o.device && str(o.device, 'name')) || '', 80),
+      // o conjunto de telas (cardápio sincronizado ou videowall): só nas telas de um conjunto
+      conjunto: lerConjunto(sig && sig.wall),
       blocos: blocos,
       fallback: sig ? str(sig, 'fallback') : null,
       offline: { itens: offItens, imagem: arquivo(off.image, teste) },
@@ -705,6 +771,7 @@
     contarExibicao: contarExibicao, loteExibicao: loteExibicao, baixarLote: baixarLote, corpoSinal: corpoSinal,
     espera: espera, camadaSemConteudo: camadaSemConteudo, linhaDiagnostico: linhaDiagnostico,
     nivelAlerta: nivelAlerta, cabecaAlerta: cabecaAlerta, definirArtes: definirArtes,
+    lerConjunto: lerConjunto, janelaConjunto: janelaConjunto, posicaoSincronizada: posicaoSincronizada, retanguloNaTela: retanguloNaTela,
     vigiaNovo: vigiaNovo, vigiaAoVivo: vigiaAoVivo, vigiaFalhou: vigiaFalhou, esperaAoVivo: esperaAoVivo
   };
 });

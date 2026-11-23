@@ -5,6 +5,14 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #000; color:
 
 #conteudo { position: absolute; inset: 0; left: 0; top: 0; right: 0; bottom: 0; overflow: hidden; }
 .zona { position: absolute; overflow: hidden; }
+/* videowall: o quadro do conjunto inteiro, maior que a tela e deslocado; #conteudo recorta a janela desta TV */
+.quadro-conjunto { position: absolute; overflow: hidden; }
+/* comando identify: o nome da TV e a posição no conjunto, por cima de tudo */
+#identifica { position: absolute; left: 0; top: 0; right: 0; bottom: 0; z-index: 40; background: rgba(2,6,23,.92); color: #fff;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+#identifica .id-pos { font-size: 45vh; font-weight: 800; line-height: 1; }
+#identifica .id-nome { font-size: 6vh; font-weight: 700; margin-top: 2vh; }
+#identifica .id-conj { font-size: 4vh; opacity: .8; margin-top: 1vh; }
 .item { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
 .midia { position: absolute; left: 0; top: 0; width: 100%; height: 100%; object-fit: cover; background: #000; }
 .midia.contain { object-fit: contain; }
@@ -65,6 +73,6 @@ video.midia { object-fit: contain; }
 .diag-linha { position: absolute; left: 3vw; right: 3vw; bottom: 3vh; font-size: 2.6vh; opacity: .7; text-align: center;
   font-variant-numeric: tabular-nums; word-break: break-all; }
 /* o ao vivo numa camada própria, acima das zonas e abaixo do cadastro e do alerta (AVPlay: o vídeo aparece no lugar do object) */
-#aovivo { position: absolute; left: 0; top: 0; right: 0; bottom: 0; z-index: 1; pointer-events: none; }
+#aovivo { position: absolute; left: 0; top: 0; right: 0; bottom: 0; z-index: 1; pointer-events: none; overflow: hidden; }
 .aovivo-el { position: absolute; background: transparent; object-fit: contain; }
 video.aovivo-el { background: #000; }
