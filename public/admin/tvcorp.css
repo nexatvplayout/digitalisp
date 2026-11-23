@@ -304,3 +304,16 @@ dialog.pf-dlg.tc-lay-dlg { width: min(97vw, 1560px); max-width: 97vw; }
 .tc-pg-ic.on { border-color: var(--c-accent); box-shadow: 0 0 0 1px var(--c-accent) inset; }
 .tc-pg-presets .btn { font-size: var(--text-xs); }
 .tc-pg .pf-grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+/* Notícias e dados: cada notícia que vai para as telas, com a foto, e o botão de tirar da programação */
+.tc-news-sec { margin-top: 18px; }
+.tc-news-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.tc-news-card { display: flex; flex-direction: column; border: 1px solid var(--line, #24324d); border-radius: 10px; overflow: hidden; background: rgba(255,255,255,0.03); }
+.tc-news-card img, .tc-news-nofoto { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; display: block; background: #0b1220; }
+.tc-news-nofoto { display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 13px; }
+.tc-news-body { display: flex; flex-direction: column; gap: 6px; padding: 10px; flex: 1; }
+.tc-news-body .btn { align-self: flex-start; margin-top: auto; }
+.tc-news-card.off { opacity: 0.45; }
+/* o fundo do layout: a lista e o seletor de qualquer cor lado a lado */
+.tc-bg-row { display: flex; gap: 6px; align-items: center; }
+.tc-bg-row select { flex: 1; min-width: 0; }
+.tc-bg-cor { width: 44px; height: 36px; padding: 2px; border-radius: 8px; flex: none; cursor: pointer; }

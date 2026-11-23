@@ -194,6 +194,7 @@ const graphicsFiles = (...prefixes) => ({
 const newsImages = createNewsImages({ dir: path.join(config.dataDir, 'telas', 'noticias') });
 setInterval(() => { newsImages.prune().catch(() => {}); }, 3600_000).unref();
 const tvcorpDados = createTvcorpDados({
+  forget: (tenantId) => telas?.forget(tenantId), // tirar uma notícia da programação muda o que as telas recebem
   newsImages, newsImageUrl: (file) => `${config.platform.publicUrl || ''}/tvcorp/noticia/${file}`, // sem o endereço público: relativo (tvcorp.js completa pelo pedido)
   db, audit: access.audit, ipOf: clientIp, publicUrl: publicOrigin, available: tvcorpOn,
   weatherOf: (ibge) => weatherForecast(ibge),

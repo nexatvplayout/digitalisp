@@ -213,12 +213,16 @@ export function createTvcorpDados({
   isCorpOffice = (o) => CORP_OFFICE_TYPES.includes(o?.type), files = {}, photoUrl = null, webCheck = checkEmbeddable,
   newsImages = null, // server/noticias-img.js: a cópia da foto de cada manchete
   newsImageUrl = null, // (arquivo) -> endereço público https da cópia (/tvcorp/noticia/<arquivo>)
+  forget = () => {}, // (tenantId): a programação das telas mudou (server/telas.js refaz)
   now = () => Date.now(), tz = 'America/Sao_Paulo', timers = true, tickMs = 60_000, pageDir = TVC_PAGE_DIR, log = (m) => console.warn(m),
 }) {
   if (!db) throw new Error('createTvcorpDados: falta o db.');
   /** A página aceita ser aberta dentro de outra? (o site conferido ao salvar o gadget; falha = não se sabe) */
   const checkWeb = (url) => Promise.resolve().then(() => webCheck(url)).catch(() => null);
   const fileDir = files.dir || null;
+  // a chave de uma notícia (para tirar da programação): o link, ou o título quando não há link
+  const newsKey = (i) => createHash('sha256').update(String(i?.link || i?.title || '')).digest('hex').slice(0, 20);
+  const hiddenNews = async (feedId) => new Set((await db.all('SELECT chave FROM isp_noticia_oculta WHERE feed_id = ?', [feedId]).catch(() => [])).map((r) => r.chave));
   const prepareImage = files.prepare || (async (buf) => {
     const [{ preparePhoto }, { config }] = await Promise.all([import('./telas-desaparecidos.js'), import('./config.js')]);
     return preparePhoto(buf, { ffmpeg: config.ffmpeg });
@@ -493,6 +497,31 @@ export function createTvcorpDados({
       const cur = await own('tvcorp_feeds', req.params.id, req.tenantId, 'Fonte');
       await db.run('DELETE FROM tvcorp_feeds WHERE id = ? AND tenant_id = ?', [cur.id, req.tenantId]);
       res.locals.audit = `tvcorp: fonte "${cur.name}" apagada (#${cur.id})`;
+      res.json({ ok: true });
+    }));
+    /* ----- as notícias de uma fonte, uma a uma (com a foto), e tirar/devolver uma da programação */
+    app.get(`${P}/feeds/:id/noticias`, M, ah(async (req, res) => {
+      const cur = await own('tvcorp_feeds', req.params.id, req.tenantId, 'Fonte');
+      if (cur.kind !== 'rss') throw fail(400, 'Só fontes de notícias.');
+      const c = j(cur.cache, null) || {};
+      const hidden = await hiddenNews(cur.id);
+      res.set('Cache-Control', 'no-store').json({
+        source: SOURCE_SAFE(c.source || ''), at: c.at || null,
+        items: (c.items || []).slice(0, 15).map((i) => ({ key: newsKey(i), title: i.title, at: i.at ?? null, link: i.link || null, image: i.img?.file ? `/tvcorp/noticia/${i.img.file}` : null, hidden: hidden.has(newsKey(i)) })),
+      });
+    }));
+    app.post(`${P}/feeds/:id/noticias/:key/ocultar`, M, ah(async (req, res) => {
+      const cur = await own('tvcorp_feeds', req.params.id, req.tenantId, 'Fonte');
+      const key = String(req.params.key || ''); if (!/^[0-9a-f]{20}$/.test(key)) throw fail(400, 'Notícia inválida.');
+      if (!(await db.get('SELECT 1 AS x FROM isp_noticia_oculta WHERE feed_id = ? AND chave = ?', [cur.id, key]))) await db.run('INSERT INTO isp_noticia_oculta(feed_id, tenant_id, chave, criado_em) VALUES(?,?,?,?)', [cur.id, req.tenantId, key, now()]);
+      try { forget(req.tenantId); } catch { /* telas.js refaz depois */ }
+      res.locals.audit = `tvcorp: notícia tirada da programação (fonte #${cur.id})`;
+      res.json({ ok: true });
+    }));
+    app.delete(`${P}/feeds/:id/noticias/:key/ocultar`, M, ah(async (req, res) => {
+      const cur = await own('tvcorp_feeds', req.params.id, req.tenantId, 'Fonte');
+      await db.run('DELETE FROM isp_noticia_oculta WHERE feed_id = ? AND chave = ?', [cur.id, String(req.params.key || '')]);
+      try { forget(req.tenantId); } catch { /* telas.js refaz depois */ }
       res.json({ ok: true });
     }));
     app.post(`${P}/feeds/:id/test`, M, ah(async (req, res) => {
@@ -1056,7 +1085,8 @@ export function createTvcorpDados({
             const url = newsImageUrl(i.img.file);
             return /^(?:https:\/\/|\/tvcorp\/noticia\/)/.test(url || '') ? { url, sha256: i.img.sha256, bytes: Number(i.img.bytes) } : null;
           };
-          return c.items.slice(0, 15).map((i, k) => {
+          const off = await hiddenNews(f.id);
+          return c.items.slice(0, 15).filter((i) => !off.has(newsKey(i))).map((i, k) => {
             const img = fileOf(i);
             return { id: `n${id}-${k + 1}`, kind: 'news', title: f.name, source: SOURCE_SAFE(c.source), at: c.at, single: true, ...(img ? { image: img } : {}),
               items: [{ title: i.title, source: SOURCE_SAFE(c.source), at: i.at ?? null, ...(i.link ? { qr: i.link } : {}) }] };

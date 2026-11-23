@@ -122,7 +122,10 @@ export function layoutEditor(lay, reload, factoryKey = null, copyOf = null, { ao
   const orient = el('select', {}, opt('land', 'Deitada (16:9)', st.orientation === 'land'), opt('port', 'Em pé (9:16, totem)', st.orientation === 'port'));
   // a cor do modelo pronto que não está na lista (verde-água, roxo...) entra como "Cor do modelo"
   const bgList = BACKGROUNDS.some(([v]) => v === st.background) ? BACKGROUNDS : [...BACKGROUNDS, [st.background, 'Cor do modelo']];
-  const bg = el('select', {}, ...bgList.map(([v, t]) => opt(v, t, st.background === v)));
+  // qualquer cor: "Outra cor…" abre o seletor de cor (a cor escolhida fica guardada como #rrggbb)
+  const bg = el('select', {}, ...bgList.map(([v, t]) => opt(v, t, st.background === v)), opt('outra', 'Outra cor…', false));
+  const cor = el('input', { type: 'color', value: /^#[0-9a-f]{6}$/i.test(st.background) ? st.background : '#0b1220', 'aria-label': 'Cor de fundo do layout', class: 'tc-bg-cor' });
+  cor.addEventListener('input', () => { st.background = cor.value.toLowerCase(); if (bg.value !== 'outra') { bg.value = 'outra'; } paintPv(); });
   const rowsBox = el('div', { class: 'tc-zones-wrap' }); const pv = el('div', { class: 'tc-pv-box' }); const err = el('p', { class: 'pf-err small', 'aria-live': 'polite' });
   const canvas = zoneCanvas(st, (why) => { if (why === 'select') paintRows(); else { paintRows(); paintPv(); } });
   // a rádio de fundo (só em layout sem a zona de vídeo do canal); refresh() a cada mudança das zonas
@@ -206,11 +209,11 @@ export function layoutEditor(lay, reload, factoryKey = null, copyOf = null, { ao
     }, 'small')), ...dicas);
   }
   orient.addEventListener('change', () => { st.orientation = orient.value; canvas.paint(); paintPv(); paintRows(); });
-  bg.addEventListener('change', () => { st.background = bg.value; paintPv(); });
+  bg.addEventListener('change', () => { if (bg.value === 'outra') { cor.click?.(); st.background = cor.value.toLowerCase(); } else { st.background = bg.value; cor.value = bg.value; } paintPv(); });
   name.addEventListener('input', () => { st.name = name.value; });
   paintRows(); paintPv();
   const { dlg: dlgLay } = dialog(lay ? `Layout · ${lay.name}` : 'Novo layout', el('div', {},
-    el('div', { class: 'pf-grid' }, f('Nome', name), el('div', { class: 'pf-grid two' }, f('Tela', orient), f('Fundo', bg))),
+    el('div', { class: 'pf-grid' }, f('Nome', name), el('div', { class: 'pf-grid two' }, f('Tela', orient), f('Fundo', el('div', { class: 'tc-bg-row' }, bg, cor)))),
     el('div', { class: 'tc-two' },
       el('div', {}, label('Arraste para ajustar'), canvas.node, note('Arraste a zona para mover; arraste o quadradinho do canto para mudar o tamanho. Com a zona escolhida, as setas movem 1% (com Shift, mudam o tamanho).')),
       el('div', {}, label('Como fica na TV'), pv, btns(btn('▶ Prévia grande ao vivo', () => abrirPreviaViva({ orientation: st.orientation, zones: st.zones, background: st.background, name: st.name }), 'small primary')), err)),

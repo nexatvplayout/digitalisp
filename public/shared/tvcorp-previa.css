@@ -388,3 +388,11 @@
 .tvc-wx-ico { width: min(34cqh, 30cqw); height: min(34cqh, 30cqw); flex: none; }
 .tvc-it-wx .tvc-wx-ico { width: 14cqw; height: 14cqw; }
 .tvc-wx-ico-s { width: 5cqw; height: 5cqw; flex: none; vertical-align: middle; }
+/* o gadget de clima com o fundo de cada tempo: céu azul (sol), azul com nuvens, cinza (nublado), névoa, chuva e tempestade */
+.tvc-z-weather.tvc-wx-clear, .tvc-it-wx.tvc-wx-clear { background: linear-gradient(160deg, #38bdf8 0%, #0ea5e9 45%, #f59e0b 130%); color: #fff; }
+.tvc-z-weather.tvc-wx-partly, .tvc-it-wx.tvc-wx-partly { background: linear-gradient(160deg, #60a5fa 0%, #3b82f6 55%, #94a3b8 120%); color: #fff; }
+.tvc-z-weather.tvc-wx-cloudy, .tvc-it-wx.tvc-wx-cloudy { background: linear-gradient(160deg, #94a3b8 0%, #64748b 60%, #475569 100%); color: #fff; }
+.tvc-z-weather.tvc-wx-fog, .tvc-it-wx.tvc-wx-fog { background: linear-gradient(180deg, #cbd5e1 0%, #94a3b8 100%); color: #0f172a; }
+.tvc-z-weather.tvc-wx-rain, .tvc-it-wx.tvc-wx-rain { background: linear-gradient(170deg, #475569 0%, #1e3a8a 70%, #0f172a 100%); color: #fff; }
+.tvc-z-weather.tvc-wx-storm, .tvc-it-wx.tvc-wx-storm { background: linear-gradient(170deg, #1e1b4b 0%, #312e81 55%, #0f172a 100%); color: #fff; }
+.tvc-z-weather[class*="tvc-wx-"] span, .tvc-it-wx[class*="tvc-wx-"] .tvc-it-credit { color: inherit; opacity: 0.85; }

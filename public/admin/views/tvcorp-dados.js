@@ -102,6 +102,32 @@ function editFeed(x, reload, kindKey = 'rss') {
   });
 }
 
+/**
+ * As notícias de uma fonte, uma a uma, como vão para as telas: a foto e a manchete. "Tirar da programação" esconde a notícia
+ * das telas (e "Devolver" traz de volta); as notícias novas da próxima busca entram sozinhas.
+ */
+function newsCards(x) {
+  const wrap = el('div', { class: 'tc-news-sec' }, label(`Notícias de ${x.name} na programação`), note('Carregando…', 'small dim'));
+  const paint = guard(async () => {
+    const r = await tapi(`/api/tvcorp/feeds/${x.id}/noticias`);
+    const items = r?.items || [];
+    const vai = items.filter((i) => !i.hidden).length;
+    const toggle = (i) => guard(async () => {
+      await tapi(`/api/tvcorp/feeds/${x.id}/noticias/${i.key}/ocultar`, { method: i.hidden ? 'DELETE' : 'POST', body: {} });
+      toast(i.hidden ? 'A notícia voltou para a programação.' : 'Notícia tirada da programação: as telas param de mostrar na próxima atualização.');
+      await paint();
+    });
+    put(wrap, label(`Notícias de ${x.name} na programação (${vai} de ${items.length})`),
+      items.length ? el('div', { class: 'tc-news-grid' }, ...items.map((i) => el('div', { class: `tc-news-card${i.hidden ? ' off' : ''}` },
+        i.image ? el('img', { src: i.image, alt: '', loading: 'lazy' }) : el('div', { class: 'tc-news-nofoto', text: 'Sem foto' }),
+        el('div', { class: 'tc-news-body' }, el('b', { text: i.title }), el('span', { class: 'dim small', text: [i.at ? when(i.at) : '', i.hidden ? 'fora da programação' : ''].filter(Boolean).join(' · ') }),
+          btn(i.hidden ? 'Devolver à programação' : 'Tirar da programação', toggle(i), i.hidden ? 'small' : 'small danger')))))
+        : empty('Nenhuma notícia ainda: use "Buscar agora".'));
+  });
+  paint();
+  return wrap;
+}
+
 export default async function paintDados(box, ctx) {
   const r = await tapi('/api/tvcorp/feeds');
   const list = listOf(r, 'feeds');
@@ -131,6 +157,7 @@ export default async function paintDados(box, ctx) {
     note('O servidor busca cada fonte sozinho e entrega às telas os itens prontos. Se uma busca falha, a tela continua com o último resultado bom por até 6 horas.'),
     btns(...FEED_KINDS.map((k) => btn(`+ ${k.label}`, () => editFeed(null, again, k.key), k.key === 'rss' ? 'primary' : '')), el('span', { class: 'dim small', text: `${list.length} de ${LIMITS.feeds}` }), list.length ? btn('Buscar todas agora', buscarTodas) : null),
     rows.length ? table(['Fonte', 'Tipo', 'Atualiza', 'Última busca', 'Situação', ''], rows) : empty('Nenhuma fonte ainda. Comece pelas notícias da Agência Brasil ou pelas cotações.'),
+    ...list.filter((x) => x.kind === 'rss').map((x) => newsCards(x)),
     label('Fontes de notícias liberadas'),
     el('ul', { class: 'pf-plain' }, ...CAT.news.map((p) => el('li', { text: `${p.name}: uso livre com o crédito (na tela: "Fonte: ${p.credit}")` }))),
     note('Notícias: só título, fonte, hora e o QR code para a matéria, sempre com o crédito. Esportes, celebridades e horóscopo não entram: falta direito de uso e qualidade de fonte.'));

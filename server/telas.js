@@ -449,7 +449,13 @@ export function createTelas({
     const list = await cached(`wxf:${tenantId}`, () => db.all("SELECT config FROM tvcorp_feeds WHERE tenant_id = ? AND kind = 'weather' AND enabled = 1 ORDER BY id", [tenantId]).catch(() => []));
     const cfgs = list.map((r) => j(r.config, {}) || {}).filter((c) => /^\d{7}$/.test(String(c.ibge || '')));
     const c = cfgs.find((x) => officeId != null && (x.offices || []).map(Number).includes(officeId)) || cfgs.find((x) => !(x.offices || []).length) || null;
-    return c ? conteudo.weather.get(String(c.ibge)) : null;
+    if (!c) return null;
+    // logo depois de o servidor reiniciar (publicação) o clima guardado está vazio: espera a 1ª busca (até 4 s) em vez de
+    // mandar a configuração sem clima (a TV apagaria a zona de clima até a próxima mudança)
+    const key = String(c.ibge);
+    const v = conteudo.weather.get(key);
+    if (v) return v;
+    return Promise.race([conteudo.weather.settle(key), new Promise((r) => setTimeout(() => r(null), 4000))]).catch(() => null);
   }
   async function configFor(dev, req, groups = null) {
     const tenantId = Number(dev.tenant_id);

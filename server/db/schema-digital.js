@@ -171,5 +171,13 @@ CREATE TABLE IF NOT EXISTS isp_tela_hls (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS isp_faturas_ref ON isp_faturas(tenant_id, referencia);
 CREATE INDEX IF NOT EXISTS isp_faturas_status ON isp_faturas(status, vencimento);
+-- a notícia que a empresa tirou da programação (Notícias e dados): chave = hash do link (ou do título) da manchete
+CREATE TABLE IF NOT EXISTS isp_noticia_oculta (
+  feed_id    ${big} NOT NULL REFERENCES tvcorp_feeds(id) ON DELETE CASCADE,
+  tenant_id  ${big} NOT NULL,
+  chave      TEXT NOT NULL,
+  criado_em  ${big} NOT NULL,
+  PRIMARY KEY (feed_id, chave)
+);
 `;
 }
