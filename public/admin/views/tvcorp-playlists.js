@@ -44,6 +44,7 @@ async function previewOf(it, src) {
       const image = m.fields?.image ? await tblob(`/api/tvcorp/media/${m.fields.image}/file`).catch(() => null) : null;
       return itemPreview({ kind: 'slide', template: m.template, fields: m.fields, image }, { theme });
     }
+    if (m.kind === 'video') return itemPreview({ kind: 'video', poster: m.poster ? await tblob(m.poster).catch(() => null) : null, seconds: m.seconds, title: m.title, processing: m.status !== 'ok' }, { theme });
     return itemPreview({ kind: 'image', url: await tblob(`/api/tvcorp/media/${m.id}/file`).catch(() => null), title: m.title }, { theme });
   }
   if (it.refKind === 'post') { const p = find(src.posts); return itemPreview({ kind: 'post', category: p?.category, title: p?.title, body: p?.text, qr: p?.qr }, { theme }); }
@@ -162,7 +163,7 @@ async function editItems(pl, reload) {
   const quick = el('div', { class: 'tc-quick' });
   const candPv = el('div', { class: 'tc-item-pv tc-cand-pv' });
   const candLabel = label('Como vai aparecer');
-  const poolOf = (k) => (k.pick === 'media' ? [...src.media].sort((a, b) => Number(serve(b)) - Number(serve(a))).map((m) => [m.id, `${serve(m) ? '' : '⚠ '}${m.kind === 'slide' ? 'Slide' : 'Imagem'}: ${m.title}${formatoDaMidia(m) ? ` (${formatoDaMidia(m) === 'port' ? 'em pé' : formatoDaMidia(m) === 'land' ? 'deitado' : 'quadrado'})` : ''}${serve(m) ? '' : ' · formato diferente do quadro'}${m.status === 'pending' ? ' (aguardando aprovação)' : ''}`])
+  const poolOf = (k) => (k.pick === 'media' ? [...src.media].sort((a, b) => Number(serve(b)) - Number(serve(a))).map((m) => [m.id, `${serve(m) ? '' : '⚠ '}${m.kind === 'slide' ? 'Slide' : m.kind === 'video' ? 'Vídeo' : 'Imagem'}: ${m.title}${formatoDaMidia(m) ? ` (${formatoDaMidia(m) === 'port' ? 'em pé' : formatoDaMidia(m) === 'land' ? 'deitado' : 'quadrado'})` : ''}${serve(m) ? '' : ' · formato diferente do quadro'}${m.status === 'pending' ? ' (aguardando aprovação)' : ''}`])
     : k.pick === 'post' ? src.posts.filter((p) => p.status !== 'rejected').map((p) => [p.id, `${p.title} (${p.situation || 'em vigor'})`]) : k.pick === 'kpi' ? src.kpis.map((x) => [x.id, x.name])
       : k.pick === 'feed' ? src.feeds.filter((x) => x.kind === k.feedKind).map((x) => [x.id, x.name]) : k.pick === 'widget' ? src.widgets.map((x) => [x.id, `${widgetLabel(x.kind)}: ${x.name}`]) : []);
   /** O item que entraria agora (o tipo e o registro escolhidos). */

@@ -167,6 +167,6 @@ export function scopeText(scope, data = {}) {
   return scope;
 }
 /** Situação de aprovação em texto. */
-export const STATUS_ITEM = { ok: 'Publicado', pending: 'Aguardando aprovação', rejected: 'Devolvido' };
+export const STATUS_ITEM = { ok: 'Publicado', pending: 'Aguardando aprovação', rejected: 'Devolvido', processing: 'Preparando o vídeo…', error: 'Não converteu' };
 export const statusChip = (st) => chip(STATUS_ITEM[st] || st || 'Publicado', st === 'pending' ? 'tc-pending' : st === 'rejected' ? 'tc-rejected' : 'tc-ok');
 export { el, guard, toast };

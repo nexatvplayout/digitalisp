@@ -146,6 +146,12 @@ export function itemPreview(it = {}, opts = {}) {
   const th = themeClass(opts.theme);
   const box = (cls, ...kids) => h('div', `tvc-it ${cls} ${th}`, ...kids);
   switch (it.kind) {
+    case 'video': {
+      // o vídeo próprio: na prévia, a miniatura com o tempo (a TV toca o arquivo)
+      const img = it.poster ? h('img', 'tvc-it-img') : null; if (img) { img.alt = it.title || ''; img.src = it.poster; }
+      const s = Number(it.seconds) || 0;
+      return box('tvc-it-image tvc-it-video', img || h('div', 'tvc-it-vph', 'Vídeo'), h('span', 'tvc-it-vbadge', it.processing ? 'Preparando…' : `▶ ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`));
+    }
     case 'image': {
       if (!it.url) return box('tvc-it-empty', 'Imagem');
       const img = h('img', 'tvc-it-img'); img.alt = it.caption || it.title || ''; img.src = it.url;

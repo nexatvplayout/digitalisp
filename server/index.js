@@ -192,6 +192,7 @@ function artFileOf(key, req) {
 let telas = null;
 const tvcorp = createTvcorp({
   db, storage: graphicsFiles('tvcmedia-', 'tvclogo-'), ffmpeg: config.ffmpeg, artFile: artFileOf,
+  storageCheck: async (tenantId, bytes) => tenancy.assertStorage(tenantId, await tenancy.usageStorageBytes(tenantId), bytes),
   dataFor: tvcorpDados.dataFor, labelFor: tvcorpLabel,
   refExists: async (tenantId, kind, id) => Boolean(await tvcorpLabel(tenantId, kind, id)),
   hasFeature: (tid, key) => tenancy.hasFeature(tid, key),

@@ -34,6 +34,7 @@ import {
 import { deviceStatus } from '../public/shared/telas-tipos.js';
 import * as K from './tvcorp-core.js';
 import { prepareMediaImage, prepareLogo } from './tvcorp-midia.js';
+import { VIDEO, convertVideo, receiveUpload, enqueue } from './tvcorp-video.js';
 
 const { fail, line, idOf, parseJson: j } = K;
 const ah = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -41,7 +42,7 @@ const num = (v) => (v == null ? null : Number(v));
 const sha256 = (s) => createHash('sha256').update(s).digest('hex');
 export const MEDIA_PREFIX = 'tvcmedia-';
 export const LOGO_PREFIX = 'tvclogo-';
-export const MEDIA_RE = /^tvcmedia-[0-9a-f-]{36}\.jpg$/;
+export const MEDIA_RE = /^tvcmedia-[0-9a-f-]{36}\.(?:jpg|mp4)$/; // .mp4: o vídeo próprio da playlist (tvcorp-video.js)
 export const LOGO_RE = /^tvclogo-[0-9a-f-]{36}\.png$/;
 const CACHE_MS = 30_000;
 const SENT_KEEP_MS = 48 * 3600_000;
@@ -69,6 +70,7 @@ const AUTO_LABEL = { birthdays: 'Aniversariantes', news: 'Notícias', quotes: 'C
 export function createTvcorp({
   db, storage, ffmpeg = null, checkImage = null, dataFor = null, labelFor = null, refExists = null, decideOther = null, hasFeature = null, pendingOther = null,
   forget = () => {}, audit = async () => {}, ipOf = (req) => req.ip, now = () => Date.now(), timers = true, artFile = null,
+  storageCheck = null, // (tenantId, bytes): o 402 do armazenamento do plano antes de aceitar um vídeo
 }) {
   if (!db) throw new Error('createTvcorp: falta o banco');
   const noStore = (res) => res.set('Cache-Control', 'no-store');
@@ -115,7 +117,8 @@ export function createTvcorp({
     return {
       id: Number(r.id), officeId: num(r.office_id), kind: r.kind, title: r.title, template: r.template || null, fields: j(r.fields, {}), seconds: Number(r.seconds),
       status: r.status, width: num(r.width), height: num(r.height), bytes: num(r.bytes), sha256: r.sha256 || null,
-      file: r.kind === 'image' ? `/api/tvcorp/media/${Number(r.id)}/file` : null, createdBy: r.created_by || '', createdAt: Number(r.created_at), updatedAt: num(r.updated_at),
+      file: r.kind === 'image' ? `/api/tvcorp/media/${Number(r.id)}/file` : null,
+      poster: r.kind === 'video' && j(r.fields, {}).poster ? `/api/tvcorp/media/${Number(r.id)}/poster` : null, createdBy: r.created_by || '', createdAt: Number(r.created_at), updatedAt: num(r.updated_at),
     };
   }
   function playlistDto(r) {
@@ -186,6 +189,11 @@ export function createTvcorp({
     await fs.promises.writeFile(fileOf(name), buf);
     try { await storage.put(name); } catch { await fs.promises.rm(fileOf(name), { force: true }).catch(() => {}); throw fail(502, 'Não foi possível guardar o arquivo agora. Tente de novo.'); }
   }
+  async function keepPath(name, src) {
+    await fs.promises.mkdir(storage.dir, { recursive: true });
+    await fs.promises.copyFile(src, fileOf(name));
+    try { await storage.put(name); } catch { await fs.promises.rm(fileOf(name), { force: true }).catch(() => {}); throw fail(502, 'Não foi possível guardar o arquivo agora. Tente de novo.'); }
+  }
   async function readFile(name) {
     try { return await storage.read(name); } catch { throw fail(404, 'O arquivo não está disponível agora.'); }
   }
@@ -243,6 +251,7 @@ export function createTvcorp({
     });
     changed(tenantId);
     await dropFile(row.file);
+    if (row.kind === 'video') await dropFile(j(row.fields, {}).poster);
   }
   const officeNameOf = async (tenantId, officeId) => (officeId ? (await db.get('SELECT name FROM telas_offices WHERE id = ? AND tenant_id = ?', [officeId, tenantId]))?.name || null : null);
 
@@ -271,6 +280,13 @@ export function createTvcorp({
         const f = imageFile(data.media, r.id, req);
         const caption = line(j(r.fields, {}).caption, L.title);
         return f ? [{ id: ref, kind: 'image', seconds: it.seconds, ...f, ...(caption ? { caption } : {}), fit: 'contain', ...when }] : [];
+      }
+      if (r.kind === 'video') {
+        // o vídeo próprio: toca inteiro (a duração é a do arquivo); sound: o som do vídeo (desligado se não foi escolhido)
+        if (!MEDIA_RE.test(String(r.file || ''))) return [];
+        const f = K.fileContract(fileUrl(r.file, req), r.sha256, r.bytes);
+        const fx = j(r.fields, {});
+        return f ? [{ id: ref, kind: 'video', seconds: Number(r.seconds) || it.seconds, ...f, width: num(r.width), height: num(r.height), sound: Boolean(fx.sound), fit: 'contain', ...when }] : [];
       }
       const model = TVC_SLIDE_MODEL[r.template];
       if (!model) return [];
@@ -525,6 +541,7 @@ export function createTvcorp({
     if (!storage.list) return;
     try {
       const used = new Set((await db.all('SELECT file FROM tvcorp_media WHERE file IS NOT NULL')).map((r) => r.file));
+      for (const r of await db.all("SELECT fields FROM tvcorp_media WHERE kind = 'video'")) { const p = j(r.fields, {}).poster; if (p) used.add(p); }
       for (const s of await db.all('SELECT data FROM tvcorp_settings')) { const f = j(s.data, {}).logo?.file; if (f) used.add(f); }
       for (const f of await storage.list()) {
         if ((MEDIA_RE.test(f.name) || LOGO_RE.test(f.name)) && !used.has(f.name) && (!f.mtime || t - f.mtime > 3600_000)) await dropFile(f.name);
@@ -642,6 +659,47 @@ export function createTvcorp({
       res.locals.audit = `tv corporativa: slide "${r.title}" (#${id}, modelo ${r.template}) criado`;
       noStore(res).status(201).json(mediaDto(r));
     }));
+    /* o vídeo próprio: o corpo é o arquivo (até 500 MB); a resposta sai logo e a conversão corre na fila do servidor */
+    app.post(`${B}/media/video`, M, ah(async (req, res) => {
+      const q = req.query || {};
+      const officeId = await officeIdOf(q.officeId, req.tenantId);
+      if (!VIDEO.types.includes(String(req.headers['content-type'] || '').split(';')[0].trim())) throw fail(415, 'Envie um vídeo MP4, MOV, WebM ou AVI.');
+      await under('tvcorp_media', req.tenantId, L.media, 'mídias');
+      const declared = Number(req.headers['content-length']) || 0;
+      if (storageCheck) await storageCheck(req.tenantId, declared);
+      const up = await receiveUpload(req);
+      const t = now(); const title = line(q.title, L.title) || 'Vídeo';
+      const sound = q.sound === '1' || q.sound === 'true';
+      const id = Number(await db.insert('INSERT INTO tvcorp_media(tenant_id,office_id,kind,title,file,sha256,bytes,width,height,template,fields,seconds,status,created_by,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+        [req.tenantId, officeId, 'video', title, null, null, up.bytes, null, null, null, JSON.stringify({ sound, processing: true }), 10, 'processing', line(who(req), 64), t, t]));
+      const tenantId = req.tenantId;
+      enqueue(async () => {
+        try {
+          const out = await convertVideo(ffmpeg, up.file, up.dir);
+          const name = `${MEDIA_PREFIX}${randomUUID()}.mp4`; const pname = out.poster ? `${MEDIA_PREFIX}${randomUUID()}.jpg` : null;
+          await keepPath(name, out.mp4); if (pname) await keepPath(pname, out.poster);
+          const st = await fs.promises.stat(out.mp4); const sha = createHash('sha256').update(await fs.promises.readFile(out.mp4)).digest('hex');
+          const row = await db.get('SELECT fields FROM tvcorp_media WHERE id = ? AND tenant_id = ?', [id, tenantId]);
+          if (!row) { await dropFile(name); await dropFile(pname); return; } // apagado enquanto convertia
+          const fx = { ...j(row.fields, {}), poster: pname }; delete fx.processing;
+          await db.run('UPDATE tvcorp_media SET file = ?, sha256 = ?, bytes = ?, width = ?, height = ?, seconds = ?, fields = ?, status = ?, updated_at = ? WHERE id = ? AND tenant_id = ?',
+            [name, sha, st.size, out.width, out.height, out.seconds, JSON.stringify(fx), 'ok', now(), id, tenantId]);
+          changed(tenantId);
+        } catch (err) {
+          const row = await db.get('SELECT fields FROM tvcorp_media WHERE id = ? AND tenant_id = ?', [id, tenantId]).catch(() => null);
+          if (row) await db.run('UPDATE tvcorp_media SET status = ?, fields = ?, bytes = 0, updated_at = ? WHERE id = ? AND tenant_id = ?', ['error', JSON.stringify({ ...j(row.fields, {}), processing: false, error: err?.status ? err.message : 'Não foi possível converter este vídeo.' }), now(), id, tenantId]).catch(() => {});
+          if (!err?.status) console.warn(`[tvcorp] vídeo #${id} não converteu (${String(err?.message || err).slice(0, 160)})`);
+        } finally { await fs.promises.rm(up.dir, { recursive: true, force: true }).catch(() => {}); }
+      });
+      res.locals.audit = `tv corporativa: vídeo "${title}" (#${id}) enviado (${Math.round(up.bytes / 1048576)} MB)`;
+      noStore(res).status(202).json(mediaDto(await own('tvcorp_media', id, req.tenantId, 'Mídia')));
+    }));
+    app.get(`${B}/media/:id/poster`, M, ah(async (req, res) => {
+      const r = await own('tvcorp_media', req.params.id, req.tenantId, 'Mídia');
+      const p = r.kind === 'video' ? j(r.fields, {}).poster : null;
+      if (!p) throw fail(404, 'Este vídeo ainda não tem miniatura.');
+      sendFile(res, await readFile(p), 'image/jpeg');
+    }));
     app.post(`${B}/media/image`, M, rawBody(L.uploadBytes), tooBig, ah(async (req, res) => {
       const q = req.query || {};
       const officeId = await officeIdOf(q.officeId, req.tenantId);
@@ -662,7 +720,7 @@ export function createTvcorp({
       const cur = await own('tvcorp_media', req.params.id, req.tenantId, 'Mídia');
       const b = req.body || {};
       const title = b.title !== undefined ? (line(b.title, L.title) || cur.title) : cur.title;
-      const seconds = b.seconds !== undefined ? K.cleanSeconds(b.seconds) : Number(cur.seconds);
+      const seconds = b.seconds !== undefined && cur.kind !== 'video' ? K.cleanSeconds(b.seconds) : Number(cur.seconds); // o vídeo dura o que o arquivo dura
       const officeId = b.officeId !== undefined ? await officeIdOf(b.officeId, req.tenantId) : num(cur.office_id);
       let fields = cur.fields; let template = cur.template;
       if (cur.kind === 'slide' && (b.fields !== undefined || b.template !== undefined)) {
@@ -672,6 +730,7 @@ export function createTvcorp({
         if (out.mediaIds.includes(Number(cur.id))) throw fail(400, 'O slide não pode citar a si mesmo.');
         fields = JSON.stringify(out.fields);
       }
+      if (cur.kind === 'video' && b.sound !== undefined) fields = JSON.stringify({ ...j(cur.fields, {}), sound: Boolean(b.sound) });
       if (cur.kind === 'image' && b.caption !== undefined) { const c = line(b.caption, L.title); fields = JSON.stringify(c ? { caption: c } : {}); }
       await db.run('UPDATE tvcorp_media SET title = ?, seconds = ?, office_id = ?, fields = ?, template = ?, updated_at = ? WHERE id = ? AND tenant_id = ?',
         [title, seconds, officeId, fields, template, now(), cur.id, req.tenantId]);
