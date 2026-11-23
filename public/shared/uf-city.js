@@ -110,7 +110,12 @@ export function ufCityPicker({ uf = '', cityIbge = null, city = '', idPrefix = `
     list.hidden = false; input.setAttribute('aria-expanded', 'true');
     setActive(shown.length && q ? 0 : -1);
   }
-  const ready = loadMunicipios().then((d) => { data = d; if (document.activeElement === input) render(); }).catch((err) => { cityF.setError(`Não foi possível carregar a lista de municípios (${err.message}). Tente abrir de novo.`); });
+  const ready = loadMunicipios().then((d) => {
+    data = d;
+    // a cidade guardada só com o código (sem o nome): o nome vem da lista do IBGE, para o campo não aparecer vazio
+    if (chosen && !input.value) { const m = d.byCode.get(chosen.code); if (m) { chosen = m; input.value = m.name; } }
+    if (document.activeElement === input) render();
+  }).catch((err) => { cityF.setError(`Não foi possível carregar a lista de municípios (${err.message}). Tente abrir de novo.`); });
 
   ufSel.addEventListener('change', () => {
     chosen = null; input.value = ''; close(); cityF.setError(null); ufF.setError(null); cityF.setWarn(null);

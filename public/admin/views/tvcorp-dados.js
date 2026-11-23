@@ -77,7 +77,7 @@ function editFeed(x, reload, kindKey = 'rss') {
       read = () => { if (!picks.size) throw new Error('Escolha pelo menos uma moeda.'); return { provider: provider.value, currencies: [...picks] }; };
     } else if (k === 'weather') {
       const picks = new Set(c.offices || []);
-      const uc = ufCityPicker({ uf: c.uf || '', cityIbge: c.ibge || null, idPrefix: 'tcw' });
+      const uc = ufCityPicker({ uf: c.uf || '', cityIbge: c.ibge || null, city: c.city || '', idPrefix: 'tcw' });
       const offices = D().offices;
       put(box, uc.ufField, uc.cityField, note('As unidades que mostram o clima desta cidade. Nenhuma marcada: vale para todas as unidades sem outra cidade.'),
         offices.length ? el('div', { class: 'pf-checks' }, ...offices.map((o) => el('label', { class: 'pf-check' }, el('input', { type: 'checkbox', checked: picks.has(o.id), onchange: (e) => { if (e.target.checked) picks.add(o.id); else picks.delete(o.id); } }), el('span', { text: o.name })))) : note('Nenhuma unidade ainda (aba Unidades e grupos).'),
@@ -113,7 +113,7 @@ function newsCards(x) {
   const paint = guard(async () => {
     const r = await tapi(`/api/tvcorp/feeds/${x.id}/noticias`);
     const items = r?.items || [];
-    const vai = items.filter((i) => !i.hidden).length;
+    const vai = items.filter((i) => !i.hidden && !i.semFoto).length;
     const toggle = (i) => guard(async () => {
       await tapi(`/api/tvcorp/feeds/${x.id}/noticias/${i.key}/ocultar`, { method: i.hidden ? 'DELETE' : 'POST', body: {} });
       toast(i.hidden ? 'A notícia voltou para a programação.' : 'Notícia tirada da programação: as telas param de mostrar na próxima atualização.');
@@ -121,10 +121,10 @@ function newsCards(x) {
     });
     put(wrap, label(`Notícias de ${x.name} na programação (${vai} de ${items.length}) · cada uma fica ${x.config?.secondsEach ?? 12} s na tela`),
       note('Para mudar o tempo de cada notícia, use "Editar" nesta fonte.', 'small dim'),
-      items.length ? el('div', { class: 'tc-news-grid' }, ...items.map((i) => el('div', { class: `tc-news-card${i.hidden ? ' off' : ''}` },
+      items.length ? el('div', { class: 'tc-news-grid' }, ...items.map((i) => el('div', { class: `tc-news-card${i.hidden || i.semFoto ? ' off' : ''}` },
         i.image ? el('img', { src: i.image, alt: '', loading: 'lazy' }) : el('div', { class: 'tc-news-nofoto', text: 'Sem foto' }),
-        el('div', { class: 'tc-news-body' }, el('b', { text: i.title }), el('span', { class: 'dim small', text: [i.at ? when(i.at) : '', i.hidden ? 'fora da programação' : ''].filter(Boolean).join(' · ') }),
-          btn(i.hidden ? 'Devolver à programação' : 'Tirar da programação', toggle(i), i.hidden ? 'small' : 'small danger')))))
+        el('div', { class: 'tc-news-body' }, el('b', { text: i.title }), el('span', { class: 'dim small', text: [i.at ? when(i.at) : '', i.semFoto ? 'sem foto: não vai para a tela' : i.hidden ? 'fora da programação' : ''].filter(Boolean).join(' · ') }),
+          i.semFoto ? null : btn(i.hidden ? 'Devolver à programação' : 'Tirar da programação', toggle(i), i.hidden ? 'small' : 'small danger')))))
         : empty('Nenhuma notícia ainda: use "Buscar agora".'));
   });
   paint();

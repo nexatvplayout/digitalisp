@@ -89,7 +89,7 @@ export async function abrirPreviaViva(layout, { zonePlaylists = null, titulo = '
       const itens = [];
       for (const f of rss) {
         const r = await tapi(`/api/tvcorp/feeds/${f.id}/noticias`).catch(() => null);
-        for (const i of (r?.items || []).filter((x) => !x.hidden)) itens.push({ kind: 'news', single: true, title: f.name, source: r.source, image: i.image, items: [{ title: i.title, source: r.source, at: i.at }], seconds: 12 });
+        for (const i of (r?.items || []).filter((x) => !x.hidden && x.image)) itens.push({ kind: 'news', single: true, title: f.name, source: r.source, image: i.image, items: [{ title: i.title, source: r.source, at: i.at }], seconds: 12 });
       }
       if (!itens.length) continue;
       let i = 0; let vivo = true; let t = null;
