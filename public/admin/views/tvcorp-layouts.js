@@ -8,6 +8,7 @@ import { widgetItem } from './tvcorp-playlists.js';
 import { FACTORY_LAYOUTS, FACTORY_LAYOUT, FACTORY_SETS, LAYOUT_SEGMENTS, ZONE_KINDS, ZONE_KIND, zoneLabel, LIMITS, checkZones, widgetLabel } from './tvcorp-catalogo.js';
 import { themeOf } from './tvcorp-midias.js';
 import { radioPicker } from './tvcorp-radio.js';
+import { abrirPreviaViva } from './tvcorp-previa-viva.js';
 import { wifiQr, vcardQr, qrKind, qrLabel } from '../../shared/qr-conteudo.js';
 import { quadroPx, formatoDe, FORMATO_TXT, dicaArte, quadrosDoLayout } from './tvcorp-quadros.js';
 import { ZONE_SHAPES, EDGE_COLORS } from '../../shared/tvcorp-formas.js';
@@ -201,7 +202,7 @@ export function layoutEditor(lay, reload, factoryKey = null, copyOf = null, { ao
     el('div', { class: 'pf-grid' }, f('Nome', name), el('div', { class: 'pf-grid two' }, f('Tela', orient), f('Fundo', bg))),
     el('div', { class: 'tc-two' },
       el('div', {}, label('Arraste para ajustar'), canvas.node, note('Arraste a zona para mover; arraste o quadradinho do canto para mudar o tamanho. Com a zona escolhida, as setas movem 1% (com Shift, mudam o tamanho).')),
-      el('div', {}, label('Como fica na TV'), pv, err)),
+      el('div', {}, label('Como fica na TV'), pv, btns(btn('▶ Prévia grande ao vivo', () => abrirPreviaViva({ orientation: st.orientation, zones: st.zones, background: st.background, name: st.name }), 'small primary')), err)),
     label('Zonas'), rowsBox,
     label('Rádio de fundo'), radio.node,
     note('Vídeo do canal: no máximo uma zona, e é sempre o mesmo vídeo de hoje, só que no retângulo da zona. Playlist: a sequência que a grade escolher para a zona. Texto rolante: os avisos e as fontes da aba Barras e blocos.')), {
@@ -233,7 +234,7 @@ export default async function paintLayouts(box, ctx) {
       el('div', { class: 'dim small', text: `${l.orientation === 'port' ? 'Em pé' : 'Deitada'} · ${(l.zones || []).length} zona(s)${l.updatedAt ? ` · ${when(l.updatedAt)}` : ''}` }),
       quadrosTxt(l) ? el('div', { class: 'small tc-quadros', text: `Quadros das playlists: ${quadrosTxt(l)}` }) : null,
       el('div', {}, ...(usedBy(l.id).length ? usedBy(l.id).map((n) => chip(n)) : [el('span', { class: 'dim small', text: 'em nenhuma grade' })])),
-      btns(btn('Editar', () => layoutEditor(l, reload), 'small'), btn('Duplicar', () => layoutEditor(null, reload, null, l), 'small'),
+      btns(btn('▶ Ao vivo', () => abrirPreviaViva(l), 'small'), btn('Editar', () => layoutEditor(l, reload), 'small'), btn('Duplicar', () => layoutEditor(null, reload, null, l), 'small'),
         btn('Apagar', guard(async () => { if (usedBy(l.id).length) { toast(`Este layout está em ${usedBy(l.id).length} grade(s). Troque o layout delas antes de apagar.`, true); return; } if (!confirm(`Apagar o layout "${l.name}"?`)) return; await tapi(`/api/tvcorp/layouts/${l.id}`, { method: 'DELETE' }); await reload(); }), 'small danger')))));
   const factoryBox = factoryView(reload);
   const walls = D().walls || listOf(await tapi('/api/tvcorp/walls').catch(() => null), 'walls');
@@ -276,7 +277,7 @@ function factoryView(reload) {
         layoutPreview(l, { ...previewOpts(l), labels: false }),
         el('div', { class: 'tc-lcard-b' }, el('div', {}, chip('1 TV', 'tc-tvs'), ' ', chip(segLabel(l.segment)), ' ', l.main === 'video' ? chip('Vídeo ao vivo') : l.main === 'playlist' ? chip('Playlist') : null, l.special ? ' ' : null, l.special ? chip('Formato especial') : null), el('b', { text: l.label }), el('div', { class: 'dim small', text: l.desc }),
           quadrosTxt(l) ? el('div', { class: 'small tc-quadros', text: `Quadros das playlists: ${quadrosTxt(l)}` }) : null,
-          btns(btn('Usar este modelo', () => layoutEditor(null, reload, l.key), 'small primary'),
+          btns(btn('Usar este modelo', () => layoutEditor(null, reload, l.key), 'small primary'), btn('▶ Ao vivo', () => abrirPreviaViva({ ...l, name: l.label }), 'small'),
             // o mesmo modelo com o canal ao vivo no lugar da playlist principal
             l.main === 'playlist' && !l.zones.some((z) => z.kind === 'video') ? btn('Usar com vídeo ao vivo', () => layoutEditor(null, reload, l.key, null, { aoVivo: true }), 'small') : null)))));
     if (!sets.length && !singles.length) put(grid, empty('Nenhum modelo com esses filtros.'));

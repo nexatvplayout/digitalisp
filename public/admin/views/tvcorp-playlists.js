@@ -16,7 +16,7 @@ const officeName = (id) => (id == null ? 'Empresa toda' : D().offices.find((o) =
 const secs = (n) => { const m = Math.floor(n / 60); const s = n % 60; return m ? `${m} min${s ? ` ${s} s` : ''}` : `${s} s`; };
 
 /** As listas que os itens citam (lidas ao abrir o editor; uma que falhe fica vazia). */
-async function sources() {
+export async function sources() {
   const get = ([p, key]) => tapi(p).then((r) => listOf(r, key)).catch(() => []);
   const [media, posts, kpis, feeds, widgets, people] = await Promise.all([['/api/tvcorp/media', 'media'], ['/api/tvcorp/posts', 'posts'], ['/api/tvcorp/kpis', 'kpis'], ['/api/tvcorp/feeds', 'feeds'], ['/api/tvcorp/widgets', 'widgets'], ['/api/tvcorp/people?limit=500', 'people']].map(get));
   return { media: media.filter((m) => m.status !== 'rejected'), posts, kpis, feeds: feeds.filter((x) => x.kind === 'rss' || x.kind === 'quotes' || x.kind === 'weather'), widgets, people };
@@ -34,7 +34,7 @@ export function itemTitle(it, src) {
   return k;
 }
 /** O item como o app desenha, com os dados que o painel tem (a prévia; na TV os dados vêm prontos do servidor). */
-async function previewOf(it, src) {
+export async function previewOf(it, src) {
   const theme = themeOf();
   const find = (list) => list.find((x) => x.id === it.refId);
   if (it.refKind === 'media') {
