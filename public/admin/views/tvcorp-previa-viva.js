@@ -30,13 +30,21 @@ async function tocar(video, url, aviso) {
 export async function abrirPreviaViva(layout, { zonePlaylists = null, titulo = '', canalUrl = null, zoneItems = null } = {}) {
   const paradas = [];
   const parar = () => { while (paradas.length) { try { paradas.pop()(); } catch { /* já parou */ } } };
-  const [canais, src, pls] = await Promise.all([tapi('/api/hls').catch(() => []), sources(), tapi('/api/tvcorp/playlists').catch(() => null)]);
+  const [canais, src, pls, scheds, feeds] = await Promise.all([tapi('/api/hls').catch(() => []), sources(), tapi('/api/tvcorp/playlists').catch(() => null),
+    zonePlaylists || zoneItems ? null : tapi('/api/tvcorp/schedules').catch(() => null), tapi('/api/tvcorp/feeds').catch(() => null)]);
+  // sem grade escolhida: as playlists da grade (ou da programação de uma tela) que usa este layout, como as telas recebem
+  const daGrade = listOf(scheds, 'schedules').find((x) => Number(x.layoutId) === Number(layout.id)) || null;
+  if (!zonePlaylists && daGrade) zonePlaylists = daGrade.zonePlaylists || {};
+  // o clima de verdade (a fonte Clima da empresa), como a TV mostra
+  const wf = listOf(feeds, 'feeds').find((f) => f.kind === 'weather' && f.enabled !== false && f.preview?.tempC != null)?.preview || null;
+  const clima = wf ? { now: { temp: wf.tempC, cond: wf.cond, text: wf.text }, place: { city: wf.city } } : null;
   const listaCanais = (Array.isArray(canais) ? canais : []).filter((c) => c.ativo !== false);
   const playlists = listOf(pls, 'playlists');
   // toda zona que recebe playlist (playlist, notícias, cotações, contador…); com zoneItems (os itens que a TV recebe agora),
   // essas zonas passam exatamente os itens da TV, sem seletor
   const zonasPl = (layout.zones || []).filter((z) => TVC_PLAYLIST_ZONES.includes(z.kind) && !zoneItems?.[z.id]);
-  const escolha = Object.fromEntries(zonasPl.map((z) => [z.id, zonePlaylists?.[z.id] ?? playlists[0]?.id ?? null]));
+  // a zona sem playlist na grade fica sem playlist (como na TV); sem grade nenhuma, começa na primeira playlist
+  const escolha = Object.fromEntries(zonasPl.map((z) => [z.id, zonePlaylists ? zonePlaylists[z.id] ?? null : playlists[0]?.id ?? null]));
   const canal = el('select', { 'aria-label': 'Canal ao vivo' }, ...listaCanais.map((c, i) => opt(c.url, c.name || `Canal ${i + 1}`, canalUrl ? c.url === canalUrl : i === 0)));
   const aviso = el('p', { class: 'small dim', 'aria-live': 'polite' });
   const palco = el('div', { class: 'tc-live-palco' });
@@ -48,7 +56,7 @@ export async function abrirPreviaViva(layout, { zonePlaylists = null, titulo = '
 
   async function montar() {
     parar();
-    const pv = layoutPreview(layout, { theme: { ...themeOf(), mode: layout.background === '#eef2f7' ? 'light' : themeOf().mode }, labels: false, ticker: ['Prévia ao vivo: o texto rolante da tela aparece aqui'] });
+    const pv = layoutPreview(layout, { theme: { ...themeOf(), mode: layout.background === '#eef2f7' ? 'light' : themeOf().mode }, labels: false, ticker: ['Prévia ao vivo: o texto rolante da tela aparece aqui'], weather: clima });
     put(palco, pv);
     const zonaEl = (id) => pv.querySelector?.(`[data-zone="${id}"] .tvc-z`);
     // o vídeo ao vivo na zona de vídeo
@@ -93,7 +101,7 @@ export async function abrirPreviaViva(layout, { zonePlaylists = null, titulo = '
   const { dlg } = dialog(titulo || `Prévia ao vivo${layout.name ? ` · ${layout.name}` : ''}`, el('div', { class: 'tc-live' },
     el('div', { class: 'tc-live-bar' }, listaCanais.length && (layout.zones || []).some((z) => z.kind === 'video') ? el('label', { class: 'tc-live-sel' }, el('span', { class: 'small', text: 'Canal' }), canal) : null, ...seletores,
       btn('Tela cheia', () => palco.requestFullscreen?.().catch(() => {}), 'small')),
-    palco, aviso,
+    daGrade ? note(`Com as playlists da grade "${daGrade.name}", que usa este layout.`, 'small dim') : null, palco, aviso,
     note('A prévia começa sem som (regra do navegador). Os itens passam no tempo de cada um, como na TV; o texto rolante e os gadgets mostram exemplos.', 'small dim')), { wide: true });
   dlg.classList.add('tc-live-dlg');
   dlg.addEventListener('close', parar);
