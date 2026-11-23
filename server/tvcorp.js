@@ -9,7 +9,7 @@
      GET    /api/tvcorp/summary                 o Resumo
      PUT    /api/tvcorp/settings                tema, fuso, aprovação, grade padrão, categorias, datas comemorativas
      GET|PUT|DELETE /api/tvcorp/settings/logo   a logomarca (PUT com a imagem crua no corpo)
-     GET|POST /api/tvcorp/media, POST /api/tvcorp/media/image (imagem crua), GET|PATCH|DELETE /api/tvcorp/media/:id,
+     GET|POST /api/tvcorp/media, POST /api/tvcorp/media/image (imagem crua), GET|PATCH|DELETE /api/tvcorp/media/:id (imagem: PATCH { page } guarda o desenho do construtor de páginas),
        PUT /api/tvcorp/media/:id/image (troca a imagem), GET /api/tvcorp/media/:id/file
      GET|POST /api/tvcorp/playlists, GET|PATCH|DELETE /api/tvcorp/playlists/:id, PUT /api/tvcorp/playlists/:id/items
      GET|POST /api/tvcorp/layouts, GET|PATCH|DELETE /api/tvcorp/layouts/:id
@@ -35,6 +35,7 @@ import { deviceStatus } from '../public/shared/telas-tipos.js';
 import * as K from './tvcorp-core.js';
 import { prepareMediaImage, prepareLogo } from './tvcorp-midia.js';
 import { VIDEO, convertVideo, receiveUpload, enqueue } from './tvcorp-video.js';
+import { cleanPage } from '../public/shared/pagina.js';
 
 const { fail, line, idOf, parseJson: j } = K;
 const ah = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -751,7 +752,16 @@ export function createTvcorp({
         fields = JSON.stringify(out.fields);
       }
       if (cur.kind === 'video' && b.sound !== undefined) fields = JSON.stringify({ ...j(cur.fields, {}), sound: Boolean(b.sound) });
-      if (cur.kind === 'image' && b.caption !== undefined) { const c = line(b.caption, L.title); fields = JSON.stringify(c ? { caption: c } : {}); }
+      if (cur.kind === 'image' && (b.caption !== undefined || b.page !== undefined)) {
+        // a legenda e o desenho da página do construtor (fields.page: só para abrir e editar de novo; a TV recebe o JPEG)
+        const fx = { ...j(cur.fields, {}) };
+        if (b.caption !== undefined) { const c = line(b.caption, L.title); if (c) fx.caption = c; else delete fx.caption; }
+        if (b.page !== undefined) {
+          if (b.page === null) delete fx.page;
+          else { const pg = cleanPage(b.page); if (!pg) throw fail(400, 'O desenho da página veio fora do formato.'); fx.page = pg; }
+        }
+        fields = JSON.stringify(fx);
+      }
       await db.run('UPDATE tvcorp_media SET title = ?, seconds = ?, office_id = ?, fields = ?, template = ?, updated_at = ? WHERE id = ? AND tenant_id = ?',
         [title, seconds, officeId, fields, template, now(), cur.id, req.tenantId]);
       changed(req.tenantId);

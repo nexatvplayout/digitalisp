@@ -45,6 +45,7 @@ button.tc-card:hover { border-color: var(--c-line-hover); }
 .tc-mcard.pending { border-color: var(--c-warn); }
 .tc-thumb { aspect-ratio: 16 / 9; background: #05070b; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .tc-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.tc-thumb.port img { object-fit: contain; } /* a imagem em pé (1080×1920) aparece inteira na miniatura deitada */
 .tc-thumb .tvc-sl { width: 100%; }
 .tc-mcard-b, .tc-lcard-b { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; }
 .tc-slide-pv { max-width: 560px; }
@@ -273,3 +274,33 @@ dialog.pf-dlg.tc-lay-dlg { width: min(97vw, 1560px); max-width: 97vw; }
 .tc-zones-wrap .tc-qrf select { max-width: 100%; }
 /* slide em pé (9:16) na prévia do item: a caixa vira em pé também, em vez de espremer o slide numa caixa deitada */
 .tc-item-pv:has(> .tvc-port) { aspect-ratio: 9 / 16; max-width: 250px; }
+
+/* o construtor de páginas (tvcorp-pagina.js): os controles à esquerda e a prévia do tamanho da TV à direita */
+.tc-pg { display: grid; grid-template-columns: minmax(330px, 440px) minmax(0, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 1000px) { .tc-pg { grid-template-columns: minmax(0, 1fr); } }
+.tc-pg > div { min-width: 0; }
+.tc-pg-side { display: grid; gap: 8px; max-height: 76vh; overflow-y: auto; padding-right: 6px; }
+.tc-pg-main { position: sticky; top: 0; }
+.tc-pg-stage { display: grid; place-items: center; background: repeating-conic-gradient(#1f2937 0 25%, #111827 0 50%) 0 0 / 24px 24px; border-radius: 8px; padding: 8px; }
+.tc-pg-cv { display: block; width: 100%; height: auto; max-height: 70vh; aspect-ratio: 16 / 9; object-fit: contain; box-shadow: 0 4px 18px rgba(0, 0, 0, .45); cursor: move; touch-action: none; }
+.tc-pg-cv.port { width: auto; height: 70vh; max-width: 100%; aspect-ratio: 9 / 16; }
+.tc-pg-stage:fullscreen { background: #000; padding: 0; }
+.tc-pg-stage:fullscreen .tc-pg-cv { width: 100vw; height: 100vh; max-height: none; max-width: none; aspect-ratio: auto; box-shadow: none; }
+.tc-pg-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.tc-pg-item { font: inherit; font-size: var(--text-xs); padding: 4px 8px; border-radius: 6px; border: 1px solid var(--c-line); background: var(--c-panel); color: var(--c-fg-2); cursor: pointer; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tc-pg-item.on { border-color: var(--c-accent); color: var(--c-fg); box-shadow: 0 0 0 1px var(--c-accent) inset; }
+.tc-pg-props { border: 1px solid var(--c-line); border-radius: 8px; padding: 10px; }
+.tc-pg-bar { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.tc-pg-tg { min-width: 34px; }
+.tc-pg-tg.on { background: var(--c-accent); color: #fff; border-color: var(--c-accent); }
+.tc-pg-tg.b { font-weight: 800; } .tc-pg-tg.i { font-style: italic; font-family: Georgia, serif; } .tc-pg-tg.u { text-decoration: underline; }
+.tc-pg-sep { width: 1px; height: 22px; background: var(--c-line); margin: 0 4px; }
+.tc-pg-color { display: inline-flex; gap: 4px; align-items: center; font-size: var(--text-xs); }
+.tc-pg-color input[type=color] { width: 34px; height: 28px; padding: 0; }
+.tc-pg input[type=color] { min-width: 44px; height: 32px; padding: 2px; }
+.tc-pg .tc-num-in { width: 100%; min-width: 0; }
+.tc-pg-icons { display: grid; grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)); gap: 4px; }
+.tc-pg-ic { font-size: 22px; line-height: 1; padding: 6px 0; border-radius: 6px; border: 1px solid var(--c-line); background: var(--c-panel); cursor: pointer; }
+.tc-pg-ic.on { border-color: var(--c-accent); box-shadow: 0 0 0 1px var(--c-accent) inset; }
+.tc-pg-presets .btn { font-size: var(--text-xs); }
+.tc-pg .pf-grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
