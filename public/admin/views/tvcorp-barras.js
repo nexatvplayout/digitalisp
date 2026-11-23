@@ -146,6 +146,11 @@ export default async function paintBarras(box, ctx) {
     el('div', { class: 'card tc-sec' },
       el('h3', { text: 'Barra lateral' }),
       note('Nos layouts por zonas, a lateral é uma zona: escolha o que ela mostra na aba Layouts (playlist, relógio, clima, QR code, notícias, cotações, contador…). Aqui ficam os blocos da lateral dos formatos de sempre (quando nenhuma grade vale).'),
+      // com grade, esta lateral não aparece: dizer onde pôr o relógio e o clima (o dono marcou aqui e nada saiu na TV)
+      d.schedules?.length ? el('div', { class: 'tc-onde' },
+        el('b', { text: 'Suas telas estão numa grade, então esta barra lateral não aparece nelas.' }),
+        note(`Grade(s): ${d.schedules.map((s) => s.name).join(', ')}. Para o relógio, o clima ou outro bloco aparecer, edite o layout da grade (aba Layouts) e ponha uma zona "Relógio", "Clima" ou "Gadget" — ou acrescente o gadget na playlist da zona.`, 'small'),
+        btns(btn('Abrir os Layouts', () => { location.hash = '#tvcorp/layouts'; }, 'small'))) : null,
       el('div', { class: 'pf-checks row' }, ...WIDGETS.map((w) => el('label', { class: 'pf-check' }, el('input', { type: 'checkbox', checked: wid.has(w.key), onchange: (e) => { if (e.target.checked) wid.add(w.key); else wid.delete(w.key); } }), el('span', { text: w.label })))),
       btns(btn('Salvar a barra lateral', saveSide))),
     el('div', { class: 'card tc-sec' },
