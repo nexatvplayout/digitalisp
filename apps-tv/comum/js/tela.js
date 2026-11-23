@@ -91,6 +91,22 @@
       caixa.style.setProperty('--cqw', w + 'px');
       caixa.style.setProperty('--cqwp', w + 'px');
       caixa.style.setProperty('--cqh', h + 'px');
+      // o clima ocupando a zona: tamanhos pela altura, com teto pela largura (previa-tv.css)
+      var H = r.height, W = r.width, mn = function (a, b) { return Math.max(1, Math.min(a, b)) + 'px'; };
+      var deitado = W > 1.6 * H;
+      Array.prototype.forEach.call(caixa.querySelectorAll('.tvc-it-wx'), function (e) {
+        e.classList.toggle('tvc-wx-deitado', deitado);
+        // sem a previsão dos dias: ícone ~34 %, temperatura ~26 %, texto ~9 % da altura; com ela, um pouco menores para
+        // caber tudo (cidade, agora e os dias)
+        var dias = !deitado && e.querySelector('.tvc-wx-days');
+        var k = dias ? { i: 0.27, t: 0.2, x: 0.07, c: 0.05, d: 0.035, s: 0.06 } : { i: 0.34, t: 0.26, x: 0.09, c: 0.065, d: 0.045, s: 0.08 };
+        e.style.setProperty('--wx-ico', mn(k.i * H, (deitado ? 0.3 : 0.6) * W));
+        e.style.setProperty('--wx-t', mn(k.t * H, (deitado ? 0.22 : 0.38) * W));
+        e.style.setProperty('--wx-x', mn(k.x * H, 0.09 * W));
+        e.style.setProperty('--wx-c', mn(k.c * H, 0.075 * W));
+        e.style.setProperty('--wx-d', mn(k.d * H, 0.05 * W));
+        e.style.setProperty('--wx-s', mn(k.s * H, 0.09 * W));
+      });
       (raiz.TelasPrevia.MINS || []).forEach(function (m, i) {
         var a = m[0] * (m[1] === 'w' ? w : h), b = m[2] * (m[3] === 'w' ? w : h);
         caixa.style.setProperty('--m' + i, Math.min(a, b) + 'px');
@@ -183,6 +199,21 @@
       timers.push(t);
     }
 
+    /**
+     * A foto do tempo (weather.art, a versão da orientação da zona), baixada e guardada: em cover, com um véu escuro, atrás
+     * do ícone e da temperatura. Sem ela (ou ainda baixando), o degradê do tempo.
+     */
+    function fotoClima(n, art) {
+      var sh = art && art.sha256 ? String(art.sha256).toLowerCase() : null;
+      if (!n || !sh) return;
+      ctx.url(sh).then(function (u) {
+        if (!u) return;
+        n.style.backgroundImage = 'linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.35)), url("' + u + '")';
+        n.style.backgroundSize = 'cover';
+        n.style.backgroundPosition = 'center';
+      }, function () {});
+    }
+
     /** Os tipos que a prévia desenha só como zona (relógio, clima, QR, logomarca): as mesmas classes dela. */
     function zonaPrevia(kind, o, prog) {
       var th = raiz.TelasPrevia.themeClass(tema(prog));
@@ -198,7 +229,7 @@
         // em degradê por tempo, a temperatura, o texto e a previsão com ícones pequenos)
         var wi = N.climaParaItem(o && (o.tempC !== undefined || o.now !== undefined || o.min !== undefined) ? o : prog.clima);
         if (!wi) return null;
-        if (raiz.TelasPrevia.weatherIcon) return raiz.TelasPrevia.itemPreview(wi, { theme: tema(prog) });
+        if (raiz.TelasPrevia.weatherIcon) { var nw = raiz.TelasPrevia.itemPreview(wi, { theme: tema(prog) }); fotoClima(nw, wi.art); return nw; }
         var w = wi;
         if (typeof w.tempC !== 'number') return null;
         var cw = el('div', 'tvc-z-weather ' + th);
@@ -313,7 +344,7 @@
               // showSeconds, quando vier, decide
               if (o.showSeconds !== undefined) o.seconds = o.showSeconds === true;
             }
-            if (o) { n = raiz.TelasPrevia.itemPreview(o, { theme: tema(prog) }); iniciais(n, o); fundoReserva(n, o); imagemInteira(n, it); }
+            if (o) { n = raiz.TelasPrevia.itemPreview(o, { theme: tema(prog) }); iniciais(n, o); fundoReserva(n, o); imagemInteira(n, it); if (o.kind === 'weather') fotoClima(n, it.raw && it.raw.art); }
           }
         } catch (e) {
           if (ctx.aoErro) ctx.aoErro('desenho do item ' + it.id + ': ' + e.message);

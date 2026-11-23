@@ -454,3 +454,12 @@ test('clima: o bloco da configuração (now/today/place) vira o item da prévia;
   // o item que já vem no formato da prévia passa
   assert.equal(N.climaParaItem({ kind: 'weather', tempC: 22, cond: 'fog' }).cond, 'fog');
 });
+
+test('clima com a foto do tempo (art): vai no pacote como opcional (zona e item)', () => {
+  const art = { url: 'https://cdn.x/clima-rain-port.jpg', sha256: H('e'), bytes: 9 };
+  const p = N.lerConfig(cfg('r', [bloco('a', 0, 1440, [{ id: 'w1', kind: 'weather', seconds: 8, city: 'X', tempC: 20, cond: 'rain', art: { url: 'https://cdn.x/c2.jpg', sha256: H('f'), bytes: 9 } }])],
+    { weather: { place: { city: 'X' }, now: { temp: 20, cond: 'rain' }, art } }));
+  const fs = N.arquivosDoPacote(p);
+  assert.deepEqual(fs.map((f) => [f.sha256, f.opcional]).sort(), [[H('e'), true], [H('f'), true]].sort());
+  assert.equal(N.climaParaItem(p.clima).art.sha256, H('e'));
+});

@@ -290,10 +290,10 @@
    */
   function lerCfg(json, op) {
     var p = N.lerConfig(json, op);
-    if (p.clima && N.climaParaItem(p.clima)) A.gravar('climaBom', { w: p.clima, em: Date.now() });
+    if (p.clima && N.climaParaItem(p.clima)) A.gravar('climaBom', { w: p.clima, arte: p.climaArte || null, em: Date.now() });
     else {
       var g = A.ler('climaBom', null);
-      if (g && g.w && Date.now() - g.em < 6 * 3600000) p.clima = g.w;
+      if (g && g.w && Date.now() - g.em < 6 * 3600000) { p.clima = g.w; p.climaArte = g.arte || null; }
     }
     return p;
   }
