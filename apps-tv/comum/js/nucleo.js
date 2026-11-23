@@ -12,7 +12,7 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  var VERSAO = '1.0.15';
+  var VERSAO = '1.0.16';
   var TZ_PADRAO = 'America/Sao_Paulo';
   var SHA = /^[0-9a-f]{64}$/;
   var DIA = /^\d{4}-\d{2}-\d{2}$/;
@@ -248,7 +248,12 @@
     // overlay: a zona por cima das outras (widget sobre a imagem), com o fundo translúcido em degraus de 20 % (opacity)
     var ov = o.overlay === true && kind !== 'video';
     var op = ov ? Math.round(Math.max(0, Math.min(100, num(o, 'opacity', 60))) / 20) * 20 : null;
-    return { id: id.slice(0, 32), kind: kind, x: x, y: y, w: w, h: h, qr: str(o, 'qr'), overlay: ov, opacidade: op,
+    // o recorte não retangular (zone.shape) e o filete na borda dele (zone.edge, só com shape; largura em % da altura da tela)
+    var forma = /^[a-z][a-z-]{1,23}$/.test(str(o, 'shape') || '') ? str(o, 'shape') : null;
+    var ed = forma && o.edge && typeof o.edge === 'object' ? o.edge : null;
+    var filete = ed && /^#[0-9a-f]{6}$/i.test(str(ed, 'color') || '') && num(ed, 'width', 0) > 0
+      ? { cor: str(ed, 'color').toLowerCase(), largura: Math.max(0.2, Math.min(3, num(ed, 'width', 1))) } : null;
+    return { id: id.slice(0, 32), kind: kind, x: x, y: y, w: w, h: h, qr: str(o, 'qr'), overlay: ov, opacidade: op, forma: forma, filete: filete,
       title: umaLinha(str(o, 'title') || '', TETO.titulo), text: limpar(str(o, 'text') || '', TETO.texto) };
   }
 

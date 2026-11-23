@@ -592,6 +592,42 @@
       }
     }
 
+    /**
+     * O formato especial da zona (zone.shape): clip-path: polygon() com os pontos de public/shared/tvcorp-formas.js (as TVs
+     * de 2018–2020 não têm clip-path: path()), medidos no tamanho real da zona; e o filete (zone.edge) num <svg> por cima,
+     * na largura em % da altura da tela. Devolve o polygon() (para o ao vivo, na camada dele) ou null.
+     */
+    function recorte(c, zona, alvo) {
+      var P = raiz.TelasPrevia;
+      if (!zona.forma || !P || !P.shapePolygon) return null;
+      var W = c.offsetWidth, H = c.offsetHeight;
+      if (!W || !H) return null;
+      var pts = P.shapePolygon(zona.forma, W, H);
+      if (!pts || pts.length < 3) return null; // formato que esta versão não conhece: o retângulo
+      var css = 'polygon(' + pts.map(function (p) { return p[0] + '% ' + p[1] + '%'; }).join(', ') + ')';
+      c.style.webkitClipPath = css;
+      c.style.clipPath = css;
+      if (zona.filete && P.edgeCommands && P.toPathD) {
+        var NS = 'http://www.w3.org/2000/svg';
+        var svg = document.createElementNS(NS, 'svg');
+        svg.setAttribute('class', 'zona-filete');
+        svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+        svg.setAttribute('preserveAspectRatio', 'none');
+        svg.style.left = c.style.left; svg.style.top = c.style.top; svg.style.width = c.style.width; svg.style.height = c.style.height;
+        if (c.style.zIndex) svg.style.zIndex = c.style.zIndex;
+        var p = document.createElementNS(NS, 'path');
+        p.setAttribute('d', P.toPathD(P.edgeCommands(zona.forma, W, H)));
+        p.setAttribute('fill', 'none');
+        p.setAttribute('stroke', zona.filete.cor);
+        p.setAttribute('stroke-width', String(Math.max(1, zona.filete.largura / 100 * (window.innerHeight || 1080))));
+        p.setAttribute('stroke-linecap', 'round');
+        p.setAttribute('stroke-linejoin', 'round');
+        svg.appendChild(p);
+        alvo.appendChild(svg);
+      }
+      return css;
+    }
+
     function desenharBloco(prog, bloco) {
       atual = { prog: prog, bloco: bloco };
       raizEl.style.background = (bloco && bloco.layout.fundo) || prog.marca.fundo || '#000';
@@ -624,11 +660,14 @@
         var c = el('div', 'zona zona-' + zona.kind);
         c.style.left = zona.x + '%'; c.style.top = zona.y + '%'; c.style.width = zona.w + '%'; c.style.height = zona.h + '%';
         // a zona por cima: acima da camada do ao vivo (z-index 1) e com o vidro translúcido da prévia (.tvc-ov.tvc-op-N)
-        if (zona.overlay) { c.style.zIndex = '2'; c._ov = ' tvc-ov tvc-op-' + zona.opacidade; c.className += ' zona-ov'; }
+        if (zona.overlay) { c.style.zIndex = '3'; c._ov = ' tvc-ov tvc-op-' + zona.opacidade; c.className += ' zona-ov'; }
+        // a zona com formato entra na vizinha (que pode ser o vídeo): fica acima da camada do ao vivo, abaixo das de cima
+        else if (zona.forma && zona.kind !== 'video') c.style.zIndex = '2';
         alvo.appendChild(c);
+        var recorteCss = recorte(c, zona, alvo);
         var itens = bloco.itens[zona.id] || [];
-        // o ao vivo fica na camada dele, posicionada na tela: a zona do quadro do conjunto vira % desta tela
-        if (zona.kind === 'video') zonaVideo(c, prog, N.retanguloNaTela(zona, jan));
+        // o ao vivo fica na camada dele, posicionada na tela: a zona do quadro do conjunto vira % desta tela (com o recorte)
+        if (zona.kind === 'video') { var rv = N.retanguloNaTela(zona, jan); if (recorteCss) rv.recorte = recorteCss; zonaVideo(c, prog, rv); }
         else if (zona.kind === 'playlist') playlist(c, itens, prog);
         else if (zona.kind === 'ticker') faixa(c, avisosDa(prog).concat(itens.filter(function (i) { return i.kind === 'text'; }).map(function (i) { return { texto: i.title || i.text }; })), prog);
         else if (raiz.TelasPrevia && !itens.length && ['clock', 'logo', 'weather', 'qr', 'text'].indexOf(zona.kind) >= 0) zonaFixa(c, zona, prog);

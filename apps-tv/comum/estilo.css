@@ -7,6 +7,8 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #000; color:
 .zona { position: absolute; overflow: hidden; }
 /* videowall: o quadro do conjunto inteiro, maior que a tela e deslocado; #conteudo recorta a janela desta TV */
 .quadro-conjunto { position: absolute; overflow: hidden; }
+/* o filete na borda do recorte da zona (zone.edge): por cima dela, sem cortar a metade de fora do traço */
+.zona-filete { position: absolute; overflow: visible; pointer-events: none; }
 /* comando identify: o nome da TV e a posição no conjunto, por cima de tudo */
 #identifica { position: absolute; left: 0; top: 0; right: 0; bottom: 0; z-index: 40; background: rgba(2,6,23,.92); color: #fff;
   display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }

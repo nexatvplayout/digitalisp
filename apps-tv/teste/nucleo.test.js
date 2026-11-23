@@ -410,3 +410,12 @@ test('rádio de fundo: layout.audio só em layout sem vídeo, http ou https, vol
   assert.equal(N.lerAudio({ kind: 'radio', url: 'https://x/a.m3u8', volume: 3 }).volume, 10);
   assert.deepEqual([0, 1, 2, 3, 4, 5, 9].map(N.esperaRadio), [3, 6, 12, 24, 48, 60, 60]);
 });
+
+test('zona com formato: shape e edge (só com shape; largura de 0.2 a 3 % da altura da tela)', () => {
+  const b = { id: 'f', layout: { zones: [
+    { id: 'a', kind: 'playlist', x: 0, y: 0, w: 60, h: 100 },
+    { id: 'b', kind: 'playlist', x: 50, y: 0, w: 50, h: 100, shape: 'onda-esq', edge: { color: '#29D3E5', width: 9 } },
+    { id: 'c', kind: 'clock', x: 0, y: 0, w: 10, h: 10, edge: { color: '#ffffff', width: 1 } }] }, days: [], from: 0, to: 1440, zones: {} };
+  const z = N.lerConfig(cfg('r', [b])).blocos[0].layout.zonas;
+  assert.deepEqual([z[0].forma, z[1].forma, z[1].filete, z[2].forma, z[2].filete], [null, 'onda-esq', { cor: '#29d3e5', largura: 3 }, null, null]);
+});

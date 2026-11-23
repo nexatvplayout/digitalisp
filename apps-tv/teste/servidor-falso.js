@@ -115,6 +115,19 @@ function tzLocal() { return Intl.DateTimeFormat().resolvedOptions().timeZone || 
 /** A grade com um item de cada tipo (teste visual contra a prévia do painel). */
 function blocoTipos() {
   const lateral = est.tipos === 'lateral';
+  if (est.tipos === 'formas') {
+    // zonas com recorte (zone.shape) e filete (zone.edge): o vídeo à esquerda, a playlist em onda entrando nele, o relógio
+    // num círculo e o clima numa pílula por cima
+    const tipos = itensTipos(arquivo, Math.floor(Date.now() / 3600000) * 3600000);
+    return { id: 'grade-tipos', layout: { orientation: 'land', background: '#0b1220', zones: [
+      { id: 'main', x: 0, y: 0, w: 62, h: 88, kind: midia['video-teste.mp4'] ? 'video' : 'playlist' },
+      { id: 'faixa', x: 0, y: 88, w: 100, h: 12, kind: 'ticker' },
+      { id: 'lado', x: 52, y: 0, w: 48, h: 88, kind: 'playlist', shape: 'onda-esq', edge: { color: '#29d3e5', width: 0.8 } },
+      { id: 'hora', x: 3, y: 4, w: 14, h: 25, kind: 'widget', overlay: true, opacity: 60, shape: 'circulo', edge: { color: '#f5b31c', width: 0.5 } },
+      { id: 'clima', x: 66, y: 66, w: 30, h: 18, kind: 'widget', overlay: true, opacity: 80, shape: 'pilula', edge: { color: '#ffffff', width: 0.3 } }] },
+      days: [], from: 0, to: 1440,
+      zones: { main: [], lado: tipos.filter((t) => t.kind === 'slide').slice(10, 14), hora: tipos.filter((t) => t.id === 'wclka'), clima: tipos.filter((t) => t.id === 'wwx') } };
+  }
   if (est.tipos === 'sobre') {
     // zonas por cima (overlay) sobre o vídeo/playlist: relógio e clima no canto, com o vidro translúcido
     const tipos = itensTipos(arquivo, Math.floor(Date.now() / 3600000) * 3600000);
@@ -371,7 +384,7 @@ function controle(req, res, url) {
     registrar('ao vivo: ' + (est.aoVivo || 'nenhum'));
     return volta();
   }
-  if (p === '/teste/tipos') { est.tipos = ['lateral', 'cheia', 'sobre'].includes(q.get('modo')) ? q.get('modo') : null; est.versao++; registrar('todos os tipos: ' + (est.tipos || 'desligado')); return volta(); }
+  if (p === '/teste/tipos') { est.tipos = ['lateral', 'cheia', 'sobre', 'formas'].includes(q.get('modo')) ? q.get('modo') : null; est.versao++; registrar('todos os tipos: ' + (est.tipos || 'desligado')); return volta(); }
   if (p === '/teste/tema') { est.tema = { color: q.get('cor') || '#6d28d9', mode: q.get('modo') === 'light' ? 'light' : 'dark' }; est.versao++; return volta(); }
   if (p === '/teste/itens.json') return json(res, 200, { itens: itensTipos(arquivo, Date.now()), tema: est.tema, tz: tzLocal() });
   if (p === '/teste/previa-painel' || p === '/teste/previa-tv' || p === '/teste/comparar') {

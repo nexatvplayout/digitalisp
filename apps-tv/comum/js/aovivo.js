@@ -122,6 +122,7 @@
       posicionar: function (r) {
         if (!v) return;
         v.style.left = r.x + '%'; v.style.top = r.y + '%'; v.style.width = r.w + '%'; v.style.height = r.h + '%';
+        v.style.webkitClipPath = r.recorte || ''; v.style.clipPath = r.recorte || '';
         v.hidden = false;
       },
       amostra: function () {
@@ -155,7 +156,8 @@
      * da tela (setDisplayRect), sem recortar: aí vai o <video>, que a página recorta, quando a TV toca HLS nele.
      */
     function motorPara(r) {
-      var fora = r && (r.x < 0 || r.y < 0 || r.x + r.w > 100.01 || r.y + r.h > 100.01);
+      // o recorte não retangular (zone.shape) também: o AVPlay não recorta
+      var fora = r && (r.recorte || r.x < 0 || r.y < 0 || r.x + r.w > 100.01 || r.y + r.h > 100.01);
       if (fora && padrao.nome === 'avplay' && temHlsNativo()) return comoVideo || (comoVideo = motorVideo(camada, op));
       return padrao;
     }
