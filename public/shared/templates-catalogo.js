@@ -6,7 +6,7 @@
 //
 //   templateCatalog()                 todos (memorizado), na ordem: grupo, segmento, peça, variação, formato
 //   filterTemplates(list, { q, group, segment, piece, orient })
-import { GROUPS, SEGMENTS, CORP_SEGMENTS, CORP, HORARIOS, DATAS, INTERNOS, PROVEDOR_FOTOS } from './templates-dados.js';
+import { GROUPS, SEGMENTS, CORP_SEGMENTS, CORP, HORARIOS, DATAS, INTERNOS, PROVEDOR_FOTOS, PROMO_FOTOS } from './templates-dados.js';
 
 export { GROUPS };
 /** As peças (o filtro "peça" do painel). */
@@ -18,7 +18,7 @@ export const PIECES = [
   ['vaga', 'Vagas'], ['reconhecimento', 'Reconhecimento'], ['aniversariantes', 'Aniversariantes'], ['beneficio', 'Benefícios'], ['visitante', 'Visitantes'],
 ].map(([key, label]) => ({ key, label }));
 export const PIECE = Object.fromEntries(PIECES.map((p) => [p.key, p]));
-export const ALL_SEGMENTS = [...SEGMENTS, ...CORP_SEGMENTS, INTERNOS, PROVEDOR_FOTOS];
+export const ALL_SEGMENTS = [...SEGMENTS, ...CORP_SEGMENTS, INTERNOS, PROVEDOR_FOTOS, PROMO_FOTOS];
 export const SEGMENT = Object.fromEntries(ALL_SEGMENTS.map((s) => [s.key, s]));
 const LOJA_PIECES = ['oferta', 'preco', 'combo', 'cardapio', 'promocao', 'boas-vindas', 'horario', 'datas', 'aviso', 'institucional', 'qr', 'redes'];
 const INST_PIECES = ['servicos', 'agenda', 'evento', 'dica', 'campanha', 'boas-vindas', 'horario', 'datas', 'aviso', 'institucional', 'qr', 'redes'];

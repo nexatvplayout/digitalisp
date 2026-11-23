@@ -571,3 +571,27 @@ export const PROVEDOR_FOTOS = {
     ['aviso', 'comunicado', { title: 'Mudou de casa?', text: 'Leve a sua internet com você: a mudança de endereço é rápida e sem multa.' }, 'foto-prov-mudanca', 'verde'],
   ],
 };
+
+/* ------------------------------------------------------------------ datas promocionais com foto (16 prontos) */
+/** As datas do calendário do comércio com as fotos próprias (foto-promo-*.jpg, geradas com GPT Image). Mesmo formato de INTERNOS. */
+export const PROMO_FOTOS = {
+  key: 'datas-promocionais', label: 'Datas promocionais com foto', group: 'varejo', kind: 'fixo', nome: 'Loja Estilo Urbano', g: 'f',
+  itens: [
+    ['promocao', 'oferta', { title: 'Smart TV 50 polegadas', price: 'R$ 1.999,00', oldPrice: 'R$ 2.799,00', unit: 'ou 10x de R$ 199,90', tag: 'BLACK FRIDAY', text: 'Só nesta sexta ou enquanto durar o estoque.' }, 'foto-promo-black-friday', 'dourado'],
+    ['promocao', 'oferta', { title: 'Kit presente de Natal', price: 'R$ 89,90', oldPrice: 'R$ 119,90', tag: 'NATAL', text: 'Embalagem para presente sem custo a mais.' }, 'foto-promo-natal', 'vermelho'],
+    ['promocao', 'oferta', { title: 'Buquê de rosas com chocolates', price: 'R$ 129,90', oldPrice: 'R$ 159,90', tag: 'DIA DAS MÃES', text: 'Encomende até sexta e receba no domingo.' }, 'foto-promo-maes', 'rosa'],
+    ['promocao', 'oferta', { title: 'Kit carteira e relógio', price: 'R$ 199,90', oldPrice: 'R$ 249,90', unit: 'ou 3x de R$ 66,63', tag: 'DIA DOS PAIS', text: 'Presente com embalagem especial.' }, 'foto-promo-pais', 'azul'],
+    ['promocao', 'oferta', { title: 'Urso de pelúcia de 50 cm', price: 'R$ 79,90', oldPrice: 'R$ 99,90', tag: 'DIA DAS CRIANÇAS', text: 'Brinquedos com até 30% de desconto.' }, 'foto-promo-criancas', 'laranja'],
+    ['promocao', 'oferta', { title: 'Kit presente para dois', price: 'R$ 149,90', oldPrice: 'R$ 189,90', tag: 'DIA DOS NAMORADOS', text: 'Surpreenda quem você ama.' }, 'foto-promo-namorados', 'vinho'],
+    ['promocao', 'oferta', { title: 'Ovo de chocolate de 500 g', price: 'R$ 59,90', oldPrice: 'R$ 74,90', tag: 'PÁSCOA', text: 'Leve 3 e pague 2 nos ovos de 250 g.' }, 'foto-promo-pascoa', 'marrom'],
+    ['datas', 'data-comemorativa', { title: 'Feliz Ano Novo!', date: { md: [1, 1] }, text: 'Obrigado pela confiança neste ano. Que o próximo seja ainda melhor!' }, 'foto-promo-ano-novo', 'azul'],
+    ['aviso', 'comunicado', { title: 'Queima de estoque', text: 'Descontos de até 70% em centenas de produtos. Corra: é só até domingo!' }, 'foto-promo-queima', 'vermelho'],
+    ['promocao', 'oferta', { title: 'Óculos de sol', price: 'R$ 99,90', oldPrice: 'R$ 139,90', tag: 'LIQUIDAÇÃO DE VERÃO', text: 'Moda praia e acessórios com preço de verão.' }, 'foto-promo-verao', 'petroleo'],
+    ['promocao', 'oferta', { title: 'Kit material escolar', price: 'R$ 89,90', oldPrice: 'R$ 119,90', tag: 'VOLTA ÀS AULAS', text: 'Cadernos, lápis, canetas e mochila com desconto.' }, 'foto-promo-volta-aulas', 'verde'],
+    ['aviso', 'comunicado', { title: 'Carnaval de ofertas', text: 'Fantasias, máscaras e adereços com preço de folia!' }, 'foto-promo-carnaval', 'roxo'],
+    ['aviso', 'comunicado', { title: 'Arraiá de ofertas', text: 'Milho, pipoca, paçoca e bandeirinhas para a sua festa junina.' }, 'foto-promo-junina', 'laranja'],
+    ['promocao', 'oferta', { title: 'Blusa de tricô', price: 'R$ 99,90', oldPrice: 'R$ 139,90', unit: 'ou 3x de R$ 33,30', tag: 'COLEÇÃO DE INVERNO', text: 'Casacos, malhas e cachecóis para os dias frios.' }, 'foto-promo-inverno', 'grafite'],
+    ['aviso', 'comunicado', { title: 'Aniversário da loja', text: 'Quem ganha presente é você: descontos especiais a semana toda!' }, 'foto-promo-aniversario-loja', 'petroleo'],
+    ['datas', 'data-comemorativa', { title: 'Dia do Cliente', date: { md: [9, 15] }, text: 'Obrigado pela preferência! Hoje tem condições especiais para você.' }, 'foto-promo-dia-cliente', 'dourado'],
+  ],
+};
