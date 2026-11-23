@@ -71,5 +71,5 @@ keyPassword=<a senha>
 
 | Marcador | Onde | O que fazer quando o domínio for decidido |
 |---|---|---|
-| `SERVIDOR_A_DEFINIR` | `android/app/build.gradle.kts` (`telas.servidorPadrao`), lido como `BuildConfig.SERVIDOR_PADRAO` | compilar com `-Ptelas.servidorPadrao=https://<api de produção>` ou pôr `telas.servidorPadrao=https://…` em `android/gradle.properties`. Enquanto for o marcador, a tela de cadastro vem com o campo do servidor vazio (quem instala digita) e a recuperação depois de reinstalar só pergunta ao servidor já gravado no aparelho. |
+| Servidor padrão | `android/gradle.properties`: `telas.servidorPadrao=https://www.digitalisp.com.br` (definido em 23/11/2026), lido como `BuildConfig.SERVIDOR_PADRAO` | a tela de cadastro já vem com ele e esconde o campo do servidor (botão "Avançado: usar outro servidor"); a recuperação depois de reinstalar pergunta a ele. Sem a linha, volta o marcador `SERVIDOR_A_DEFINIR` (quem instala digita o endereço). |
 | Endereço de atualização | não fica no app | vem do servidor no campo `update` do `/config` (`url`, `sha256`, `versionCode`). O servidor precisa servir o APK de release assinado com a chave do dono. |
