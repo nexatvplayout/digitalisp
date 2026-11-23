@@ -164,6 +164,16 @@ class SignageNovidadesTest {
         assertEquals(0f, z["z4"]!!.edgeWidth)
     }
 
+    @Test fun videoProporcionalPorPadrao() {
+        val z = block("""{"id":"v","kind":"video","x":0,"y":0,"w":50,"h":100},{"id":"c","kind":"video","x":50,"y":0,"w":50,"h":100,"fit":"cover"}""").layout.zones
+        assertFalse(z[0].cover) // sem o campo: proporcional, com faixas pretas
+        // só uma zona de vídeo vale (o player é um só); a de cover numa grade separada
+        val c = block("""{"id":"c","kind":"video","x":0,"y":0,"w":100,"h":100,"fit":"COVER"}""").layout.zones[0]
+        assertTrue(c.cover)
+        // `fit` em zona que não é de vídeo não faz nada
+        assertFalse(block("""{"id":"p","kind":"playlist","x":0,"y":0,"w":100,"h":100,"fit":"cover"}""").layout.zones[0].cover)
+    }
+
     @Test fun radioDeFundo() {
         val a = block("""{"id":"z","kind":"playlist","x":0,"y":0,"w":100,"h":100}""", ""","audio":{"kind":"radio","id":"r1","name":"Rádio","url":"http://radio.exemplo:8000/stream","volume":40}""").layout.audio!!
         assertEquals("http://radio.exemplo:8000/stream", a.url)
