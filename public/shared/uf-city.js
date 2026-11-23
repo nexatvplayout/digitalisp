@@ -28,7 +28,7 @@ let loading = null;
 
 /** A lista do IBGE indexada por UF e por código (baixada uma vez). */
 export function loadMunicipios() {
-  loading ||= fetch(new URL('./municipios-ibge.json', import.meta.url))
+  loading ||= fetch('/shared/municipios-ibge.json') // endereço fixo: no painel empacotado (/_v/…/painel/) o import.meta.url não acha o arquivo
     .then((r) => { if (!r.ok) throw new Error(`lista de municípios: HTTP ${r.status}`); return r.json(); })
     .then((j) => {
       const byUf = new Map(); const byCode = new Map();

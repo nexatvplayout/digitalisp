@@ -138,7 +138,30 @@ export function slidePreview(template, fields = {}, opts = {}) {
       add(n, h('div', 'tvc-sl-body', template === 'vaga' ? h('div', 'tvc-sl-tag', 'VAGA INTERNA') : null, title, f.area ? h('div', 'tvc-sl-x', f.area) : null, f.text ? h('div', 'tvc-sl-x', f.text) : null,
         f.until ? h('div', 'tvc-sl-x', `Inscrições até ${brDate(f.until)}`) : f.date ? h('div', 'tvc-sl-x', brDate(f.date)) : null), qr);
   }
+  fitSlide(n);
   return n;
+}
+
+/* o slide com texto demais para o quadro (tabela de preços longa, quadro baixo da zona): diminui o conteúdo em degraus
+   (classes tvc-fit-1 a tvc-fit-6) até caber, em vez de cortar em cima e embaixo. Refaz quando o quadro muda de tamanho. */
+const FIT_STEPS = 6;
+function fitSlide(n) {
+  if (typeof ResizeObserver !== 'function') return;
+  let busy = false;
+  const fit = () => {
+    if (busy || !n.isConnected || !n.clientHeight) return;
+    busy = true;
+    for (let i = 1; i <= FIT_STEPS; i++) n.classList.remove(`tvc-fit-${i}`);
+    for (let i = 1; i <= FIT_STEPS && n.scrollHeight > n.clientHeight + 2; i++) {
+      if (i > 1) n.classList.remove(`tvc-fit-${i - 1}`);
+      n.classList.add(`tvc-fit-${i}`);
+    }
+    busy = false;
+  };
+  const ro = new ResizeObserver(() => fit());
+  ro.observe(n);
+  // as fotos e as fontes chegam depois: confere de novo quando carregam
+  n.querySelectorAll?.('img').forEach((im) => im.addEventListener('load', fit, { once: true }));
 }
 
 /* ------------------------------------------------------------------ itens da playlist */
@@ -150,13 +173,16 @@ export function itemPreview(it = {}, opts = {}) {
     case 'video': {
       // o vídeo próprio: na prévia, a miniatura com o tempo (a TV toca o arquivo)
       const img = it.poster ? h('img', 'tvc-it-img') : null; if (img) { img.alt = it.title || ''; img.src = it.poster; }
+      const fill = it.poster ? h('img', 'tvc-it-fill') : null; if (fill) { fill.alt = ''; fill.src = it.poster; }
       const s = Number(it.seconds) || 0;
-      return box('tvc-it-image tvc-it-video', img || h('div', 'tvc-it-vph', 'Vídeo'), h('span', 'tvc-it-vbadge', it.processing ? 'Preparando…' : `▶ ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`));
+      return box('tvc-it-image tvc-it-video', fill, img || h('div', 'tvc-it-vph', 'Vídeo'), h('span', 'tvc-it-vbadge', it.processing ? 'Preparando…' : `▶ ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`));
     }
     case 'image': {
       if (!it.url) return box('tvc-it-empty', 'Imagem');
+      // a imagem inteira (como a TV: fit contain), com a mesma foto desfocada atrás: no quadro quase quadrado nada fica cortado
+      const fill = h('img', 'tvc-it-fill'); fill.alt = ''; fill.src = it.url;
       const img = h('img', 'tvc-it-img'); img.alt = it.caption || it.title || ''; img.src = it.url;
-      return box('tvc-it-image', img, it.caption ? h('div', 'tvc-sl-cap', it.caption) : null);
+      return box('tvc-it-image', fill, img, it.caption ? h('div', 'tvc-sl-cap', it.caption) : null);
     }
     case 'slide': return slidePreview(it.template, it.fields, { theme: opts.theme, image: it.image || null });
     case 'post': return slidePreview(it.category === 'vaga' ? 'vaga' : it.category === 'seguranca' ? 'seguranca' : 'comunicado', { title: it.title, text: it.body ?? it.text, qr: it.qr }, { theme: opts.theme, image: typeof it.image === 'string' ? it.image : it.image?.url || null });

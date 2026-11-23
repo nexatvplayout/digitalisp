@@ -91,7 +91,9 @@
 .tvc-it-img { width: 100%; height: 100%; object-fit: cover; }
 .tvc-it-empty { align-items: center; color: var(--tdim); }
 .tvc-it-image { position: relative; justify-content: flex-end; }
-.tvc-it-image .tvc-it-img { position: absolute; inset: 0; }
+.tvc-it-image .tvc-it-img { position: absolute; inset: 0; object-fit: contain; }
+/* atrás da imagem inteira: a mesma foto desfocada cobrindo o quadro (sem faixas pretas e sem cortar a foto) */
+.tvc-it-image .tvc-it-fill { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: blur(2.5cqw) brightness(0.55); transform: scale(1.15); }
 
 /* artes de fundo da biblioteca (public/tvcorp/arte/, desenhadas no projeto) */
 .tvc-sl.tvc-art { background-size: cover; background-position: center; }
@@ -364,3 +366,12 @@
 .tvc-wall-n { font: 700 22px/1 "IBM Plex Sans", Arial, sans-serif; fill: rgba(255, 255, 255, 0.55); stroke: rgba(0, 0, 0, 0.6); stroke-width: 0.8px; paint-order: stroke; text-anchor: middle; dominant-baseline: middle; pointer-events: none; }
 /* formatos especiais: o filete na borda do recorte */
 .tvc-edge { fill: none; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+.tvc-it-image { overflow: hidden; }
+/* o slide que não cabe no quadro: o conteúdo diminui em degraus (fitSlide em tvcorp-previa.js) */
+.tvc-sl.tvc-fit-1 > * { zoom: 0.9; }
+.tvc-sl.tvc-fit-2 > * { zoom: 0.8; }
+.tvc-sl.tvc-fit-3 > * { zoom: 0.7; }
+.tvc-sl.tvc-fit-4 > * { zoom: 0.62; }
+.tvc-sl.tvc-fit-5 > * { zoom: 0.55; }
+.tvc-sl.tvc-fit-6 > * { zoom: 0.48; }
+.tvc-sl.tvc-art > .tvc-sl-img, .tvc-sl > .tvc-sl-img { zoom: 1; }

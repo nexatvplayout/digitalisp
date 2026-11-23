@@ -271,3 +271,5 @@ dialog.pf-dlg.tc-lay-dlg { width: min(97vw, 1560px); max-width: 97vw; }
 .tc-zones-wrap td > select { width: 150px; }
 .tc-zones-wrap td { padding-left: 6px; padding-right: 6px; }
 .tc-zones-wrap .tc-qrf select { max-width: 100%; }
+/* slide em pé (9:16) na prévia do item: a caixa vira em pé também, em vez de espremer o slide numa caixa deitada */
+.tc-item-pv:has(> .tvc-port) { aspect-ratio: 9 / 16; max-width: 250px; }
