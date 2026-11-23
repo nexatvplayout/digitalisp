@@ -93,12 +93,14 @@ test('código do painel: só textContent, sem estilo pelo script, sem script nem
   // as rotas da rede saem por /api/tvcorp/rede, nunca pelas da prefeitura
   for (const f of VIEWS) assert.ok(!/\/api\/prefeitura/.test(read(f)), `${f}: não fala com /api/prefeitura`);
   // as artes de fundo existem e são só desenho (sem texto, sem imagem de fora)
-  for (const a of C.ARTS) { const svg = read(`public/tvcorp/arte/${a.key}.svg`); assert.match(svg, /^<svg /); assert.ok(!/<text|<image|<script|href=/.test(svg), a.key); }
+  for (const a of C.ARTS.filter((x) => !x.photo)) { const svg = read(`public/tvcorp/arte/${a.key}.svg`); assert.match(svg, /^<svg /); assert.ok(!/<text|<image|<script|href=/.test(svg), a.key); }
+  // as fotos próprias (geradas para o DIGITAL ISP): JPEG de verdade e leve
+  for (const a of C.ARTS.filter((x) => x.photo)) { const b = fs.readFileSync(path.join(root, `public/tvcorp/arte/${a.key}.jpg`)); assert.ok(b[0] === 0xff && b[1] === 0xd8 && b.length < 200 * 1024, a.key); }
 });
 
 test('abas: todas as da §6, pela permissão tvcorp.manage', () => {
   const ids = TABS.map((t) => t.id);
-  assert.deepEqual(ids, ['resumo', 'telas', 'unidades', 'midias', 'aovivo', 'playlists', 'layouts', 'grade', 'dados', 'indicadores', 'rh', 'barras', 'alertas', 'aprovacoes', 'celular', 'relatorios', 'comandos', 'instalar', 'config']);
+  assert.deepEqual(ids, ['resumo', 'telas', 'unidades', 'midias', 'templates', 'aovivo', 'playlists', 'layouts', 'grade', 'dados', 'indicadores', 'rh', 'barras', 'alertas', 'aprovacoes', 'celular', 'relatorios', 'comandos', 'instalar', 'config']);
   assert.equal(tabsFor(() => false).length, 0, 'sem a permissão, nenhuma aba');
   assert.equal(tabsFor((p) => p === 'tvcorp.manage').length, TABS.length);
   assert.ok(TABS.every((t) => typeof t.paint === 'function' && t.perm === 'tvcorp.manage'));
@@ -107,7 +109,7 @@ test('abas: todas as da §6, pela permissão tvcorp.manage', () => {
 
 test('catálogo: os modelos de layout passam na conferência do contrato; nome curto, dias, faixa do indicador', () => {
   for (const l of C.FACTORY_LAYOUTS) assert.equal(C.checkZones(l.zones), null, l.key);
-  assert.equal(C.FACTORY_LAYOUTS.length, 12); assert.equal(C.SLIDE_TEMPLATES.length, 12);
+  assert.equal(C.FACTORY_LAYOUTS.length, 12); assert.equal(C.SLIDE_TEMPLATES.length, 17);
   assert.match(C.checkZones([{ id: 'a', kind: 'video', x: 0, y: 0, w: 50, h: 50 }, { id: 'b', kind: 'video', x: 50, y: 0, w: 50, h: 50 }]), /uma zona de vídeo/);
   assert.match(C.checkZones([{ id: 'a', kind: 'playlist', x: 60, y: 0, w: 50, h: 50 }]), /passa da borda/);
   assert.match(C.checkZones(Array.from({ length: 7 }, (_, i) => ({ id: `z${i}`, kind: 'clock', x: 0, y: 0, w: 10, h: 10 }))), /No máximo 6/);

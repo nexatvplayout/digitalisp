@@ -74,6 +74,27 @@ datas comemorativas, avisos, institucional, QR code e redes sociais. Cada peça 
 variações de cor e de arte. Os templates são gerados por família e conferidos por amostragem. As fotos são próprias
 (geradas) ou não há foto; nada de imagem de terceiros.
 
+**Feito (22/11/2026): 5.280 templates.**
+- Onde: dados em `public/shared/templates-dados.js`, gerador em `public/shared/templates-catalogo.js`, aba "Templates"
+  em `public/admin/views/tvcorp-templates.js` (grupo Conteúdo do menu).
+- Conta: 44 segmentos × 12 peças × 5 variações × 2 formatos.
+  - Quem vende com preço (loja): oferta, preço, combo, tabela/cardápio, promoção da semana.
+  - Quem atende sem preço (clínica, escola, banco, igreja, órgão público…): serviços, agenda, evento, dicas, campanhas.
+  - Indústria e escritório: indicadores, segurança, vagas, reconhecimento, refeitório, aniversariantes, benefícios.
+  - Todos: boas-vindas, horário, datas comemorativas, avisos, institucional, QR code e redes sociais.
+- Modelos de slide novos: `oferta`, `precos` (vitrine de preços), `combo`, `horario` e `redes`. Campos de estilo novos
+  em todos os modelos: `palette` (11 cores) e `orient` (`port` = em pé, 9:16).
+- Artes novas: 5 SVG (listras, pontos, folhas, circuito, papel) e 10 fotos próprias geradas com GPT Image (`foto-*.jpg`,
+  1280×720, sem texto nem marca), com véu escuro de 60% ou mais por cima.
+- Usar um template abre o editor de slide já preenchido; salvar grava a mídia na biblioteca.
+- Sem o módulo "templates" no plano, a aba mostra o aviso de upgrade.
+- `test/templates.test.js` confere:
+  - a contagem;
+  - a validação do servidor sem perda;
+  - texto em branco, sobras de modelo e marcas de terceiros;
+  - repetição;
+  - contraste de 4,5:1, lido do próprio CSS.
+
 **Layouts.** Cerca de 40 prontos, mais o editor de zonas:
 
 - tela cheia;

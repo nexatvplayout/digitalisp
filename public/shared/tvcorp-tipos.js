@@ -203,20 +203,51 @@ const TITLE = F('title', 'Título', 'line', { max: 60, required: true });
 const TEXT = F('text', 'Texto', 'text', { max: 280 });
 const IMAGE = F('image', 'Imagem', 'media');
 const QR = F('qr', 'QR code (endereço)', 'url');
-/** As artes de fundo dos slides (public/tvcorp/arte/<chave>.svg, desenhadas no projeto, sem marca de terceiros). */
-export const TVC_ARTS = Object.freeze([
-  { key: 'ondas', label: 'Ondas' }, { key: 'geometrico', label: 'Geométrico' }, { key: 'aniversario', label: 'Aniversário (confete)' },
-  { key: 'seguranca', label: 'Segurança do trabalho (faixas)' }, { key: 'fim-de-ano', label: 'Fim de ano' }, { key: 'conquista', label: 'Conquista (raios)' },
-  { key: 'evento', label: 'Evento (luzes)' }, { key: 'saude', label: 'Saúde e bem-estar' },
-]);
+const PRICE = F('price', 'Preço', 'line', { max: 16, required: true });
+const OLD_PRICE = F('oldPrice', 'Preço de (riscado)', 'line', { max: 16 });
+const TAG = F('tag', 'Etiqueta', 'line', { max: 30 });
 /**
- * Os campos de estilo de todos os modelos: tema claro ou escuro, a cor de destaque (sem ela, a cor da empresa) e a arte de
- * fundo (a prévia do painel desenha; o app desenha o slide na cor do tema).
+ * As artes de fundo dos slides (public/tvcorp/arte/<chave>.svg, desenhadas no projeto, sem marca de terceiros; as fotos
+ * foto-<chave>.jpg são próprias, geradas para o DIGITAL ISP). tone: dark (o texto fica claro) ou light (o texto fica
+ * escuro): a prévia põe a classe tvc-art-dark ou tvc-art-light e o texto segue a arte. photo: foto com véu escuro por cima.
+ */
+export const TVC_ARTS = Object.freeze([
+  { key: 'ondas', label: 'Ondas', tone: 'dark' }, { key: 'geometrico', label: 'Geométrico', tone: 'dark' },
+  { key: 'aniversario', label: 'Aniversário (confete)', tone: 'dark' }, { key: 'seguranca', label: 'Segurança do trabalho (faixas)', tone: 'dark' },
+  { key: 'fim-de-ano', label: 'Fim de ano', tone: 'dark' }, { key: 'conquista', label: 'Conquista (raios)', tone: 'dark' },
+  { key: 'evento', label: 'Evento (luzes)', tone: 'dark' }, { key: 'saude', label: 'Saúde e bem-estar', tone: 'light' },
+  // DIGITAL ISP (templates por segmento)
+  { key: 'listras', label: 'Listras', tone: 'dark' }, { key: 'pontos', label: 'Pontos', tone: 'dark' },
+  { key: 'folhas', label: 'Folhas', tone: 'dark' }, { key: 'circuito', label: 'Circuito (tecnologia)', tone: 'dark' },
+  { key: 'papel', label: 'Papel claro', tone: 'light' },
+  { key: 'foto-supermercado', label: 'Foto: hortifrúti', tone: 'dark', photo: true }, { key: 'foto-padaria', label: 'Foto: pães e café', tone: 'dark', photo: true },
+  { key: 'foto-farmacia', label: 'Foto: farmácia', tone: 'dark', photo: true }, { key: 'foto-pizzaria', label: 'Foto: pizza no forno', tone: 'dark', photo: true },
+  { key: 'foto-cafeteria', label: 'Foto: cafeteria', tone: 'dark', photo: true }, { key: 'foto-academia', label: 'Foto: academia', tone: 'dark', photo: true },
+  { key: 'foto-clinica', label: 'Foto: recepção de clínica', tone: 'dark', photo: true }, { key: 'foto-barbearia', label: 'Foto: barbearia', tone: 'dark', photo: true },
+  { key: 'foto-pet', label: 'Foto: cachorro e gato', tone: 'dark', photo: true }, { key: 'foto-provedor', label: 'Foto: fibra óptica', tone: 'dark', photo: true },
+].map((x) => Object.freeze(x)));
+export const TVC_ART = Object.freeze(Object.fromEntries(TVC_ARTS.map((x) => [x.key, x])));
+/**
+ * As cores do slide (o campo palette): sem ele, a cor do tema da empresa. hex: a cor de destaque (etiquetas); o fundo e o
+ * texto de cada uma ficam no CSS (th-<chave>), conferidos para 4,5:1 (test/templates.test.js).
+ */
+export const TVC_PALETTES = Object.freeze([
+  { key: 'azul', label: 'Azul', hex: '#1d4ed8' }, { key: 'verde', label: 'Verde', hex: '#15803d' }, { key: 'petroleo', label: 'Petróleo', hex: '#0f766e' },
+  { key: 'vinho', label: 'Vinho', hex: '#9f1239' }, { key: 'roxo', label: 'Roxo', hex: '#6d28d9' }, { key: 'laranja', label: 'Laranja', hex: '#c2410c' },
+  { key: 'grafite', label: 'Grafite', hex: '#334155' }, { key: 'vermelho', label: 'Vermelho', hex: '#b91c1c' }, { key: 'marrom', label: 'Marrom', hex: '#92400e' },
+  { key: 'rosa', label: 'Rosa', hex: '#be185d' }, { key: 'dourado', label: 'Dourado', hex: '#a16207' },
+].map((x) => Object.freeze(x)));
+/**
+ * Os campos de estilo de todos os modelos: tema claro ou escuro, a cor de destaque (sem ela, a cor da empresa), a arte de
+ * fundo (a prévia do painel desenha; o app desenha o slide na cor do tema), a cor do slide (palette; sem ela, a do tema) e
+ * o formato (orient: port = em pé, 9:16, para TV em pé e totem; sem ele, deitado).
  */
 export const TVC_STYLE_FIELDS = Object.freeze([
   F('variant', 'Tema', 'choice', { options: ['dark', 'light'], labels: ['Escuro', 'Claro'] }),
   F('accent', 'Cor de destaque', 'color'),
-  F('art', 'Arte de fundo', 'choice', { options: ['ondas', 'geometrico', 'aniversario', 'seguranca', 'fim-de-ano', 'conquista', 'evento', 'saude'] }),
+  F('art', 'Arte de fundo', 'choice', { options: TVC_ARTS.map((x) => x.key), labels: TVC_ARTS.map((x) => x.label) }),
+  F('palette', 'Cor do slide', 'choice', { options: TVC_PALETTES.map((x) => x.key), labels: TVC_PALETTES.map((x) => x.label) }),
+  F('orient', 'Formato', 'choice', { options: ['land', 'port'], labels: ['Deitado (16:9)', 'Em pé (9:16)'] }),
 ]);
 export const TVC_SLIDE_MODELS = Object.freeze([
   { key: 'comunicado', label: 'Comunicado', desc: 'Título, texto e QR opcional.', fields: [TITLE, TEXT, IMAGE, QR] },
@@ -231,6 +262,12 @@ export const TVC_SLIDE_MODELS = Object.freeze([
   { key: 'qr', label: 'Chamada com QR code', desc: 'Pesquisa, inscrição ou sugestão pelo celular.', fields: [TITLE, TEXT, F('qr', 'QR code (endereço)', 'url', { required: true })] },
   { key: 'imagem-com-legenda', label: 'Imagem com legenda', desc: 'Uma imagem grande e uma linha de legenda.', fields: [F('image', 'Imagem', 'media', { required: true }), F('title', 'Legenda', 'line', { max: 60 })] },
   { key: 'data-comemorativa', label: 'Data comemorativa', desc: 'Uma data do calendário com mensagem.', fields: [TITLE, F('date', 'Data', 'date'), TEXT, IMAGE] },
+  // DIGITAL ISP: os modelos do comércio (templates por segmento)
+  { key: 'oferta', label: 'Oferta', desc: 'Um produto ou serviço com o preço em destaque (e o "de" riscado).', fields: [F('title', 'Produto ou serviço', 'line', { max: 60, required: true }), PRICE, OLD_PRICE, F('unit', 'Unidade', 'line', { max: 20 }), TAG, F('text', 'Texto', 'text', { max: 160 }), F('until', 'Válido até', 'date'), IMAGE, QR] },
+  { key: 'precos', label: 'Vitrine de preços', desc: 'Tabela de preços ou cardápio com preço (uma linha por item: nome | preço).', fields: [TITLE, F('text', 'Itens (um por linha: nome | preço)', 'text', { max: 400, required: true }), F('note', 'Observação', 'line', { max: 80 }), IMAGE] },
+  { key: 'combo', label: 'Combo', desc: 'Vários itens por um preço só.', fields: [TITLE, F('text', 'Itens do combo (um por linha)', 'text', { max: 200, required: true }), PRICE, OLD_PRICE, TAG, IMAGE, QR] },
+  { key: 'horario', label: 'Horário de funcionamento', desc: 'Os dias e os horários (uma linha por faixa: dias | horário).', fields: [TITLE, F('text', 'Horários (um por linha: dias | horário)', 'text', { max: 240, required: true }), F('note', 'Observação', 'line', { max: 80 }), QR] },
+  { key: 'redes', label: 'Redes sociais', desc: 'O perfil da empresa nas redes, com o QR code.', fields: [TITLE, F('handle', 'Perfil (@)', 'line', { max: 40, required: true }), TEXT, F('site', 'Site', 'line', { max: 60 }), QR] },
 ].map((m) => Object.freeze({ ...m, fields: Object.freeze([...m.fields, ...TVC_STYLE_FIELDS]) })));
 export const TVC_SLIDE_MODEL = Object.freeze(Object.fromEntries(TVC_SLIDE_MODELS.map((m) => [m.key, m])));
 export const TVC_SLIDE_MODEL_KEYS = Object.freeze(TVC_SLIDE_MODELS.map((m) => m.key));

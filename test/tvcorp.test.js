@@ -11,7 +11,7 @@ const err = (fn, status = 400, re = null) => assert.throws(fn, (e) => e.status =
 
 test('catálogo: modelos de fábrica válidos, chaves sem repetir, ids dos itens vão e voltam', () => {
   assert.equal(T.TVC_LAYOUT_MODELS.length, 12);
-  assert.equal(T.TVC_SLIDE_MODELS.length, 12);
+  assert.equal(T.TVC_SLIDE_MODELS.length, 17);
   for (const m of T.TVC_LAYOUT_MODELS) {
     const l = K.cleanLayout({ factoryKey: m.key });
     assert.equal(l.zones.length, m.zones.length, m.key);

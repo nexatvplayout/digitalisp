@@ -67,6 +67,11 @@ const SAMPLES = {
   qr: { title: 'Responda a pesquisa', text: 'Aponte a câmera do celular.', qr: 'https://exemplo.com.br/pesquisa' },
   'imagem-com-legenda': { title: 'Nossa equipe na feira do setor' },
   'data-comemorativa': { title: 'Dia do Trabalhador', date: dayAhead(5), text: 'Obrigado a todos que fazem a empresa acontecer.' },
+  oferta: { title: 'Pão francês', price: 'R$ 16,90', oldPrice: 'R$ 19,90', unit: 'o kg', tag: 'OFERTA', text: 'Enquanto durar o estoque.' },
+  precos: { title: 'Tabela de preços', text: 'Café expresso | R$ 6,50\nCappuccino | R$ 11,90\nPão na chapa | R$ 7,90\nBolo de fubá (fatia) | R$ 9,90', note: 'Preços válidos nesta loja.' },
+  combo: { title: 'Combo da casa', text: 'X-salada\nBatata frita (porção)\nSuco natural', price: 'R$ 44,90', oldPrice: 'R$ 52,70', tag: 'ECONOMIZE R$ 7,80' },
+  horario: { title: 'Horário de funcionamento', text: 'Segunda a sexta | 8h às 18h\nSábado | 8h às 13h\nDomingo e feriados | Fechado', note: 'Nos feriados, o horário pode mudar.' },
+  redes: { title: 'Siga a gente nas redes', handle: '@suaempresa', text: 'Novidades e bastidores todos os dias.', qr: 'https://exemplo.com.br/redes' },
 };
 /**
  * Os modelos de slide do catálogo comum, com os campos no formato do editor (kind, max, options). A cor de destaque e a
@@ -81,8 +86,8 @@ export const SLIDE_TEMPLATES = TVC_SLIDE_MODELS.map((m) => ({
 }));
 export const SLIDE_TEMPLATE = Object.fromEntries(SLIDE_TEMPLATES.map((t) => [t.key, t]));
 
-/** A biblioteca de artes de fundo (public/tvcorp/arte/<key>.svg, desenhadas no projeto, sem marca de terceiros). */
-export const ARTS = TVC_ARTS.map((a) => ({ key: a.key, label: a.label }));
+/** A biblioteca de artes de fundo (public/tvcorp/arte/<key>.svg, desenhadas no projeto, e as fotos próprias <key>.jpg; sem marca de terceiros). */
+export const ARTS = TVC_ARTS.map((a) => ({ key: a.key, label: a.label, photo: Boolean(a.photo) }));
 
 /** Categorias dos comunicados (tvcorp_posts.category). */
 export const POST_CATEGORIES = TVC_POST_CATEGORIES.map((c) => ({ key: c.key, label: c.label }));

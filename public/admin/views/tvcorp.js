@@ -9,6 +9,7 @@ import paintResumo from './tvcorp-resumo.js';
 import paintTelas from './tvcorp-telas.js';
 import paintUnidades from './tvcorp-unidades.js';
 import paintMidias from './tvcorp-midias.js';
+import paintTemplates from './tvcorp-templates.js';
 import paintAoVivo, { leaveAoVivo } from './tvcorp-aovivo.js';
 import paintPlaylists from './tvcorp-playlists.js';
 import paintLayouts from './tvcorp-layouts.js';
@@ -30,6 +31,7 @@ export const TABS = [
   { id: 'telas', label: 'Telas', perm: 'tvcorp.manage', paint: paintTelas, live: true },
   { id: 'unidades', label: 'Unidades e grupos', perm: 'tvcorp.manage', paint: paintUnidades },
   { id: 'midias', label: 'Mídias', perm: 'tvcorp.manage', paint: paintMidias },
+  { id: 'templates', label: 'Templates', perm: 'tvcorp.manage', paint: paintTemplates },
   { id: 'aovivo', label: 'Ao vivo (HLS)', perm: 'tvcorp.manage', paint: paintAoVivo },
   { id: 'playlists', label: 'Playlists', perm: 'tvcorp.manage', paint: paintPlaylists },
   { id: 'layouts', label: 'Layouts', perm: 'tvcorp.manage', paint: paintLayouts },
