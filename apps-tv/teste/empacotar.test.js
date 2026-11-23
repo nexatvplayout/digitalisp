@@ -52,7 +52,9 @@ test('webOS: .ipk com control, data, appinfo, packageinfo e o player inteiro, co
     const dados = lerTar(membros['data.tar.gz']);
     const base = './usr/palm/applications/br.com.digitalisp.telas/';
     const info = JSON.parse(dados[base + 'appinfo.json']);
-    assert.equal(info.title, 'Telas');
+    assert.equal(info.title, 'DIGITAL ISP');
+    // o ícone da DIGITAL ISP, não o genérico
+    assert.deepEqual(dados[base + 'icon.png'], fs.readFileSync(path.join(__dirname, '..', 'marca', 'icone-webos-80.png')));
     assert.ok(dados[base + 'index.html']);
     assert.ok(dados[base + 'icon.png'].subarray(1, 4).toString() === 'PNG');
     for (const f of fs.readdirSync(path.join(__dirname, '..', 'comum', 'js'))) assert.ok(dados[base + 'js/' + f], f);
@@ -68,7 +70,9 @@ test('Tizen: pasta pronta para assinar, com config.xml, ícone e a webapis do ap
     assert.equal(r.tizen.wgt, null, 'sem perfil, não assina');
     const app = r.tizen.pasta;
     const xml = fs.readFileSync(path.join(app, 'config.xml'), 'utf8');
-    assert.match(xml, /<name>Telas<\/name>/);
+    assert.match(xml, /<name>DIGITAL ISP<\/name>/);
+    assert.match(xml, /id="DgIspTela1\.Telas" package="DgIspTela1"/); // o mesmo id: instala por cima
+    assert.deepEqual(fs.readFileSync(path.join(app, 'icon.png')), fs.readFileSync(path.join(__dirname, '..', 'marca', 'icone-tizen-512x423.png')));
     assert.match(xml, /package="[A-Za-z0-9]{10}"/);
     assert.match(fs.readFileSync(path.join(app, 'index.html'), 'utf8'), /\$WEBAPIS\/webapis\/webapis\.js/);
     assert.equal(fs.readFileSync(path.join(app, 'icon.png')).subarray(1, 4).toString(), 'PNG');

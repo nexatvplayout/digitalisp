@@ -46,7 +46,8 @@ test('nenhum nome do app ou do sistema na tela (white-label)', () => {
   for (const t of textos) {
     assert.ok(!/DIGITAL ISP|Digital ISP|NEXA/.test(t.replace(/digitalisp\.com\.br|br\.com\.digitalisp/g, '')), 'nome da marca no player');
   }
-  // o único título é o nome neutro
+  // o título da página (não aparece na TV) segue neutro; o nome e o ícone do app instalado são os da DIGITAL ISP
+  // (tizen/config.xml e webos/appinfo.json, decisão do dono de 23/11/2026)
   assert.match(html, /<title>Telas<\/title>/);
 });
 

@@ -150,7 +150,7 @@ alertas.
   "NEXA" no player.
 - Abertura, cadastro, espera e sem internet: a logo da revenda (guardada no aparelho) sobre o fundo da revenda.
 - Antes do primeiro cadastro a TV ainda não sabe a revenda: a tela do código fica só com o código e a instrução.
-- Nome no aparelho: **Telas**; ícone neutro (um monitor) desenhado pelo empacotamento.
+- Nome no aparelho: **DIGITAL ISP**, com o ícone da DIGITAL ISP (`apps-tv/marca/`, gerado de `marca/icones/icone-1024.png`; decisão do dono de 23/11/2026, antes era "Telas"). O que aparece na tela continua sendo a marca da revenda. O id do pacote não mudou (Samsung `DgIspTela1.Telas`, LG `br.com.digitalisp.telas`): a versão nova instala por cima.
 
 ## Abrir ao ligar
 
@@ -182,8 +182,8 @@ conta Samsung e o certificado é o dono; nenhuma senha passa por aqui.
    ```powershell
    node apps-tv/scripts/empacotar.js tizen --servidor=https://<servidor de produção> --perfil=<nome do perfil>
    ```
-   Sai `apps-tv/dist/tizen/Telas-<versão>.wgt`.
-6. Instale: `tizen install -n apps-tv/dist/tizen/Telas-1.0.0.wgt -t <nome da TV no sdb devices>`.
+   Sai `apps-tv/dist/tizen/DigitalISP-<versão>.wgt`.
+6. Instale: `tizen install -n apps-tv/dist/tizen/DigitalISP-1.0.15.wgt -t <nome da TV no sdb devices>`.
 7. Abra o Telas na lista de apps; o código aparece; cadastre no painel.
 
 Atualizar: repetir 5 e 6 (mesmo perfil, versão maior no `config.xml`). O modo desenvolvedor da Samsung não vence,

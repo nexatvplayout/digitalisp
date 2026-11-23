@@ -120,7 +120,8 @@ function tizen(saida, op) {
   const app = path.join(pasta, 'app');
   prepararApp(app, op.servidor, 'tizen');
   fs.copyFileSync(path.join(RAIZ, 'tizen', 'config.xml'), path.join(app, 'config.xml'));
-  fs.writeFileSync(path.join(app, 'icon.png'), icone(512, 423));
+  // o ícone da DIGITAL ISP (apps-tv/marca, gerado de marca/icones/icone-1024.png no tamanho que a Samsung pede)
+  fs.copyFileSync(path.join(RAIZ, 'marca', 'icone-tizen-512x423.png'), path.join(app, 'icon.png'));
   const versao = /version="([\d.]+)"/.exec(fs.readFileSync(path.join(app, 'config.xml'), 'utf8').split('<widget')[1])[1];
   const cli = acharTizen();
   if (!op.perfil) {
@@ -133,7 +134,7 @@ function tizen(saida, op) {
   execFileSync(cli, args, { stdio: 'inherit', shell: /\.bat$/i.test(cli) });
   const gerado = fs.readdirSync(app).find((f) => f.endsWith('.wgt'));
   if (!gerado) throw new Error('o tizen package não gerou o .wgt');
-  const destino = path.join(pasta, `Telas-${versao}.wgt`);
+  const destino = path.join(pasta, `DigitalISP-${versao}.wgt`);
   fs.renameSync(path.join(app, gerado), destino);
   console.log('Tizen: ' + destino);
   return { pasta: app, wgt: destino };
@@ -201,8 +202,8 @@ function webos(saida, op) {
   prepararApp(app, op.servidor, 'webos');
   const info = JSON.parse(fs.readFileSync(path.join(RAIZ, 'webos', 'appinfo.json'), 'utf8'));
   fs.writeFileSync(path.join(app, 'appinfo.json'), JSON.stringify(info, null, 2));
-  fs.writeFileSync(path.join(app, 'icon.png'), icone(80, 80));
-  fs.writeFileSync(path.join(app, 'largeIcon.png'), icone(130, 130));
+  fs.copyFileSync(path.join(RAIZ, 'marca', 'icone-webos-80.png'), path.join(app, 'icon.png'));
+  fs.copyFileSync(path.join(RAIZ, 'marca', 'icone-webos-130.png'), path.join(app, 'largeIcon.png'));
 
   const id = info.id;
   const pkginfo = Buffer.from(JSON.stringify({ app: id, id, loc_name: info.title, package_format_version: 2, vendor: info.vendor, version: info.version }, null, 2));
