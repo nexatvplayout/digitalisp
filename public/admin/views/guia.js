@@ -60,7 +60,7 @@ function dadosForm(done) {
     f.replaceChildren(
       el('div', { class: 'rv-grid2' },
         field('Razão social', inp('name', t.name, { disabled: true, title: 'Para mudar a razão social, fale com a DIGITAL ISP.' })),
-        field('Nome fantasia *', inp('fantasia', t.fantasia, { required: true, maxlength: 80 })),
+        field('Nome fantasia', inp('fantasia', t.fantasia, { maxlength: 80 })),
         field('CNPJ *', inp('document', fmtDoc(t.document), { required: true, inputmode: 'numeric', placeholder: '00.000.000/0000-00' })),
         field('Responsável *', inp('contactName', t.contactName, { required: true, maxlength: 80 })),
         field('E-mail *', inp('contactEmail', t.contactEmail, { type: 'email', required: true })),

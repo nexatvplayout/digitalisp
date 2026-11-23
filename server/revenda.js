@@ -68,7 +68,16 @@ async function clienteDto(t, extrasRow = null, planos = null, uso = null) {
 }
 
 /** O endereço de entrada do cliente (com a marca da revenda). */
-const linkCliente = (rev) => `${config.platform.publicUrl || ''}/c/${rev.slug}`;
+/** O endereço de entrada de uma conta: o do cliente é dele (/c/<cliente>); a entrada mostra a marca da revenda. */
+const linkCliente = (t) => `${config.platform.publicUrl || ''}/c/${t.slug}`;
+
+/** O e-mail já é login de alguém ou contato de outra conta (revenda ou cliente)? */
+async function emailEmUso(email, { excetoTenant = null, excetoUser = null } = {}) {
+  const u = await db.get('SELECT id FROM users WHERE username = ?', [email]);
+  if (u && Number(u.id) !== Number(excetoUser)) return true;
+  const t = await db.get('SELECT id FROM tenants WHERE LOWER(contact_email) = ? AND id <> ?', [email, excetoTenant ?? 0]);
+  return Boolean(t);
+}
 
 export function mountRevenda(app, { needs, signedIn }) {
   const r = express.Router();
@@ -142,7 +151,7 @@ export function mountRevenda(app, { needs, signedIn }) {
     const email = text(b.contactEmail, 120).toLowerCase();
     if (!EMAIL.test(email)) throw fail(400, 'Informe o e-mail do cliente: é o login dele.');
     if (!USERNAME_RE.test(email)) throw fail(400, 'E-mail inválido para login.');
-    if (await db.get('SELECT id FROM users WHERE username = ?', [email])) throw fail(409, 'Já existe um acesso com esse e-mail no sistema. Use outro e-mail.');
+    if (await emailEmUso(email)) throw fail(409, 'Esse e-mail já é usado por outra conta (de uma revenda ou de outro cliente). Use outro e-mail.');
     const rev = await T.getTenant(rid);
     const id = await T.insertTenant({ ...f, slug: await uniqueSlug(f.name), status: 'active', plan_id: rev.plan_id, contact_email: email });
     try {
@@ -153,7 +162,8 @@ export function mountRevenda(app, { needs, signedIn }) {
       const password = randomPassword();
       await access.createUser({ username: email, name: text(b.contactName, 80) || f.name, password, mustChange: true, groupIds: [adminGroup] }, id);
       res.locals.audit = `cadastrou o cliente final ${f.name}`;
-      res.status(201).json({ cliente: await clienteDto(await T.getTenant(id)), acesso: { link: linkCliente(rev), login: email, senha: password } });
+      const novo = await T.getTenant(id);
+      res.status(201).json({ cliente: await clienteDto(novo), acesso: { link: linkCliente(novo), login: email, senha: password } });
     } catch (err) {
       await db.run('DELETE FROM user_groups WHERE group_id IN (SELECT id FROM access_groups WHERE tenant_id = ?)', [id]);
       await db.run('DELETE FROM users WHERE tenant_id = ?', [id]);
@@ -168,14 +178,27 @@ export function mountRevenda(app, { needs, signedIn }) {
 
   r.get('/clientes/:id', ...R, ah(async (req, res) => {
     const t = await clienteDaRevenda(req);
-    const rev = await T.getTenant(req.tenantId);
     const admins = await access.tenantAdmins(t.id);
-    res.set('Cache-Control', 'no-store').json({ ...(await clienteDto(t)), acesso: { link: linkCliente(rev), logins: admins.map((a) => a.username) } });
+    res.set('Cache-Control', 'no-store').json({ ...(await clienteDto(t)), acesso: { link: linkCliente(t), logins: admins.map((a) => a.username) } });
   }));
 
   r.patch('/clientes/:id', ...R, ah(async (req, res) => {
     const t = await clienteDaRevenda(req); const b = req.body || {};
     const f = dadosCliente(b);
+    if (f.contact_email !== undefined && f.contact_email !== String(t.contact_email || '').toLowerCase()) {
+      const novo = f.contact_email;
+      if (!EMAIL.test(novo)) throw fail(400, 'Informe o e-mail do cliente: é o login dele.');
+      const admins = await access.tenantAdmins(t.id);
+      const login = admins.find((a) => a.username === String(t.contact_email || '').toLowerCase()) || admins[0];
+      if (await emailEmUso(novo, { excetoTenant: t.id, excetoUser: login?.id })) throw fail(409, 'Esse e-mail já é usado por outra conta. Use outro e-mail.');
+      if (login) { await db.run('UPDATE users SET username = ? WHERE id = ? AND tenant_id = ?', [novo, login.id, t.id]); access.invalidate(); }
+    } else delete f.contact_email;
+    // o endereço de entrada do cliente (/c/<identificador>): a revenda personaliza
+    if (b.slug !== undefined && String(b.slug).trim().toLowerCase() !== t.slug) {
+      const slug = T.validSlug(String(b.slug).trim().toLowerCase());
+      if (await db.get('SELECT id FROM tenants WHERE slug = ? AND id <> ?', [slug, t.id])) throw fail(409, 'Esse endereço já é usado por outra conta. Escolha outro.');
+      f.slug = slug;
+    }
     const c = await contaOf(t.id);
     const pessoa = b.pessoa === undefined ? c.pessoa : (b.pessoa === 'pf' ? 'pf' : 'pj');
     if (f.document_type && f.document_type !== (pessoa === 'pf' ? 'cpf' : 'cnpj')) throw fail(400, pessoa === 'pf' ? 'Pessoa física: informe o CPF.' : 'Pessoa jurídica: informe o CNPJ.');
@@ -335,14 +358,16 @@ export function mountRevenda(app, { needs, signedIn }) {
     const c = await contaOf(req.user.tenantId);
     const out = { tipo: c.tipo, pessoa: c.pessoa, impersonador: req.user.impersonator?.username || null };
     if (c.tipo === 'cliente' && c.revendaId) { const rev = await T.getTenant(c.revendaId); out.revenda = rev ? { id: Number(rev.id), name: rev.name, slug: rev.slug, marca: await marcaDe(rev) } : null; }
-    else { const rev = await T.getTenant(req.user.tenantId); out.marca = rev ? await marcaDe(rev) : null; out.link = rev ? linkCliente(rev) : null; }
+    else { const rev = await T.getTenant(req.user.tenantId); out.marca = rev ? await marcaDe(rev) : null; out.link = null; }
     res.set('Cache-Control', 'no-store').json(out);
   }));
 
   /* ------------------------------------------------------------------ marca da revenda (pública: a entrada do cliente) */
   app.get('/api/marca/:slug', ah(async (req, res) => {
-    const rev = await T.getTenantBySlug(String(req.params.slug || '').toLowerCase());
-    if (!rev || (await contaOf(rev.id)).tipo !== 'revenda') return res.status(404).json({ error: 'Revenda inexistente.' });
+    const t = await T.getTenantBySlug(String(req.params.slug || '').toLowerCase());
+    const c = t ? await contaOf(t.id) : null;
+    const rev = !t ? null : c.tipo === 'cliente' ? await T.getTenant(c.revendaId) : t;
+    if (!rev) return res.status(404).json({ error: 'Endereço inexistente.' });
     res.set('Cache-Control', 'public, max-age=300').json(await marcaDe(rev));
   }));
 }

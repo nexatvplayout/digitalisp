@@ -30,11 +30,12 @@ async function sendImages(files, officeId) {
 /**
  * O editor do slide: o modelo, os campos dele, a arte de fundo, os segundos e a prévia ao lado (o mesmo desenho do app).
  * m: o slide que já existe (ou null). images: as imagens da biblioteca para os campos de imagem. onSaved(): depois de gravar.
+ * template + fields + name: um slide novo já preenchido (a aba Templates: "Usar este template").
  */
-export function slideEditor(m, images, onSaved, { template = null } = {}) {
-  const st = { template: m?.template || template || 'comunicado', fields: { ...(m?.fields || SLIDE_TEMPLATE[template || 'comunicado']?.sample || {}) } };
+export function slideEditor(m, images, onSaved, { template = null, fields = null, name = '' } = {}) {
+  const st = { template: m?.template || template || 'comunicado', fields: { ...(m?.fields || fields || SLIDE_TEMPLATE[template || 'comunicado']?.sample || {}) } };
   if (st.fields.image && typeof st.fields.image === 'object') st.fields.image = st.fields.image.id ?? null;
-  const title = el('input', { type: 'text', maxlength: String(LIMITS.name), value: m?.title || '', placeholder: 'Nome na biblioteca (só no painel)' });
+  const title = el('input', { type: 'text', maxlength: String(LIMITS.name), value: m?.title || name || '', placeholder: 'Nome na biblioteca (só no painel)' });
   const seconds = el('input', { type: 'number', min: String(LIMITS.secondsMin), max: String(LIMITS.secondsMax), value: String(m?.seconds ?? 12) });
   const office = el('select', {}, opt('', 'Empresa toda', m?.officeId == null), ...D().offices.map((o) => opt(o.id, o.name, m?.officeId === o.id)));
   const tpl = el('select', {}, ...SLIDE_TEMPLATES.map((t) => opt(t.key, t.label, t.key === st.template)));
@@ -53,7 +54,8 @@ export function slideEditor(m, images, onSaved, { template = null } = {}) {
       let input;
       if (fd.kind === 'textarea') { input = el('textarea', { rows: '3', maxlength: String(fd.max) }); input.value = st.fields[fd.key] || ''; }
       else if (fd.kind === 'image') input = el('select', {}, opt('', images.length ? 'Sem imagem' : 'Nenhuma imagem na biblioteca ainda', !st.fields[fd.key]), ...images.map((i) => opt(i.id, i.title, Number(st.fields[fd.key]) === i.id)));
-      else if (fd.kind === 'choice') input = el('select', {}, opt('', 'O da empresa (Configurações)', !st.fields[fd.key]), ...(fd.options || []).map((o, i) => opt(o, fd.labels?.[i] || o, st.fields[fd.key] === o)));
+      // o formato não tem "o da empresa": sem ele, deitado
+      else if (fd.kind === 'choice') input = el('select', {}, fd.key === 'orient' ? null : opt('', 'O da empresa (Configurações)', !st.fields[fd.key]), ...(fd.options || []).map((o, i) => opt(o, fd.labels?.[i] || o, st.fields[fd.key] === o || (fd.key === 'orient' && !st.fields[fd.key] && o === 'land'))));
       else input = el('input', { type: { date: 'date', datetime: 'datetime-local', url: 'url' }[fd.kind] || 'text', maxlength: fd.max ? String(fd.max) : null, value: st.fields[fd.key] ?? '', placeholder: fd.kind === 'url' ? 'https://…' : null });
       const read = () => {
         if (fd.kind === 'image') st.fields[fd.key] = input.value ? Number(input.value) : null;
@@ -127,7 +129,11 @@ export default async function paintMidias(box, ctx) {
   const sel = (key, first, options) => el('select', { 'aria-label': first, onchange: (e) => { V[key] = e.target.value; ctx.repaint(); } }, opt('', first, !V[key]), ...options.map(([v, t]) => opt(v, t, V[key] === String(v))));
   const cards = shown.map((m) => {
     const thumb = el('div', { class: 'tc-thumb' });
-    if (m.kind === 'slide') put(thumb, slidePreview(m.template, m.fields, { theme: themeOf() }));
+    if (m.kind === 'slide') {
+      put(thumb, slidePreview(m.template, m.fields, { theme: themeOf() }));
+      // o slide com foto (boas-vindas, reconhecimento…): a miniatura busca a imagem pela sessão e redesenha com ela
+      if (m.fields?.image) tblob(`/api/tvcorp/media/${m.fields.image}/file`).then((u) => { if (u) put(thumb, slidePreview(m.template, m.fields, { theme: themeOf(), image: u })); }, () => {});
+    }
     else {
       const img = el('img', { alt: m.title || 'Imagem', hidden: true });
       put(thumb, img, el('span', { class: 'dim small', text: T.demo ? 'Imagem (exemplo)' : '' }));

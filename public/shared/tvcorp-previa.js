@@ -13,6 +13,7 @@
 // news{source,items[{title,source,at}]}; quotes{items[{label,value,change,prefix,decimals}],at,source}; menu{title,day,
 // items[{name,price}|"texto"]}; countdown{title,target,text}; safety{since,record,goal}; worldclock{clocks[{label,tz}]}; text{title,text}.
 import { qrSvg } from './telas-previa.js';
+import { TVC_ART, TVC_PALETTES } from './tvcorp-tipos.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 const h = (tag, cls, ...kids) => {
@@ -32,6 +33,11 @@ const s = (tag, attrs = {}, ...kids) => {
 /** As cores do tema (as mesmas chaves de THEME_COLORS em telas-tipos.js); hex desconhecido = azul. */
 const THEME_KEYS = { '#1d4ed8': 'azul', '#15803d': 'verde', '#0f766e': 'petroleo', '#9f1239': 'vinho', '#6d28d9': 'roxo', '#c2410c': 'laranja', '#334155': 'grafite' };
 export const themeClass = (theme) => `th-${THEME_KEYS[String(theme?.color || '').toLowerCase()] || 'azul'}${theme?.mode === 'light' ? ' th-light' : ''}`;
+/** As cores próprias do slide (fields.palette, DIGITAL ISP): vencem a cor do tema da empresa. */
+const PALETTE_KEYS = new Set(TVC_PALETTES.map((x) => x.key));
+const slideTheme = (theme, palette) => (PALETTE_KEYS.has(palette) ? `th-${palette}${theme?.mode === 'light' ? ' th-light' : ''}` : themeClass(theme));
+/** "nome | preço" -> [nome, preço] (as linhas da vitrine de preços e do horário). */
+const rowsOf = (t) => String(t || '').split('\n').map((x) => x.trim()).filter(Boolean).slice(0, 8).map((x) => { const i = x.lastIndexOf('|'); return i < 0 ? [x, ''] : [x.slice(0, i).trim(), x.slice(i + 1).trim()]; });
 const ZONE_NAMES = { video: 'Vídeo do canal', playlist: 'Playlist', ticker: 'Texto rolante', clock: 'Relógio', weather: 'Clima', qr: 'QR code', logo: 'Logomarca', text: 'Texto', news: 'Notícias', quotes: 'Cotações', countdown: 'Contador', safety: 'Dias sem acidente', worldclock: 'Relógio mundial', queue: 'Senha' };
 const pad2 = (n) => String(n).padStart(2, '0');
 const nowClock = () => { const d = new Date(); return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`; };
@@ -73,9 +79,10 @@ export function slidePreview(template, fields = {}, opts = {}) {
   const rawLines = Array.isArray(f.lines) ? f.lines : Array.isArray(f.items) ? f.items : ['cardapio', 'aniversariantes'].includes(template) ? String(f.text || '').split('\n') : String(f.lines || '').split('\n');
   const lines = rawLines.map((x) => String(typeof x === 'object' ? x?.name || '' : x).trim()).filter(Boolean).slice(0, 8);
   // a arte de fundo da biblioteca (public/tvcorp/arte/), por classe: só as chaves conhecidas viram classe
-  const art = /^[a-z0-9-]{1,30}$/.test(String(f.art || '')) ? ` tvc-art tvc-art-${f.art}` : '';
+  const known = TVC_ART[f.art];
+  const art = /^[a-z0-9-]{1,30}$/.test(String(f.art || '')) ? ` tvc-art tvc-art-${f.art}${known ? ` tvc-art-${known.tone === 'light' ? 'light' : 'dark'}${known.photo ? ' tvc-photo' : ''}` : ''}` : '';
   const theme = f.variant === 'light' || f.variant === 'dark' ? { ...(opts.theme || {}), mode: f.variant } : opts.theme;
-  const n = h('div', `tvc-sl tvc-sl-${template || 'comunicado'} ${themeClass(theme)}${art}`);
+  const n = h('div', `tvc-sl tvc-sl-${template || 'comunicado'} ${slideTheme(theme, f.palette)}${art}${f.orient === 'port' ? ' tvc-port' : ''}`);
   n.setAttribute('role', 'img'); n.setAttribute('aria-label', `Prévia do slide: ${f.title || f.caption || template || ''}`);
   const caption = f.caption || (template === 'imagem-com-legenda' ? f.title : '');
   const img = opts.image ? Object.assign(h('img', 'tvc-sl-img'), { alt: '', src: opts.image }) : null;
@@ -104,6 +111,23 @@ export function slidePreview(template, fields = {}, opts = {}) {
     case 'imagem-com-legenda':
       add(n, img || h('div', 'tvc-sl-noimg', 'Escolha a imagem'), caption ? h('div', 'tvc-sl-cap', caption) : null);
       break;
+    case 'oferta': case 'combo': {
+      const price = h('div', 'tvc-sl-price', f.oldPrice ? h('span', 'tvc-sl-old', 'De ', h('del', '', f.oldPrice), ' por') : null, h('b', String(f.price || '').length > 10 ? 'tvc-sl-long' : '', f.price || 'R$ 0,00'), f.unit ? h('small', '', f.unit) : null);
+      const list = template === 'combo' ? rowsOf(f.text).map(([a, b]) => (b ? `${a} ${b}` : a)) : [];
+      add(n, h('div', 'tvc-sl-body', f.tag ? h('div', 'tvc-sl-tag', f.tag) : null, title,
+        list.length ? h('ul', 'tvc-sl-list', list.map((x) => h('li', '', x))) : f.text ? h('div', 'tvc-sl-x', f.text) : null,
+        f.until ? h('div', 'tvc-sl-x tvc-sl-small', `Válido até ${brDate(f.until)} ou enquanto durar o estoque.`) : null), price, qr);
+      break;
+    }
+    case 'precos': case 'horario': {
+      const rows = rowsOf(f.text);
+      add(n, h('div', 'tvc-sl-body', title, rows.length ? h('ul', 'tvc-sl-rows', rows.map(([a, b]) => h('li', '', h('span', '', a), b ? h('b', '', b) : null))) : h('div', 'tvc-sl-x dim', 'Sem linhas ainda'),
+        f.note ? h('div', 'tvc-sl-x tvc-sl-small', f.note) : null), qr);
+      break;
+    }
+    case 'redes':
+      add(n, h('div', 'tvc-sl-body', title, h('div', 'tvc-sl-handle', f.handle || '@perfil'), f.text ? h('div', 'tvc-sl-x', f.text) : null, f.site ? h('div', 'tvc-sl-x tvc-sl-small', f.site) : null), qr);
+      break;
     case 'seguranca':
       add(n, h('div', 'tvc-sl-body', h('div', 'tvc-sl-tag', 'SEGURANÇA'), title, f.text ? h('div', 'tvc-sl-x', f.text) : null, Array.isArray(f.lines) && lines.length ? h('ul', 'tvc-sl-list', lines.map((x) => h('li', '', x))) : null), qr);
       break;
@@ -129,14 +153,18 @@ export function itemPreview(it = {}, opts = {}) {
     case 'post': return slidePreview(it.category === 'vaga' ? 'vaga' : it.category === 'seguranca' ? 'seguranca' : 'comunicado', { title: it.title, text: it.body ?? it.text, qr: it.qr }, { theme: opts.theme, image: typeof it.image === 'string' ? it.image : it.image?.url || null });
     case 'text': return box('tvc-it-text', it.title ? h('div', 'tvc-it-t', it.title) : null, h('div', 'tvc-it-x', it.text || ''));
     case 'birthdays': {
+      // festivo: a arte de confete, as pessoas lado a lado com a foto (só com a autorização) ou as iniciais num círculo
+      // dourado; quanto menos gente, maior cada uma (n1, n3, n6, n8)
       const ppl = (it.people || []).slice(0, 8);
-      return box('tvc-it-bday', h('div', 'tvc-it-t', it.title || 'Aniversariantes'),
-        ppl.length ? h('ul', 'tvc-it-list tvc-it-people', ppl.map((p) => {
-          // a foto (só com a autorização) ou as iniciais num círculo, como na TV
+      const size = ppl.length <= 1 ? 'n1' : ppl.length <= 3 ? 'n3' : ppl.length <= 6 ? 'n6' : 'n8';
+      return box(`tvc-it-bday ${size}`, h('div', 'tvc-it-t', it.title || 'Aniversariantes'),
+        ppl.length ? h('ul', 'tvc-bday-people', ppl.map((p) => {
+          const src = typeof p.photo === 'string' ? p.photo : p.photo?.url || '';
           let av;
-          if (p.photo) { av = h('img', 'tvc-av'); av.src = p.photo; av.alt = ''; } else av = h('span', 'tvc-av tvc-av-ini', String(p.name || '').split(/s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase());
-          return h('li', '', av, h('span', '', h('b', '', p.name), ` · ${pad2(p.day)}/${pad2(p.month)}${p.sector ? ` · ${p.sector}` : ''}`));
-        })) : h('div', 'tvc-it-x', 'Ninguém faz aniversário nestes dias'));
+          if (src) { av = h('img', 'tvc-av'); av.src = src; av.alt = ''; } else av = h('span', 'tvc-av tvc-av-ini', p.initials || String(p.name || '').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase());
+          return h('li', '', av, h('b', '', p.name), h('span', '', `${pad2(p.day)}/${pad2(p.month)}${p.sector ? ` · ${p.sector}` : ''}`));
+        })) : h('div', 'tvc-it-x', 'Ninguém faz aniversário nestes dias'),
+        ppl.length ? h('div', 'tvc-bday-wish', 'Parabéns! Muitas felicidades!') : null);
     }
     case 'kpi': return box(`tvc-it-kpi b-${it.band || 'none'}`, h('div', 'tvc-it-t', it.name || 'Indicador'), h('div', 'tvc-it-big', `${numText(it.value)}${it.unit ? ` ${it.unit}` : ''}`),
       it.target != null ? h('div', 'tvc-it-x', `Meta: ${numText(it.target)}${it.unit ? ` ${it.unit}` : ''}`) : null, it.target != null ? goalBar(it.value, it.target, it.band) : null);

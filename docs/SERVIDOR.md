@@ -28,7 +28,10 @@ export XDG_RUNTIME_DIR=/run/user/$(id -u)   # para o systemctl --user funcionar 
 | Variáveis e segredos (permissão 600, fora do git) | `~/.config/digitalisp/digitalisp.env` e `tunel.env` |
 | Backup do banco (`pg_dump` às 03:30, guarda 14 dias) | `/opt/digitalisp/backup`, script `/opt/digitalisp/backup.sh` |
 
-- **Serviços de usuário** (systemd), que sobem no boot: `digitalisp`, `digitalisp-tunel` e `digitalisp-backup.timer`.
+> **Atenção (novembro de 2026):** o túnel do DIGITAL ISP foi trocado pelo Caddy do servidor. **Não religue o `digitalisp-tunel`.**
+> Mantenha `CF_TUNNEL=1` em `~/.config/digitalisp/digitalisp.env`: é isso que mantém certo o IP do visitante (`CF-Connecting-IP`).
+
+- **Serviços de usuário** (systemd), que sobem no boot: `digitalisp` e `digitalisp-backup.timer` (o `digitalisp-tunel` foi desligado: a entrada agora é pelo Caddy).
 - **Banco:** PostgreSQL 16 local, banco `digitalisp`, acesso pelo socket sem senha.
 - **Rede:** o servidor escuta só em `127.0.0.1:3400`.
   - A entrada vem pelo túnel `digitalisp` da Cloudflare (Zero Trust, Rede, Túneis), com a rota

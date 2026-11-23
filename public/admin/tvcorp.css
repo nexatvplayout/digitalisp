@@ -48,6 +48,20 @@ button.tc-card:hover { border-color: var(--c-line-hover); }
 .tc-thumb .tvc-sl { width: 100%; }
 .tc-mcard-b, .tc-lcard-b { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; }
 .tc-slide-pv { max-width: 560px; }
+/* slide em pé (9:16): na miniatura 16:9 ele ocupa a altura toda; na prévia do editor, uma coluna estreita */
+.tc-thumb .tvc-sl.tvc-port { width: 31.64%; }
+.tc-slide-pv > .tvc-sl.tvc-port { max-width: 300px; margin: 0 auto; }
+
+/* templates prontos (aba Templates) */
+.tp-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0 12px; }
+.tp-bar input[type="search"] { flex: 1 1 240px; min-width: 200px; }
+.tp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.tp-card { display: flex; flex-direction: column; background: var(--c-panel); border: 1px solid var(--c-line); border-radius: 8px; overflow: hidden; }
+.tp-card .tc-thumb { cursor: pointer; }
+.tp-card-b { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; }
+.tp-card-b b { font-size: var(--text-sm); }
+.tp-more { display: flex; justify-content: center; padding: 14px 0; }
+.tp-up { max-width: 640px; }
 
 /* playlists */
 .tc-items { list-style: none; margin: 6px 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: 60vh; overflow: auto; }
@@ -140,3 +154,8 @@ tr.tc-sel td { background: var(--c-panel-3); }
 
 /* a imagem que veio com a sugestão do celular (aba Celular) */
 .tc-sug-img { display: block; max-width: 100%; max-height: 70vh; margin: 0 auto; border-radius: 8px; }
+
+/* playlists: a prévia do que vai entrar e a criação rápida (lista vazia) */
+.tc-cand-pv { margin-bottom: 6px; }
+.tc-quick { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.tc-quick:empty { display: none; }

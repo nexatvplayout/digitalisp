@@ -19,8 +19,14 @@
 .tvc-z { width: 100%; height: 100%; container-type: size; overflow: hidden; font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif; }
 .tvc-z > * { width: 100%; height: 100%; box-sizing: border-box; }
 
-.th-azul { --tc: #1d4ed8; } .th-verde { --tc: #15803d; } .th-petroleo { --tc: #0f766e; } .th-vinho { --tc: #9f1239; }
-.th-roxo { --tc: #6d28d9; } .th-laranja { --tc: #c2410c; } .th-grafite { --tc: #334155; }
+/* --tc: a cor de destaque (etiquetas); --tcb: o começo do fundo escuro (escurecida onde o texto claro não dava 4,5:1);
+   --tcl: o canto do fundo claro. As cores conferem com TVC_PALETTES (public/shared/tvcorp-tipos.js) e test/templates.test.js. */
+.th-azul { --tc: #1d4ed8; --tcb: #1d4ed8; --tcl: #bfdbfe; } .th-verde { --tc: #15803d; --tcb: #166534; --tcl: #bbf7d0; }
+.th-petroleo { --tc: #0f766e; --tcb: #115e59; --tcl: #99f6e4; } .th-vinho { --tc: #9f1239; --tcb: #9f1239; --tcl: #fecdd3; }
+.th-roxo { --tc: #6d28d9; --tcb: #6d28d9; --tcl: #ddd6fe; } .th-laranja { --tc: #c2410c; --tcb: #9a3412; --tcl: #fed7aa; }
+.th-grafite { --tc: #334155; --tcb: #334155; --tcl: #cbd5e1; } .th-vermelho { --tc: #b91c1c; --tcb: #991b1b; --tcl: #fecaca; }
+.th-marrom { --tc: #92400e; --tcb: #92400e; --tcl: #fde68a; } .th-rosa { --tc: #be185d; --tcb: #9d174d; --tcl: #fbcfe8; }
+.th-dourado { --tc: #a16207; --tcb: #854d0e; --tcl: #fef08a; }
 [class*="th-"] { --tbg: #0f172a; --tfg: #f8fafc; --tdim: #cbd5e1; }
 [class*="th-"].th-light { --tbg: #ffffff; --tfg: #0f172a; --tdim: #475569; }
 
@@ -41,9 +47,9 @@
 
 /* slides */
 .tvc-sl { position: relative; display: flex; align-items: center; gap: 4cqw; width: 100%; aspect-ratio: 16 / 9; container-type: inline-size; box-sizing: border-box; padding: 3.38cqw 6cqw; overflow: hidden;
-  background: linear-gradient(135deg, var(--tc) 0%, var(--tbg) 70%); color: var(--tfg); font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif; border-radius: 4px; }
+  background: linear-gradient(135deg, var(--tcb) 0%, var(--tbg) 70%); color: var(--tfg); font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif; border-radius: 4px; }
 .tvc-z .tvc-sl { aspect-ratio: auto; border-radius: 0; }
-.tvc-sl.th-light { background: linear-gradient(135deg, #ffffff 55%, var(--tc) 160%); }
+.tvc-sl.th-light { background: linear-gradient(135deg, #ffffff 55%, var(--tcl) 100%); }
 .tvc-sl-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1.69cqw; }
 .tvc-sl-t { font-weight: 700; font-size: 6.19cqw; line-height: 1.1; }
 .tvc-sl-x { font-size: 3.94cqw; line-height: 1.3; color: var(--tdim); }
@@ -65,7 +71,8 @@
 .tvc-sl-noimg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--tdim); font-size: 4.5cqw; }
 .tvc-sl-cap { position: relative; width: 100%; box-sizing: border-box; padding: 1.69cqw 4cqw; background: rgba(0, 0, 0, 0.6); color: #fff; font-size: 3.94cqw; }
 .b-ok { --band: #16a34a; } .b-warn { --band: #f59e0b; } .b-bad { --band: #dc2626; } .b-none { --band: #64748b; }
-.tvc-sl-big.b-ok, .tvc-sl-big.b-warn, .tvc-sl-big.b-bad { color: var(--band); }
+/* o número na cor do texto (contraste de 4,5:1 em qualquer tema); a faixa da meta fica na borda e na barra */
+.tvc-sl-big.b-ok, .tvc-sl-big.b-warn, .tvc-sl-big.b-bad { color: var(--tfg); border-left: 0.12em solid var(--band); padding-left: 0.18em; }
 .tvc-bar { width: 100%; height: 2.81cqw; min-height: 4px; }
 .tvc-bar-bg { fill: rgba(148, 163, 184, 0.3); }
 .tvc-bar-fg { fill: var(--band, #64748b); }
@@ -96,15 +103,110 @@
 .tvc-sl.tvc-art-conquista { background-image: url(/tvcorp/arte/conquista.svg); }
 .tvc-sl.tvc-art-evento { background-image: url(/tvcorp/arte/evento.svg); }
 .tvc-sl.tvc-art-saude { background-image: url(/tvcorp/arte/saude.svg); --tfg: #0f172a; --tdim: #334155; }
+.tvc-sl.tvc-art-listras { background-image: url(/tvcorp/arte/listras.svg); }
+.tvc-sl.tvc-art-pontos { background-image: url(/tvcorp/arte/pontos.svg); }
+.tvc-sl.tvc-art-folhas { background-image: url(/tvcorp/arte/folhas.svg); }
+.tvc-sl.tvc-art-circuito { background-image: url(/tvcorp/arte/circuito.svg); }
+.tvc-sl.tvc-art-papel { background-image: url(/tvcorp/arte/papel.svg); }
+/* o texto segue a arte (tvc-art-dark: texto claro; tvc-art-light: texto escuro), qualquer que seja o tema */
+.tvc-sl.tvc-art-dark { --tfg: #f8fafc; --tdim: #e2e8f0; }
+.tvc-sl.tvc-art-light { --tfg: #0f172a; --tdim: #334155; }
+/* fotos próprias (geradas para o DIGITAL ISP) com um véu escuro de pelo menos 60%: o texto claro fica legível em qualquer ponto */
+.tvc-sl.tvc-photo { background-position: 72% 50%; }
+.tvc-sl.tvc-art-foto-supermercado { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-supermercado.jpg); }
+.tvc-sl.tvc-art-foto-padaria { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-padaria.jpg); }
+.tvc-sl.tvc-art-foto-farmacia { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-farmacia.jpg); }
+.tvc-sl.tvc-art-foto-pizzaria { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-pizzaria.jpg); }
+.tvc-sl.tvc-art-foto-cafeteria { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-cafeteria.jpg); }
+.tvc-sl.tvc-art-foto-academia { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-academia.jpg); }
+.tvc-sl.tvc-art-foto-clinica { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-clinica.jpg); }
+.tvc-sl.tvc-art-foto-barbearia { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-barbearia.jpg); }
+.tvc-sl.tvc-art-foto-pet { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-pet.jpg); }
+.tvc-sl.tvc-art-foto-provedor { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-provedor.jpg); }
+.tvc-sl.tvc-art-foto-aniversario-baloes { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-aniversario-baloes.jpg); }
+.tvc-sl.tvc-art-foto-aniversario-bolo { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-aniversario-bolo.jpg); }
+.tvc-sl.tvc-art-foto-aniversario-presentes { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-aniversario-presentes.jpg); }
+.tvc-sl.tvc-art-foto-aniversario-cupcakes { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-aniversario-cupcakes.jpg); }
+.tvc-sl.tvc-art-foto-aviso-megafone { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-aviso-megafone.jpg); }
+.tvc-sl.tvc-art-foto-aviso-mural { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-aviso-mural.jpg); }
+.tvc-sl.tvc-art-foto-escritorio { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-escritorio.jpg); }
+.tvc-sl.tvc-art-foto-seguranca-epi { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-seguranca-epi.jpg); }
+.tvc-sl.tvc-art-foto-fabrica { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-fabrica.jpg); }
+.tvc-sl.tvc-art-foto-recepcao { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-recepcao.jpg); }
+.tvc-sl.tvc-art-foto-boas-vindas { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-boas-vindas.jpg); }
+.tvc-sl.tvc-art-foto-reconhecimento { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-reconhecimento.jpg); }
+.tvc-sl.tvc-art-foto-metas { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-metas.jpg); }
+.tvc-sl.tvc-art-foto-confraternizacao { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-confraternizacao.jpg); }
+.tvc-sl.tvc-art-foto-natal { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-natal.jpg); }
+.tvc-sl.tvc-art-foto-vagas { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-vagas.jpg); }
+.tvc-sl.tvc-art-foto-treinamento { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-treinamento.jpg); }
+.tvc-sl.tvc-art-foto-refeitorio { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-refeitorio.jpg); }
+.tvc-sl.tvc-art-foto-bem-estar { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-bem-estar.jpg); }
+.tvc-sl.tvc-art-foto-sustentabilidade { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-sustentabilidade.jpg); }
 
-/* aniversariantes com a foto ou as iniciais (DIGITAL ISP) */
-.tvc-it-people { list-style: none; padding-left: 0; display: grid; gap: 1.4cqw; }
-.tvc-it-people li { display: flex; align-items: center; gap: 1.6cqw; }
-.tvc-av { width: 7cqw; height: 7cqw; border-radius: 50%; object-fit: cover; flex: none; }
-.tvc-av-ini { display: inline-grid; place-items: center; background: var(--tacc, #1d4ed8); color: #fff; font-weight: 700; font-size: 2.8cqw; }
+/* aniversariantes (DIGITAL ISP): festivo, com a arte de confete, as pessoas lado a lado e a foto (só com a autorização) ou
+   as iniciais num círculo dourado. Sem gap nem grid (as TVs de 2018 a 2020): o espaço é margem de cada pessoa. */
+.tvc-it-bday { align-items: center; justify-content: center; text-align: center; background-color: #2e1065; background-image: linear-gradient(rgba(46, 16, 101, 0.72), rgba(46, 16, 101, 0.82)), url(/tvcorp/arte/foto-aniversario-baloes.jpg); background-size: cover; background-position: center; --tfg: #ffffff; --tdim: #f5f3ff; }
+.tvc-it-bday .tvc-it-t { border-left: 0; padding-left: 0; color: #fde68a; font-size: 6.4cqw; }
+.tvc-bday-people { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; }
+.tvc-bday-people li { display: flex; flex-direction: column; align-items: center; width: 20cqw; margin: 1.2cqw 1.6cqw; }
+.tvc-bday-people b { font-size: 3cqw; line-height: 1.2; margin-top: 1cqw; color: #ffffff; }
+.tvc-bday-people span { font-size: 2.4cqw; color: #f5f3ff; }
+.tvc-av { width: 14cqw; height: 14cqw; border-radius: 50%; object-fit: cover; flex: none; border: 0.6cqw solid #fbbf24; box-sizing: border-box; background: #4c1d95; }
+.tvc-av-ini { display: inline-flex; align-items: center; justify-content: center; background: #7c3aed; color: #ffffff; font-weight: 700; font-size: 5.4cqw; }
+.tvc-it-bday.n1 li { width: 60cqw; }
+.tvc-it-bday.n1 .tvc-av { width: 26cqw; height: 26cqw; font-size: 10cqw; border-width: 1cqw; }
+.tvc-it-bday.n1 b { font-size: 5.4cqw; }
+.tvc-it-bday.n1 span { font-size: 3.6cqw; }
+.tvc-it-bday.n3 li { width: 26cqw; }
+.tvc-it-bday.n3 .tvc-av { width: 19cqw; height: 19cqw; font-size: 7cqw; }
+.tvc-it-bday.n3 b { font-size: 3.8cqw; }
+.tvc-it-bday.n8 li { width: 17cqw; margin: 0.8cqw 1cqw; }
+.tvc-it-bday.n8 .tvc-av { width: 11cqw; height: 11cqw; font-size: 4.2cqw; }
+.tvc-bday-wish { font-size: 3.4cqw; font-weight: 600; color: #fde68a; }
 
 /* A prévia mede tudo (texto, margens) pela caixa onde ela está (cqw): a caixa de fora precisa ser um "container". Sem
    isso, as medidas iam para a janela inteira, as margens engoliam o conteúdo e a miniatura transbordava (22/11). */
 :has(> .tvc-sl), :has(> .tvc-it), :has(> .tvc-lay), :has(> .tvc-z) { container-type: inline-size; }
 .tc-tpl, .tc-thumb { container-type: inline-size; min-width: 0; }
 .tc-tpl > .tvc-sl, .tc-thumb > .tvc-sl { max-width: 100%; }
+
+/* DIGITAL ISP · os modelos do comércio: oferta e combo (preço em destaque), vitrine de preços, horário e redes sociais.
+   Só o que as TVs de 2018 a 2020 têm (o app converte cqw/cqh e o gap): flex, nada de grid, clamp() ou backdrop-filter. */
+.tvc-sl-small { font-size: 2.8cqw; }
+.tvc-sl-price { flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1.8cqw 3.2cqw; border-radius: 1.2cqw; background: #facc15; color: #0f172a; text-align: center; }
+.tvc-sl-price b { font-size: 8.4cqw; line-height: 1; white-space: nowrap; }
+.tvc-sl-price b.tvc-sl-long { font-size: 6.4cqw; }
+.tvc-sl-price small, .tvc-sl-old { font-size: 2.6cqw; font-weight: 600; }
+.tvc-sl.th-light .tvc-sl-price { background: var(--tcb); color: #ffffff; }
+.tvc-sl-rows { margin: 0; padding: 0; list-style: none; font-size: 3.1cqw; line-height: 1.25; }
+.tvc-sl-rows li { display: flex; justify-content: space-between; align-items: baseline; padding: 0.18em 0; border-bottom: 1px solid rgba(148, 163, 184, 0.35); }
+.tvc-sl-rows li b { margin-left: 1em; white-space: nowrap; color: var(--tfg); }
+.tvc-sl-rows li span { color: var(--tfg); }
+.tvc-sl-handle { font-size: 5.6cqw; font-weight: 700; color: var(--tfg); word-break: break-all; }
+
+/* em pé (9:16): a TV girada ou o totem. Tudo em coluna; as medidas em cqw da largura, que é menor */
+.tvc-sl.tvc-port { aspect-ratio: 9 / 16; flex-direction: column; align-items: stretch; justify-content: center; gap: 5cqw; padding: 9cqw 7cqw; }
+.tvc-z .tvc-sl.tvc-port { aspect-ratio: auto; }
+/* nas TVs sem gap no flex (o app troca o gap por margem): em pé, o espaço entre os blocos é em cima, nunca do lado */
+.tvc-sl.tvc-port > * + * { margin-left: 0 !important; }
+.tvc-port .tvc-sl-body { flex: none; flex-direction: column; gap: 3.2cqw; }
+.tvc-port .tvc-sl-t { font-size: 10.6cqw; }
+.tvc-port .tvc-sl-x, .tvc-port .tvc-sl-list { font-size: 6.4cqw; }
+.tvc-port .tvc-sl-small, .tvc-port .tvc-sl-cap { font-size: 5cqw; }
+.tvc-port .tvc-sl-tag { font-size: 4.4cqw; }
+.tvc-port .tvc-sl-rows { font-size: 5.8cqw; }
+.tvc-port .tvc-sl-handle { font-size: 8cqw; }
+.tvc-port .tvc-sl-name { font-size: 7.6cqw; }
+.tvc-port .tvc-sl-qrc { width: 36cqw; height: 36cqw; align-self: center; }
+.tvc-port .tvc-sl-side { width: 46cqw; height: 46cqw; align-self: center; }
+.tvc-port .tvc-sl-ini { font-size: 17cqw; }
+.tvc-port .tvc-sl-count { align-self: center; padding: 3cqw 8cqw; }
+.tvc-port .tvc-sl-count b { font-size: 22cqw; }
+.tvc-port .tvc-sl-count span, .tvc-port .tvc-sl-count small { font-size: 5.2cqw; }
+.tvc-port .tvc-sl-big { font-size: 24cqw; }
+.tvc-port .tvc-sl-price { align-self: center; padding: 3.6cqw 7cqw; border-radius: 2.4cqw; }
+.tvc-port .tvc-sl-price b { font-size: 17cqw; }
+.tvc-port .tvc-sl-price b.tvc-sl-long { font-size: 11.5cqw; }
+.tvc-port .tvc-sl-price small, .tvc-port .tvc-sl-old { font-size: 5cqw; }
+.tvc-port .tvc-bar { height: 4.6cqw; }
