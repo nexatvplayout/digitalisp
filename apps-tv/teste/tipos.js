@@ -47,6 +47,7 @@ function itensTipos(arquivo, agora) {
       { label: 'BTC', name: 'Bitcoin', value: 512340, change: 1.8, prefix: 'R$ ', decimals: 0 }] },
     { id: 'm1', kind: 'menu', seconds: s, title: 'Cardápio do dia', day: dia(0), weekday: 'segunda', items: [{ name: 'Feijoada', price: 24.9 }, { name: 'Salada verde' }, { name: 'Pudim', price: 8 }] },
     { id: 'w1', kind: 'countdown', seconds: s, title: 'Faltam para as férias coletivas', target: agora + 20 * 86400000, text: 'Boas festas!' },
+    { id: 'w1b', kind: 'countdown', seconds: s, title: 'Black Friday', target: agora - 3600000, until: agora + 2 * 86400000 + 5 * 3600000, text: 'Termina em breve' },
     { id: 'w2', kind: 'safety', seconds: s, title: 'Dias sem acidente', days: 999, record: 210, goal: 365, since: dia(-128) },
     { id: 'w3', kind: 'worldclock', seconds: s, clocks: [{ tz: 'America/Sao_Paulo', label: 'São Paulo' }, { tz: 'Europe/Lisbon', label: 'Lisboa' }, { tz: 'Asia/Tokyo', label: 'Tóquio' }] },
     { id: 't1', kind: 'text', seconds: s, title: 'Aviso', text: 'Estacionamento fechado amanhã para manutenção.' },

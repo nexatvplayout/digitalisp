@@ -126,7 +126,7 @@ function esbuild() {
 function gerarJs(mins, conteineres) {
   const eb = esbuild();
   const entrada = [
-    `export { itemPreview, slidePreview, themeClass, daysSince, daysUntil } from ${JSON.stringify(FONTE_JS.replace(/\\/g, '/'))};`,
+    `export * from ${JSON.stringify(FONTE_JS.replace(/\\/g, '/'))};`,
     `export { qrSvg } from ${JSON.stringify(FONTE_QR.replace(/\\/g, '/'))};`
   ].join('\n');
   const r = eb.buildSync({

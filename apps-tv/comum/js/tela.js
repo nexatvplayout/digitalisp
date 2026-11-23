@@ -146,13 +146,22 @@
       try { return new Date(ms).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: tz }); } catch (e) { return ''; }
     }
 
+    /** Repete fn a cada `ms` enquanto o nó estiver na tela: o item que saiu da playlist para sozinho, sem acumular. */
+    function enquantoNaTela(no, fn, ms) {
+      var t = setInterval(function () {
+        if (!document.documentElement.contains(no)) { clearInterval(t); return; }
+        fn();
+      }, ms);
+      timers.push(t);
+    }
+
     /** Os tipos que a prévia desenha só como zona (relógio, clima, QR, logomarca): as mesmas classes dela. */
     function zonaPrevia(kind, o, prog) {
       var th = raiz.TelasPrevia.themeClass(tema(prog));
       if (kind === 'clock') {
         var c = el('div', 'tvc-z-clock ' + th), b = el('b'), sp = el('span');
         var f = function () { b.textContent = hhmm(ctx.agora(), prog.tz); sp.textContent = dataLonga(ctx.agora(), prog.tz); };
-        f(); timers.push(setInterval(f, 5000));
+        f(); enquantoNaTela(c, f, 5000);
         c.appendChild(b); c.appendChild(sp);
         return c;
       }
@@ -199,6 +208,11 @@
         z.appendChild(n);
         trocar(caixa, z);
         medidas(caixa);
+        // contador (dias, horas, minutos e segundos): anda a cada segundo, pelo relógio confiável do app
+        if (raiz.TelasPrevia.tickCountdowns && (n.classList.contains('tvc-it-count') || n.querySelector('.tvc-it-count'))) {
+          var tique = function () { raiz.TelasPrevia.tickCountdowns(n, ctx.agora()); };
+          tique(); enquantoNaTela(n, tique, 1000);
+        }
         timers.push(setTimeout(depois, it.seconds * 1000));
       });
     }
