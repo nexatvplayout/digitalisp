@@ -20,4 +20,9 @@ esses campos sem quebrar (ignora ou descarta), conferido pelo código.
 | Comando `identify` | 2d5c686 | responde `ok: false` "Comando desconhecido nesta versão do app" | por 10 s, por cima de tudo: o nome da TV, o número grande da posição (`wall.pos`) e o nome do conjunto; responder `ok` |
 | `image` nos modelos `oferta`, `precos`, `combo` | fe133de | não desenha a imagem | pôr a imagem ao lado ou embaixo |
 
+Enquanto o `signage.wall` não está no app, o painel não salva um videowall com TV box Android e avisa que o cardápio
+dessas TVs troca sem sincronia (32b4a65). Ao implementar, **tirar `'android'` de `WALL_UNSUPPORTED`** em
+`public/shared/tvcorp-wall.js`. A resposta "Comando desconhecido…" ao `identify` aparece no painel como "Não suportado
+por esta versão do app".
+
 Já feito: a arte de fundo (`artFile`), a paleta e os modelos do comércio (fe133de, `docs/CONTRATO-APP-SLIDES.md`).
