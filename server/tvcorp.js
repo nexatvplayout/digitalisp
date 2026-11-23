@@ -72,6 +72,7 @@ export function createTvcorp({
   forget = () => {}, audit = async () => {}, ipOf = (req) => req.ip, now = () => Date.now(), timers = true, artFile = null,
   audioOf = null, // (tenantId, layoutId) -> o bloco layout.audio (a rádio de fundo) ou null
   storageCheck = null, // (tenantId, bytes): o 402 do armazenamento do plano antes de aceitar um vídeo
+  widgetFallback = null, // (tenantId, sample) -> id de um gadget do cliente: a zona de gadget sem gadget escolhido não fica vazia na TV
 }) {
   if (!db) throw new Error('createTvcorp: falta o banco');
   const noStore = (res) => res.set('Cache-Control', 'no-store');
@@ -367,9 +368,18 @@ export function createTvcorp({
     }
     // o gadget escolhido direto na zona do layout (contador, dias sem acidente, relógio mundial): sem playlist
     for (const z of lay.zones) {
-      if (z.widget == null || zones[z.id]?.length) continue;
-      const items = await itemsOf(tenantId, officeId, { refKind: 'widget', refId: Number(z.widget), seconds: L.secondsMax, params: {} }, data, req, at);
-      if (items.length) zones[z.id] = items;
+      if (zones[z.id]?.length) continue;
+      // zona de gadget sem gadget escolhido (ou com um que sumiu): vai o gadget do cliente do mesmo tipo, ou outro que ele tenha
+      const ids = [];
+      if (z.widget != null) ids.push(Number(z.widget));
+      if (z.kind === 'widget' && widgetFallback) {
+        const alt = await Promise.resolve(widgetFallback(tenantId, z.sample || null)).catch(() => null);
+        if (alt != null && !ids.includes(Number(alt))) ids.push(Number(alt));
+      }
+      for (const wid of ids) {
+        const items = await itemsOf(tenantId, officeId, { refKind: 'widget', refId: wid, seconds: L.secondsMax, params: {} }, data, req, at);
+        if (items.length) { zones[z.id] = items; break; }
+      }
     }
     return {
       id: `s${s.id}`, layout,

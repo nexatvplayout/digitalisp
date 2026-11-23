@@ -220,6 +220,12 @@ let telas = null;
 const tvcorp = createTvcorp({
   db, storage: graphicsFiles('tvcmedia-', 'tvclogo-'), ffmpeg: config.ffmpeg, artFile: artFileOf,
   audioOf, // a rádio de fundo do layout (server/radios.js)
+  // a zona de gadget vazia: o gadget do cliente do mesmo tipo; senão relógio, clima, ou o primeiro que houver
+  widgetFallback: async (tenantId, sample) => {
+    const rows = await db.all('SELECT id, kind FROM tvcorp_widgets WHERE tenant_id = ? ORDER BY id', [tenantId]);
+    const pick = (k) => rows.find((r) => r.kind === k)?.id;
+    return pick(sample) ?? pick('clock') ?? pick('weather') ?? rows[0]?.id ?? null;
+  },
   storageCheck: async (tenantId, bytes) => tenancy.assertStorage(tenantId, await tenancy.usageStorageBytes(tenantId), bytes),
   dataFor: tvcorpDados.dataFor, labelFor: tvcorpLabel,
   refExists: async (tenantId, kind, id) => Boolean(await tvcorpLabel(tenantId, kind, id)),

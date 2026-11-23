@@ -128,6 +128,8 @@ export function cleanZone(z, i = 0) {
   if (kind === 'qr' && !out.qr) throw fail(400, `${what}: diga o endereço do QR code.`);
   // o gadget (contador, dias sem acidente, relógio mundial) escolhido direto no layout: o id do bloco do cliente
   if (params.includes('widget') && z.widget != null && z.widget !== '') out.widget = idOf(z.widget, `${what}, gadget`);
+  // o tipo de gadget que o modelo pede (avaliações, relógio…): sem gadget escolhido, a TV recebe um do cliente desse tipo
+  if (params.includes('widget') && typeof z.sample === 'string' && /^[a-z][a-z-]{1,19}$/.test(z.sample)) out.sample = z.sample;
   // DIGITAL ISP: a zona por cima das outras (widget sobre a imagem), com o fundo translúcido (opacity, 0 a 100 %)
   if (z.overlay === true) {
     if (kind === 'video') throw fail(400, `${what}: o vídeo não pode ficar por cima das outras zonas.`);
