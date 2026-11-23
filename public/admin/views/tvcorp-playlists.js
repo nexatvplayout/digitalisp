@@ -76,7 +76,7 @@ export function widgetItem(w) {
   // os dados como o servidor guarda (server/tvcorp-dados.js cleanWidget) no formato do item que a tela recebe
   if (w?.kind === 'menu') { const day = new Date().getDay(); return { kind: 'menu', title: d.title || 'Cardápio de hoje', day: WEEK_SHORT[day], items: (d.days?.[String(day)] || []).map((x) => (d.showPrice ? x : { name: x.name })) }; }
   if (w?.kind === 'worldclock') return { kind: 'worldclock', title: w.name, clocks: (d.zones || []).map((tz) => ({ tz, label: zoneName(tz) })) };
-  if (w?.kind === 'countdown') return { kind: 'countdown', title: d.title, target: d.at, text: d.text };
+  if (w?.kind === 'countdown') return { kind: 'countdown', title: d.title, target: d.at, ...(d.until ? { until: d.until } : {}), text: d.text };
   if (w?.kind === 'safety') return { kind: 'safety', title: d.title, since: d.lastAccident, record: d.record, goal: d.goal };
   return { kind: 'none' };
 }

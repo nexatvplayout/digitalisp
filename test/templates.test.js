@@ -166,6 +166,7 @@ test('a prévia desenha cada template com o modelo, o formato e o texto, sem "un
       assert.equal(cls.includes('tvc-port'), t.orient === 'port', `${t.id}: formato`);
       if (t.fields.art) assert.ok(cls.includes(`tvc-art-${t.fields.art}`) && cls.includes(`tvc-art-${TVC_ART[t.fields.art].tone}`), `${t.id}: arte`);
       if (t.fields.variant === 'light') assert.ok(cls.includes('th-light'), `${t.id}: tema claro`);
+      for (const k of ['qrSize', 'priceSize', 'photoSize', 'titleSize']) if (t.fields[k]) assert.ok(cls.includes(`tvc-${k.replace('Size', '')}-${t.fields[k]}`), `${t.id}: tamanho ${k}`);
       const txt = n.textContent;
       assert.ok(!/undefined|null|NaN|\[object/.test(txt), `${t.id}: ${txt}`);
       assert.ok(txt.includes(t.fields.title), `${t.id}: título`);

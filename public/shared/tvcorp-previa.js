@@ -13,7 +13,7 @@
 // news{source,items[{title,source,at}]}; quotes{items[{label,value,change,prefix,decimals}],at,source}; menu{title,day,
 // items[{name,price}|"texto"]}; countdown{title,target,text}; safety{since,record,goal}; worldclock{clocks[{label,tz}]}; text{title,text}.
 import { qrSvg } from './telas-previa.js';
-import { TVC_ART, TVC_PALETTES } from './tvcorp-tipos.js';
+import { TVC_ART, TVC_PALETTES, TVC_SIZE_FIELDS } from './tvcorp-tipos.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 const h = (tag, cls, ...kids) => {
@@ -82,7 +82,9 @@ export function slidePreview(template, fields = {}, opts = {}) {
   const known = TVC_ART[f.art];
   const art = /^[a-z0-9-]{1,30}$/.test(String(f.art || '')) ? ` tvc-art tvc-art-${f.art}${known ? ` tvc-art-${known.tone === 'light' ? 'light' : 'dark'}${known.photo ? ' tvc-photo' : ''}` : ''}` : '';
   const theme = f.variant === 'light' || f.variant === 'dark' ? { ...(opts.theme || {}), mode: f.variant } : opts.theme;
-  const n = h('div', `tvc-sl tvc-sl-${template || 'comunicado'} ${slideTheme(theme, f.palette)}${art}${f.orient === 'port' ? ' tvc-port' : ''}`);
+  // o tamanho de cada elemento (QR, preço, foto, título): tvc-qr-l, tvc-price-xl…; vazio = médio
+  const sizes = TVC_SIZE_FIELDS.filter((k) => ['s', 'l', 'xl'].includes(f[k])).map((k) => ` tvc-${k.replace('Size', '')}-${f[k]}`).join('');
+  const n = h('div', `tvc-sl tvc-sl-${template || 'comunicado'} ${slideTheme(theme, f.palette)}${art}${f.orient === 'port' ? ' tvc-port' : ''}${sizes}`);
   n.setAttribute('role', 'img'); n.setAttribute('aria-label', `Prévia do slide: ${f.title || f.caption || template || ''}`);
   const caption = f.caption || (template === 'imagem-com-legenda' ? f.title : '');
   const img = opts.image ? Object.assign(h('img', 'tvc-sl-img'), { alt: '', src: opts.image }) : null;
@@ -189,9 +191,27 @@ export function itemPreview(it = {}, opts = {}) {
       return box('tvc-it-menu', h('div', 'tvc-it-t', it.title || `Cardápio${it.day ? ` · ${it.day}` : ' de hoje'}`), list.length ? h('ul', 'tvc-it-list', list.map((x) => h('li', '', x))) : h('div', 'tvc-it-x', 'Sem cardápio para hoje'));
     }
     case 'countdown': {
-      const tg = typeof it.target === 'number' ? (() => { const x = new Date(it.target); return `${x.getFullYear()}-${pad2(x.getMonth() + 1)}-${pad2(x.getDate())}`; })() : String(it.target ?? it.date ?? '').slice(0, 10);
-      const d = daysUntil(tg);
-      return box('tvc-it-count', h('div', 'tvc-it-t', it.title || 'Contagem regressiva'), h('div', 'tvc-it-big', d == null ? '—' : String(d)), h('div', 'tvc-it-x', `${d === 1 ? 'dia' : 'dias'}${it.text ? ` · ${it.text}` : ''}`));
+      // quanto falta para começar (target) e, depois, para terminar (until); dias, horas, minutos e segundos. A tela chama
+      // tickCountdowns(nó) a cada segundo; aqui já sai com o valor de agora
+      const toMs = (v) => { if (typeof v === 'number') return v; const m = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/.exec(String(v ?? '')); return m ? new Date(+m[1], +m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0)).getTime() : null; };
+      const at = toMs(it.target ?? it.date); const until = toMs(it.until);
+      const label = h('div', 'tvc-cd-lbl', '');
+      const units = [['dias', 'dia'], ['horas', 'hora'], ['min', 'min'], ['seg', 'seg']].map(([pl, sg]) => { const b = h('b', '', '00'); const sp = h('span', '', pl); return { u: h('div', 'tvc-cd-u', b, sp), b, sp, pl, sg }; });
+      const node = box('tvc-it-count', h('div', 'tvc-it-t', it.title || 'Contagem regressiva'), label, h('div', 'tvc-cd', units.map((x) => x.u)), it.text ? h('div', 'tvc-it-x', it.text) : null);
+      node._tvcTick = (now = Date.now()) => {
+        if (at == null) { label.textContent = 'Escolha a data'; return; }
+        const phase = now < at ? 'start' : until != null && now < until ? 'end' : 'done';
+        label.textContent = phase === 'start' ? 'Começa em' : phase === 'end' ? 'Termina em' : until != null ? 'Encerrado' : 'É hoje!';
+        const ms = Math.max(0, phase === 'start' ? at - now : phase === 'end' ? until - now : 0);
+        const sec = Math.floor(ms / 1000);
+        [Math.floor(sec / 86400), Math.floor(sec / 3600) % 24, Math.floor(sec / 60) % 60, sec % 60].forEach((v, i) => {
+          units[i].b.textContent = i ? pad2(v) : String(v); units[i].sp.textContent = v === 1 ? units[i].sg : units[i].pl;
+        });
+      };
+      if (at != null) node.setAttribute('data-tvc-at', String(at));
+      if (until != null) node.setAttribute('data-tvc-until', String(until));
+      node._tvcTick();
+      return node;
     }
     case 'safety': {
       const d = it.days ?? daysSince(it.since);
@@ -207,6 +227,17 @@ export function itemPreview(it = {}, opts = {}) {
     }
     default: return box('tvc-it-empty', it.title || 'Item');
   }
+}
+
+/**
+ * Atualiza os contadores (dias, horas, minutos e segundos) dentro do nó: os apps das telas e o painel chamam a cada segundo.
+ * Funciona em qualquer nó que tenha contadores desenhados por itemPreview (kind countdown).
+ */
+export function tickCountdowns(root, now = Date.now()) {
+  if (!root) return;
+  if (typeof root._tvcTick === 'function') root._tvcTick(now);
+  const list = typeof root.querySelectorAll === 'function' ? root.querySelectorAll('.tvc-it-count') : [];
+  for (let i = 0; i < list.length; i++) if (typeof list[i]._tvcTick === 'function') list[i]._tvcTick(now);
 }
 
 /* ------------------------------------------------------------------ zonas */

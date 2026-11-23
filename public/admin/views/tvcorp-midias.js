@@ -55,7 +55,7 @@ export function slideEditor(m, images, onSaved, { template = null, fields = null
       if (fd.kind === 'textarea') { input = el('textarea', { rows: '3', maxlength: String(fd.max) }); input.value = st.fields[fd.key] || ''; }
       else if (fd.kind === 'image') input = el('select', {}, opt('', images.length ? 'Sem imagem' : 'Nenhuma imagem na biblioteca ainda', !st.fields[fd.key]), ...images.map((i) => opt(i.id, i.title, Number(st.fields[fd.key]) === i.id)));
       // o formato não tem "o da empresa": sem ele, deitado
-      else if (fd.kind === 'choice') input = el('select', {}, fd.key === 'orient' ? null : opt('', 'O da empresa (Configurações)', !st.fields[fd.key]), ...(fd.options || []).map((o, i) => opt(o, fd.labels?.[i] || o, st.fields[fd.key] === o || (fd.key === 'orient' && !st.fields[fd.key] && o === 'land'))));
+      else if (fd.kind === 'choice') input = el('select', {}, fd.key === 'orient' ? null : opt('', /Size$/.test(fd.key) ? 'Médio (padrão)' : 'O da empresa (Configurações)', !st.fields[fd.key]), ...(fd.options || []).map((o, i) => opt(o, fd.labels?.[i] || o, st.fields[fd.key] === o || (fd.key === 'orient' && !st.fields[fd.key] && o === 'land'))));
       else input = el('input', { type: { date: 'date', datetime: 'datetime-local', url: 'url' }[fd.kind] || 'text', maxlength: fd.max ? String(fd.max) : null, value: st.fields[fd.key] ?? '', placeholder: fd.kind === 'url' ? 'https://…' : null });
       const read = () => {
         if (fd.kind === 'image') st.fields[fd.key] = input.value ? Number(input.value) : null;

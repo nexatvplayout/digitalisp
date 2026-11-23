@@ -6,7 +6,7 @@
 //
 //   templateCatalog()                 todos (memorizado), na ordem: grupo, segmento, peça, variação, formato
 //   filterTemplates(list, { q, group, segment, piece, orient })
-import { GROUPS, SEGMENTS, CORP_SEGMENTS, CORP, HORARIOS, DATAS, INTERNOS } from './templates-dados.js';
+import { GROUPS, SEGMENTS, CORP_SEGMENTS, CORP, HORARIOS, DATAS, INTERNOS, PROVEDOR_FOTOS, PROMO_FOTOS } from './templates-dados.js';
 
 export { GROUPS };
 /** As peças (o filtro "peça" do painel). */
@@ -18,7 +18,7 @@ export const PIECES = [
   ['vaga', 'Vagas'], ['reconhecimento', 'Reconhecimento'], ['aniversariantes', 'Aniversariantes'], ['beneficio', 'Benefícios'], ['visitante', 'Visitantes'],
 ].map(([key, label]) => ({ key, label }));
 export const PIECE = Object.fromEntries(PIECES.map((p) => [p.key, p]));
-export const ALL_SEGMENTS = [...SEGMENTS, ...CORP_SEGMENTS, INTERNOS];
+export const ALL_SEGMENTS = [...SEGMENTS, ...CORP_SEGMENTS, INTERNOS, PROVEDOR_FOTOS, PROMO_FOTOS];
 export const SEGMENT = Object.fromEntries(ALL_SEGMENTS.map((s) => [s.key, s]));
 const LOJA_PIECES = ['oferta', 'preco', 'combo', 'cardapio', 'promocao', 'boas-vindas', 'horario', 'datas', 'aviso', 'institucional', 'qr', 'redes'];
 const INST_PIECES = ['servicos', 'agenda', 'evento', 'dica', 'campanha', 'boas-vindas', 'horario', 'datas', 'aviso', 'institucional', 'qr', 'redes'];
@@ -244,7 +244,7 @@ function commonPiece(seg, piece, i) {
     case 'datas': { const d = DATAS[seg.datas[i]]; return ['data-comemorativa', { title: d.title, date: nextDate(d), text: fill(signed(d.text), seg) }]; }
     case 'aviso': { const [title, text] = split(fill(uniqueBy([...seg.avisos, ...T.aviso[perfil]], 5)[i], seg)); return ['comunicado', { title, text }]; }
     case 'institucional': { const [title, text] = split(uniqueBy([...seg.inst, ...T.inst[kind].map((x) => fill(x, seg))], 5)[i]); return ['comunicado', { title, text }]; }
-    case 'qr': { const [title, text, path] = T.qr[perfil][i]; return ['qr', { title, text, qr: qrUrl(seg, path) }]; }
+    case 'qr': { const [title, text, path] = T.qr[perfil][i]; const qrSize = ['l', 'xl', '', 'l', 'xl'][i]; return ['qr', { title, text, qr: qrUrl(seg, path), ...(qrSize ? { qrSize } : {}) }]; }
     case 'redes': return ['redes', { title: T.redesTit[i], handle: handleOf(seg), text: T.redesTxt[kind][i], qr: qrUrl(seg, 'redes') }];
     default: return null;
   }

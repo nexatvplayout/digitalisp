@@ -49,7 +49,7 @@ export const TVC_FIT_KEYS = Object.freeze(TVC_FITS.map((f) => f.key));
 /* ------------------------------------------------------------------ zonas do layout (contrato §4.1 zones[].kind) */
 /**
  * auto: o conteúdo vem da configuração da tela ou do servidor, sem playlist. playlist: a zona recebe uma playlist na grade.
- * params: os campos que a zona aceita (texto, endereço do QR, rótulo).
+ * params: os campos que a zona aceita (texto, endereço do QR, rótulo; widget = o gadget escolhido direto no layout, sem playlist).
  */
 export const TVC_ZONES = Object.freeze([
   { key: 'video', label: 'Vídeo do canal', desc: 'O canal ao vivo (grade, playout e ao vivo). No máximo um por layout.' },
@@ -62,9 +62,9 @@ export const TVC_ZONES = Object.freeze([
   { key: 'text', label: 'Texto fixo', desc: 'Um título e uma frase fixos.', params: ['title', 'text'] },
   { key: 'news', label: 'Notícias', desc: 'As manchetes das fontes escolhidas, com a fonte e a hora.', playlist: true },
   { key: 'quotes', label: 'Cotações', desc: 'Dólar, euro e outras moedas, com a hora da cotação.', playlist: true },
-  { key: 'countdown', label: 'Contagem regressiva', desc: 'Dias e horas até um evento.', playlist: true },
-  { key: 'safety', label: 'Dias sem acidente', desc: 'Os dias sem acidente, o recorde e a meta.', playlist: true },
-  { key: 'worldclock', label: 'Relógio mundial', desc: 'A hora em outras cidades.', params: ['title'] },
+  { key: 'countdown', label: 'Contagem regressiva', desc: 'Quanto falta para começar ou para terminar um evento: dias, horas, minutos e segundos.', playlist: true, params: ['widget'] },
+  { key: 'safety', label: 'Dias sem acidente', desc: 'Os dias sem acidente, o recorde e a meta.', playlist: true, params: ['widget'] },
+  { key: 'worldclock', label: 'Relógio mundial', desc: 'A hora em outras cidades.', params: ['title', 'widget'] },
   { key: 'queue', label: 'Chamada de senha', desc: 'A senha chamada e as últimas chamadas (quando a unidade tem a chamada de senha).' },
 ]);
 export const TVC_ZONE = Object.freeze(Object.fromEntries(TVC_ZONES.map((z) => [z.key, z])));
@@ -225,6 +225,44 @@ export const TVC_ARTS = Object.freeze([
   { key: 'foto-cafeteria', label: 'Foto: cafeteria', tone: 'dark', photo: true }, { key: 'foto-academia', label: 'Foto: academia', tone: 'dark', photo: true },
   { key: 'foto-clinica', label: 'Foto: recepção de clínica', tone: 'dark', photo: true }, { key: 'foto-barbearia', label: 'Foto: barbearia', tone: 'dark', photo: true },
   { key: 'foto-pet', label: 'Foto: cachorro e gato', tone: 'dark', photo: true }, { key: 'foto-provedor', label: 'Foto: fibra óptica', tone: 'dark', photo: true },
+  // datas promocionais do comércio
+  { key: 'foto-promo-black-friday', label: 'Foto: Black Friday', tone: 'dark', photo: true },
+  { key: 'foto-promo-natal', label: 'Foto: presentes de Natal', tone: 'dark', photo: true },
+  { key: 'foto-promo-maes', label: 'Foto: Dia das Mães', tone: 'dark', photo: true },
+  { key: 'foto-promo-pais', label: 'Foto: Dia dos Pais', tone: 'dark', photo: true },
+  { key: 'foto-promo-criancas', label: 'Foto: Dia das Crianças', tone: 'dark', photo: true },
+  { key: 'foto-promo-namorados', label: 'Foto: Dia dos Namorados', tone: 'dark', photo: true },
+  { key: 'foto-promo-pascoa', label: 'Foto: Páscoa', tone: 'dark', photo: true },
+  { key: 'foto-promo-ano-novo', label: 'Foto: Ano Novo', tone: 'dark', photo: true },
+  { key: 'foto-promo-queima', label: 'Foto: queima de estoque', tone: 'dark', photo: true },
+  { key: 'foto-promo-verao', label: 'Foto: verão', tone: 'dark', photo: true },
+  { key: 'foto-promo-volta-aulas', label: 'Foto: volta às aulas', tone: 'dark', photo: true },
+  { key: 'foto-promo-carnaval', label: 'Foto: Carnaval', tone: 'dark', photo: true },
+  { key: 'foto-promo-junina', label: 'Foto: festa junina', tone: 'dark', photo: true },
+  { key: 'foto-promo-inverno', label: 'Foto: inverno', tone: 'dark', photo: true },
+  { key: 'foto-promo-aniversario-loja', label: 'Foto: aniversário da loja', tone: 'dark', photo: true },
+  { key: 'foto-promo-dia-cliente', label: 'Foto: Dia do Cliente', tone: 'dark', photo: true },
+  // provedor de internet (a vitrine do ISP)
+  { key: 'foto-prov-roteador', label: 'Foto: roteador na sala', tone: 'dark', photo: true },
+  { key: 'foto-prov-sala-tv', label: 'Foto: sala com TV', tone: 'dark', photo: true },
+  { key: 'foto-prov-gamer', label: 'Foto: mesa de jogos', tone: 'dark', photo: true },
+  { key: 'foto-prov-home-office', label: 'Foto: trabalho em casa', tone: 'dark', photo: true },
+  { key: 'foto-prov-instalacao', label: 'Foto: ferramentas de instalação', tone: 'dark', photo: true },
+  { key: 'foto-prov-bobina', label: 'Foto: bobina de fibra', tone: 'dark', photo: true },
+  { key: 'foto-prov-cidade', label: 'Foto: cidade conectada', tone: 'dark', photo: true },
+  { key: 'foto-prov-datacenter', label: 'Foto: data center', tone: 'dark', photo: true },
+  { key: 'foto-prov-streaming', label: 'Foto: sofá e pipoca', tone: 'dark', photo: true },
+  { key: 'foto-prov-casa-inteligente', label: 'Foto: casa inteligente', tone: 'dark', photo: true },
+  { key: 'foto-prov-estudo', label: 'Foto: mesa de estudo', tone: 'dark', photo: true },
+  { key: 'foto-prov-empresa', label: 'Foto: rede da empresa', tone: 'dark', photo: true },
+  { key: 'foto-prov-rural', label: 'Foto: casa no campo', tone: 'dark', photo: true },
+  { key: 'foto-prov-poste', label: 'Foto: poste com fibra', tone: 'dark', photo: true },
+  { key: 'foto-prov-velocidade', label: 'Foto: luzes em alta velocidade', tone: 'dark', photo: true },
+  { key: 'foto-prov-suporte', label: 'Foto: fone de suporte', tone: 'dark', photo: true },
+  { key: 'foto-prov-sinal', label: 'Foto: ondas de sinal', tone: 'dark', photo: true },
+  { key: 'foto-prov-celular', label: 'Foto: celular na mesa', tone: 'dark', photo: true },
+  { key: 'foto-prov-seguranca', label: 'Foto: cadeado e rede', tone: 'dark', photo: true },
+  { key: 'foto-prov-mudanca', label: 'Foto: caixas de mudança', tone: 'dark', photo: true },
   // uso interno da empresa (comunicação interna)
   { key: 'foto-aniversario-baloes', label: 'Foto: balões de aniversário', tone: 'dark', photo: true },
   { key: 'foto-aniversario-bolo', label: 'Foto: bolo de aniversário', tone: 'dark', photo: true },
@@ -269,7 +307,12 @@ export const TVC_STYLE_FIELDS = Object.freeze([
   F('art', 'Arte de fundo', 'choice', { options: TVC_ARTS.map((x) => x.key), labels: TVC_ARTS.map((x) => x.label) }),
   F('palette', 'Cor do slide', 'choice', { options: TVC_PALETTES.map((x) => x.key), labels: TVC_PALETTES.map((x) => x.label) }),
   F('orient', 'Formato', 'choice', { options: ['land', 'port'], labels: ['Deitado (16:9)', 'Em pé (9:16)'] }),
+  // o tamanho de cada elemento (vazio = médio, o de sempre): QR code, selo do preço, foto ou iniciais e título
+  ...['qrSize', 'priceSize', 'photoSize', 'titleSize'].map((key, i) => F(key, ['Tamanho do QR code', 'Tamanho do preço', 'Tamanho da foto ou das iniciais', 'Tamanho do título'][i], 'choice',
+    { options: ['s', 'l', 'xl'], labels: ['Pequeno', 'Grande', 'Muito grande'] })),
 ]);
+/** Os campos de tamanho dos elementos (a prévia vira classe tvc-<campo sem Size>-<valor>). */
+export const TVC_SIZE_FIELDS = Object.freeze(['qrSize', 'priceSize', 'photoSize', 'titleSize']);
 export const TVC_SLIDE_MODELS = Object.freeze([
   { key: 'comunicado', label: 'Comunicado', desc: 'Título, texto e QR opcional.', fields: [TITLE, TEXT, IMAGE, QR] },
   { key: 'boas-vindas', label: 'Boas-vindas', desc: 'Para quem chega: visitante ou novo colega.', fields: [TITLE, F('name', 'Nome', 'line', { max: 60 }), F('sector', 'Setor', 'line', { max: 40 }), TEXT, IMAGE] },

@@ -123,6 +123,42 @@
 .tvc-sl.tvc-art-foto-barbearia { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-barbearia.jpg); }
 .tvc-sl.tvc-art-foto-pet { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-pet.jpg); }
 .tvc-sl.tvc-art-foto-provedor { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-provedor.jpg); }
+.tvc-sl.tvc-art-foto-promo-black-friday { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-promo-black-friday.jpg); }
+.tvc-sl.tvc-art-foto-promo-natal { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-promo-natal.jpg); }
+.tvc-sl.tvc-art-foto-promo-maes { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-promo-maes.jpg); }
+.tvc-sl.tvc-art-foto-promo-pais { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-promo-pais.jpg); }
+.tvc-sl.tvc-art-foto-promo-criancas { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-promo-criancas.jpg); }
+.tvc-sl.tvc-art-foto-promo-namorados { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-promo-namorados.jpg); }
+.tvc-sl.tvc-art-foto-promo-pascoa { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-promo-pascoa.jpg); }
+.tvc-sl.tvc-art-foto-promo-ano-novo { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-promo-ano-novo.jpg); }
+.tvc-sl.tvc-art-foto-promo-queima { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-promo-queima.jpg); }
+.tvc-sl.tvc-art-foto-promo-verao { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-promo-verao.jpg); }
+.tvc-sl.tvc-art-foto-promo-volta-aulas { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-promo-volta-aulas.jpg); }
+.tvc-sl.tvc-art-foto-promo-carnaval { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-promo-carnaval.jpg); }
+.tvc-sl.tvc-art-foto-promo-junina { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-promo-junina.jpg); }
+.tvc-sl.tvc-art-foto-promo-inverno { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-promo-inverno.jpg); }
+.tvc-sl.tvc-art-foto-promo-aniversario-loja { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-promo-aniversario-loja.jpg); }
+.tvc-sl.tvc-art-foto-promo-dia-cliente { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-promo-dia-cliente.jpg); }
+.tvc-sl.tvc-art-foto-prov-roteador { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-prov-roteador.jpg); }
+.tvc-sl.tvc-art-foto-prov-sala-tv { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-prov-sala-tv.jpg); }
+.tvc-sl.tvc-art-foto-prov-gamer { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-prov-gamer.jpg); }
+.tvc-sl.tvc-art-foto-prov-home-office { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-prov-home-office.jpg); }
+.tvc-sl.tvc-art-foto-prov-instalacao { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-prov-instalacao.jpg); }
+.tvc-sl.tvc-art-foto-prov-bobina { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-prov-bobina.jpg); }
+.tvc-sl.tvc-art-foto-prov-cidade { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-prov-cidade.jpg); }
+.tvc-sl.tvc-art-foto-prov-datacenter { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-prov-datacenter.jpg); }
+.tvc-sl.tvc-art-foto-prov-streaming { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-prov-streaming.jpg); }
+.tvc-sl.tvc-art-foto-prov-casa-inteligente { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-prov-casa-inteligente.jpg); }
+.tvc-sl.tvc-art-foto-prov-estudo { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-prov-estudo.jpg); }
+.tvc-sl.tvc-art-foto-prov-empresa { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-prov-empresa.jpg); }
+.tvc-sl.tvc-art-foto-prov-rural { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-prov-rural.jpg); }
+.tvc-sl.tvc-art-foto-prov-poste { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-prov-poste.jpg); }
+.tvc-sl.tvc-art-foto-prov-velocidade { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-prov-velocidade.jpg); }
+.tvc-sl.tvc-art-foto-prov-suporte { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-prov-suporte.jpg); }
+.tvc-sl.tvc-art-foto-prov-sinal { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-prov-sinal.jpg); }
+.tvc-sl.tvc-art-foto-prov-celular { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-prov-celular.jpg); }
+.tvc-sl.tvc-art-foto-prov-seguranca { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-prov-seguranca.jpg); }
+.tvc-sl.tvc-art-foto-prov-mudanca { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-prov-mudanca.jpg); }
 .tvc-sl.tvc-art-foto-aniversario-baloes { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-aniversario-baloes.jpg); }
 .tvc-sl.tvc-art-foto-aniversario-bolo { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-aniversario-bolo.jpg); }
 .tvc-sl.tvc-art-foto-aniversario-presentes { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-aniversario-presentes.jpg); }
@@ -210,3 +246,51 @@
 .tvc-port .tvc-sl-price b.tvc-sl-long { font-size: 11.5cqw; }
 .tvc-port .tvc-sl-price small, .tvc-port .tvc-sl-old { font-size: 5cqw; }
 .tvc-port .tvc-bar { height: 4.6cqw; }
+
+/* o tamanho dos elementos (campos qrSize, priceSize, photoSize e titleSize; sem eles, o médio acima) */
+.tvc-sl.tvc-qr-s .tvc-sl-qrc { width: 11cqw; height: 11cqw; }
+.tvc-sl.tvc-qr-l .tvc-sl-qrc { width: 22cqw; height: 22cqw; }
+.tvc-sl.tvc-qr-xl .tvc-sl-qrc { width: 28cqw; height: 28cqw; }
+.tvc-sl.tvc-price-s .tvc-sl-price b { font-size: 6.4cqw; }
+.tvc-sl.tvc-price-l .tvc-sl-price b { font-size: 11cqw; }
+.tvc-sl.tvc-price-xl .tvc-sl-price b { font-size: 13.5cqw; }
+.tvc-sl.tvc-price-s .tvc-sl-price b.tvc-sl-long { font-size: 5cqw; }
+.tvc-sl.tvc-price-l .tvc-sl-price b.tvc-sl-long { font-size: 8.4cqw; }
+.tvc-sl.tvc-price-xl .tvc-sl-price b.tvc-sl-long { font-size: 10cqw; }
+.tvc-sl.tvc-photo-s .tvc-sl-side { width: 15cqw; height: 15cqw; }
+.tvc-sl.tvc-photo-s .tvc-sl-ini { font-size: 5.5cqw; }
+.tvc-sl.tvc-photo-l .tvc-sl-side { width: 27cqw; height: 27cqw; }
+.tvc-sl.tvc-photo-l .tvc-sl-ini { font-size: 10cqw; }
+.tvc-sl.tvc-photo-xl .tvc-sl-side { width: 32cqw; height: 32cqw; }
+.tvc-sl.tvc-photo-xl .tvc-sl-ini { font-size: 12cqw; }
+.tvc-sl.tvc-title-s .tvc-sl-t { font-size: 5cqw; }
+.tvc-sl.tvc-title-l .tvc-sl-t { font-size: 7.6cqw; }
+.tvc-sl.tvc-title-xl .tvc-sl-t { font-size: 9cqw; }
+.tvc-sl.tvc-port.tvc-qr-s .tvc-sl-qrc { width: 26cqw; height: 26cqw; }
+.tvc-sl.tvc-port.tvc-qr-l .tvc-sl-qrc { width: 50cqw; height: 50cqw; }
+.tvc-sl.tvc-port.tvc-qr-xl .tvc-sl-qrc { width: 64cqw; height: 64cqw; }
+.tvc-sl.tvc-port.tvc-price-s .tvc-sl-price b { font-size: 13cqw; }
+.tvc-sl.tvc-port.tvc-price-l .tvc-sl-price b { font-size: 21cqw; }
+.tvc-sl.tvc-port.tvc-price-xl .tvc-sl-price b { font-size: 25cqw; }
+.tvc-sl.tvc-port.tvc-price-s .tvc-sl-price b.tvc-sl-long { font-size: 9cqw; }
+.tvc-sl.tvc-port.tvc-price-l .tvc-sl-price b.tvc-sl-long { font-size: 14cqw; }
+.tvc-sl.tvc-port.tvc-price-xl .tvc-sl-price b.tvc-sl-long { font-size: 17cqw; }
+.tvc-sl.tvc-port.tvc-photo-s .tvc-sl-side { width: 34cqw; height: 34cqw; }
+.tvc-sl.tvc-port.tvc-photo-s .tvc-sl-ini { font-size: 13cqw; }
+.tvc-sl.tvc-port.tvc-photo-l .tvc-sl-side { width: 58cqw; height: 58cqw; }
+.tvc-sl.tvc-port.tvc-photo-l .tvc-sl-ini { font-size: 21cqw; }
+.tvc-sl.tvc-port.tvc-photo-xl .tvc-sl-side { width: 70cqw; height: 70cqw; }
+.tvc-sl.tvc-port.tvc-photo-xl .tvc-sl-ini { font-size: 25cqw; }
+.tvc-sl.tvc-port.tvc-title-s .tvc-sl-t { font-size: 8.6cqw; }
+.tvc-sl.tvc-port.tvc-title-l .tvc-sl-t { font-size: 12.6cqw; }
+.tvc-sl.tvc-port.tvc-title-xl .tvc-sl-t { font-size: 14.6cqw; }
+
+/* contagem regressiva (DIGITAL ISP): dias, horas, minutos e segundos, cada um numa caixinha; "Começa em" ou "Termina em" */
+.tvc-it-count { align-items: center; justify-content: center; text-align: center; }
+.tvc-it-count .tvc-it-t { border-left: 0; padding-left: 0; }
+.tvc-cd-lbl { font-size: 3.8cqw; color: var(--tdim); }
+.tvc-cd { display: flex; justify-content: center; }
+.tvc-cd-u { display: flex; flex-direction: column; align-items: center; min-width: 15cqw; margin: 0 1.2cqw; padding: 1.4cqw 1cqw; border-radius: 1.2cqw; background: rgba(0, 0, 0, 0.28); }
+.tvc-cd-u b { font-size: 10cqw; line-height: 1; color: var(--tfg); }
+.tvc-cd-u span { font-size: 2.8cqw; color: var(--tdim); }
+.th-light .tvc-cd-u, .tvc-it.th-light .tvc-cd-u { background: rgba(15, 23, 42, 0.08); }
