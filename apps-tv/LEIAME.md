@@ -148,7 +148,7 @@ alertas.
 
 - Nada do app nem do sistema aparece: sem nome, sem marca d'água. O teste `sintaxe.test.js` barra "DIGITAL ISP" e
   "NEXA" no player.
-- Abertura, cadastro, espera e sem internet: a logo da revenda (guardada no aparelho) sobre o fundo da revenda.
+- Abertura e carregamento (espera): a marca DIGITAL ISP (`comum/marca/logo-digital-isp.svg`), decisão do dono de 23/11/2026. Cadastro e sem internet: a logo da revenda (guardada no aparelho) sobre o fundo da revenda.
 - Antes do primeiro cadastro a TV ainda não sabe a revenda: a tela do código fica só com o código e a instrução.
 - Nome no aparelho: **DIGITAL ISP**, com o ícone da DIGITAL ISP (`apps-tv/marca/`, gerado de `marca/icones/icone-1024.png`; decisão do dono de 23/11/2026, antes era "Telas"). O que aparece na tela continua sendo a marca da revenda. O id do pacote não mudou (Samsung `DgIspTela1.Telas`, LG `br.com.digitalisp.telas`): a versão nova instala por cima.
 

@@ -49,6 +49,9 @@ video.midia { object-fit: contain; }
 .camada { position: absolute; left: 0; top: 0; right: 0; bottom: 0; display: flex; flex-direction: column;
   align-items: center; justify-content: center; text-align: center; padding: var(--margem); box-sizing: border-box; z-index: 5; background: #000; }
 .logo-revenda { max-width: 42vw; max-height: 32vh; object-fit: contain; margin-bottom: 5vh; }
+/* abertura e carregamento: a marca DIGITAL ISP (comum/marca/logo-digital-isp.svg, de marca/svg/logo-horizontal-fundo-escuro.svg) */
+.camada-app { background: #071630; }
+.logo-app { width: 46vw; max-height: 28vh; object-fit: contain; margin-bottom: 6vh; }
 .codigo { font-size: 15vh; font-weight: 800; letter-spacing: .08em; font-variant-numeric: tabular-nums; }
 .chave { font-size: 8vh; width: 60vw; text-align: center; text-transform: uppercase; background: #111; color: #fff;
   border: .4vh solid var(--cor); border-radius: 1vh; padding: 1vh; }

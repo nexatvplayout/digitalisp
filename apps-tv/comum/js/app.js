@@ -94,7 +94,8 @@
   function aplicarMarca() {
     var m = est.marca || {};
     document.body.style.background = m.fundo || '#000';
-    Array.prototype.forEach.call(document.querySelectorAll('.camada'), function (c) { c.style.background = m.fundo || '#000'; });
+    // abertura e carregamento ficam com o fundo da marca do app (estilo.css); as outras camadas, com o da revenda
+    Array.prototype.forEach.call(document.querySelectorAll('.camada:not(.camada-app)'), function (c) { c.style.background = m.fundo || '#000'; });
     if (m.cor) document.documentElement.style.setProperty('--cor', m.cor);
     var imgs = document.querySelectorAll('.logo-revenda');
     var pronto = function (u) {
