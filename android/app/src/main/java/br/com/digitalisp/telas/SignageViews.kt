@@ -40,8 +40,12 @@ import android.text.Layout as TextLayout
 /** Cores do modo: as do tema da empresa (cor principal e claro/escuro). */
 data class SignLook(val bg: Int, val panel: Int, val text: Int, val dim: Int, val line: Int, val accent: Int, val onAccent: Int, val light: Boolean) {
     companion object {
-        fun of(theme: ThemeCfg, background: Int?): SignLook =
-            SignLook(background ?: theme.bg, theme.panel, theme.text, theme.dim, theme.line, theme.color, theme.onColor, theme.light)
+        /**
+         * As cores das zonas: o fundo de cada zona é o do tema (o "cartão", como a prévia e o app da Samsung: `--tbg`); o
+         * `background` do layout pinta só o fundo da tela, entre as zonas. [background] fica para quem pede o do layout.
+         */
+        fun of(theme: ThemeCfg, @Suppress("UNUSED_PARAMETER") background: Int?): SignLook =
+            SignLook(theme.bg, theme.panel, theme.text, theme.dim, theme.line, theme.color, theme.onColor, theme.light)
     }
 }
 

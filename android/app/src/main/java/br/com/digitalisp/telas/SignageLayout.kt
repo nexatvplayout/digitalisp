@@ -91,7 +91,8 @@ object SignageLayout {
             // sem zona de vídeo: a moldura continua existindo (o player é o mesmo), embaixo de um fundo que a cobre
             root.addView(frame, FrameLayout.LayoutParams(cw, ch))
         }
-        root.addView(View(ctx).apply { setBackgroundColor(env.look.bg) }, FrameLayout.LayoutParams(cw, ch))
+        // o fundo da tela entre as zonas: o do layout (sem ele, o do tema); cada zona pinta o próprio cartão por cima
+        root.addView(View(ctx).apply { setBackgroundColor(block.layout.background ?: env.look.bg) }, FrameLayout.LayoutParams(cw, ch))
         for (z in block.layout.zones) {
             val (l, t, r, b) = rect(z, cw, ch).let { listOf(it[0], it[1], it[2], it[3]) }
             val w = r - l

@@ -2168,6 +2168,7 @@ class MainActivity : Activity(), Engine.Ui {
             line("Último sinal de vida respondido", if (store.lastHeartbeatAt > 0) fmt.format(Date(store.lastHeartbeatAt)) else "nenhum ainda")
             line("Chamada de senha (tempo real)", if (c?.queue?.enabled == true) QueueLink.status else "desligada")
             line("Conteúdo guardado", Engine.offlineNote.ifEmpty { "${Engine.offlineFiles().size} vídeo(s)" })
+            if (c?.signage != null) line("Arquivos da grade", Engine.signageNote.ifEmpty { "conferindo…" })
         }
         line("Margem da tela (overscan)", "${Engine.store.overscanPct}%")
         line("Legendas", captionsSummary())
