@@ -86,7 +86,14 @@ function revendaForm(t, plans, done) {
       field('Dia do vencimento', inp('dia', t?.cobranca?.diaVencimento ?? 10, { type: 'number', min: 1, max: 28 })),
       field('Valor mensal (R$)', inp('valor', centsToInput(t?.cobranca?.valorCents), { inputmode: 'decimal', placeholder: 'vazio = o preço do plano' }))),
     field('Observações', el('textarea', { name: 'notes', rows: 2, maxlength: 1000, text: t?.notes || '' }), { full: true }),
-    el('div', { class: 'rv-actions' }, el('button', { class: 'primary', type: 'submit', text: editing ? 'Salvar' : 'Cadastrar revenda' })),
+    el('div', { class: 'rv-actions' }, el('button', { class: 'primary', type: 'submit', text: editing ? 'Salvar' : 'Cadastrar revenda' }),
+      editing ? el('button', { type: 'button', text: 'Nova senha de acesso', onclick: guard(async () => {
+        if (!confirm('Gerar uma senha nova para o administrador desta revenda? A senha atual deixa de valer.')) return;
+        const r = await api(`/api/platform/tenants/${t.id}/senha`, { method: 'POST', body: {} });
+        f.querySelector('.rv-out').replaceChildren(el('div', { class: 'card' }, el('h3', { text: 'Nova senha da revenda' }),
+          el('p', {}, 'Entrada: ', el('b', { text: `${location.origin}/admin/` }), ' com o e-mail ', el('b', { text: r.login }), '.'),
+          el('p', { class: 'hint', text: 'Senha nova (mostrada só agora; a revenda troca no primeiro acesso):' }), el('p', { class: 'rv-secret', text: r.senha })));
+      }) }) : null),
     el('div', { class: 'rv-out' }));
   ligarCep({ cep: f.elements.zip, rua: f.elements.street, bairro: f.elements.district, numero: f.elements.number, place });
   f.addEventListener('submit', guard(async (e) => {
