@@ -34,6 +34,7 @@ import { createGeocoder } from './telas-geocode.js';
 import { geocode } from './web/fontes.js';
 import { getJson as netGetJson } from './web/net.js';
 import { createNewsImages } from './noticias-img.js'; // a cópia da foto de cada notícia (uma por vez na tela)
+import { prepareMediaImage } from './tvcorp-midia.js'; // a foto da notícia em WebP vira JPEG
 import { forecast as weatherForecast } from './weather.js'; // o clima das telas (Open-Meteo/INMET, com cache e cota)
 
 const bootedAt = Date.now();
@@ -191,7 +192,7 @@ const graphicsFiles = (...prefixes) => ({
   list: async () => (await Promise.all(prefixes.map((p) => storage.list('graphics', p)))).flat().map((f) => ({ name: f.name, mtime: f.mtimeMs })),
 });
 
-const newsImages = createNewsImages({ dir: path.join(config.dataDir, 'telas', 'noticias') });
+const newsImages = createNewsImages({ dir: path.join(config.dataDir, 'telas', 'noticias'), toJpeg: (buf) => prepareMediaImage(buf, { ffmpeg: config.ffmpeg, orientation: 'land', fit: 'cover' }).then((o) => o.buf) });
 setInterval(() => { newsImages.prune().catch(() => {}); }, 3600_000).unref();
 const tvcorpDados = createTvcorpDados({
   forget: (tenantId) => telas?.forget(tenantId), // tirar uma notícia da programação muda o que as telas recebem

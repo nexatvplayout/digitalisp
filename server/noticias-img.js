@@ -20,7 +20,8 @@ export function sniffImage(b) {
   return null;
 }
 
-export function createNewsImages({ dir, fetcher = safeFetch, now = Date.now } = {}) {
+// toJpeg(buf) -> JPEG: a foto em WebP vira JPEG (as TVs mais antigas não desenham WebP; o resto das imagens já é JPEG)
+export function createNewsImages({ dir, fetcher = safeFetch, now = Date.now, toJpeg = null } = {}) {
   const failed = new Map(); // endereço -> quando falhou (não tenta de novo por 6 h)
   const known = new Map(); // endereço -> { file, sha256, bytes }
   let ready = null;
@@ -39,9 +40,10 @@ export function createNewsImages({ dir, fetcher = safeFetch, now = Date.now } = 
     try {
       const r = await fetcher(url, { timeout: NEWS_IMG_LIMITS.timeoutMs, maxBytes: NEWS_IMG_LIMITS.maxBytes, headers: { accept: 'image/jpeg, image/png, image/webp' } });
       if (r.status >= 400) throw new Error(`HTTP ${r.status}`);
-      const buf = r.body;
-      const ext = sniffImage(buf);
+      let buf = r.body;
+      let ext = sniffImage(buf);
       if (!ext) throw new Error('não é JPG, PNG nem WebP');
+      if (ext === 'webp' && toJpeg) { buf = await toJpeg(buf); ext = sniffImage(buf); if (ext !== 'jpg') throw new Error('a conversão do WebP falhou'); }
       const sha256 = createHash('sha256').update(buf).digest('hex');
       const file = `${sha256}.${ext}`;
       await ensureDir();
