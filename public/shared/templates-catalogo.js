@@ -6,7 +6,7 @@
 //
 //   templateCatalog()                 todos (memorizado), na ordem: grupo, segmento, peça, variação, formato
 //   filterTemplates(list, { q, group, segment, piece, orient })
-import { GROUPS, SEGMENTS, CORP_SEGMENTS, CORP, HORARIOS, DATAS } from './templates-dados.js';
+import { GROUPS, SEGMENTS, CORP_SEGMENTS, CORP, HORARIOS, DATAS, INTERNOS } from './templates-dados.js';
 
 export { GROUPS };
 /** As peças (o filtro "peça" do painel). */
@@ -18,12 +18,12 @@ export const PIECES = [
   ['vaga', 'Vagas'], ['reconhecimento', 'Reconhecimento'], ['aniversariantes', 'Aniversariantes'], ['beneficio', 'Benefícios'], ['visitante', 'Visitantes'],
 ].map(([key, label]) => ({ key, label }));
 export const PIECE = Object.fromEntries(PIECES.map((p) => [p.key, p]));
-export const ALL_SEGMENTS = [...SEGMENTS, ...CORP_SEGMENTS];
+export const ALL_SEGMENTS = [...SEGMENTS, ...CORP_SEGMENTS, INTERNOS];
 export const SEGMENT = Object.fromEntries(ALL_SEGMENTS.map((s) => [s.key, s]));
 const LOJA_PIECES = ['oferta', 'preco', 'combo', 'cardapio', 'promocao', 'boas-vindas', 'horario', 'datas', 'aviso', 'institucional', 'qr', 'redes'];
 const INST_PIECES = ['servicos', 'agenda', 'evento', 'dica', 'campanha', 'boas-vindas', 'horario', 'datas', 'aviso', 'institucional', 'qr', 'redes'];
 /** As peças de um segmento, na ordem. */
-export const piecesOf = (seg) => (seg.kind === 'corp' ? seg.pecas : seg.kind === 'inst' ? INST_PIECES : LOJA_PIECES.map((p) => (p === 'combo' && seg.semCombo ? 'destaque' : p)));
+export const piecesOf = (seg) => (seg.kind === 'fixo' ? [...new Set(seg.itens.map((x) => x[0]))] : seg.kind === 'corp' ? seg.pecas : seg.kind === 'inst' ? INST_PIECES : LOJA_PIECES.map((p) => (p === 'combo' && seg.semCombo ? 'destaque' : p)));
 export const VARIANTS = 5;
 
 /* ------------------------------------------------------------------ utilidades */
@@ -254,6 +254,25 @@ function commonPiece(seg, piece, i) {
 const strip = (s) => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 const GROUP_LABEL = Object.fromEntries(GROUPS.map((g) => [g.key, g.label]));
 
+/** As datas dos prontos: { days, at } -> daqui a n dias; { md, at } -> a próxima vez no ano (com a hora, se houver). */
+const whenOf = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? `${v.md ? nextDate({ md: v.md }) : dayAhead(v.days)}${v.at ? `T${v.at}` : ''}` : v);
+/** Os prontos escritos um a um (uso interno com foto): cada um nos dois formatos, com a foto e a cor dele. */
+function fixedOf(seg) {
+  const out = []; const count = {};
+  for (const [piece, template, base0, art, palette] of seg.itens) {
+    const i = (count[piece] = (count[piece] || 0) + 1);
+    const base = Object.fromEntries(Object.entries(base0).map(([k, v]) => [k, whenOf(v)]));
+    for (const orient of ['land', 'port']) {
+      const fields = { ...base, palette, variant: 'dark', art, ...(orient === 'port' ? { orient } : {}) };
+      out.push({
+        id: `${seg.key}-${piece}-${i}-${orient}`, segment: seg.key, segmentLabel: seg.label, group: seg.group, groupLabel: GROUP_LABEL[seg.group],
+        piece, pieceLabel: PIECE[piece].label, variant: i, orient, template, fields, name: `${seg.label} · ${PIECE[piece].label} ${i}`,
+        search: strip([seg.label, GROUP_LABEL[seg.group], PIECE[piece].label, 'foto', ...Object.values(base)].join(' ')),
+      });
+    }
+  }
+  return out;
+}
 /** Gera os templates (now: a data de hoje, para as datas comemorativas e os eventos). */
 export function buildCatalog() {
   const out = [];
@@ -261,6 +280,7 @@ export function buildCatalog() {
   const corpIdx = new Map(CORP_SEGMENTS.map((s, i) => [s.key, i]));
   const order = GROUPS.flatMap((g) => ALL_SEGMENTS.filter((s) => s.group === g.key));
   for (const [segIdx, seg] of order.entries()) {
+    if (seg.kind === 'fixo') { out.push(...fixedOf(seg)); continue; }
     piecesOf(seg).forEach((piece, pi) => {
       for (let i = 0; i < VARIANTS; i++) {
         const made = seg.kind === 'corp' ? corpPiece(seg, piece, i, corpIdx.get(seg.key) * 2)

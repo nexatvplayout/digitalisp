@@ -136,7 +136,7 @@ test('busca e filtros: sem acento, por segmento, peça e formato', () => {
   const r = C.filterTemplates(ALL, { q: 'pao frances', orient: 'land' });
   assert.ok(r.length && r.every((t) => t.orient === 'land' && /pão francês/i.test(JSON.stringify(t.fields))));
   assert.equal(C.filterTemplates(ALL, { segment: 'padaria', piece: 'oferta', orient: 'port' }).length, 5);
-  assert.equal(C.filterTemplates(ALL, { group: 'corporativo' }).length, 600);
+  assert.equal(C.filterTemplates(ALL, { group: 'corporativo' }).length, 640, '600 dos temas + 40 de uso interno com foto (20 × 2 formatos)');
   assert.equal(C.money(1079), 'R$ 1.079,00'); assert.equal(C.money(0.99), 'R$ 0,99'); assert.equal(C.money(18900), 'R$ 18.900,00');
   assert.equal(C.nextDate({ rule: 'pascoa' }, new Date(2026, 0, 1).getTime()), '2026-04-05');
   assert.equal(C.nextDate({ rule: 'maes' }, new Date(2026, 0, 1).getTime()), '2026-05-10');

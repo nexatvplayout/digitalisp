@@ -457,15 +457,15 @@ export const SEGMENTS = [
 /* ------------------------------------------------------------------ indústria e escritório (comunicação interna) */
 /** As peças de cada tema corporativo (12 cada), tiradas dos acervos de CORP abaixo, girando por tema. */
 export const CORP_SEGMENTS = [
-  { key: 'seguranca-trabalho', label: 'Segurança do trabalho', pal: ['laranja', 'grafite', 'dourado'], arts: ['seguranca', 'listras'],
+  { key: 'seguranca-trabalho', label: 'Segurança do trabalho', pal: ['laranja', 'grafite', 'dourado'], arts: ['seguranca', 'listras'], foto: 'foto-seguranca-epi',
     pecas: ['seguranca', 'indicador', 'evento', 'aviso', 'qr', 'boas-vindas', 'datas', 'institucional', 'reconhecimento', 'horario', 'cardapio', 'beneficio'] },
-  { key: 'metas', label: 'Metas e indicadores', pal: ['azul', 'verde', 'grafite'], arts: ['geometrico', 'conquista'],
+  { key: 'metas', label: 'Metas e indicadores', pal: ['azul', 'verde', 'grafite'], arts: ['geometrico', 'conquista'], foto: 'foto-metas',
     pecas: ['indicador', 'reconhecimento', 'aviso', 'evento', 'qr', 'datas', 'institucional', 'boas-vindas', 'seguranca', 'vaga', 'aniversariantes', 'horario'] },
-  { key: 'comunicacao-interna', label: 'Comunicação interna', pal: ['roxo', 'azul', 'petroleo'], arts: ['pontos', 'aniversario'],
+  { key: 'comunicacao-interna', label: 'Comunicação interna', pal: ['roxo', 'azul', 'petroleo'], arts: ['pontos', 'aniversario'], foto: 'foto-aviso-megafone',
     pecas: ['aviso', 'aniversariantes', 'reconhecimento', 'evento', 'vaga', 'qr', 'datas', 'institucional', 'boas-vindas', 'cardapio', 'beneficio', 'horario'] },
-  { key: 'rh', label: 'Recursos humanos', pal: ['petroleo', 'rosa', 'azul'], arts: ['pontos', 'conquista'],
+  { key: 'rh', label: 'Recursos humanos', pal: ['petroleo', 'rosa', 'azul'], arts: ['pontos', 'conquista'], foto: 'foto-vagas',
     pecas: ['vaga', 'boas-vindas', 'aniversariantes', 'beneficio', 'evento', 'qr', 'datas', 'reconhecimento', 'aviso', 'institucional', 'horario', 'indicador'] },
-  { key: 'recepcao', label: 'Recepção', pal: ['grafite', 'azul', 'verde'], arts: ['geometrico', 'pontos'],
+  { key: 'recepcao', label: 'Recepção', pal: ['grafite', 'azul', 'verde'], arts: ['geometrico', 'pontos'], foto: 'foto-recepcao',
     pecas: ['boas-vindas', 'visitante', 'horario', 'qr', 'institucional', 'aviso', 'datas', 'evento', 'redes', 'seguranca', 'reconhecimento', 'indicador'] },
 ].map((s) => ({ ...s, kind: 'corp', group: 'corporativo', nome: 'Grupo Horizonte', g: 'm', light: 'papel' }));
 
@@ -510,4 +510,36 @@ export const CORP = {
     ['Horário do ambulatório', 'Segunda a sexta | 7h às 17h\nSábado | 7h às 11h\nUrgência | Ramal 2000'], ['Atendimento do RH', 'Segunda a sexta | 9h às 11h30\nSegunda a sexta | 13h30 às 16h\nPlantão de dúvidas | Quinta, às 15h'],
     ['Horário dos turnos', 'Turno A | 6h às 14h20\nTurno B | 14h20 às 22h35\nTurno C | 22h35 às 6h'], ['Horário da recepção', 'Segunda a sexta | 7h às 19h\nSábado | 8h às 12h\nEntregas | Até as 16h']],
   datas: ['trabalhador', 'prevencao', 'mulher', 'secretaria', 'meio-ambiente', 'natal', 'ano-novo', 'familia'],
+};
+
+/* ------------------------------------------------------------------ uso interno com foto (20 prontos) */
+/**
+ * Os templates de comunicação interna com as fotos próprias (foto-*.jpg, geradas com GPT Image para o DIGITAL ISP): um por
+ * foto, escritos um a um. [peça, modelo, campos, arte, cor]. Datas: { days: n, at: 'HH:MM' } (daqui a n dias) ou
+ * { md: [mês, dia], at } (a próxima vez no ano); o gerador troca pela data certa.
+ */
+export const INTERNOS = {
+  key: 'interno-fotos', label: 'Comunicação interna com foto', group: 'corporativo', kind: 'fixo', nome: 'Grupo Horizonte', g: 'm',
+  itens: [
+    ['aniversariantes', 'aniversariantes', { title: 'Aniversariantes do mês', text: 'Parabéns a todos que fazem aniversário este mês!' }, 'foto-aniversario-baloes', 'roxo'],
+    ['aniversariantes', 'aniversariantes', { title: 'Hoje tem bolo!', text: 'Comemoração dos aniversariantes na sexta, às 15h, no refeitório.' }, 'foto-aniversario-bolo', 'marrom'],
+    ['aniversariantes', 'comunicado', { title: 'Feliz aniversário!', text: 'Que o seu novo ano seja cheio de saúde e conquistas. Parabéns de toda a equipe!' }, 'foto-aniversario-presentes', 'azul'],
+    ['evento', 'evento', { title: 'Café dos aniversariantes', place: 'Copa do 2º andar', text: 'Venha comemorar com os colegas.', target: { days: 9, at: '15:00' } }, 'foto-aniversario-cupcakes', 'petroleo'],
+    ['aviso', 'comunicado', { title: 'Comunicado importante', text: 'Na sexta-feira, o expediente termina às 16h por causa da manutenção elétrica.' }, 'foto-aviso-megafone', 'laranja'],
+    ['aviso', 'comunicado', { title: 'Mural de avisos', text: 'Confira as novidades da semana e fique por dentro do que acontece na empresa.' }, 'foto-aviso-mural', 'marrom'],
+    ['aviso', 'comunicado', { title: 'Reunião geral', text: 'Toda a equipe no auditório na segunda-feira, às 9h. Contamos com você!' }, 'foto-escritorio', 'grafite'],
+    ['seguranca', 'seguranca', { title: 'Use o EPI completo', text: 'Capacete, óculos, protetor auricular e luvas são obrigatórios na área de produção.' }, 'foto-seguranca-epi', 'laranja'],
+    ['indicador', 'indicador', { title: 'Dias sem acidente', value: '128', target: '365', unit: 'dias', text: 'Segurança é compromisso de todos. Vamos bater o recorde!' }, 'foto-fabrica', 'dourado'],
+    ['visitante', 'boas-vindas', { title: 'Bem-vindos, visitantes!', name: 'Comitiva da auditoria', sector: 'Visita técnica', text: 'Apresentem um documento com foto na recepção.' }, 'foto-recepcao', 'grafite'],
+    ['boas-vindas', 'boas-vindas', { title: 'Seja bem-vinda ao time!', name: 'Juliana R.', sector: 'Financeiro', text: 'Desejamos sucesso nesta nova fase.' }, 'foto-boas-vindas', 'verde'],
+    ['reconhecimento', 'reconhecimento', { title: 'Destaque do mês', name: 'Equipe da expedição', text: 'Recorde de entregas no prazo. Parabéns pelo empenho!' }, 'foto-reconhecimento', 'dourado'],
+    ['indicador', 'indicador', { title: 'Vendas do trimestre', value: '112', target: '100', unit: '%', text: 'Meta superada! Obrigado, time comercial.' }, 'foto-metas', 'azul'],
+    ['evento', 'evento', { title: 'Confraternização de fim de ano', place: 'Salão de eventos', text: 'Confirme a sua presença com o RH.', target: { md: [12, 12], at: '19:00' } }, 'foto-confraternizacao', 'vinho'],
+    ['datas', 'data-comemorativa', { title: 'Feliz Natal!', text: 'A diretoria deseja a todos um Natal de paz e um ano novo de muitas conquistas.', date: { md: [12, 25] } }, 'foto-natal', 'verde'],
+    ['vaga', 'vaga', { title: 'Vaga: analista de dados', area: 'Tecnologia', text: 'Candidate-se ou indique um amigo pelo QR code.', until: { days: 15 }, qr: 'https://exemplo.com.br/grupohorizonte/vagas' }, 'foto-vagas', 'roxo'],
+    ['evento', 'evento', { title: 'Treinamento da brigada de incêndio', place: 'Sala de treinamento', text: 'Inscrições com o técnico de segurança.', target: { days: 8, at: '08:30' } }, 'foto-treinamento', 'vermelho'],
+    ['cardapio', 'cardapio', { title: 'Cardápio de hoje', text: 'Arroz e feijão\nFrango grelhado\nSalada colorida\nSuco natural\nSobremesa: fruta' }, 'foto-refeitorio', 'verde'],
+    ['beneficio', 'comunicado', { title: 'Ginástica laboral', text: 'Todos os dias, às 9h30: 10 minutos de alongamento para começar bem.' }, 'foto-bem-estar', 'petroleo'],
+    ['institucional', 'comunicado', { title: 'Semana do meio ambiente', text: 'Separe o lixo reciclável e economize papel. Cada atitude conta.' }, 'foto-sustentabilidade', 'verde'],
+  ],
 };

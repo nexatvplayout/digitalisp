@@ -74,7 +74,8 @@ datas comemorativas, avisos, institucional, QR code e redes sociais. Cada peça 
 variações de cor e de arte. Os templates são gerados por família e conferidos por amostragem. As fotos são próprias
 (geradas) ou não há foto; nada de imagem de terceiros.
 
-**Feito (22/11/2026): 5.280 templates.**
+**Feito (22/11/2026): 5.320 templates.** Inclui 20 de comunicação interna com foto própria (aniversariantes, avisos,
+segurança, metas, boas-vindas, Natal…), em 40 versões (deitado e em pé).
 - Onde: dados em `public/shared/templates-dados.js`, gerador em `public/shared/templates-catalogo.js`, aba "Templates"
   em `public/admin/views/tvcorp-templates.js` (grupo Conteúdo do menu).
 - Conta: 44 segmentos × 12 peças × 5 variações × 2 formatos.
@@ -84,8 +85,8 @@ variações de cor e de arte. Os templates são gerados por família e conferido
   - Todos: boas-vindas, horário, datas comemorativas, avisos, institucional, QR code e redes sociais.
 - Modelos de slide novos: `oferta`, `precos` (vitrine de preços), `combo`, `horario` e `redes`. Campos de estilo novos
   em todos os modelos: `palette` (11 cores) e `orient` (`port` = em pé, 9:16).
-- Artes novas: 5 SVG (listras, pontos, folhas, circuito, papel) e 10 fotos próprias geradas com GPT Image (`foto-*.jpg`,
-  1280×720, sem texto nem marca), com véu escuro de 60% ou mais por cima.
+- Artes novas: 5 SVG (listras, pontos, folhas, circuito, papel) e 30 fotos próprias geradas com GPT Image (`foto-*.jpg`,
+  1280×720, sem texto, marca nem pessoas), com véu escuro de 60% ou mais por cima: 10 de comércio e 20 de uso interno.
 - Usar um template abre o editor de slide já preenchido; salvar grava a mídia na biblioteca.
 - Sem o módulo "templates" no plano, a aba mostra o aviso de upgrade.
 - `test/templates.test.js` confere:

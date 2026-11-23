@@ -154,3 +154,8 @@ tr.tc-sel td { background: var(--c-panel-3); }
 
 /* a imagem que veio com a sugestão do celular (aba Celular) */
 .tc-sug-img { display: block; max-width: 100%; max-height: 70vh; margin: 0 auto; border-radius: 8px; }
+
+/* playlists: a prévia do que vai entrar e a criação rápida (lista vazia) */
+.tc-cand-pv { margin-bottom: 6px; }
+.tc-quick { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.tc-quick:empty { display: none; }
