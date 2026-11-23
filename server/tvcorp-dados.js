@@ -1150,7 +1150,17 @@ export function createTvcorpDados({
     if (deps.apiKey) mountApi(app, deps);
   }
 
+  /** As manchetes das fontes de notícias escolhidas para a faixa: "Fonte: título", as mais novas de cada uma, até max no total. */
+  async function headlines(tenantId, feedIds = [], max = 6) {
+    if (!feedIds.length) return [];
+    const rows = await db.all(`SELECT * FROM tvcorp_feeds WHERE tenant_id = ? AND kind = 'rss' AND id IN (${feedIds.map(() => '?').join(',')})`, [tenantId, ...feedIds]);
+    const lists = rows.map((f) => { const c = fresh(f); return (c?.items || []).map((i) => ({ text: `${c.source || f.name}: ${i.title}`.slice(0, 200) })); });
+    const out = [];
+    for (let i = 0; out.length < max && lists.some((l) => l[i]); i++) for (const l of lists) if (l[i] && out.length < max) out.push(l[i]); // uma de cada fonte, em rodízio
+    return out;
+  }
   return {
+    headlines,
     mount, mountPanel, mountMobile, mountOffice, mountApi, dataFor, tick, prune, dropOffice, pending, readFile, refreshFeed, refreshKpi, settings,
     stop() { clearInterval(timer); },
   };

@@ -58,7 +58,7 @@ export function pinRecord(pin) {
 /* ------------------------------------------------------------------ configuração (o que se guarda) */
 /** Padrão de fábrica: o que vale sem nada escolhido na prefeitura, na repartição, no grupo ou na tela. */
 export const FACTORY = Object.freeze({
-  layout: 'full', tickerItems: [], tickerSpeed: 60, tickerStyle: null, // tickerStyle: cores, negrito, itálico, tamanho, fonte, separador e etiqueta da faixa (public/shared/faixa.js)
+  layout: 'full', tickerItems: [], tickerSpeed: 60, tickerStyle: null, tickerNews: null, // tickerNews: { feeds: [ids das fontes de notícias], max } (as manchetes entram na faixa); tickerStyle: cores, negrito, itálico, tamanho, fonte, separador e etiqueta da faixa (public/shared/faixa.js)
   widgets: ['clock'], qrUrl: null, sideTitle: null,
   pin: null, exitSeq: DEFAULT_EXIT_SEQ, backup: null, volume: 100, muted: false, schedule: null,
   captions: { on: false, lang: null }, // contrato §14: as legendas da programação (desligadas de fábrica)
@@ -132,6 +132,12 @@ export function cleanTicker(v) {
 const CLEAN = {
   layout: (v) => { if (!LAYOUT_KEYS.includes(v)) throw fail(400, 'Layout inválido.'); return v; },
   tickerItems: cleanTicker,
+  tickerNews: (v) => {
+    if (typeof v !== 'object' || Array.isArray(v)) throw fail(400, 'Manchetes na faixa: envie { feeds, max }.');
+    const feeds = [...new Set((Array.isArray(v.feeds) ? v.feeds : []).map(Number).filter((n) => Number.isInteger(n) && n > 0))].slice(0, 10);
+    const max = Math.min(15, Math.max(1, Math.round(Number(v.max) || 6)));
+    return feeds.length ? { feeds, max } : undefined;
+  },
   tickerStyle: (v) => { if (typeof v !== 'object' || Array.isArray(v)) throw fail(400, 'Estilo da faixa inválido.'); return cleanTickerStyle(v) || undefined; },
   tickerSpeed: (v) => { const n = Math.round(Number(v)); if (!(n >= LIMITS.tickerSpeedMin && n <= LIMITS.tickerSpeedMax)) throw fail(400, `Velocidade dos avisos: ${LIMITS.tickerSpeedMin} a ${LIMITS.tickerSpeedMax}.`); return n; },
   widgets: (v) => { if (!Array.isArray(v)) throw fail(400, 'Lateral: envie a lista de blocos.'); return WIDGET_KEYS.filter((k) => v.includes(k)); },
@@ -440,4 +446,4 @@ export const officeActor = (officeName, username = '') => `repartição: ${line(
  * O que o gestor da repartição pode definir numa tela dela. Ficam com a prefeitura: o PIN e a sequência de saída (a trava
  * do aparelho) e os avisos próprios da tela (os avisos da repartição passam pela aprovação da SECOM; os da tela, não).
  */
-export const OFFICE_DEVICE_CONFIG_KEYS = Object.freeze(['layout', 'tickerSpeed', 'tickerStyle', 'widgets', 'qrUrl', 'sideTitle', 'backup', 'volume', 'muted', 'schedule', 'captions', 'theme', 'callSound']);
+export const OFFICE_DEVICE_CONFIG_KEYS = Object.freeze(['layout', 'tickerSpeed', 'tickerStyle', 'tickerNews', 'widgets', 'qrUrl', 'sideTitle', 'backup', 'volume', 'muted', 'schedule', 'captions', 'theme', 'callSound']);

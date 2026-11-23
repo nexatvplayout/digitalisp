@@ -471,6 +471,11 @@ export function createTelas({
       update: def.update || appStore.update(publicUrl(req)),
       weather: conteudo.weatherFor(def), cards, queue, offline, offlineImage, electoral, internal, signage,
     });
+    // DIGITAL ISP: as manchetes das fontes de notícias escolhidas entram na faixa, depois dos avisos (o app antigo lê items)
+    if (eff.tickerNews?.feeds?.length && tvcorpDados?.headlines) {
+      const news = await tvcorpDados.headlines(tenantId, eff.tickerNews.feeds, eff.tickerNews.max).catch(() => []);
+      if (news.length) cfg.ticker = { ...cfg.ticker, items: [...cfg.ticker.items, ...news.map((x) => x.text)], rich: [...(cfg.ticker.rich || []), ...news] };
+    }
     return { rev: C.revOf(cfg), ...cfg };
   }
 

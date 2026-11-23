@@ -55,6 +55,14 @@ export function faixaPreview(items, style, speed) {
  * O cartão da barra inferior. cfg: a configuração guardada da empresa. onSaved(): depois de salvar.
  */
 export function faixaCard(cfg, onSaved) {
+  // as manchetes: as fontes de notícias (RSS) escolhidas entram na faixa depois dos avisos
+  const news = { feeds: new Set((cfg.tickerNews?.feeds || []).map(Number)), max: Number(cfg.tickerNews?.max) || 6 };
+  const newsBox = el('div', { class: 'pf-checks row' });
+  tapi('/api/tvcorp/feeds').then((r) => {
+    const rss = (r?.feeds || r?.items || []).filter((x) => x.kind === 'rss');
+    put(newsBox, ...(rss.length ? rss.map((x) => el('label', { class: 'pf-check' }, el('input', { type: 'checkbox', checked: news.feeds.has(Number(x.id)), onchange: (e) => { if (e.target.checked) news.feeds.add(Number(x.id)); else news.feeds.delete(Number(x.id)); } }), el('span', { text: x.name }))) : [note('Nenhuma fonte de notícias ainda. Crie uma na aba Notícias e dados (agências públicas ou o RSS do seu site).')]));
+  }, () => {});
+  const newsMax = el('select', { 'aria-label': 'Quantas manchetes', onchange: (e) => { news.max = Number(e.target.value); } }, ...[3, 4, 6, 8, 10, 15].map((n) => opt(String(n), `${n} manchetes`, news.max === n)));
   const st = { ...TICKER_STYLE_DEFAULT, ...(cleanTickerStyle(cfg.tickerStyle || {}) || {}) };
   if (!cfg.tickerStyle) st.label = '';
   let speed = Number(cfg.tickerSpeed) || 60;
@@ -87,7 +95,7 @@ export function faixaCard(cfg, onSaved) {
   const save = guard(async () => {
     const items = rows.map((r) => ({ ...r, text: String(r.text || '').trim() })).filter((r) => r.text).map((r) => markAviso(markAvisoStyle(r), r.cls));
     if (items.length > TL.tickerItems) throw new Error(`No máximo ${TL.tickerItems} avisos.`);
-    await tapi('/api/tvcorp/rede/defaults', { method: 'PUT', body: { config: { tickerItems: items, tickerSpeed: speed, tickerStyle: { ...st, label: st.label.trim() } } } });
+    await tapi('/api/tvcorp/rede/defaults', { method: 'PUT', body: { config: { tickerItems: items, tickerSpeed: speed, tickerStyle: { ...st, label: st.label.trim() }, tickerNews: news.feeds.size ? { feeds: [...news.feeds], max: news.max } : null } } });
     toast('Texto rolante salvo. As telas trocam em até 1 minuto.');
     await onSaved?.();
   });
@@ -99,6 +107,9 @@ export function faixaCard(cfg, onSaved) {
     label(`Avisos (até ${TL.tickerItems}, ${TL.tickerItem} letras cada)`),
     note('B deixa o aviso em negrito, I em itálico; marque a cor para o aviso ter uma cor só dele (por exemplo, vermelho numa promoção).'),
     list,
+    label('Manchetes de notícias na faixa'),
+    note('Marque as fontes: as manchetes mais novas entram na faixa depois dos avisos, uma de cada fonte, e trocam sozinhas quando a fonte atualiza.'),
+    newsBox, el('div', { class: 'pf-grid two' }, f('Até', newsMax)),
     label('Estilo da faixa'),
     el('div', { class: 'pf-grid two fx-estilo' },
       f('Cor do texto', corField(st.color, (c) => { st.color = c; paintPv(); }, 'Cor do texto')),
