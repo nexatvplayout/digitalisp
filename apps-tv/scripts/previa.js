@@ -173,7 +173,14 @@ function gerar(op) {
   const igual = (a, b) => { try { const x = fs.statSync(a), y = fs.statSync(b); return x.size === y.size && x.mtimeMs <= y.mtimeMs; } catch (e) { return false; } };
   if (fs.existsSync(FONTE_ARTE)) for (const f of fs.readdirSync(FONTE_ARTE)) {
     const de = path.join(FONTE_ARTE, f), para = path.join(SAIDA_ARTE, f);
-    if (/\.(svg|jpe?g|png|webp)$/i.test(f) && !igual(de, para)) fs.copyFileSync(de, para);
+    if (!/\.(svg|jpe?g|png|webp)$/i.test(f) || igual(de, para)) continue;
+    // por um temporário e renomeia; outro processo copiando o mesmo arquivo (os testes em paralelo, na 1ª geração) pode
+    // segurar o destino: se ele já ficou igual, tudo bem
+    const tmp = `${para}.${process.pid}.tmp`;
+    try { fs.copyFileSync(de, tmp); fs.renameSync(tmp, para); } catch (e) {
+      try { fs.unlinkSync(tmp); } catch (e2) { /* nada */ }
+      if (!igual(de, para)) throw e;
+    }
   }
   return true;
 }
