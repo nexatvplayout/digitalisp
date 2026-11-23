@@ -93,7 +93,8 @@ Recomendação até medir nas TVs: **pacote de até 500 MB por tela**, vídeos H
 
 A TV desenha cada item com `itemPreview`/`slidePreview` de `public/shared/tvcorp-previa.js` e o CSS de
 `public/shared/tvcorp-previa.css`, sem cópia à mão: `apps-tv/scripts/previa.js` gera `comum/js/previa.js`,
-`comum/previa.css` e `comum/arte/` (fora do git; o empacotamento e o servidor falso geram sozinhos).
+`comum/previa.css` e `comum/arte/`, com as artes `.svg` e as fotos `.jpg` de `public/tvcorp/arte/` (fora do git; o
+empacotamento e o servidor falso geram sozinhos). O pacote leva o desenho do `public/` do checkout em que foi gerado.
 
 - **JS**: empacotado pelo esbuild para o Chromium 53, com polyfills de `Array.flat`, `append`, `Object.entries` e
   `padStart`.

@@ -7,7 +7,7 @@
  *   comum/previa.css     o mesmo CSS, com as unidades de container trocadas: as TVs de 2018–2020 não têm cqw/cqh,
  *                        min(), gap no flex, inset nem :has(). Cada `Ncqw` vira calc(N * var(--cqw)) e `min(Acqh, Bcqw)`
  *                        vira var(--mI); o app mede cada zona e põe --cqw, --cqh e as --mI nela (TelasPrevia.MINS).
- *   comum/arte/*.svg     as artes de fundo da biblioteca (public/tvcorp/arte), com o url() do CSS apontando para cá.
+ *   comum/arte/          as artes de fundo da biblioteca (public/tvcorp/arte: .svg e as fotos .jpg), com o url() do CSS apontando para cá.
  *
  * Os três são gerados (fora do git): rode `node apps-tv/scripts/previa.js` (o empacotamento e o servidor falso rodam
  * sozinhos). Precisa do esbuild-wasm (`cd apps-tv; npm install`).
@@ -131,7 +131,7 @@ function gerarJs(mins, conteineres) {
 /** Gera os três; `seNecessario`: só se faltar algum ou a fonte for mais nova. Devolve true se gerou. */
 function gerar(op) {
   op = op || {};
-  const fontes = [FONTE_JS, FONTE_QR, FONTE_CSS, __filename];
+  const fontes = [FONTE_JS, FONTE_QR, FONTE_CSS, path.join(REPO, 'public', 'shared', 'tvcorp-tipos.js'), __filename].filter((f) => fs.existsSync(f));
   if (op.seNecessario && fs.existsSync(SAIDA_JS) && fs.existsSync(SAIDA_CSS)) {
     const t = Math.min(fs.statSync(SAIDA_JS).mtimeMs, fs.statSync(SAIDA_CSS).mtimeMs);
     if (fontes.every((f) => fs.statSync(f).mtimeMs <= t)) return false;
@@ -141,7 +141,7 @@ function gerar(op) {
   fs.writeFileSync(SAIDA_CSS, '/* gerado por apps-tv/scripts/previa.js a partir de public/shared/tvcorp-previa.css; não edite à mão */\n' + css);
   fs.writeFileSync(SAIDA_JS, js);
   fs.mkdirSync(SAIDA_ARTE, { recursive: true });
-  if (fs.existsSync(FONTE_ARTE)) for (const f of fs.readdirSync(FONTE_ARTE)) if (f.endsWith('.svg')) fs.copyFileSync(path.join(FONTE_ARTE, f), path.join(SAIDA_ARTE, f));
+  if (fs.existsSync(FONTE_ARTE)) for (const f of fs.readdirSync(FONTE_ARTE)) if (/\.(svg|jpe?g|png|webp)$/i.test(f)) fs.copyFileSync(path.join(FONTE_ARTE, f), path.join(SAIDA_ARTE, f));
   return true;
 }
 
