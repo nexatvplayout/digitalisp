@@ -113,7 +113,8 @@ function newsCards(x) {
   const paint = guard(async () => {
     const r = await tapi(`/api/tvcorp/feeds/${x.id}/noticias`);
     const items = r?.items || [];
-    const vai = items.filter((i) => !i.hidden && !i.semFoto).length;
+    const vai = items.filter((i) => !i.hidden && !i.semFoto && !i.antiga).length;
+    const velhas = items.length && items.every((i) => i.antiga || i.semFoto);
     const toggle = (i) => guard(async () => {
       await tapi(`/api/tvcorp/feeds/${x.id}/noticias/${i.key}/ocultar`, { method: i.hidden ? 'DELETE' : 'POST', body: {} });
       toast(i.hidden ? 'A notícia voltou para a programação.' : 'Notícia tirada da programação: as telas param de mostrar na próxima atualização.');
@@ -121,9 +122,10 @@ function newsCards(x) {
     });
     put(wrap, label(`Notícias de ${x.name} na programação (${vai} de ${items.length}) · cada uma fica ${x.config?.secondsEach ?? 12} s na tela`),
       note('Para mudar o tempo de cada notícia, use "Editar" nesta fonte.', 'small dim'),
-      items.length ? el('div', { class: 'tc-news-grid' }, ...items.map((i) => el('div', { class: `tc-news-card${i.hidden || i.semFoto ? ' off' : ''}` },
+      velhas ? el('p', { class: 'pf-err small', text: 'Nenhuma notícia desta fonte vai para a tela: são antigas ou sem foto. O endereço do RSS pode estar abandonado; confira o endereço atual no site da fonte.' }) : null,
+      items.length ? el('div', { class: 'tc-news-grid' }, ...items.map((i) => el('div', { class: `tc-news-card${i.hidden || i.semFoto || i.antiga ? ' off' : ''}` },
         i.image ? el('img', { src: i.image, alt: '', loading: 'lazy' }) : el('div', { class: 'tc-news-nofoto', text: 'Sem foto' }),
-        el('div', { class: 'tc-news-body' }, el('b', { text: i.title }), el('span', { class: 'dim small', text: [i.at ? when(i.at) : '', i.semFoto ? 'sem foto: não vai para a tela' : i.hidden ? 'fora da programação' : ''].filter(Boolean).join(' · ') }),
+        el('div', { class: 'tc-news-body' }, el('b', { text: i.title }), el('span', { class: 'dim small', text: [i.at ? when(i.at) : '', i.antiga ? 'de mais de 7 dias: não vai para a tela' : i.semFoto ? 'sem foto: não vai para a tela' : i.hidden ? 'fora da programação' : ''].filter(Boolean).join(' · ') }),
           i.semFoto ? null : btn(i.hidden ? 'Devolver à programação' : 'Tirar da programação', toggle(i), i.hidden ? 'small' : 'small danger')))))
         : empty('Nenhuma notícia ainda: use "Buscar agora".'));
   });

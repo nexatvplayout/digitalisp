@@ -507,7 +507,7 @@ export function createTvcorpDados({
       const hidden = await hiddenNews(cur.id);
       res.set('Cache-Control', 'no-store').json({
         source: SOURCE_SAFE(c.source || ''), at: c.at || null,
-        items: (c.items || []).slice(0, 15).map((i) => ({ key: newsKey(i), title: i.title, at: i.at ?? null, link: i.link || null, image: i.img?.file ? `/tvcorp/noticia/${i.img.file}` : null, hidden: hidden.has(newsKey(i)), semFoto: !i.img?.file })),
+        items: (c.items || []).slice(0, 15).map((i) => ({ key: newsKey(i), title: i.title, at: i.at ?? null, link: i.link || null, image: i.img?.file ? `/tvcorp/noticia/${i.img.file}` : null, hidden: hidden.has(newsKey(i)), semFoto: !i.img?.file, antiga: Boolean(i.at && now() - i.at > 7 * 86400_000) })),
       });
     }));
     app.post(`${P}/feeds/:id/noticias/:key/ocultar`, M, ah(async (req, res) => {
@@ -1087,7 +1087,7 @@ export function createTvcorpDados({
           };
           const off = await hiddenNews(f.id);
           // só notícia com foto vai para a tela (pedido do dono); a numeração segue a posição na fonte
-          return c.items.slice(0, 15).map((i, k) => [i, k]).filter(([i]) => !off.has(newsKey(i)) && (!newsImages || fileOf(i))).map(([i, k]) => {
+          return c.items.slice(0, 15).map((i, k) => [i, k]).filter(([i]) => !off.has(newsKey(i)) && (!newsImages || fileOf(i)) && !(i.at && now() - i.at > 7 * 86400_000)).map(([i, k]) => {
             const img = fileOf(i);
             const each = Number(j(f.config, {})?.secondsEach) || 12;
             return { id: `n${id}-${k + 1}`, kind: 'news', title: f.name, source: SOURCE_SAFE(c.source), at: c.at, single: true, seconds: Math.min(120, Math.max(5, each)), ...(img ? { image: img } : {}),
