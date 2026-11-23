@@ -129,6 +129,28 @@ CREATE TABLE IF NOT EXISTS isp_hls (
   created_at ${big} NOT NULL
 );
 CREATE INDEX IF NOT EXISTS isp_hls_tenant ON isp_hls(tenant_id);
+-- o gerenciador de QR code (server/qrcodes.js): o QR dinâmico e as leituras por dia (sem guardar quem leu)
+CREATE TABLE IF NOT EXISTS isp_qr (
+  id             ${id},
+  tenant_id      ${big} NOT NULL,
+  codigo         TEXT NOT NULL UNIQUE,
+  nome           TEXT NOT NULL DEFAULT '',
+  tipo           TEXT NOT NULL DEFAULT 'link',
+  alvo           TEXT NOT NULL,
+  estilo         TEXT NOT NULL DEFAULT '{}',
+  ativo          INTEGER NOT NULL DEFAULT 1,
+  leituras       ${big} NOT NULL DEFAULT 0,
+  ultima_leitura ${big},
+  criado_em      ${big} NOT NULL,
+  atualizado_em  ${big}
+);
+CREATE INDEX IF NOT EXISTS isp_qr_tenant ON isp_qr(tenant_id);
+CREATE TABLE IF NOT EXISTS isp_qr_dias (
+  qr_id  ${big} NOT NULL,
+  dia    TEXT NOT NULL,
+  n      INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (qr_id, dia)
+);
 -- os registros de DNS e o estado de um domínio próprio (server/dominios.js), como o Cloudflare devolveu
 CREATE TABLE IF NOT EXISTS isp_dominio_dns (
   domain_id  ${big} PRIMARY KEY,

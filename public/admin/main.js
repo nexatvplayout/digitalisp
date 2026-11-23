@@ -152,6 +152,13 @@ window.addEventListener('hashchange', (e) => {
 });
 window.addEventListener('beforeunload', (e) => { if (document.querySelector('.view:not([hidden]) form.dirty')) { e.preventDefault(); e.returnValue = ''; } });
 
+/* a versão no ar, no rodapé do menu (para acompanhar as atualizações) */
+fetch('/api/versao', { cache: 'no-store' }).then((r) => r.json()).then((v) => {
+  const quando = v.em ? new Date(v.em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+  $('#versao').textContent = `Versão ${v.numero}${quando ? ` · ${quando}` : ''}`;
+  if (v.commit) $('#versao').title = `Versão do sistema no ar (${v.commit})`;
+}).catch(() => {});
+
 async function start() {
   try {
     state.me = await api(S.kind === 'plataforma' ? '/api/platform/me' : '/api/me');

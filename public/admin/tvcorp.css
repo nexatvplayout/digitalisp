@@ -243,3 +243,14 @@ tr.tc-sel td { background: var(--c-panel-3); }
 .tc-wall-empty { display: flex; align-items: center; justify-content: center; width: 100%; aspect-ratio: 16 / 9; border: 1px dashed #334155; border-radius: 2px; color: #64748b; font-weight: 700; font-size: 20px; }
 .tc-wall-empty.port { aspect-ratio: 9 / 16; }
 .tc-wall-form > * + * { margin-top: 10px; }
+
+/* gerenciador de QR code */
+.qr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; margin-top: 12px; }
+.qr-card { display: flex; gap: 12px; align-items: flex-start; }
+.qr-card.off { opacity: .55; }
+.qr-img { flex: 0 0 120px; }
+.qr-img .qr-svg, .qr-pv .qr-svg { width: 100%; height: auto; display: block; border-radius: 6px; }
+.qr-pv { max-width: 260px; }
+.qr-b { flex: 1; min-width: 0; display: grid; gap: 4px; }
+.qr-b code { font-size: .78rem; word-break: break-all; }
+.qr-graf { width: 100%; height: 32px; }

@@ -22,6 +22,7 @@ import { bindContas, assertNovaTela } from './contas.js';
 import { mountRevenda } from './revenda.js';
 import { mountIntegracoes } from './integracoes.js';
 import { mountDominios, entradaDoDominio } from './dominios.js';
+import { mountQrcodes } from './qrcodes.js';
 import { hostTenantId } from './domains.js';
 import { mountRadios, loadRadios, audioOf } from './radios.js';
 import { mountHls, carregarHls, channelsOf as hlsChannels, streamOf as hlsStream } from './hls.js';
@@ -82,6 +83,10 @@ if (config.platform.canonicalHost) {
   app.use((req, res, next) => (req.hostname === canon.replace(/^www\./, '') ? res.redirect(301, `https://${canon}${req.originalUrl}`) : next()));
 }
 
+// a versão no ar (scripts/publicar.sh grava VERSAO a cada publicação): o rodapé do menu do painel mostra
+const pkgVersion = (() => { try { return JSON.parse(fs.readFileSync(path.join(config.root, 'package.json'), 'utf8')).version || '0.1.0'; } catch { return '0.1.0'; } })();
+const VERSAO = (() => { try { const [n, commit, em] = fs.readFileSync(path.join(config.root, 'VERSAO'), 'utf8').trim().split('|'); return { numero: `${pkgVersion.split('.').slice(0, 2).join('.')}.${n}`, commit, em }; } catch { return { numero: `${pkgVersion} (local)`, commit: null, em: new Date(bootedAt).toISOString() }; } })();
+app.get('/api/versao', (_req, res) => res.set('Cache-Control', 'no-cache').json(VERSAO));
 app.get('/healthz', (_req, res) => res.json({ ok: true, uptime: Math.round((Date.now() - bootedAt) / 1000) }));
 app.get('/readyz', ah(async (_req, res) => { await db.get('SELECT 1 AS ok'); res.json({ ok: true }); }));
 
@@ -143,7 +148,21 @@ app.post('/api/me/logout', ah(async (req, res) => {
 
 mountPlataforma(app);
 mountIntegracoes(app, { needsPlatform });
-mountDominios(app, { needs, needsPlatform }); // domínio próprio da revenda e do cliente (server/dominios.js) // superadmin: de onde vêm clima, cotações, notícias, CEP, mapa e rádios (server/integracoes.js)
+mountDominios(app, { needs, needsPlatform });
+// gerenciador de QR code (server/qrcodes.js): o QR dinâmico /q/<código>, a página do celular e as leituras
+mountQrcodes(app, {
+  needs, publicUrl: (req) => publicOrigin(req), ipOf: clientIp, // publicOrigin vem mais abaixo: a seta adia a leitura
+  tvcorpFile: async (tid, mid, { poster }, _req, res) => {
+    const m = await db.get('SELECT kind, file, fields FROM tvcorp_media WHERE id = ? AND tenant_id = ?', [mid, tid]);
+    let name = m?.file; if (poster) { try { name = JSON.parse(m?.fields || '{}').poster; } catch { name = null; } }
+    if (!name) return res.status(404).end();
+    const src = await readInput('graphics', name).catch(() => null);
+    if (!src) return res.status(404).end();
+    if (isUrl(src)) return res.redirect(302, src);
+    return res.set('Cache-Control', 'public, max-age=3600').sendFile(src, { dotfiles: 'allow' });
+  },
+});
+app.use('/qpagina', express.static(pub('q'), { setHeaders: (res) => res.setHeader('Cache-Control', 'no-cache') })); // domínio próprio da revenda e do cliente (server/dominios.js) // superadmin: de onde vêm clima, cotações, notícias, CEP, mapa e rádios (server/integracoes.js)
 mountGuia(app, { needs, signedIn, needsPlatform, ah }); // configuração guiada (server/guia.js)
 mountRevenda(app, { needs, signedIn });
 mountHls(app, { needs, ah, onChange: (tid) => telas?.forget(tid) }); // canais ao vivo (HLS) (server/hls.js)

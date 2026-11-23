@@ -178,3 +178,6 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
 .dm-help { margin-top: 12px; } .dm-help li { margin: 4px 0; }
 .dm-tbl code { word-break: break-all; font-size: .8rem; }
 .dm-grid { grid-template-columns: 1fr; }
+
+/* a versão no rodapé do menu */
+.versao { margin: 8px 0 0; font-size: .72rem; }

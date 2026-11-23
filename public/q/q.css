@@ -1,0 +1,15 @@
+/* a página que o celular abre ao ler um QR code de mídia ou playlist (server/qrcodes.js) */
+:root { color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, "Segoe UI", Roboto, Arial, sans-serif; background: #0b1220; color: #f1f5f9; }
+.q-head { padding: 20px 16px 8px; }
+.q-head h1 { margin: 0; font-size: 1.3rem; }
+.q-head p { margin: 4px 0 0; color: #94a3b8; font-size: .9rem; }
+.q-itens { display: grid; gap: 14px; padding: 12px 16px 24px; max-width: 720px; margin: 0 auto; }
+.q-item { border-radius: 12px; overflow: hidden; background: #111a2e; }
+.q-item img, .q-item video { display: block; width: 100%; height: auto; }
+.q-item .tvc-previa, .q-item .tvc-sl { width: 100%; }
+.q-slide { aspect-ratio: 16 / 9; container-type: inline-size; }
+.q-slide.port { aspect-ratio: 9 / 16; }
+.q-vazio { color: #94a3b8; text-align: center; padding: 40px 0; }
+.q-pe { text-align: center; color: #475569; font-size: .75rem; padding: 12px 0 24px; }

@@ -100,7 +100,7 @@ test('código do painel: só textContent, sem estilo pelo script, sem script nem
 
 test('abas: todas as da §6, pela permissão tvcorp.manage', () => {
   const ids = TABS.map((t) => t.id);
-  assert.deepEqual(ids, ['resumo', 'telas', 'unidades', 'midias', 'templates', 'aovivo', 'playlists', 'layouts', 'grade', 'dados', 'indicadores', 'rh', 'barras', 'alertas', 'aprovacoes', 'celular', 'relatorios', 'comandos', 'instalar', 'config']);
+  assert.deepEqual(ids, ['resumo', 'telas', 'unidades', 'midias', 'templates', 'qrcodes', 'aovivo', 'playlists', 'layouts', 'grade', 'dados', 'indicadores', 'rh', 'barras', 'alertas', 'aprovacoes', 'celular', 'relatorios', 'comandos', 'instalar', 'config']);
   assert.equal(tabsFor(() => false).length, 0, 'sem a permissão, nenhuma aba');
   assert.equal(tabsFor((p) => p === 'tvcorp.manage').length, TABS.length);
   assert.ok(TABS.every((t) => typeof t.paint === 'function' && t.perm === 'tvcorp.manage'));
