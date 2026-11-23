@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
 const VIEWS = fs.readdirSync(path.join(root, 'public/admin/views')).filter((f) => /^tvcorp(-[a-z]+)?\.js$/.test(f)).map((f) => `public/admin/views/${f}`);
-const SHARED = ['public/shared/tvcorp-previa.js'];
+const SHARED = ['public/shared/tvcorp-previa.js', 'public/shared/pagina.js'];
 
 /* ------------------------------------------------------------------ DOM mínimo */
 class Text { constructor(t) { this.data = String(t); this.nodeType = 3; this.parentNode = null; } get textContent() { return this.data; } set textContent(v) { this.data = String(v); } remove() { this.parentNode?._drop(this); } }
@@ -69,6 +69,8 @@ const G = await import('../public/admin/views/tvcorp-grade.js');
 const L = await import('../public/admin/views/tvcorp-layouts.js');
 const RH = await import('../public/admin/views/tvcorp-rh.js');
 const EX = await import('../public/admin/views/tvcorp-exemplo.js');
+const PG = await import('../public/admin/views/tvcorp-pagina.js');
+const PGS = await import('../public/shared/pagina.js');
 
 const panel = new El('section'); panel.setAttribute('id', 'tcPanel');
 const sec = new El('section'); sec.setAttribute('id', 'view-tvcorp'); sec.append(panel); body.append(sec);
@@ -197,6 +199,18 @@ test('cada aba abre com os dados de exemplo, sem nada escrito errado', async () 
   assert.ok(dlg && dlg.open && dlg.byClass('tc-zedit').length === 1 && dlg.byClass('tc-zr').length === 3, 'o quadro com as 3 zonas da recepção');
   assert.ok(!BAD.test(dlg.textContent));
   dlg.remove();
+  // o construtor de páginas abre com cada modelo pronto, sem nada escrito errado, e mostra os controles de formatação
+  for (const p of PGS.PAGE_PRESETS) {
+    const { dlg: d, st } = PG.pageBuilder(null, [{ id: 5, kind: 'image', title: 'Foto' }], async () => {}, { preset: p.key });
+    assert.ok(d.open && d.all((n) => n.tagName === 'CANVAS').length === 1, p.key);
+    assert.ok(!BAD.test(d.textContent), `${p.key}: ${d.textContent.match(BAD)?.[0]}`);
+    assert.equal(st.page.orient, p.page().orient);
+    d.remove();
+  }
+  const { dlg: pd } = PG.pageBuilder({ id: 9, kind: 'image', title: 'Aviso', seconds: 10, officeId: null, fields: { page: PGS.PAGE_PRESET.aviso.page() } }, [], async () => {});
+  assert.match(pd.textContent, /Página · Aviso/);
+  for (const t of ['Negrito', 'Itálico', 'Sublinhado', 'Fonte', 'Espaço entre linhas', 'Fundo do texto', 'Cor da letra']) assert.ok(pd.all((n) => n.attrs['aria-label'] === t).length, t);
+  pd.remove();
   base.setDemo(false);
 });
 

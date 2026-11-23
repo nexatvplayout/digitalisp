@@ -2,12 +2,15 @@
 // ou arrastar e soltar: o servidor ajusta para 1920×1080 ou 1080×1920, sem os dados escondidos), criar slide a partir de
 // um modelo com a prévia ao lado, aprovar ou devolver o que veio das unidades. Os vídeos ficam na biblioteca do canal.
 // Rotas: GET/POST/PATCH/DELETE /api/tvcorp/media[/:id], POST /api/tvcorp/media/image (imagem crua), GET /media/:id/file.
+// "Nova página": o construtor de páginas e avisos (tvcorp-pagina.js), que grava a página como imagem (com o desenho guardado).
 import {
   el, guard, toast, tapi, tupload, tblob, put, f, opt, label, note, empty, btn, btns, chip, dialog, D, T,
   listOf, statusChip, when,
 } from './tvcorp-base.js';
 import { slidePreview } from '../../shared/tvcorp-previa.js';
 import { SLIDE_TEMPLATES, SLIDE_TEMPLATE, LIMITS, ARTS } from './tvcorp-catalogo.js';
+import { pageBuilder } from './tvcorp-pagina.js';
+import { PAGE_PRESETS } from '../../shared/pagina.js';
 
 const V = { kind: '', status: '', office: '' };
 const ACCEPT = ['image/jpeg', 'image/png', 'image/webp'];
@@ -153,7 +156,7 @@ export default async function paintMidias(box, ctx) {
   el('b', { text: 'Arraste imagens ou vídeos para cá' }), el('span', { class: 'dim small', text: 'ou clique para escolher. Imagem: JPEG, PNG ou WebP até 15 MB (o servidor ajusta para a tela e tira os dados escondidos). Vídeo: MP4, MOV ou WebM até 500 MB e 10 minutos (o servidor converte para um MP4 que toda TV toca).' }));
   const sel = (key, first, options) => el('select', { 'aria-label': first, onchange: (e) => { V[key] = e.target.value; ctx.repaint(); } }, opt('', first, !V[key]), ...options.map(([v, t]) => opt(v, t, V[key] === String(v))));
   const cards = shown.map((m) => {
-    const thumb = el('div', { class: 'tc-thumb' });
+    const thumb = el('div', { class: `tc-thumb${m.height > m.width ? ' port' : ''}` });
     if (m.kind === 'slide') {
       put(thumb, slidePreview(m.template, m.fields, { theme: themeOf() }));
       // o slide com foto (boas-vindas, reconhecimento…): a miniatura busca a imagem pela sessão e redesenha com ela
@@ -172,23 +175,26 @@ export default async function paintMidias(box, ctx) {
     return el('div', { class: `tc-mcard${m.status === 'pending' ? ' pending' : ''}` }, thumb,
       el('div', { class: 'tc-mcard-b' },
         el('b', { text: m.title || '—' }),
-        el('div', { class: 'dim small', text: m.kind === 'video' ? `Vídeo${m.width ? ` · ${m.width}×${m.height}` : ''} · ${mmss(m.seconds)}${m.fields?.sound ? ' · com som' : ' · sem som'} · ${officeName(m.officeId)}` : `${m.kind === 'slide' ? `Slide · ${SLIDE_TEMPLATE[m.template]?.label || m.template}` : `Imagem${m.width ? ` · ${m.width}×${m.height}` : ''}`} · ${m.seconds || 10} s · ${officeName(m.officeId)}` }),
+        el('div', { class: 'dim small', text: m.kind === 'video' ? `Vídeo${m.width ? ` · ${m.width}×${m.height}` : ''} · ${mmss(m.seconds)}${m.fields?.sound ? ' · com som' : ' · sem som'} · ${officeName(m.officeId)}` : `${m.kind === 'slide' ? `Slide · ${SLIDE_TEMPLATE[m.template]?.label || m.template}` : `${m.fields?.page ? 'Página' : 'Imagem'}${m.width ? ` · ${m.width}×${m.height}` : ''}`} · ${m.seconds || 10} s · ${officeName(m.officeId)}` }),
         m.status === 'error' && m.fields?.error ? el('div', { class: 'small tc-err', text: m.fields.error }) : null,
         el('div', {}, statusChip(m.status), m.reason ? el('span', { class: 'dim small', text: ` ${m.reason}` }) : null),
         el('div', { class: 'pf-btns left' },
           m.status === 'pending' ? btn('Aprovar', decideMedia(m, true, again), 'small primary') : null,
           m.status === 'pending' ? btn('Devolver', decideMedia(m, false, again), 'small') : null,
-          m.status === 'processing' ? null : btn('Editar', () => (m.kind === 'slide' ? slideEditor(m, images, again) : m.kind === 'video' ? editVideo(m, again) : editImage(m, again)), 'small'),
+          m.status === 'processing' ? null : btn('Editar', () => (m.kind === 'slide' ? slideEditor(m, images, again) : m.fields?.page ? pageBuilder(m, images, again) : m.kind === 'video' ? editVideo(m, again) : editImage(m, again)), 'small'),
           btn('Apagar', guard(async () => { if (!confirm(`Apagar "${m.title}"? Sai das playlists e das telas.`)) return; await tapi(`/api/tvcorp/media/${m.id}`, { method: 'DELETE' }); toast('Apagado.'); await again(); }), 'small danger'))));
   });
   put(box,
     note('A biblioteca: imagens, vídeos e slides que entram nas playlists. O vídeo da playlist toca inteiro na zona dela; o canal ao vivo continua na zona de vídeo do layout.'),
     el('div', { class: 'tc-two' }, drop,
-      el('div', { class: 'pf-grid' }, f('As imagens enviadas são de', upOffice), btns(btn('+ Novo slide', () => slideEditor(null, images, again), 'primary')),
+      el('div', { class: 'pf-grid' }, f('As imagens enviadas são de', upOffice), btns(btn('+ Nova página', () => pageBuilder(null, images, again), 'primary'), btn('+ Novo slide', () => slideEditor(null, images, again))),
+        note('Nova página: monte a tela ou o aviso do seu jeito (fundo de cor, degradê ou foto; texto com cor, negrito, itálico, fonte e tamanho; ícone, imagem, logomarca e QR).'),
         note('PDF ou apresentação: exporte as páginas como imagem no seu programa e envie as imagens.'))),
     file,
-    el('div', { class: 'pf-bar' }, sel('kind', 'Imagens, vídeos e slides', [['image', 'Só imagens'], ['video', 'Só vídeos'], ['slide', 'Só slides']]), sel('status', 'Qualquer situação', [['ok', 'Publicados'], ['pending', 'Aguardando aprovação'], ['rejected', 'Devolvidos']]),
+    el('div', { class: 'pf-bar' }, sel('kind', 'Imagens, vídeos e slides', [['image', 'Só imagens e páginas'], ['video', 'Só vídeos'], ['slide', 'Só slides']]), sel('status', 'Qualquer situação', [['ok', 'Publicados'], ['pending', 'Aguardando aprovação'], ['rejected', 'Devolvidos']]),
       sel('office', 'De todos', [['empresa', 'Empresa toda'], ...D().offices.map((o) => [o.id, o.name])]), el('span', { class: 'dim small', text: `${all.length} de ${r?.max || LIMITS.media}` })),
+    label('Páginas e avisos prontos para editar'),
+    el('div', { class: 'pf-btns left tc-pg-presets' }, ...PAGE_PRESETS.map((p) => btn(p.label, () => pageBuilder(null, images, again, { preset: p.key }), 'small'))),
     label('Modelos de slide'),
     el('div', { class: 'tc-tpls' }, ...SLIDE_TEMPLATES.map((t) => el('button', { class: 'tc-tpl', type: 'button', title: `Novo slide: ${t.label}`, onclick: () => slideEditor(null, images, again, { template: t.key }) },
       slidePreview(t.key, t.sample, { theme: themeOf() }), el('span', { text: t.label })))),
