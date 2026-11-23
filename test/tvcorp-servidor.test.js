@@ -259,6 +259,19 @@ async function roteiro(db, label) {
     assert.equal(await signage(S.dEsc), null, 'tela da prefeitura sem signage');
     assert.equal(await signage(S.dB), null, 'outro cliente, sem grade');
 
+    /* ---------------------------------------------------------------- conjuntos de telas (DIGITAL ISP) */
+    const wall = await ok('POST', '/api/tvcorp/walls', { body: { name: 'Cardápio da praça', mode: 'menu', cols: 2, rows: 1, bezel: { x: 1.2, y: 2 }, cells: [{ pos: 2, deviceId: S.dFab }, { pos: 1, deviceId: S.dRec }] } }, 201);
+    assert.equal(wall.data.cells.length, 2); assert.equal(wall.data.sync, true);
+    const sgw = await signage(S.dFab);
+    assert.deepEqual(sgw.wall, { id: wall.id, name: 'Cardápio da praça', mode: 'menu', cols: 2, rows: 1, pos: 2, col: 1, row: 0, orientation: 'land', bezel: { x: 1.2, y: 2 }, sync: true, epoch: wall.data.epoch }, 'a tela recebe a posição dela no conjunto');
+    assert.equal((await call('POST', '/api/tvcorp/walls', { body: { name: 'Outro', cols: 2, rows: 1, cells: [{ pos: 1, deviceId: S.dFab }] } })).status, 409, 'a tela já está noutro conjunto');
+    assert.equal((await call('POST', '/api/tvcorp/walls', { body: { name: 'Fora', cols: 7, rows: 1 } })).status, 400, 'grade fora da lista');
+    assert.equal((await call('POST', '/api/tvcorp/walls', { tenant: 2, body: { name: 'Alheio', cols: 2, rows: 1, cells: [{ pos: 1, deviceId: S.dFab }] } })).status, 404, 'tela de outro cliente');
+    const w2 = await ok('PATCH', `/api/tvcorp/walls/${wall.id}`, { body: { mode: 'wall', cols: 2, rows: 1 } });
+    assert.equal(w2.data.mode, 'wall'); assert.equal(w2.data.epoch, wall.data.epoch, 'o início da contagem não muda');
+    await ok('DELETE', `/api/tvcorp/walls/${wall.id}`);
+    assert.equal('wall' in (await signage(S.dFab)), false, 'fora do conjunto: sem signage.wall');
+
     /* ---------------------------------------------------------------- logomarca */
     const logoPng = makeImage(imgDir, 'logo.png', { w: 1024, h: 400, color: 'green' });
     const lg = await ok('PUT', '/api/tvcorp/settings/logo', { raw: logoPng, type: 'image/png' });
