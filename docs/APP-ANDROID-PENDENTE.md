@@ -23,6 +23,7 @@ esses campos sem quebrar (ignora ou descarta), conferido pelo código.
 | Zona `qr` com `WIFI:…` ou vCard | main 36273af | só aceita `https://` (outro texto = cai no QR do `side` ou nada) | codificar o texto como veio (só nas zonas `qr`, com teto de tamanho) |
 | `safety` com `record: null` ("Dias desde") | main 36273af | **já funciona**: sem recorde, a linha não aparece | — |
 | Manchetes já dentro de `ticker.items`/`ticker.rich` | main 36273af | **já funciona** pelo texto de `ticker.items`; o estilo fica com o item `ticker.style` acima | — |
+| `layout.audio` `{ kind: 'radio', id, name, url, codec, bitrate, volume }` (rádio de fundo em layout sem zona de vídeo; MP3/AAC/HLS, muitas vezes `http://`) | main f5f91c1 | ignora: o bloco sem vídeo fica mudo | tocar em segundo plano enquanto o bloco estiver no ar, no volume da tela × `volume`/100, respeitando o mudo; parar ou trocar quando o bloco muda; reconectar se cair. O `network_security.xml` já libera http (quem decide é o código): liberar `http` só para esse player em `core/Urls` |
 | `image` nos modelos `oferta`, `precos`, `combo` | fe133de | não desenha a imagem | pôr a imagem ao lado ou embaixo |
 
 Enquanto o `signage.wall` não está no app, o painel não salva um videowall com TV box Android e avisa que o cardápio
