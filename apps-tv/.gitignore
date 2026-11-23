@@ -4,3 +4,5 @@ comum/js/previa.js
 comum/previa.css
 comum/arte/
 node_modules/
+comum/**/*.tmp
+comum/*.tmp
