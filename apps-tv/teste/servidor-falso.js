@@ -115,6 +115,16 @@ function tzLocal() { return Intl.DateTimeFormat().resolvedOptions().timeZone || 
 /** A grade com um item de cada tipo (teste visual contra a prévia do painel). */
 function blocoTipos() {
   const lateral = est.tipos === 'lateral';
+  if (est.tipos === 'provedor') {
+    // o layout 4 da produção ("Provedor com onda e avaliações"), na ordem em que o servidor manda: o ticker primeiro e o
+    // vídeo (com formato) por último; a zona "reviews" é um widget sem widget escolhido (sem itens)
+    return { id: 'grade-tipos', layout: { orientation: 'land', background: '#0b1220', zones: [
+      { id: 'bar', kind: 'ticker', x: 0, y: 88, w: 100, h: 12 },
+      { id: 'qr', kind: 'qr', x: 65, y: 4, w: 33, h: 40, title: 'Assine pelo celular', qr: 'https://exemplo.com.br/', shape: 'cantos' },
+      { id: 'reviews', kind: 'widget', x: 65, y: 47, w: 33, h: 38, shape: 'cantos' },
+      { id: 'main', kind: 'video', x: 0, y: 0, w: 63, h: 88, shape: 'onda-dir', edge: { color: '#29d3e5', width: 1 } }] },
+      days: [], from: 0, to: 1440, zones: {} };
+  }
   if (est.tipos === 'formas') {
     // zonas com recorte (zone.shape) e filete (zone.edge): o vídeo à esquerda, a playlist em onda entrando nele, o relógio
     // num círculo e o clima numa pílula por cima
@@ -384,7 +394,7 @@ function controle(req, res, url) {
     registrar('ao vivo: ' + (est.aoVivo || 'nenhum'));
     return volta();
   }
-  if (p === '/teste/tipos') { est.tipos = ['lateral', 'cheia', 'sobre', 'formas'].includes(q.get('modo')) ? q.get('modo') : null; est.versao++; registrar('todos os tipos: ' + (est.tipos || 'desligado')); return volta(); }
+  if (p === '/teste/tipos') { est.tipos = ['lateral', 'cheia', 'sobre', 'formas', 'provedor'].includes(q.get('modo')) ? q.get('modo') : null; est.versao++; registrar('todos os tipos: ' + (est.tipos || 'desligado')); return volta(); }
   if (p === '/teste/tema') { est.tema = { color: q.get('cor') || '#6d28d9', mode: q.get('modo') === 'light' ? 'light' : 'dark' }; est.versao++; return volta(); }
   if (p === '/teste/itens.json') return json(res, 200, { itens: itensTipos(arquivo, Date.now()), tema: est.tema, tz: tzLocal() });
   if (p === '/teste/previa-painel' || p === '/teste/previa-tv' || p === '/teste/comparar') {

@@ -452,23 +452,35 @@
      * limpo pelo mesmo código do painel, public/shared/faixa.js, quando a prévia está no pacote): o fundo, a cor, a fonte,
      * o tamanho (% da altura da faixa), o separador e a etiqueta. Sem estilo, a faixa de sempre.
      */
+    // o começo de cada faixa (pelo texto dela): redesenhar a tela (rev nova, troca de bloco) não faz o texto voltar ao
+    // começo; a posição continua de onde estava
+    var inicioFaixa = {};
+
     function faixa(caixa, avisos, prog) {
       if (!avisos.length) return;
       var P = raiz.TelasPrevia;
       var est = prog.faixaEstilo && P && P.cleanTickerStyle ? P.cleanTickerStyle(prog.faixaEstilo) : null;
       var t = el('div', 'faixa');
-      var s = el('span');
       var sep = est ? P.sepText(est.sep) : '•';
       var ESP = '\u00a0\u00a0\u00a0\u00a0'; // espaços que não somem (o separador fica no meio)
-      avisos.forEach(function (a, i) {
-        if (i) s.appendChild(el('span', 'faixa-sep', sep ? ESP + sep + ESP : ESP + '\u00a0\u00a0'));
-        var p = el('span', 'faixa-aviso', a.texto);
-        if (a.cor) p.style.color = a.cor;
-        if (a.negrito) p.style.fontWeight = '700';
-        if (a.italico) p.style.fontStyle = 'italic';
-        s.appendChild(p);
-      });
-      t.appendChild(s);
+      var juntar = sep ? ESP + sep + ESP : ESP + '\u00a0\u00a0';
+      // uma volta do texto: os avisos e, no fim, o separador (a volta seguinte encosta nela sem salto)
+      var volta = function () {
+        var s = el('span', 'faixa-volta');
+        avisos.forEach(function (a) {
+          var p = el('span', 'faixa-aviso', a.texto);
+          if (a.cor) p.style.color = a.cor;
+          if (a.negrito) p.style.fontWeight = '700';
+          if (a.italico) p.style.fontStyle = 'italic';
+          s.appendChild(p);
+          s.appendChild(el('span', 'faixa-sep', juntar));
+        });
+        return s;
+      };
+      var trilho = el('div', 'faixa-trilho');
+      var primeira = volta();
+      trilho.appendChild(primeira);
+      t.appendChild(trilho);
       if (est) {
         caixa.style.background = est.bg;
         t.style.color = est.color;
@@ -487,26 +499,32 @@
       caixa.appendChild(t);
       // velocidade do contrato: dp/s (60 ≈ 120 px/s em 1080p)
       var px = prog.velocidade * (window.innerHeight / 540);
-      if (prog.conjunto && prog.conjunto.modo === 'wall') {
-        // videowall: a faixa atravessa as TVs; a posição do texto sai do relógio confiável (o mesmo nas outras TVs), quadro
-        // a quadro, em vez da animação de CSS (que cada TV começaria na sua hora)
-        var epoch = prog.conjunto.epoch;
-        var passo = function () {
-          if (!document.documentElement.contains(s)) return;
-          var vao = t.offsetWidth + s.offsetWidth;
-          var d = vao > 0 ? ((ctx.agora() - epoch) / 1000 * px) % vao : 0;
-          if (d < 0) d += vao;
-          s.style.transform = 'translateX(' + (-d).toFixed(1) + 'px)';
-          (raiz.requestAnimationFrame || function (f) { return setTimeout(f, 33); })(passo);
-        };
-        setTimeout(passo, 50);
-        return;
-      }
+      var chave = avisos.map(function (a) { return a.texto; }).join('\n');
+      // videowall: a posição sai do epoch do conjunto (a mesma conta nas outras TVs); senão, do começo desta faixa
+      var t0 = prog.conjunto && prog.conjunto.modo === 'wall' ? prog.conjunto.epoch
+        : (inicioFaixa[chave] || (inicioFaixa[chave] = ctx.agora()));
       setTimeout(function () {
-        var dist = s.offsetWidth + t.offsetWidth;
-        s.style.animationDuration = Math.max(5, dist / px) + 's';
-        s.classList.add('rolando');
-      }, 50);
+        if (!document.documentElement.contains(t)) return;
+        var cw = primeira.offsetWidth, W = t.offsetWidth;
+        if (!cw || !W) return;
+        // voltas suficientes para cobrir a faixa duas vezes: anda uma "volta longa" (n voltas) e recomeça no mesmo desenho
+        var n = Math.max(1, Math.ceil(W / cw));
+        for (var k = 1; k < n * 2; k++) trilho.appendChild(volta());
+        var L = cw * n, dur = Math.max(2000, L / px * 1000);
+        var fase = ((ctx.agora() - t0) % dur + dur) % dur;
+        // só transform (o compositor anima sozinho, sem recalcular a página a cada quadro): a animação do próprio
+        // elemento (Web Animations, Chromium 36+), com a fase do relógio; sem ela, a animação de CSS com atraso negativo
+        if (trilho.animate) {
+          var an = trilho.animate([{ transform: 'translate3d(0,0,0)' }, { transform: 'translate3d(' + (-L) + 'px,0,0)' }],
+            { duration: dur, iterations: Infinity, easing: 'linear' });
+          try { an.currentTime = fase; } catch (e) { /* nada */ }
+        } else {
+          var nome = 'rolar' + Math.round(L);
+          var st = el('style', null, '@keyframes ' + nome + ' { from { transform: translate3d(0,0,0); } to { transform: translate3d(' + (-L) + 'px,0,0); } }');
+          t.appendChild(st);
+          trilho.style.animation = nome + ' ' + (dur / 1000) + 's linear ' + (-fase / 1000) + 's infinite';
+        }
+      }, 60);
     }
 
     /** Os avisos da tela: os com estilo (ticker.rich) quando vierem, senão só o texto (ticker.items). */
@@ -604,9 +622,24 @@
       if (!W || !H) return null;
       var pts = P.shapePolygon(zona.forma, W, H);
       if (!pts || pts.length < 3) return null; // formato que esta versão não conhece: o retângulo
-      var css = 'polygon(' + pts.map(function (p) { return p[0] + '% ' + p[1] + '%'; }).join(', ') + ')';
+      var lista = pts.map(function (p) { return p[0] + '% ' + p[1] + '%'; }).join(', ');
+      var css = 'polygon(' + lista + ')';
       c.style.webkitClipPath = css;
       c.style.clipPath = css;
+      if (zona.kind === 'video') {
+        // o ao vivo da Samsung (AVPlay) é um plano de vídeo por baixo da página: não recorta nem obedece a camadas, e o
+        // <video> de HLS da TV também não (e pesa: a faixa engasgava). O vídeo fica no retângulo e uma máscara com o fundo do
+        // layout cobre o que fica fora do formato (o retângulo menos o formato, polygon evenodd), acima da camada do vídeo
+        var mascara = el('div', 'zona-mascara');
+        // 1 px a mais em cada lado: a borda do vídeo não aparece como um fio na emenda
+        mascara.style.left = 'calc(' + c.style.left + ' - 1px)'; mascara.style.top = 'calc(' + c.style.top + ' - 1px)';
+        mascara.style.width = 'calc(' + c.style.width + ' + 2px)'; mascara.style.height = 'calc(' + c.style.height + ' + 2px)';
+        mascara.style.background = (atual && atual.bloco && atual.bloco.layout.fundo) || raizEl.style.background || '#000';
+        var inv = 'polygon(evenodd, 0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, ' + lista + ', ' + pts[0][0] + '% ' + pts[0][1] + '%, 0% 0%)';
+        mascara.style.webkitClipPath = inv;
+        mascara.style.clipPath = inv;
+        alvo.appendChild(mascara);
+      }
       if (zona.filete && P.edgeCommands && P.toPathD) {
         var NS = 'http://www.w3.org/2000/svg';
         var svg = document.createElementNS(NS, 'svg');
@@ -614,7 +647,7 @@
         svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
         svg.setAttribute('preserveAspectRatio', 'none');
         svg.style.left = c.style.left; svg.style.top = c.style.top; svg.style.width = c.style.width; svg.style.height = c.style.height;
-        if (c.style.zIndex) svg.style.zIndex = c.style.zIndex;
+        svg.style.zIndex = c.style.zIndex || (zona.kind === 'video' ? '2' : '');
         var p = document.createElementNS(NS, 'path');
         p.setAttribute('d', P.toPathD(P.edgeCommands(zona.forma, W, H)));
         p.setAttribute('fill', 'none');
