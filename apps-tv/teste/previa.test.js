@@ -35,4 +35,8 @@ test('inset, place-items, inline-grid, aspect-ratio, :has() e a arte de fundo', 
   assert.match(r.css, /\.y \{ display: inline-flex; align-items: center; justify-content: center; \}/);
   assert.ok(!/:has/.test(r.css));
   assert.match(r.css, /url\(arte\/ondas\.svg\)/);
+  // com aspas (as fotos do clima): o mesmo caminho dentro do pacote, sem sobrar /tvcorp/arte absoluto
+  const q = converterCss('.k { background: url("/tvcorp/arte/clima-rain-land.jpg") center / cover no-repeat; }');
+  assert.match(q.css, /url\("arte\/clima-rain-land\.jpg"\)/);
+  assert.doesNotMatch(q.css, /\/tvcorp\/arte/);
 });

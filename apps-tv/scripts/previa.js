@@ -50,7 +50,8 @@ function converterCss(css) {
   const unidade = (v) => v
     .replace(/min\(\s*([\d.]+)cq([wh])\s*,\s*([\d.]+)cq([wh])\s*\)/g, (_, a, ua, b, ub) => { mins.push([Number(a), ua, Number(b), ub]); return `var(--m${mins.length - 1})`; })
     .replace(/(\d*\.?\d+)cq([wh])/g, (_, n, u) => `calc(${n} * var(--cq${u}))`)
-    .replace(/url\(\s*\/tvcorp\/arte\//g, 'url(arte/');
+    // com ou sem aspas: url(/tvcorp/arte/x) e url("/tvcorp/arte/x") viram o caminho dentro do pacote
+    .replace(/url\(\s*(["']?)\/tvcorp\/arte\//g, 'url($1arte/');
   const saida = [];
   for (const r of regras(css)) {
     if (/:has\(/.test(r.sel)) continue; // seletor que as TVs não entendem (e que aqui não faz falta: a zona mede)

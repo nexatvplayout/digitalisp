@@ -463,3 +463,13 @@ test('clima com a foto do tempo (art): vai no pacote como opcional (zona e item)
   assert.deepEqual(fs.map((f) => [f.sha256, f.opcional]).sort(), [[H('e'), true], [H('f'), true]].sort());
   assert.equal(N.climaParaItem(p.clima).art.sha256, H('e'));
 });
+
+test('clima: art (deitada) e artPort (em pé) vão no pacote; o tempo vem de weather.icon', () => {
+  const w = { place: { city: 'X' }, icon: 'storm', now: { temp: 20, cond: 'rain' },
+    art: { url: 'https://cdn.x/clima-storm-land.jpg', sha256: H('a'), bytes: 9 }, artPort: { url: 'https://cdn.x/clima-storm-port.jpg', sha256: H('b'), bytes: 9 } };
+  const p = N.lerConfig(cfg('r', [bloco('a', 0, 1440, [])], { weather: w }));
+  assert.deepEqual(N.arquivosDoPacote(p).map((f) => f.sha256).sort(), [H('a'), H('b')].sort());
+  const i = N.climaParaItem(p.clima);
+  assert.equal(i.cond, 'storm');
+  assert.equal(i.artPort.sha256, H('b'));
+});

@@ -34,3 +34,11 @@
 .zona .tvc-it-wx .tvc-it-credit { font-size: calc(0.7 * var(--wx-d, 2vh)); color: inherit; opacity: .75; }
 .zona .tvc-wx-deitado .tvc-wx-now { flex-direction: row; }
 .zona .tvc-wx-deitado .tvc-wx-now > * + * { margin-top: 0 !important; margin-left: calc(0.5 * var(--wx-x, 2vh)) !important; }
+/* a foto do tempo em pé (no pacote, arte/clima-<tempo>-port.jpg) na zona mais alta que larga; a foto baixada (weather.artPort),
+   quando chega, vai por cima no estilo da própria caixa */
+.zona .tvc-it-wx.tvc-wx-empe.tvc-wx-clear { background-image: linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.35)), url("arte/clima-clear-port.jpg"); }
+.zona .tvc-it-wx.tvc-wx-empe.tvc-wx-partly { background-image: linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.35)), url("arte/clima-partly-port.jpg"); }
+.zona .tvc-it-wx.tvc-wx-empe.tvc-wx-cloudy { background-image: linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.35)), url("arte/clima-cloudy-port.jpg"); }
+.zona .tvc-it-wx.tvc-wx-empe.tvc-wx-fog { background-image: linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.35)), url("arte/clima-fog-port.jpg"); }
+.zona .tvc-it-wx.tvc-wx-empe.tvc-wx-rain { background-image: linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.35)), url("arte/clima-rain-port.jpg"); }
+.zona .tvc-it-wx.tvc-wx-empe.tvc-wx-storm { background-image: linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.35)), url("arte/clima-storm-port.jpg"); }

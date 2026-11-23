@@ -200,7 +200,8 @@ function montarConfig(tela) {
       updatedAt: Math.floor(Date.now() / 3600000) * 3600000,
       now: { temp: 27, text: { clear: 'Céu limpo', partly: 'Parcialmente nublado', cloudy: 'Nublado', fog: 'Neblina', rain: 'Chuva', storm: 'Tempestade' }[est.clima || 'clear'], cond: est.clima || 'clear' },
       today: { min: 21, max: 31, text: 'Sol', cond: est.clima || 'clear' },
-      ...(est.climaFoto ? { art: arquivo('oferta-b.svg') } : {}),
+      icon: est.clima || 'clear',
+      ...(est.climaFoto ? { art: arquivo('oferta-b.svg'), artPort: arquivo('foto-ana.svg') } : {}),
       days: [{ date: '2026-11-24', weekday: 'ter', min: 20, max: 30, text: 'Chuva', cond: 'rain' }, { date: '2026-11-25', weekday: 'qua', min: 19, max: 28, text: 'Nublado', cond: 'cloudy' }, { date: '2026-11-26', weekday: 'qui', min: 21, max: 32, text: 'Sol', cond: 'clear' }] },
     ticker: Object.assign({ items: ['Programação versão ' + est.versao, 'Ofertas válidas enquanto durar o estoque'], speed: 60 },
       // o estilo da faixa e o de cada aviso (public/shared/faixa.js), ligado por /teste/faixa?estilo=1

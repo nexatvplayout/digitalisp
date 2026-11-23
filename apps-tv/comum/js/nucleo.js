@@ -12,7 +12,7 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  var VERSAO = '1.0.22';
+  var VERSAO = '1.0.23';
   var TZ_PADRAO = 'America/Sao_Paulo';
   var SHA = /^[0-9a-f]{64}$/;
   var DIA = /^\d{4}-\d{2}-\d{2}$/;
@@ -190,10 +190,12 @@
         return x && { name: umaLinha(str(x, 'name') || '', 60), day: num(x, 'day', 0), month: num(x, 'month', 0) };
       }).filter(function (x) { return x && x.name && x.day >= 1 && x.day <= 31 && x.month >= 1 && x.month <= 12; });
       if (!it.people.length) return null;
-    } else if (kind === 'weather' && o.art && typeof o.art === 'object') {
-      // a foto do tempo (fundo do item de clima): opcional, não segura a troca
-      var fw = arquivo(o.art, teste);
-      if (fw) { fw.opcional = true; it.files.push(fw); }
+    } else if (kind === 'weather') {
+      // as fotos do tempo (fundo do item de clima; deitada e em pé): opcionais, não seguram a troca
+      [o.art, o.artPort].forEach(function (a) {
+        var fw = a && typeof a === 'object' ? arquivo(a, teste) : null;
+        if (fw) { fw.opcional = true; it.files.push(fw); }
+      });
     } else if (kind === 'web') {
       // página da internet: só https (o app abre num quadro)
       if (!/^https:\/\/[^\s]+$/i.test(str(o, 'url') || '')) return null;
@@ -395,8 +397,8 @@
       var t = n(now.temp), mi = n(hoje.min), ma = n(hoje.max);
       if (t === null && mi === null && ma === null) return null;
       return { kind: 'weather', city: lugar.city || '', uf: lugar.uf || '', tempC: t, min: mi, max: ma,
-        text: now.text || hoje.text || '', cond: now.cond || hoje.cond || 'partly',
-        days: Array.isArray(w.days) ? w.days.slice(0, 4) : [], source: w.source || '', art: w.art || null };
+        text: now.text || hoje.text || '', cond: w.icon || now.cond || hoje.cond || 'partly',
+        days: Array.isArray(w.days) ? w.days.slice(0, 4) : [], source: w.source || '', art: w.art || null, artPort: w.artPort || null };
     }
     if (n(w.tempC) === null && n(w.min) === null && n(w.max) === null) return null;
     var o = {}; for (var k in w) o[k] = w[k];
@@ -498,8 +500,12 @@
       if (str(tt, 'mode') === 'light' || str(tt, 'mode') === 'dark') tema.mode = str(tt, 'mode');
     }
     var clima = o.weather && typeof o.weather === 'object' ? o.weather : null;
-    var climaArte = clima && clima.art && typeof clima.art === 'object' ? arquivo(clima.art, teste) : null;
-    if (climaArte) climaArte.opcional = true;
+    // as fotos do tempo (weather.art deitada, weather.artPort em pé): a tela usa a da forma da zona
+    var climaArte = [];
+    if (clima) [clima.art, clima.artPort].forEach(function (a) {
+      var fa = a && typeof a === 'object' ? arquivo(a, teste) : null;
+      if (fa) { fa.opcional = true; climaArte.push(fa); }
+    });
     return {
       rev: str(o, 'rev') || '',
       tz: tz,
@@ -548,7 +554,7 @@
     if (!prog) return out;
     add(prog.marca && prog.marca.logo);
     add(prog.offline && prog.offline.imagem);
-    add(prog.climaArte); // a foto do tempo da zona de clima (opcional)
+    (prog.climaArte || []).forEach(add); // as fotos do tempo da zona de clima (opcionais)
     (prog.blocos || []).forEach(function (b) {
       Object.keys(b.itens).forEach(function (z) {
         b.itens[z].forEach(function (it) { it.files.forEach(add); });
