@@ -29,6 +29,7 @@ import { createLimiter, ipKey } from './ratelimit.js';
 import { localParts, validTz } from './tz.js';
 import * as R from './tvcorp-rh.js';
 import * as F from './tvcorp-fontes.js';
+import { safeFetch } from './web/net.js';
 import { DATES, DATE_KINDS, cleanDateKeys, datesOn, upcomingDates } from '../public/shared/tvcorp-datas.js';
 
 const { fail, line, idOf, sha256 } = R;
@@ -51,7 +52,14 @@ export const DADOS_LIMITS = Object.freeze({ widgets: 100, mobile: 50, feedTestsP
 export const FILE_RE = /^tvc(pessoa|sug)-[0-9a-f-]{36}\.jpg$/;
 
 /* ------------------------------------------------------------------ widgets (contador, dias sem acidente, relógio mundial, cardápio) */
-export const WIDGET_KINDS = Object.freeze({ countdown: 'Contador regressivo', safety: 'Dias sem acidente', worldclock: 'Relógio mundial', menu: 'Cardápio' });
+export const WIDGET_KINDS = Object.freeze({
+  countdown: 'Contador regressivo', safety: 'Dias sem acidente', worldclock: 'Relógio mundial', menu: 'Cardápio',
+  // DIGITAL ISP (os gadgets da tela)
+  weather: 'Clima e previsão', clock: 'Relógio', agenda: 'Agenda e salas', reviews: 'Avaliações e depoimentos',
+  dashboard: 'Painel de indicadores', directions: 'Como chegar', web: 'Página da internet',
+});
+/** Os limites dos gadgets novos. */
+export const GADGET_LIMITS = Object.freeze({ agendaEvents: 40, agendaShown: 6, reviews: 12, dashboardKpis: 6, webRefreshMin: 5, webRefreshMax: 1440 });
 /** Os fusos do relógio mundial (lista fixa: o cliente escolhe daqui). */
 export const WORLD_ZONES = Object.freeze([
   { tz: 'America/Sao_Paulo', label: 'Brasília' }, { tz: 'America/Manaus', label: 'Manaus' }, { tz: 'America/Noronha', label: 'Fernando de Noronha' },
@@ -67,6 +75,15 @@ const WEEK = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sáb
 /**
  * O widget digitado -> { name, data }.
  *   countdown   { title, at (epoch ms), until? (epoch ms: o fim), text }
+ *   weather     { feedId? (a fonte de clima; sem ela, a da unidade), days (1 a 4 dias de previsão) }
+ *   clock       { face: digital | analog, tz (um fuso da lista ou vazio = o da empresa), label, showSeconds, date }
+ *               (showSeconds, não seconds: seconds é a duração do item na playlist)
+ *   agenda      { title, events: [{ date AAAA-MM-DD, time? HH:MM, end? HH:MM, title, place }] } (a tela mostra de hoje em diante)
+ *   reviews     { title, items: [{ name, text, stars 1-5 }], qr? (https: onde avaliar) }
+ *   dashboard   { title, kpis: [ids] } (de 1 a 6 indicadores lado a lado)
+ *   directions  { title, address, reference, hours, phone, qr? (https: o link do mapa) }
+ *   web         { url (https), refreshMin (0 = não recarrega), embeddable? (false: o site recusa ser aberto dentro de outro;
+ *               conferido pelo servidor ao salvar, pelos cabeçalhos X-Frame-Options e CSP frame-ancestors) }
  *   safety      { title, lastAccident ('AAAA-MM-DD'), record (dias), goal (dias) }
  *   worldclock  { zones: ['America/Sao_Paulo', …] (até 6, da lista) }
  *   menu        { title, days: { '1': [{ name, price?, note? }], … } (0 = domingo; até 12 itens por dia), showPrice }
@@ -98,6 +115,48 @@ export function cleanWidget(kind, b, { partial = false, cur = null } = {}) {
     const zones = Array.isArray(d.zones) ? [...new Set(d.zones.map(String))] : [];
     if (!zones.length || zones.length > 6 || zones.some((z) => !ZONE.has(z))) throw fail(400, 'Relógio mundial: de 1 a 6 cidades da lista.');
     out.data = { zones };
+  } else if (kind === 'weather') {
+    const feedId = d.feedId == null || d.feedId === '' ? null : idOf(d.feedId, 'Clima: fonte');
+    out.data = { ...(feedId ? { feedId } : {}), days: Math.min(4, Math.max(1, Math.round(Number(d.days) || 4))), title: line(d.title, 60) };
+  } else if (kind === 'clock') {
+    const tz = d.tz == null || d.tz === '' ? '' : String(d.tz);
+    if (tz && !ZONE.has(tz)) throw fail(400, 'Relógio: escolha um fuso da lista.');
+    out.data = { face: d.face === 'analog' ? 'analog' : 'digital', tz, label: line(d.label, 40), showSeconds: d.showSeconds !== false, date: d.date !== false };
+  } else if (kind === 'agenda') {
+    const list = Array.isArray(d.events) ? d.events : [];
+    if (list.length > GADGET_LIMITS.agendaEvents) throw fail(400, `Agenda: no máximo ${GADGET_LIMITS.agendaEvents} compromissos.`);
+    const hm = (v, what) => { if (v == null || v === '') return null; if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(String(v))) throw fail(400, `Agenda: ${what} no formato HH:MM.`); return String(v); };
+    const events = list.map((e) => {
+      const date = R.cleanYmd(e?.date); const title = line(e?.title, 80);
+      if (!date) throw fail(400, 'Agenda: cada compromisso precisa da data.');
+      if (title.length < 2) throw fail(400, 'Agenda: cada compromisso precisa do nome.');
+      const time = hm(e?.time, 'o horário'); const end = hm(e?.end, 'o fim');
+      return { date, ...(time ? { time } : {}), ...(end ? { end } : {}), title, ...(line(e?.place, 60) ? { place: line(e.place, 60) } : {}) };
+    }).sort((a, b) => `${a.date}${a.time || ''}`.localeCompare(`${b.date}${b.time || ''}`));
+    out.data = { title: line(d.title, 60) || 'Agenda', events };
+  } else if (kind === 'reviews') {
+    const list = Array.isArray(d.items) ? d.items : [];
+    if (!list.length || list.length > GADGET_LIMITS.reviews) throw fail(400, `Avaliações: de 1 a ${GADGET_LIMITS.reviews}.`);
+    const items = list.map((x) => {
+      const text = line(x?.text, 200); if (text.length < 2) throw fail(400, 'Avaliações: escreva o depoimento.');
+      const stars = Math.round(Number(x?.stars ?? 5));
+      return { name: line(x?.name, 40) || 'Cliente', text, stars: Math.min(5, Math.max(1, Number.isFinite(stars) ? stars : 5)) };
+    });
+    const qr = d.qr ? R.cleanHttpsUrl(d.qr, 'Avaliações: endereço do QR') : null;
+    out.data = { title: line(d.title, 60) || 'O que dizem os clientes', items, ...(qr ? { qr } : {}) };
+  } else if (kind === 'dashboard') {
+    const ids = Array.isArray(d.kpis) ? [...new Set(d.kpis.map((x) => idOf(x, 'Painel: indicador')))] : [];
+    if (!ids.length || ids.length > GADGET_LIMITS.dashboardKpis) throw fail(400, `Painel: escolha de 1 a ${GADGET_LIMITS.dashboardKpis} indicadores.`);
+    out.data = { title: line(d.title, 60) || 'Indicadores', kpis: ids };
+  } else if (kind === 'directions') {
+    const address = line(d.address, 120); if (address.length < 4) throw fail(400, 'Como chegar: escreva o endereço.');
+    const qr = d.qr ? R.cleanHttpsUrl(d.qr, 'Como chegar: link do mapa') : null;
+    out.data = { title: line(d.title, 60) || 'Como chegar', address, reference: line(d.reference, 120), hours: line(d.hours, 80), phone: line(d.phone, 30), ...(qr ? { qr } : {}) };
+  } else if (kind === 'web') {
+    const url = R.cleanHttpsUrl(d.url, 'Página: endereço');
+    if (!url) throw fail(400, 'Página: informe o endereço https://.');
+    const r = Math.round(Number(d.refreshMin) || 0);
+    out.data = { url, refreshMin: r <= 0 ? 0 : Math.min(GADGET_LIMITS.webRefreshMax, Math.max(GADGET_LIMITS.webRefreshMin, r)) };
   } else {
     const days = {};
     for (let w = 0; w < 7; w++) {
@@ -113,16 +172,43 @@ export function cleanWidget(kind, b, { partial = false, cur = null } = {}) {
   return out;
 }
 
+/**
+ * A página aceita ser aberta dentro de outra? Pelos cabeçalhos: X-Frame-Options DENY ou SAMEORIGIN, ou CSP frame-ancestors
+ * sem "*", recusam (a tela é outro endereço). true | false.
+ */
+export function embeddableFrom(headers = {}) {
+  const h = Object.fromEntries(Object.entries(headers || {}).map(([k, v]) => [k.toLowerCase(), Array.isArray(v) ? v.join(',') : String(v ?? '')]));
+  const xfo = (h['x-frame-options'] || '').toLowerCase();
+  if (/\b(deny|sameorigin)\b/.test(xfo)) return false;
+  const fa = /(?:^|;)\s*frame-ancestors\s+([^;]*)/i.exec(h['content-security-policy'] || '');
+  if (fa && !/(^|\s)\*(\s|$)/.test(fa[1].trim())) return false;
+  return true;
+}
+/**
+ * Confere a página no site: HEAD (e GET, se o site não responder ao HEAD), com prazo curto, sem rede interna e no máximo 2
+ * redirecionamentos (o safeFetch confere cada endereço). Devolve true, false ou null (não deu para saber: o site fora do ar).
+ */
+export async function checkEmbeddable(url, fetcher = safeFetch) {
+  for (const method of ['HEAD', 'GET']) {
+    try {
+      const r = await fetcher(url, { method, timeout: 4000, redirects: 2, maxBytes: 512 * 1024 });
+      if (r.status >= 200 && r.status < 400) return embeddableFrom(r.headers);
+    } catch { /* tenta o GET; se também falhar, não dá para saber */ }
+  }
+  return null;
+}
 const SOURCE_SAFE = (s) => line(s, 80);
 const MASC = new Set(['Comunicado', 'Indicador', 'Widget', 'Endereço', 'Grupo']);
 
 export function createTvcorpDados({
   db, audit = async () => {}, ipOf = (req) => req.ip, publicUrl = () => '', available = async () => true,
   weatherOf = null, trafficOf = null, fetcher = undefined, parseFeed = undefined, settingsOf = null,
-  isCorpOffice = (o) => CORP_OFFICE_TYPES.includes(o?.type), files = {}, photoUrl = null,
+  isCorpOffice = (o) => CORP_OFFICE_TYPES.includes(o?.type), files = {}, photoUrl = null, webCheck = checkEmbeddable,
   now = () => Date.now(), tz = 'America/Sao_Paulo', timers = true, tickMs = 60_000, pageDir = TVC_PAGE_DIR, log = (m) => console.warn(m),
 }) {
   if (!db) throw new Error('createTvcorpDados: falta o db.');
+  /** A página aceita ser aberta dentro de outra? (o site conferido ao salvar o gadget; falha = não se sabe) */
+  const checkWeb = (url) => Promise.resolve().then(() => webCheck(url)).catch(() => null);
   const fileDir = files.dir || null;
   const prepareImage = files.prepare || (async (buf) => {
     const [{ preparePhoto }, { config }] = await Promise.all([import('./telas-desaparecidos.js'), import('./config.js')]);
@@ -587,6 +673,7 @@ export function createTvcorpDados({
     app.post(`${P}/widgets`, M, ah(async (req, res) => {
       const kind = req.body?.kind;
       const w = cleanWidget(kind, req.body);
+      if (kind === 'web' && (await checkWeb(w.data.url)) === false) w.data.embeddable = false;
       await under('SELECT COUNT(*) AS n FROM tvcorp_widgets WHERE tenant_id = ?', [req.tenantId], DADOS_LIMITS.widgets, `Limite de ${DADOS_LIMITS.widgets} widgets atingido.`);
       const t = now();
       const id = await db.insert('INSERT INTO tvcorp_widgets(tenant_id,kind,name,data,created_at,updated_at) VALUES(?,?,?,?,?,?)', [req.tenantId, kind, w.name, JSON.stringify(w.data), t, t]);
@@ -596,6 +683,7 @@ export function createTvcorpDados({
     app.patch(`${P}/widgets/:id`, M, ah(async (req, res) => {
       const cur = await own('tvcorp_widgets', req.params.id, req.tenantId, 'Widget');
       const w = cleanWidget(cur.kind, req.body, { partial: true });
+      if (cur.kind === 'web' && w.data && (await checkWeb(w.data.url)) === false) w.data.embeddable = false;
       const set = { ...w, ...(w.data ? { data: JSON.stringify(w.data) } : {}) };
       if (Object.keys(set).length) await db.run(`UPDATE tvcorp_widgets SET ${Object.keys(set).map((k) => `${k} = ?`).join(', ')}, updated_at = ? WHERE id = ? AND tenant_id = ?`, [...Object.values(set), now(), cur.id, req.tenantId]);
       res.locals.audit = `tvcorp: widget "${w.name || cur.name}" alterado (#${cur.id})`;
@@ -956,7 +1044,26 @@ export function createTvcorpDados({
         if (d.kind === 'menu') { const m = menuToday(d, day); return m ? { id: `m${d.id}`, kind: 'menu', ...m } : null; }
         if (d.kind === 'countdown') return (d.data.until || d.data.at) > t - 86400_000 ? { id: `w${d.id}`, kind: 'countdown', title: d.data.title, target: d.data.at, ...(d.data.until ? { until: d.data.until } : {}), text: d.data.text || '' } : null;
         if (d.kind === 'safety') return { id: `w${d.id}`, kind: 'safety', ...safetyOf(d, day.ymd) };
-        return { id: `w${d.id}`, kind: 'worldclock', clocks: d.data.zones.map((z) => ({ tz: z, label: ZONE.get(z)?.label || z })) };
+        if (d.kind === 'worldclock') return { id: `w${d.id}`, kind: 'worldclock', clocks: d.data.zones.map((z) => ({ tz: z, label: ZONE.get(z)?.label || z })) };
+        // DIGITAL ISP: os gadgets novos
+        if (d.kind === 'weather') {
+          const wx = await dataFor(tenantId, officeId, { kind: 'weather', id: d.data.feedId || null, params: {} });
+          return wx ? { ...wx, id: `w${d.id}`, ...(d.data.title ? { title: d.data.title } : {}), days: (wx.days || []).slice(0, d.data.days || 4) } : null;
+        }
+        if (d.kind === 'clock') return { id: `w${d.id}`, kind: 'clock', face: d.data.face, tz: d.data.tz || s.tz, label: d.data.label || '', showSeconds: d.data.showSeconds !== false, date: d.data.date !== false };
+        if (d.kind === 'agenda') {
+          const next = (d.data.events || []).filter((e) => e.date >= day.ymd).slice(0, GADGET_LIMITS.agendaShown);
+          return next.length ? { id: `w${d.id}`, kind: 'agenda', title: d.data.title, today: day.ymd, events: next } : null;
+        }
+        if (d.kind === 'reviews') return { id: `w${d.id}`, kind: 'reviews', title: d.data.title, items: d.data.items, ...(d.data.qr ? { qr: d.data.qr } : {}) };
+        if (d.kind === 'dashboard') {
+          const items = [];
+          for (const kid of d.data.kpis || []) { const k = await dataFor(tenantId, officeId, { kind: 'kpi', id: kid, params: {} }); if (k) items.push({ name: k.name, value: k.value, target: k.target, unit: k.unit, band: k.band }); }
+          return items.length ? { id: `w${d.id}`, kind: 'dashboard', title: d.data.title, items } : null;
+        }
+        if (d.kind === 'directions') return { id: `w${d.id}`, kind: 'directions', ...d.data };
+        if (d.kind === 'web') return { id: `w${d.id}`, kind: 'web', url: d.data.url, refreshMin: d.data.refreshMin || 0, ...(d.data.embeddable === false ? { embeddable: false } : {}) };
+        return null;
       }
       default: return null;
     }

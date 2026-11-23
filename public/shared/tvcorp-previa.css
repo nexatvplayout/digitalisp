@@ -294,5 +294,51 @@
 .tvc-cd-u b { font-size: 10cqw; line-height: 1; color: var(--tfg); }
 .tvc-cd-u span { font-size: 2.8cqw; color: var(--tdim); }
 .th-light .tvc-cd-u, .tvc-it.th-light .tvc-cd-u { background: rgba(15, 23, 42, 0.08); }
+
+/* DIGITAL ISP · os gadgets novos (clima, relógio, agenda, avaliações, painel de indicadores, como chegar, página) */
+.tvc-it-wx .tvc-wx-now { display: flex; align-items: baseline; }
+.tvc-wx-now b { font-size: 14cqw; line-height: 1; color: var(--tfg); margin-right: 2cqw; }
+.tvc-wx-now span { font-size: 4.2cqw; color: var(--tdim); }
+.tvc-wx-days { list-style: none; margin: 0; padding: 0; display: flex; }
+.tvc-wx-days li { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 1.2cqw 0.6cqw; margin-right: 1cqw; border-radius: 1cqw; background: rgba(148, 163, 184, 0.16); text-align: center; }
+.tvc-wx-days b { font-size: 3.4cqw; color: var(--tfg); text-transform: capitalize; }
+.tvc-wx-days span { font-size: 3.6cqw; color: var(--tfg); }
+.tvc-wx-days small { font-size: 2.4cqw; color: var(--tdim); }
+.tvc-it-clock { align-items: center; justify-content: center; text-align: center; }
+.tvc-it-clock .tvc-it-t { border-left: 0; padding-left: 0; }
+.tvc-clk-time { font-size: 22cqw; font-weight: 700; line-height: 1; color: var(--tfg); }
+.tvc-clk-date { font-size: 4.4cqw; color: var(--tdim); text-transform: capitalize; }
+.tvc-clk-face { width: 58cqw; height: 58cqw; }
+.tvc-clk-bg { fill: rgba(148, 163, 184, 0.14); stroke: var(--tc); stroke-width: 2.5; }
+.tvc-clk-tick { stroke: var(--tfg); }
+.tvc-clk-h, .tvc-clk-m { stroke: var(--tfg); }
+.tvc-clk-s { stroke: #f59e0b; }
+.tvc-clk-dot { fill: var(--tfg); }
+.tvc-ag-list { list-style: none; margin: 0; padding: 0; font-size: 3.6cqw; }
+.tvc-ag-list li { display: flex; align-items: center; padding: 0.35em 0; border-bottom: 1px solid rgba(148, 163, 184, 0.3); }
+.tvc-ag-when { flex: none; width: 18cqw; display: flex; flex-direction: column; }
+.tvc-ag-when b { color: var(--tfg); }
+.tvc-ag-when small, .tvc-ag-what small { font-size: 0.8em; color: var(--tdim); }
+.tvc-ag-what { display: flex; flex-direction: column; min-width: 0; }
+.tvc-ag-what b { color: var(--tfg); }
+.tvc-rv-row { display: flex; align-items: center; }
+.tvc-rv-list { list-style: none; margin: 0; padding: 0; flex: 1; min-width: 0; }
+.tvc-rv-list li { display: flex; flex-direction: column; padding: 0.6cqw 0; margin-bottom: 1.4cqw; }
+.tvc-rv-stars { color: #f59e0b; font-size: 3.4cqw; letter-spacing: 0.1em; }
+.tvc-rv-list q { font-size: 3.8cqw; color: var(--tfg); line-height: 1.3; }
+.tvc-rv-list small { font-size: 2.8cqw; color: var(--tdim); }
+.tvc-it-reviews .tvc-sl-qrc { margin-left: 3cqw; }
+.tvc-dash-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; }
+.tvc-dash-list li { width: 30%; box-sizing: border-box; margin: 0 3% 2cqw 0; padding: 1.4cqw; border-radius: 1cqw; background: rgba(148, 163, 184, 0.14); display: flex; flex-direction: column; }
+.tvc-it-dash.n1 .tvc-dash-list li { width: 100%; } .tvc-it-dash.n2 .tvc-dash-list li, .tvc-it-dash.n4 .tvc-dash-list li { width: 47%; }
+.tvc-dash-list span { font-size: 2.8cqw; color: var(--tdim); }
+.tvc-dash-list b { font-size: 6.4cqw; line-height: 1.1; color: var(--tfg); }
+.tvc-dash-list small { font-size: 2.4cqw; color: var(--tdim); }
+.tvc-dir-row { display: flex; align-items: center; }
+.tvc-dir-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.tvc-dir-addr { font-size: 5cqw; font-weight: 700; color: var(--tfg); line-height: 1.2; }
+.tvc-it-dir .tvc-sl-qrc { margin-left: 3cqw; }
+.tvc-it-web { align-items: center; justify-content: center; text-align: center; border: 1px dashed rgba(148, 163, 184, 0.5); }
+.tvc-web-warn { font-size: 3cqw; color: var(--tfg); }
 .tvc-tk-leve { font-weight: 400; }
 .tvc-tk-it span { font-style: italic; }

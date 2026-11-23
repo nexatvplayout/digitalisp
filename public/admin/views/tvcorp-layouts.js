@@ -5,7 +5,7 @@
 import { el, guard, toast, tapi, put, f, opt, table, label, note, empty, btn, btns, chip, dialog, D, when, listOf } from './tvcorp-base.js';
 import { layoutPreview, frameOf } from '../../shared/tvcorp-previa.js';
 import { widgetItem } from './tvcorp-playlists.js';
-import { FACTORY_LAYOUTS, FACTORY_LAYOUT, ZONE_KINDS, ZONE_KIND, zoneLabel, LIMITS, checkZones } from './tvcorp-catalogo.js';
+import { FACTORY_LAYOUTS, FACTORY_LAYOUT, FACTORY_SETS, LAYOUT_SEGMENTS, ZONE_KINDS, ZONE_KIND, zoneLabel, LIMITS, checkZones, widgetLabel } from './tvcorp-catalogo.js';
 import { themeOf } from './tvcorp-midias.js';
 import { quadroPx, formatoDe, FORMATO_TXT, dicaArte, quadrosDoLayout } from './tvcorp-quadros.js';
 
@@ -18,7 +18,27 @@ const SAMPLE_TICKER = ['Bem-vindo! Use o crachá em todas as áreas', 'Refeitór
 /** Os gadgets do cliente (contador, dias sem acidente, relógio mundial: aba Barras e blocos), lidos ao abrir a aba. */
 let WIDGETS = [];
 /** O que a zona mostra na prévia: o gadget escolhido nela (o mesmo desenho da TV). */
-const zoneItems = (zones) => Object.fromEntries((zones || []).filter((z) => z.widget != null).map((z) => [z.id, WIDGETS.find((w) => w.id === Number(z.widget))]).filter(([, w]) => w).map(([id, w]) => [id, widgetItem(w)]));
+const zoneItems = (zones) => Object.fromEntries((zones || []).map((z) => {
+  const w = z.widget != null ? WIDGETS.find((x) => x.id === Number(z.widget)) : null;
+  if (w) return [z.id, widgetItem(w)];
+  const sample = SAMPLE_ITEM[z.sample || z.kind]; // os modelos prontos: um exemplo de como o gadget aparece
+  return sample ? [z.id, sample()] : null;
+}).filter(Boolean));
+/** Os exemplos da prévia dos modelos prontos (o cliente escolhe o gadget dele no editor). */
+const ymd = (n = 0) => { const d = new Date(Date.now() + n * 86400000); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+const SAMPLE_ITEM = {
+  clock: () => ({ kind: 'clock', face: 'digital', showSeconds: false }),
+  weather: () => ({ kind: 'weather', title: 'Sua cidade', tempC: 27, text: 'Parcialmente nublado', days: [['seg', 19, 28], ['ter', 18, 27], ['qua', 20, 30]].map(([weekday, min, max]) => ({ weekday, min, max })) }),
+  agenda: () => ({ kind: 'agenda', title: 'Agenda de hoje', today: ymd(), events: [{ date: ymd(), time: '09:00', title: 'Reunião geral', place: 'Sala 1' }, { date: ymd(), time: '14:00', title: 'Treinamento', place: 'Auditório' }, { date: ymd(1), time: '10:00', title: 'Visita técnica' }] }),
+  dashboard: () => ({ kind: 'dashboard', title: 'Resultados do mês', items: [{ name: 'Vendas', value: 112, target: 100, unit: '%', band: 'ok' }, { name: 'Entregas', value: 95, target: 98, unit: '%', band: 'warn' }, { name: 'Satisfação', value: 93, target: 90, unit: '%', band: 'ok' }] }),
+  reviews: () => ({ kind: 'reviews', title: 'O que dizem os clientes', items: [{ name: 'Ana P.', stars: 5, text: 'Atendimento excelente!' }, { name: 'Carlos M.', stars: 4, text: 'Preço justo.' }] }),
+  directions: () => ({ kind: 'directions', title: 'Como chegar', address: 'Rua das Flores, 100 - Centro', reference: 'Em frente à praça' }),
+  countdown: () => ({ kind: 'countdown', title: 'Promoção', target: Date.now() - 3600_000, until: Date.now() + (2 * 86400 + 5 * 3600) * 1000 }),
+  safety: () => ({ kind: 'safety', title: 'Dias sem acidente', since: ymd(-128), record: 412, goal: 365 }),
+  worldclock: () => ({ kind: 'worldclock', title: 'Relógio mundial', clocks: [{ tz: 'America/Sao_Paulo', label: 'Brasília' }, { tz: 'Europe/Lisbon', label: 'Lisboa' }, { tz: 'America/New_York', label: 'Nova York' }] }),
+  news: () => ({ kind: 'news', title: 'Notícias', items: [{ title: 'Manchete de exemplo das agências públicas' }, { title: 'Outra manchete curta para a tela' }], source: 'Agência Brasil' }),
+  quotes: () => ({ kind: 'quotes', title: 'Cotações', items: [{ label: 'Dólar', value: 5.42, change: 0.3 }, { label: 'Euro', value: 5.91, change: -0.2 }], source: 'Banco Central' }),
+};
 const previewOpts = (layout) => ({ theme: { ...themeOf(), mode: layout.background === '#eef2f7' ? 'light' : themeOf().mode }, ticker: SAMPLE_TICKER, labels: true, items: zoneItems(layout.zones) });
 
 /** O quadro de edição: as zonas como retângulos com a alça no canto. onChange(): a cada mudança (arrastar, teclado). */
@@ -93,10 +113,10 @@ export function layoutEditor(lay, reload, factoryKey = null, copyOf = null) {
     const PARAM = { title: ['Título', 40], text: ['Texto', 120], qr: ['Endereço do QR (https)', 500] };
     // o gadget da zona (contador, dias sem acidente, relógio mundial): escolhido aqui, vai à tela sem precisar de playlist
     const widgetPick = (z) => {
-      const mine = WIDGETS.filter((w) => w.kind === z.kind);
+      const mine = WIDGETS.filter((w) => z.kind === 'widget' || w.kind === z.kind);
       const s = el('select', { 'aria-label': `Gadget da zona ${z.id}`, onchange: (e) => { if (e.target.value) z.widget = Number(e.target.value); else delete z.widget; paintPv(); } },
-        opt('', mine.length ? (z.kind === 'worldclock' ? 'Escolha o relógio' : 'Pela playlist da grade') : 'Nenhum criado (aba Barras e blocos)', z.widget == null),
-        ...mine.map((w) => opt(w.id, w.name || w.data?.title || `#${w.id}`, Number(z.widget) === w.id)));
+        opt('', mine.length ? (['worldclock', 'widget'].includes(z.kind) ? 'Escolha o gadget' : 'Pela playlist da grade') : 'Nenhum criado (aba Barras e blocos)', z.widget == null),
+        ...mine.map((w) => opt(w.id, `${z.kind === 'widget' ? `${widgetLabel(w.kind)}: ` : ''}${w.name || w.data?.title || `#${w.id}`}`, Number(z.widget) === w.id)));
       return s;
     };
     const params = (z) => (ZONE_KIND[z.kind]?.params || []).map((k) => (k === 'widget' ? widgetPick(z) : el('input', { type: k === 'qr' ? 'url' : 'text', maxlength: String(PARAM[k][1]), value: z[k] || '', placeholder: PARAM[k][0], 'aria-label': `${PARAM[k][0]} da zona ${z.id}`, onchange: (e) => { z[k] = e.target.value.trim(); paintPv(); } })));
@@ -152,14 +172,76 @@ export default async function paintLayouts(box, ctx) {
       el('div', {}, ...(usedBy(l.id).length ? usedBy(l.id).map((n) => chip(n)) : [el('span', { class: 'dim small', text: 'em nenhuma grade' })])),
       btns(btn('Editar', () => layoutEditor(l, reload), 'small'), btn('Duplicar', () => layoutEditor(null, reload, null, l), 'small'),
         btn('Apagar', guard(async () => { if (usedBy(l.id).length) { toast(`Este layout está em ${usedBy(l.id).length} grade(s). Troque o layout delas antes de apagar.`, true); return; } if (!confirm(`Apagar o layout "${l.name}"?`)) return; await tapi(`/api/tvcorp/layouts/${l.id}`, { method: 'DELETE' }); await reload(); }), 'small danger')))));
+  const factoryBox = factoryView(reload);
   put(box,
     note('O layout divide a tela em zonas: o vídeo do canal, playlists, o texto rolante, relógio, clima, QR code, logomarca, a chamada de senha e os widgets. Escolha um modelo pronto e ajuste; a grade diz qual layout vale em cada tela, dia e horário.'),
     label(`Layouts da empresa (${d.layouts.length} de ${LIMITS.layouts})`),
     mine.length ? el('div', { class: 'tc-lgrid' }, ...mine) : empty('Nenhum layout da empresa ainda. Comece por um modelo pronto abaixo.'),
     label('Modelos prontos'),
-    el('div', { class: 'tc-lgrid' }, ...FACTORY_LAYOUTS.map((l) => el('div', { class: 'tc-lcard' },
-      layoutPreview(l, { ...previewOpts(l), labels: false }),
-      el('div', { class: 'tc-lcard-b' }, el('b', { text: l.label }), el('div', { class: 'dim small', text: l.desc }),
-        quadrosTxt(l) ? el('div', { class: 'small tc-quadros', text: `Quadros das playlists: ${quadrosTxt(l)}` }) : null,
-        btns(btn('Usar este modelo', () => layoutEditor(null, reload, l.key), 'small primary')))))));
+    factoryBox);
+}
+/** O filtro dos modelos prontos (segmento, formato e quantas TVs): fica entre uma visita e outra à aba. */
+const FV = { segment: '', orient: '', tvs: '' };
+/** Os modelos prontos: os de uma TV e os conjuntos de várias TVs (menu board), filtrados. */
+function factoryView(reload) {
+  const box = el('div', {});
+  const sel = (k, first, options) => el('select', { 'aria-label': first, onchange: (e) => { FV[k] = e.target.value; paint(); } }, opt('', first, !FV[k]), ...options.map(([v, t]) => opt(v, t, FV[k] === v)));
+  const bar = el('div', { class: 'pf-bar' }, sel('segment', 'Todos os segmentos', LAYOUT_SEGMENTS.map((x) => [x.key, x.label])), sel('orient', 'Deitado e em pé', [['land', 'Deitado'], ['port', 'Em pé']]),
+    sel('tvs', 'Uma ou várias TVs', [['1', 'Uma TV'], ['n', 'Várias TVs (conjunto)']]));
+  const count = el('span', { class: 'dim small' });
+  const grid = el('div', { class: 'tc-lgrid' });
+  const segLabel = (k) => LAYOUT_SEGMENTS.find((x) => x.key === k)?.label || '';
+  const paint = () => {
+    const ok = (x) => (!FV.segment || x.segment === FV.segment) && (!FV.orient || x.orientation === FV.orient);
+    const singles = FV.tvs === 'n' ? [] : FACTORY_LAYOUTS.filter((l) => !l.set && ok(l));
+    const sets = FV.tvs === '1' ? [] : FACTORY_SETS.filter(ok);
+    count.textContent = `${singles.length + sets.length} modelo(s)`;
+    put(grid,
+      ...sets.map((x) => el('div', { class: 'tc-lcard tc-set' },
+        el('div', { class: `tc-set-row ${x.orientation}` }, ...x.screens.map((k, i) => el('div', { class: 'tc-set-tv' }, layoutPreview(FACTORY_LAYOUT[k], { ...previewOpts(FACTORY_LAYOUT[k]), labels: false }), el('span', { class: 'dim small', text: `TV ${i + 1}` })))),
+        el('div', { class: 'tc-lcard-b' }, el('div', {}, chip(`${x.screens.length} TVs`, 'tc-tvs'), ' ', chip(segLabel(x.segment))), el('b', { text: x.label }), el('div', { class: 'dim small', text: x.desc }),
+          btns(btn('Usar este conjunto', () => setDialog(x, reload), 'small primary'))))),
+      ...singles.map((l) => el('div', { class: 'tc-lcard' },
+        layoutPreview(l, { ...previewOpts(l), labels: false }),
+        el('div', { class: 'tc-lcard-b' }, el('div', {}, chip('1 TV', 'tc-tvs'), ' ', chip(segLabel(l.segment))), el('b', { text: l.label }), el('div', { class: 'dim small', text: l.desc }),
+          quadrosTxt(l) ? el('div', { class: 'small tc-quadros', text: `Quadros das playlists: ${quadrosTxt(l)}` }) : null,
+          btns(btn('Usar este modelo', () => layoutEditor(null, reload, l.key), 'small primary'))))));
+    if (!sets.length && !singles.length) put(grid, empty('Nenhum modelo com esses filtros.'));
+  };
+  put(box, bar, count, grid);
+  paint();
+  return box;
+}
+/**
+ * Usar um conjunto de várias TVs: cria um layout por TV ("<nome> · TV 1 de 3"…) e, para cada TV escolhida, uma grade com
+ * alcance só nela (as playlists de cada zona se escolhem depois, na aba Grade). Cada TV recebe só o layout dela.
+ */
+function setDialog(x, reload) {
+  const name = el('input', { type: 'text', maxlength: String(LIMITS.name - 12), value: x.label.replace(/ em \d TVs.*$/, ''), placeholder: 'Ex.: Cardápio da praça de alimentação' });
+  const devs = (D().devices || []).filter((d) => !d.revokedAt);
+  const picks = x.screens.map((k, i) => el('select', { 'aria-label': `TV ${i + 1}` }, opt('', devs.length ? 'Escolher depois' : 'Nenhuma tela cadastrada ainda', true), ...devs.map((d) => opt(d.id, d.name || `Tela #${d.id}`))));
+  dialog(`Conjunto · ${x.label}`, el('div', { class: 'pf-grid' },
+    el('div', { class: `tc-set-row ${x.orientation}` }, ...x.screens.map((k, i) => el('div', { class: 'tc-set-tv' }, layoutPreview(FACTORY_LAYOUT[k], { ...previewOpts(FACTORY_LAYOUT[k]), labels: true }), el('span', { class: 'small', text: `TV ${i + 1}` })))),
+    f('Nome do conjunto', name),
+    note('Monte as TVs lado a lado na ordem da prévia (TV 1 à esquerda). Escolha qual tela cadastrada fica em cada posição: cada uma recebe uma grade só dela. Depois, na aba Grade, escolha as playlists de cada zona (o cardápio de cada TV).'),
+    ...picks.map((s, i) => f(`TV ${i + 1}: ${FACTORY_LAYOUT[x.screens[i]].label.replace(/ \(TV.*$/, '')}`, s))), {
+    wide: true, saveLabel: 'Criar o conjunto',
+    save: async () => {
+      const base = name.value.trim() || x.label;
+      const chosen = picks.map((s) => s.value).filter(Boolean);
+      if (new Set(chosen).size !== chosen.length) throw new Error('A mesma tela está em duas posições.');
+      let made = 0; let grades = 0;
+      for (const [i, k] of x.screens.entries()) {
+        const lay = await tapi('/api/tvcorp/layouts', { method: 'POST', body: { factoryKey: k, name: `${base} · TV ${i + 1} de ${x.screens.length}`.slice(0, LIMITS.name) } });
+        made++;
+        const dev = picks[i].value ? Number(picks[i].value) : null;
+        if (dev && lay?.id) {
+          await tapi('/api/tvcorp/schedules', { method: 'POST', body: { name: `${base} · TV ${i + 1}`.slice(0, LIMITS.name), layoutId: lay.id, zonePlaylists: {}, scope: { kind: 'devices', devices: [dev] }, days: [], timeFrom: 0, timeTo: 1440, priority: 50 } });
+          grades++;
+        }
+      }
+      toast(`Conjunto criado: ${made} layout(s)${grades ? ` e ${grades} grade(s), uma por TV` : ''}. Agora escolha as playlists de cada zona na aba Grade.`);
+      await reload();
+    },
+  });
 }

@@ -38,7 +38,7 @@ const PALETTE_KEYS = new Set(TVC_PALETTES.map((x) => x.key));
 const slideTheme = (theme, palette) => (PALETTE_KEYS.has(palette) ? `th-${palette}${theme?.mode === 'light' ? ' th-light' : ''}` : themeClass(theme));
 /** "nome | preço" -> [nome, preço] (as linhas da vitrine de preços e do horário). */
 const rowsOf = (t) => String(t || '').split('\n').map((x) => x.trim()).filter(Boolean).slice(0, 8).map((x) => { const i = x.lastIndexOf('|'); return i < 0 ? [x, ''] : [x.slice(0, i).trim(), x.slice(i + 1).trim()]; });
-const ZONE_NAMES = { video: 'Vídeo do canal', playlist: 'Playlist', ticker: 'Texto rolante', clock: 'Relógio', weather: 'Clima', qr: 'QR code', logo: 'Logomarca', text: 'Texto', news: 'Notícias', quotes: 'Cotações', countdown: 'Contador', safety: 'Dias sem acidente', worldclock: 'Relógio mundial', queue: 'Senha' };
+const ZONE_NAMES = { video: 'Vídeo do canal', playlist: 'Playlist', ticker: 'Texto rolante', clock: 'Relógio', weather: 'Clima', qr: 'QR code', logo: 'Logomarca', text: 'Texto', news: 'Notícias', quotes: 'Cotações', countdown: 'Contador', safety: 'Dias sem acidente', worldclock: 'Relógio mundial', queue: 'Senha', widget: 'Gadget' };
 const pad2 = (n) => String(n).padStart(2, '0');
 const nowClock = () => { const d = new Date(); return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`; };
 const brDate = (iso) => String(iso || '').split('-').reverse().join('/');
@@ -197,7 +197,7 @@ export function itemPreview(it = {}, opts = {}) {
       const at = toMs(it.target ?? it.date); const until = toMs(it.until);
       const label = h('div', 'tvc-cd-lbl', '');
       const units = [['dias', 'dia'], ['horas', 'hora'], ['min', 'min'], ['seg', 'seg']].map(([pl, sg]) => { const b = h('b', '', '00'); const sp = h('span', '', pl); return { u: h('div', 'tvc-cd-u', b, sp), b, sp, pl, sg }; });
-      const node = box('tvc-it-count', h('div', 'tvc-it-t', it.title || 'Contagem regressiva'), label, h('div', 'tvc-cd', units.map((x) => x.u)), it.text ? h('div', 'tvc-it-x', it.text) : null);
+      const node = box('tvc-it-count tvc-tick', h('div', 'tvc-it-t', it.title || 'Contagem regressiva'), label, h('div', 'tvc-cd', units.map((x) => x.u)), it.text ? h('div', 'tvc-it-x', it.text) : null);
       node._tvcTick = (now = Date.now()) => {
         if (at == null) { label.textContent = 'Escolha a data'; return; }
         const phase = now < at ? 'start' : until != null && now < until ? 'end' : 'done';
@@ -225,20 +225,94 @@ export function itemPreview(it = {}, opts = {}) {
         return h('li', '', h('b', '', label || tz), ` ${t}`);
       })));
     }
+    /* ---------------------------------------------------------------- DIGITAL ISP: os gadgets novos */
+    case 'weather': {
+      const t = (v) => (Number.isFinite(Number(v)) ? `${Math.round(Number(v))}°` : '—');
+      const days = (it.days || []).slice(0, 4);
+      return box('tvc-it-wx', h('div', 'tvc-it-t', it.title || [it.city, it.uf].filter(Boolean).join(' · ') || 'Clima'),
+        h('div', 'tvc-wx-now', h('b', '', it.tempC != null ? t(it.tempC) : `${t(it.min)} / ${t(it.max)}`), h('span', '', it.text || '')),
+        days.length ? h('ul', 'tvc-wx-days', days.map((d) => h('li', '', h('b', '', String(d.weekday || brDate(d.date).slice(0, 5))), h('span', '', `${t(d.min)} / ${t(d.max)}`), d.text ? h('small', '', d.text) : null))) : null,
+        it.source ? h('div', 'tvc-it-credit', `Fonte: ${it.source}`) : null);
+    }
+    case 'clock': {
+      // digital (hora grande) ou analógico (ponteiros num SVG); anda pelo tickCountdowns, no fuso do gadget
+      const tz = it.tz || undefined;
+      const partsAt = (now) => { const d = new Date(now); let hh = d.getHours(); let mm = d.getMinutes(); let ss = d.getSeconds();
+        try { const p = new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).formatToParts(d); const g = (k) => Number((p.find((x) => x.type === k) || {}).value); hh = g('hour') % 24; mm = g('minute'); ss = g('second'); } catch { /* fuso desconhecido: o do aparelho */ }
+        return { hh, mm, ss }; };
+      const dateOf = (now) => { try { return new Date(now).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: tz }); } catch { return new Date(now).toLocaleDateString('pt-BR'); } };
+      const label = it.label ? h('div', 'tvc-it-t', it.label) : null;
+      const dateEl = it.date !== false ? h('div', 'tvc-clk-date', '') : null;
+      let node; let paint;
+      if (it.face === 'analog') {
+        const hand = (cls, len, w) => s('line', { class: cls, x1: 50, y1: 50, x2: 50, y2: 50 - len, 'stroke-width': w, 'stroke-linecap': 'round' });
+        const hH = hand('tvc-clk-h', 24, 4.5); const hM = hand('tvc-clk-m', 34, 3); const hS = it.showSeconds !== false ? hand('tvc-clk-s', 38, 1.2) : null;
+        const svg = s('svg', { class: 'tvc-clk-face', viewBox: '0 0 100 100', role: 'img', 'aria-label': 'Relógio' }, s('circle', { class: 'tvc-clk-bg', cx: 50, cy: 50, r: 47 }));
+        for (let i = 0; i < 12; i++) svg.append(s('line', { class: 'tvc-clk-tick', x1: 50, y1: 6, x2: 50, y2: i % 3 ? 10 : 13, 'stroke-width': i % 3 ? 1.5 : 3, transform: `rotate(${i * 30} 50 50)` }));
+        svg.append(hH, hM); if (hS) svg.append(hS); svg.append(s('circle', { class: 'tvc-clk-dot', cx: 50, cy: 50, r: 3 }));
+        node = box('tvc-it-clock analog tvc-tick', label, svg, dateEl);
+        paint = (now) => { const { hh, mm, ss } = partsAt(now);
+          hH.setAttribute('transform', `rotate(${((hh % 12) + mm / 60) * 30} 50 50)`); hM.setAttribute('transform', `rotate(${(mm + ss / 60) * 6} 50 50)`); if (hS) hS.setAttribute('transform', `rotate(${ss * 6} 50 50)`); };
+      } else {
+        const big = h('div', 'tvc-clk-time', '');
+        node = box('tvc-it-clock digital tvc-tick', label, big, dateEl);
+        paint = (now) => { const { hh, mm, ss } = partsAt(now); big.textContent = `${pad2(hh)}:${pad2(mm)}${it.showSeconds !== false ? `:${pad2(ss)}` : ''}`; };
+      }
+      node._tvcTick = (now = Date.now()) => { paint(now); if (dateEl) dateEl.textContent = dateOf(now); };
+      node._tvcTick();
+      return node;
+    }
+    case 'agenda': {
+      const today = it.today || '';
+      const list = (it.events || []).slice(0, 6);
+      return box('tvc-it-agenda', h('div', 'tvc-it-t', it.title || 'Agenda'),
+        list.length ? h('ul', 'tvc-ag-list', list.map((e) => h('li', '', h('span', 'tvc-ag-when', h('b', '', e.date === today ? 'Hoje' : brDate(e.date).slice(0, 5)), e.time ? h('small', '', `${e.time}${e.end ? `–${e.end}` : ''}`) : null),
+          h('span', 'tvc-ag-what', h('b', '', e.title), e.place ? h('small', '', e.place) : null)))) : h('div', 'tvc-it-x', 'Nenhum compromisso pela frente'));
+    }
+    case 'reviews': {
+      const list = (it.items || []).slice(0, 3);
+      const qr = it.qr ? qrSvg(it.qr, 'tvc-sl-qrc') : null;
+      return box('tvc-it-reviews', h('div', 'tvc-it-t', it.title || 'O que dizem os clientes'),
+        h('div', 'tvc-rv-row', h('ul', 'tvc-rv-list', list.map((r) => h('li', '', h('span', 'tvc-rv-stars', '★'.repeat(Math.max(1, Math.min(5, Number(r.stars) || 5)))), h('q', '', r.text), h('small', '', r.name || 'Cliente')))), qr));
+    }
+    case 'dashboard': {
+      const list = (it.items || []).slice(0, 6);
+      return box(`tvc-it-dash n${list.length}`, h('div', 'tvc-it-t', it.title || 'Indicadores'),
+        h('ul', 'tvc-dash-list', list.map((k) => h('li', '', h('span', '', k.name || ''), h('b', `b-${k.band || 'none'}`, `${numText(k.value)}${k.unit ? ` ${k.unit}` : ''}`),
+          k.target != null ? h('small', '', `Meta: ${numText(k.target)}${k.unit ? ` ${k.unit}` : ''}`) : null, k.target != null ? goalBar(k.value, k.target, k.band) : null))));
+    }
+    case 'directions': {
+      const qr = it.qr ? qrSvg(it.qr, 'tvc-sl-qrc') : null;
+      return box('tvc-it-dir', h('div', 'tvc-dir-row', h('div', 'tvc-dir-body', h('div', 'tvc-it-t', it.title || 'Como chegar'), h('div', 'tvc-dir-addr', it.address || ''),
+        it.reference ? h('div', 'tvc-it-x', it.reference) : null, it.hours ? h('div', 'tvc-it-x', it.hours) : null, it.phone ? h('div', 'tvc-it-x', it.phone) : null), qr),
+        qr ? h('div', 'tvc-it-credit', 'Aponte a câmera para abrir o mapa') : null);
+    }
+    case 'web': {
+      // a tela abre o endereço (o app da TV num quadro, o Android numa WebView); a prévia mostra só o endereço
+      // embeddable false: o site recusa ser aberto dentro de outro (as TVs Samsung/LG mostram este aviso; o Android abre direto)
+      const n = box(`tvc-it-web${it.embeddable === false ? ' blocked' : ''}`, h('div', 'tvc-it-t', 'Página da internet'), h('div', 'tvc-it-x', String(it.url || '').replace(/^https:\/\//, '')),
+        it.embeddable === false ? h('div', 'tvc-it-x tvc-web-warn', 'Este site não deixa ser aberto dentro de outro: nas TVs Samsung e LG aparece este aviso no lugar da página.') : null,
+        h('div', 'tvc-it-credit', it.refreshMin ? `Recarrega a cada ${it.refreshMin} min` : 'Aberta na tela como está no site'));
+      if (it.embeddable === false) n.setAttribute('data-embeddable', 'false');
+      if (it.url) n.setAttribute('data-url', String(it.url));
+      return n;
+    }
     default: return box('tvc-it-empty', it.title || 'Item');
   }
 }
 
 /**
- * Atualiza os contadores (dias, horas, minutos e segundos) dentro do nó: os apps das telas e o painel chamam a cada segundo.
- * Funciona em qualquer nó que tenha contadores desenhados por itemPreview (kind countdown).
+ * Atualiza o que anda sozinho dentro do nó (os contadores e os relógios, classe tvc-tick): os apps das telas e o painel
+ * chamam a cada segundo. tickWidgets é o mesmo, com o nome geral.
  */
 export function tickCountdowns(root, now = Date.now()) {
   if (!root) return;
   if (typeof root._tvcTick === 'function') root._tvcTick(now);
-  const list = typeof root.querySelectorAll === 'function' ? root.querySelectorAll('.tvc-it-count') : [];
+  const list = typeof root.querySelectorAll === 'function' ? root.querySelectorAll('.tvc-tick') : [];
   for (let i = 0; i < list.length; i++) if (typeof list[i]._tvcTick === 'function') list[i]._tvcTick(now);
 }
+
+export const tickWidgets = tickCountdowns;
 
 /* ------------------------------------------------------------------ zonas */
 function zoneContent(zone, opts) {
