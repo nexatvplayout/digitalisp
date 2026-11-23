@@ -13,7 +13,7 @@
 // news{source,items[{title,source,at}]}; quotes{items[{label,value,change,prefix,decimals}],at,source}; menu{title,day,
 // items[{name,price}|"texto"]}; countdown{title,target,text}; safety{since,record,goal}; worldclock{clocks[{label,tz}]}; text{title,text}.
 import { qrSvg } from './telas-previa.js';
-import { TVC_ART, TVC_PALETTES } from './tvcorp-tipos.js';
+import { TVC_ART, TVC_PALETTES, TVC_SIZE_FIELDS } from './tvcorp-tipos.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 const h = (tag, cls, ...kids) => {
@@ -82,7 +82,9 @@ export function slidePreview(template, fields = {}, opts = {}) {
   const known = TVC_ART[f.art];
   const art = /^[a-z0-9-]{1,30}$/.test(String(f.art || '')) ? ` tvc-art tvc-art-${f.art}${known ? ` tvc-art-${known.tone === 'light' ? 'light' : 'dark'}${known.photo ? ' tvc-photo' : ''}` : ''}` : '';
   const theme = f.variant === 'light' || f.variant === 'dark' ? { ...(opts.theme || {}), mode: f.variant } : opts.theme;
-  const n = h('div', `tvc-sl tvc-sl-${template || 'comunicado'} ${slideTheme(theme, f.palette)}${art}${f.orient === 'port' ? ' tvc-port' : ''}`);
+  // o tamanho de cada elemento (QR, preço, foto, título): tvc-qr-l, tvc-price-xl…; vazio = médio
+  const sizes = TVC_SIZE_FIELDS.filter((k) => ['s', 'l', 'xl'].includes(f[k])).map((k) => ` tvc-${k.replace('Size', '')}-${f[k]}`).join('');
+  const n = h('div', `tvc-sl tvc-sl-${template || 'comunicado'} ${slideTheme(theme, f.palette)}${art}${f.orient === 'port' ? ' tvc-port' : ''}${sizes}`);
   n.setAttribute('role', 'img'); n.setAttribute('aria-label', `Prévia do slide: ${f.title || f.caption || template || ''}`);
   const caption = f.caption || (template === 'imagem-com-legenda' ? f.title : '');
   const img = opts.image ? Object.assign(h('img', 'tvc-sl-img'), { alt: '', src: opts.image }) : null;

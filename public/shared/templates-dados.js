@@ -543,3 +543,31 @@ export const INTERNOS = {
     ['institucional', 'comunicado', { title: 'Semana do meio ambiente', text: 'Separe o lixo reciclável e economize papel. Cada atitude conta.' }, 'foto-sustentabilidade', 'verde'],
   ],
 };
+
+/* ------------------------------------------------------------------ provedor de internet com foto (20 prontos) */
+/** A vitrine do provedor com as fotos próprias (foto-prov-*.jpg, geradas com GPT Image): um por foto. Mesmo formato de INTERNOS. */
+export const PROVEDOR_FOTOS = {
+  key: 'provedor-fotos', label: 'Provedor de internet com foto', group: 'outros', kind: 'fixo', nome: 'Conecta Fibra Internet', g: 'f',
+  itens: [
+    ['oferta', 'oferta', { title: 'Plano 500 Mega', price: 'R$ 99,90', oldPrice: 'R$ 119,90', unit: 'por mês', tag: 'OFERTA', text: 'Fibra óptica com instalação e roteador inclusos.' }, 'foto-prov-roteador', 'azul'],
+    ['combo', 'combo', { title: 'Combo casa conectada', text: 'Plano 500 Mega\nTV por internet (pacote básico)\nTelefone fixo', price: 'R$ 149,90', oldPrice: 'R$ 169,70', tag: 'ECONOMIZE R$ 19,80' }, 'foto-prov-sala-tv', 'roxo'],
+    ['oferta', 'oferta', { title: 'Plano 1 Giga para jogar', price: 'R$ 149,90', unit: 'por mês', tag: 'PARA JOGAR', text: 'Baixa latência e conexão estável para jogar sem travar.' }, 'foto-prov-gamer', 'roxo'],
+    ['institucional', 'comunicado', { title: 'Trabalhe de casa sem queda', text: 'Fibra óptica com velocidade estável e suporte técnico todos os dias.' }, 'foto-prov-home-office', 'petroleo'],
+    ['aviso', 'comunicado', { title: 'Instalação em até 48 horas', text: 'Técnicos próprios, com hora marcada e roteador incluso no plano.' }, 'foto-prov-instalacao', 'laranja'],
+    ['institucional', 'comunicado', { title: 'Rede 100% fibra óptica', text: 'Do poste até a sua casa, sem cabo de cobre no caminho.' }, 'foto-prov-bobina', 'azul'],
+    ['institucional', 'comunicado', { title: 'Conectando a cidade', text: 'Milhares de famílias e empresas já navegam com a Conecta Fibra.' }, 'foto-prov-cidade', 'azul'],
+    ['institucional', 'comunicado', { title: 'Estrutura de verdade', text: 'Data center próprio, energia de reserva e monitoramento 24 horas.' }, 'foto-prov-datacenter', 'verde'],
+    ['oferta', 'oferta', { title: 'Plano 700 Mega', price: 'R$ 119,90', oldPrice: 'R$ 139,90', unit: 'por mês', tag: 'PARA A FAMÍLIA', text: 'Filmes e séries em alta definição em todas as telas da casa.' }, 'foto-prov-streaming', 'vermelho'],
+    ['institucional', 'comunicado', { title: 'Casa inteligente sem travar', text: 'Lâmpadas, câmeras e assistentes de voz conectados ao mesmo tempo.' }, 'foto-prov-casa-inteligente', 'petroleo'],
+    ['oferta', 'oferta', { title: 'Plano 300 Mega', price: 'R$ 79,90', unit: 'por mês', tag: 'PARA ESTUDAR', text: 'Aulas, pesquisas e trabalhos da escola sem travar.' }, 'foto-prov-estudo', 'verde'],
+    ['cardapio', 'precos', { title: 'Planos para empresas', text: 'Empresarial 300 Mega | R$ 149,90\nEmpresarial 600 Mega | R$ 199,90\nEmpresarial 1 Giga | R$ 299,90\nIP fixo | R$ 49,90', note: 'Atendimento prioritário e contrato com garantia de banda.' }, 'foto-prov-empresa', 'grafite'],
+    ['institucional', 'comunicado', { title: 'Fibra também no campo', text: 'Levamos internet de qualidade para sítios e chácaras da região.' }, 'foto-prov-rural', 'marrom'],
+    ['aviso', 'comunicado', { title: 'Manutenção programada', text: 'Na terça-feira, das 2h às 5h, a rede do bairro Centro passa por melhorias.' }, 'foto-prov-poste', 'laranja'],
+    ['cardapio', 'precos', { title: 'Nossos planos', text: 'Plano 300 Mega | R$ 79,90\nPlano 500 Mega | R$ 99,90\nPlano 700 Mega | R$ 119,90\nPlano 1 Giga | R$ 149,90', note: 'Valores por mês, com instalação e roteador inclusos.' }, 'foto-prov-velocidade', 'azul'],
+    ['horario', 'horario', { title: 'Suporte técnico', text: 'Todos os dias | 8h às 22h\nEmergência | 24 horas\nLoja | Segunda a sábado, 9h às 18h', note: 'Fale com a gente pelo telefone ou pelo aplicativo.' }, 'foto-prov-suporte', 'petroleo'],
+    ['qr', 'qr', { title: 'Teste a sua velocidade', text: 'Aponte a câmera e veja se o seu plano está entregando tudo.', qr: 'https://exemplo.com.br/conectafibrainternet/velocidade' }, 'foto-prov-sinal', 'azul'],
+    ['redes', 'redes', { title: 'Siga a Conecta Fibra', handle: '@conectafibrainternet', text: 'Dicas, novidades e avisos de manutenção em primeira mão.', qr: 'https://exemplo.com.br/conectafibrainternet/redes' }, 'foto-prov-celular', 'roxo'],
+    ['dica', 'comunicado', { title: 'Navegue com segurança', text: 'Troque a senha da rede sem fio de vez em quando e não a compartilhe com estranhos.' }, 'foto-prov-seguranca', 'grafite'],
+    ['aviso', 'comunicado', { title: 'Mudou de casa?', text: 'Leve a sua internet com você: a mudança de endereço é rápida e sem multa.' }, 'foto-prov-mudanca', 'verde'],
+  ],
+};

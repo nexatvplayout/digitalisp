@@ -225,6 +225,27 @@ export const TVC_ARTS = Object.freeze([
   { key: 'foto-cafeteria', label: 'Foto: cafeteria', tone: 'dark', photo: true }, { key: 'foto-academia', label: 'Foto: academia', tone: 'dark', photo: true },
   { key: 'foto-clinica', label: 'Foto: recepção de clínica', tone: 'dark', photo: true }, { key: 'foto-barbearia', label: 'Foto: barbearia', tone: 'dark', photo: true },
   { key: 'foto-pet', label: 'Foto: cachorro e gato', tone: 'dark', photo: true }, { key: 'foto-provedor', label: 'Foto: fibra óptica', tone: 'dark', photo: true },
+  // provedor de internet (a vitrine do ISP)
+  { key: 'foto-prov-roteador', label: 'Foto: roteador na sala', tone: 'dark', photo: true },
+  { key: 'foto-prov-sala-tv', label: 'Foto: sala com TV', tone: 'dark', photo: true },
+  { key: 'foto-prov-gamer', label: 'Foto: mesa de jogos', tone: 'dark', photo: true },
+  { key: 'foto-prov-home-office', label: 'Foto: trabalho em casa', tone: 'dark', photo: true },
+  { key: 'foto-prov-instalacao', label: 'Foto: ferramentas de instalação', tone: 'dark', photo: true },
+  { key: 'foto-prov-bobina', label: 'Foto: bobina de fibra', tone: 'dark', photo: true },
+  { key: 'foto-prov-cidade', label: 'Foto: cidade conectada', tone: 'dark', photo: true },
+  { key: 'foto-prov-datacenter', label: 'Foto: data center', tone: 'dark', photo: true },
+  { key: 'foto-prov-streaming', label: 'Foto: sofá e pipoca', tone: 'dark', photo: true },
+  { key: 'foto-prov-casa-inteligente', label: 'Foto: casa inteligente', tone: 'dark', photo: true },
+  { key: 'foto-prov-estudo', label: 'Foto: mesa de estudo', tone: 'dark', photo: true },
+  { key: 'foto-prov-empresa', label: 'Foto: rede da empresa', tone: 'dark', photo: true },
+  { key: 'foto-prov-rural', label: 'Foto: casa no campo', tone: 'dark', photo: true },
+  { key: 'foto-prov-poste', label: 'Foto: poste com fibra', tone: 'dark', photo: true },
+  { key: 'foto-prov-velocidade', label: 'Foto: luzes em alta velocidade', tone: 'dark', photo: true },
+  { key: 'foto-prov-suporte', label: 'Foto: fone de suporte', tone: 'dark', photo: true },
+  { key: 'foto-prov-sinal', label: 'Foto: ondas de sinal', tone: 'dark', photo: true },
+  { key: 'foto-prov-celular', label: 'Foto: celular na mesa', tone: 'dark', photo: true },
+  { key: 'foto-prov-seguranca', label: 'Foto: cadeado e rede', tone: 'dark', photo: true },
+  { key: 'foto-prov-mudanca', label: 'Foto: caixas de mudança', tone: 'dark', photo: true },
   // uso interno da empresa (comunicação interna)
   { key: 'foto-aniversario-baloes', label: 'Foto: balões de aniversário', tone: 'dark', photo: true },
   { key: 'foto-aniversario-bolo', label: 'Foto: bolo de aniversário', tone: 'dark', photo: true },
@@ -269,7 +290,12 @@ export const TVC_STYLE_FIELDS = Object.freeze([
   F('art', 'Arte de fundo', 'choice', { options: TVC_ARTS.map((x) => x.key), labels: TVC_ARTS.map((x) => x.label) }),
   F('palette', 'Cor do slide', 'choice', { options: TVC_PALETTES.map((x) => x.key), labels: TVC_PALETTES.map((x) => x.label) }),
   F('orient', 'Formato', 'choice', { options: ['land', 'port'], labels: ['Deitado (16:9)', 'Em pé (9:16)'] }),
+  // o tamanho de cada elemento (vazio = médio, o de sempre): QR code, selo do preço, foto ou iniciais e título
+  ...['qrSize', 'priceSize', 'photoSize', 'titleSize'].map((key, i) => F(key, ['Tamanho do QR code', 'Tamanho do preço', 'Tamanho da foto ou das iniciais', 'Tamanho do título'][i], 'choice',
+    { options: ['s', 'l', 'xl'], labels: ['Pequeno', 'Grande', 'Muito grande'] })),
 ]);
+/** Os campos de tamanho dos elementos (a prévia vira classe tvc-<campo sem Size>-<valor>). */
+export const TVC_SIZE_FIELDS = Object.freeze(['qrSize', 'priceSize', 'photoSize', 'titleSize']);
 export const TVC_SLIDE_MODELS = Object.freeze([
   { key: 'comunicado', label: 'Comunicado', desc: 'Título, texto e QR opcional.', fields: [TITLE, TEXT, IMAGE, QR] },
   { key: 'boas-vindas', label: 'Boas-vindas', desc: 'Para quem chega: visitante ou novo colega.', fields: [TITLE, F('name', 'Nome', 'line', { max: 60 }), F('sector', 'Setor', 'line', { max: 40 }), TEXT, IMAGE] },
