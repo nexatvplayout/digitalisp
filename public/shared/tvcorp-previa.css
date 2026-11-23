@@ -396,3 +396,10 @@
 .tvc-z-weather.tvc-wx-rain, .tvc-it-wx.tvc-wx-rain { background: linear-gradient(170deg, #475569 0%, #1e3a8a 70%, #0f172a 100%); color: #fff; }
 .tvc-z-weather.tvc-wx-storm, .tvc-it-wx.tvc-wx-storm { background: linear-gradient(170deg, #1e1b4b 0%, #312e81 55%, #0f172a 100%); color: #fff; }
 .tvc-z-weather[class*="tvc-wx-"] span, .tvc-it-wx[class*="tvc-wx-"] .tvc-it-credit { color: inherit; opacity: 0.85; }
+.tvc-z-weather.tvc-wx-clear, .tvc-it-wx.tvc-wx-clear { background: linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.35)), url("/tvcorp/arte/clima-clear-land.jpg") center / cover no-repeat; color: #fff; }
+.tvc-z-weather.tvc-wx-partly, .tvc-it-wx.tvc-wx-partly { background: linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.35)), url("/tvcorp/arte/clima-partly-land.jpg") center / cover no-repeat; color: #fff; }
+.tvc-z-weather.tvc-wx-cloudy, .tvc-it-wx.tvc-wx-cloudy { background: linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.35)), url("/tvcorp/arte/clima-cloudy-land.jpg") center / cover no-repeat; color: #fff; }
+.tvc-z-weather.tvc-wx-fog, .tvc-it-wx.tvc-wx-fog { background: linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.35)), url("/tvcorp/arte/clima-fog-land.jpg") center / cover no-repeat; color: #fff; }
+.tvc-z-weather.tvc-wx-rain, .tvc-it-wx.tvc-wx-rain { background: linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.35)), url("/tvcorp/arte/clima-rain-land.jpg") center / cover no-repeat; color: #fff; }
+.tvc-z-weather.tvc-wx-storm, .tvc-it-wx.tvc-wx-storm { background: linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.35)), url("/tvcorp/arte/clima-storm-land.jpg") center / cover no-repeat; color: #fff; }
+.tvc-previa.port .tvc-z-weather[class*="tvc-wx-"] { background-size: cover; }

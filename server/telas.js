@@ -128,7 +128,7 @@ export function createTelas({
   streamOf, channelsOf, geocode, geocodeAddress = null, audit = async () => {}, ipOf = (req) => req.ip, publicUrl, now = () => Date.now(), timers = true,
   // fases 3 e 4: weatherOf(ibge) (server/weather.js), easAiring(tenantId) (o EAS no ar, só leitura), mediaUrl(arquivo, req) e
   // openMedia({ filename }) (os vídeos guardados), hold() (o freio das tarefas de fundo) e notify(tenantId, evento) (o aviso por e-mail)
-  weatherOf = null, easAiring = () => [], mediaUrl = () => null, openMedia = null, hold = () => null, notify = null,
+  weatherOf = null, weatherArt = null, easAiring = () => [], mediaUrl = () => null, openMedia = null, hold = () => null, notify = null,
   // appStore: o APK do app das telas (server/telas-app.js); nos testes, uma pasta de mentira
   appStore = createAppStore(),
   // as fotos dos casos de pessoa desaparecida (server/telas-desaparecidos.js): { dir, ffmpeg, checkImage, put, remove, url, read, list }
@@ -444,6 +444,8 @@ export function createTelas({
    * DIGITAL ISP: sem a cidade nas Configurações, o clima da tela vem da fonte Clima (Notícias e dados) da unidade dela (ou a
    * que vale para todas as unidades). Sem fonte ou sem previsão ainda: null (a zona de clima espera a próxima busca).
    */
+  /** O clima com a foto do tempo (art deitada, artPort em pé), quando o servidor tem as fotos. */
+  const withWeatherArt = (w, req) => { if (!w || !weatherArt) return w; const a = weatherArt(w.icon, req); return a ? { ...w, ...a } : w; };
   async function weatherOfFeed(tenantId, officeId) {
     if (!weatherOf) return null;
     const list = await cached(`wxf:${tenantId}`, () => db.all("SELECT config FROM tvcorp_feeds WHERE tenant_id = ? AND kind = 'weather' AND enabled = 1 ORDER BY id", [tenantId]).catch(() => []));
@@ -486,7 +488,7 @@ export function createTelas({
       stream: await streamOf(tenantId, num(dev.o_channel), req, Number(dev.id)), // DIGITAL ISP: a tela pode ter o canal dela
       // a atualização: a da prefeitura, se ela definiu; senão o APK servido por este servidor (§23 do docs/TELAS.md)
       update: def.update || appStore.update(publicUrl(req)),
-      weather: conteudo.weatherFor(def) || await weatherOfFeed(tenantId, num(dev.office_id)), cards, queue, offline, offlineImage, electoral, internal, signage,
+      weather: withWeatherArt(conteudo.weatherFor(def) || await weatherOfFeed(tenantId, num(dev.office_id)), req), cards, queue, offline, offlineImage, electoral, internal, signage,
     });
     // DIGITAL ISP: as manchetes das fontes de notícias escolhidas entram na faixa, depois dos avisos (o app antigo lê items)
     if (eff.tickerNews?.feeds?.length && tvcorpDados?.headlines) {

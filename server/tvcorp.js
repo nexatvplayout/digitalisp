@@ -73,6 +73,7 @@ export function createTvcorp({
   forget = () => {}, audit = async () => {}, ipOf = (req) => req.ip, now = () => Date.now(), timers = true, artFile = null,
   audioOf = null, // (tenantId, layoutId) -> o bloco layout.audio (a rádio de fundo) ou null
   storageCheck = null, // (tenantId, bytes): o 402 do armazenamento do plano antes de aceitar um vídeo
+  weatherArt = null, // (cond, req) -> { art, artPort }: a foto de fundo do item de clima
   originOf = null, // (req) -> https://site: completa os endereços relativos dos itens (a foto da notícia)
   widgetFallback = null, // (tenantId, sample) -> id de um gadget do cliente: a zona de gadget sem gadget escolhido não fica vazia na TV
 }) {
@@ -401,7 +402,11 @@ export function createTvcorp({
     for (const z of lay.zones) {
       const list = zones[z.id]; if (!list?.length) continue;
       const orient = (TH * z.h) / 100 > (TW * z.w) / 100 ? 'port' : 'land';
-      zones[z.id] = list.map((it) => (it.kind === 'slide' && it.fields && it.fields.orient !== orient ? { ...it, fields: { ...it.fields, orient } } : it));
+      zones[z.id] = list.map((it) => {
+        if (it.kind === 'slide' && it.fields && it.fields.orient !== orient) return { ...it, fields: { ...it.fields, orient } };
+        if (it.kind === 'weather' && weatherArt && !it.art) { const a = weatherArt(it.cond, req); return a ? { ...it, ...a } : it; }
+        return it;
+      });
     }
     return {
       id: `s${s.id}`, layout,

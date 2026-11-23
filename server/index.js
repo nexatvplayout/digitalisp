@@ -221,10 +221,29 @@ function artFileOf(key, req) {
   const s = artSums.get(key);
   return s ? { url: `${req ? publicOrigin(req) : config.platform.publicUrl || ''}/tvcorp/arte/${key}.jpg`, ...s } : null;
 }
+/**
+ * DIGITAL ISP: a foto de fundo do clima (GPT Image, public/tvcorp/arte/clima-<tempo>-<land|port>.jpg) no formato de arquivo do
+ * contrato: { art (deitada), artPort (em pé) }; a TV usa a da forma da zona, em cover, com um véu escuro por cima.
+ */
+const CLIMA_CONDS = ['clear', 'partly', 'cloudy', 'fog', 'rain', 'storm'];
+function climaArtOf(cond, req) {
+  if (!CLIMA_CONDS.includes(cond)) return null;
+  const one = (o) => {
+    const key = `clima-${cond}-${o}`;
+    if (!artSums.has(key)) {
+      try { const buf = fs.readFileSync(pub(`tvcorp/arte/${key}.jpg`)); artSums.set(key, { sha256: createHash('sha256').update(buf).digest('hex'), bytes: buf.length }); } catch { artSums.set(key, null); }
+    }
+    const s = artSums.get(key); const base = req ? publicOrigin(req) : config.platform.publicUrl || '';
+    return s && /^https:\/\//.test(base) ? { url: `${base}/tvcorp/arte/${key}.jpg`, ...s } : null;
+  };
+  const art = one('land'); const artPort = one('port');
+  return art || artPort ? { ...(art ? { art } : {}), ...(artPort ? { artPort } : {}) } : null;
+}
 let telas = null;
 const tvcorp = createTvcorp({
   db, storage: graphicsFiles('tvcmedia-', 'tvclogo-'), ffmpeg: config.ffmpeg, artFile: artFileOf,
   audioOf, // a rádio de fundo do layout (server/radios.js)
+  weatherArt: climaArtOf, // a foto de fundo do item de clima
   originOf: (req) => publicOrigin(req), // o endereço do site no pedido (completa a foto da notícia)
   // a zona de gadget vazia: o gadget do cliente do mesmo tipo; senão relógio, clima, ou o primeiro que houver
   widgetFallback: async (tenantId, sample) => {
@@ -241,6 +260,7 @@ const tvcorp = createTvcorp({
   audit: access.audit, ipOf: clientIp,
 });
 telas = createTelas({
+  weatherArt: climaArtOf, // a foto de fundo de cada tempo (config.weather.art/artPort)
   tvcorp, tvcorpDados,
   // o ao vivo da zona de vídeo: o canal HLS que a unidade escolheu (NEXA Broadcast, IPTV do provedor, câmera…)
   streamOf: (tenantId, channelId, req, deviceId) => hlsStream(tenantId, channelId, req, deviceId),
