@@ -54,6 +54,8 @@ export async function abrirPreviaViva(layout, { zonePlaylists = null, titulo = '
     return el('label', { class: 'tc-live-sel' }, el('span', { class: 'small', text: `Zona ${z.id}` }), s);
   });
 
+  // a versão do slide que a zona pede (como o servidor): mais alta que larga na tela de verdade = em pé
+  const orientOf = (z) => { const [w, h] = layout.orientation === 'port' ? [1080, 1920] : [1920, 1080]; return (h * z.h) / 100 > (w * z.w) / 100 ? 'port' : 'land'; };
   async function montar() {
     parar();
     const pv = layoutPreview(layout, { theme: { ...themeOf(), mode: layout.background === '#eef2f7' ? 'light' : themeOf().mode }, labels: false, ticker: ['Prévia ao vivo: o texto rolante da tela aparece aqui'], weather: clima });
@@ -105,7 +107,7 @@ export async function abrirPreviaViva(layout, { zonePlaylists = null, titulo = '
       const passo = async () => {
         if (!vivo) return;
         const it = itens[i % itens.length]; i++;
-        put(box, await previewOf(it, src));
+        put(box, await previewOf(it, src, { orient: orientOf(z) }));
         t = setTimeout(passo, Math.max(3, Number(it.seconds) || 10) * 1000);
       };
       paradas.push(() => { vivo = false; clearTimeout(t); });

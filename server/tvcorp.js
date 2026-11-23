@@ -394,6 +394,14 @@ export function createTvcorp({
       for (const f of feeds) out.push(...await itemsOf(tenantId, officeId, { refKind: 'news', refId: Number(f.id), seconds: 12, params: {} }, data, req, at));
       if (out.length) zones[z.id] = out.slice(0, L.itemsPerZone); else delete zones[z.id];
     }
+    // DIGITAL ISP: todo slide tem as duas versões (deitado e em pé): a zona escolhe. Zona mais alta que larga (na tela de
+    // verdade, 1920×1080 ou 1080×1920) recebe o slide em pé; as outras, deitado. Os anúncios das playlists se ajustam sozinhos.
+    const [TW, TH] = lay.orientation === 'port' ? [1080, 1920] : [1920, 1080];
+    for (const z of lay.zones) {
+      const list = zones[z.id]; if (!list?.length) continue;
+      const orient = (TH * z.h) / 100 > (TW * z.w) / 100 ? 'port' : 'land';
+      zones[z.id] = list.map((it) => (it.kind === 'slide' && it.fields && it.fields.orient !== orient ? { ...it, fields: { ...it.fields, orient } } : it));
+    }
     return {
       id: `s${s.id}`, layout,
       days: fallback || !s.days.length ? ALL_DAYS : s.days,

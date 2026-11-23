@@ -250,7 +250,7 @@ async function roteiro(db, label) {
     assert.deepEqual(right[1].fields.artFile, { url: 'https://cdn.exemplo.test/arte/foto-natal.jpg', sha256: 'a'.repeat(64), bytes: 1000, photo: true, tone: 'dark' }, 'a foto de fundo vai como arquivo para o app');
     assert.equal(right[1].fields.art, 'foto-natal'); assert.equal(right[1].fields.palette, 'verde');
     assert.equal(right[2].kind, 'birthdays'); assert.equal(right[2].people[0].name, 'Ana S.');
-    assert.deepEqual(right[3].fields, { title: 'Turnos da semana', text: '1º turno: 6h às 14h\n2º turno: 14h às 22h', lines: ['1º turno: 6h às 14h', '2º turno: 14h às 22h'] });
+    assert.deepEqual(right[3].fields, { title: 'Turnos da semana', text: '1º turno: 6h às 14h\n2º turno: 14h às 22h', lines: ['1º turno: 6h às 14h', '2º turno: 14h às 22h'], orient: 'port' }, 'a coluna da direita é mais alta que larga: o slide vai em pé');
     assert.equal(right[4].from, 660); assert.equal(right[4].to, 840);
     assert.deepEqual(right[5].image, right[0].url ? { url: right[0].url, sha256: right[0].sha256, bytes: right[0].bytes } : null, 'o mediaId do comunicado vira o arquivo');
     assert.equal('mediaId' in right[5], false); assert.equal('image' in right[6], false, 'mídia que não existe: sem imagem');

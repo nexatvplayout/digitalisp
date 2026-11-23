@@ -34,7 +34,7 @@ export function itemTitle(it, src) {
   return k;
 }
 /** O item como o app desenha, com os dados que o painel tem (a prévia; na TV os dados vêm prontos do servidor). */
-export async function previewOf(it, src) {
+export async function previewOf(it, src, { orient = null } = {}) {
   const theme = themeOf();
   const find = (list) => list.find((x) => x.id === it.refId);
   if (it.refKind === 'media') {
@@ -42,7 +42,8 @@ export async function previewOf(it, src) {
     if (m.kind === 'slide') {
       // a foto do slide (boas-vindas, oferta…) é outra mídia, guardada pelo número em fields.image
       const image = m.fields?.image ? await tblob(`/api/tvcorp/media/${m.fields.image}/file`).catch(() => null) : null;
-      return itemPreview({ kind: 'slide', template: m.template, fields: m.fields, image }, { theme });
+      // orient: a versão (deitado/em pé) que a zona escolhe, como o servidor manda para a TV
+      return itemPreview({ kind: 'slide', template: m.template, fields: orient ? { ...m.fields, orient } : m.fields, image }, { theme });
     }
     if (m.kind === 'video') return itemPreview({ kind: 'video', poster: m.poster ? await tblob(m.poster).catch(() => null) : null, seconds: m.seconds, title: m.title, processing: m.status !== 'ok' }, { theme });
     return itemPreview({ kind: 'image', url: await tblob(`/api/tvcorp/media/${m.id}/file`).catch(() => null), title: m.title }, { theme });
