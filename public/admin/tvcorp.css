@@ -194,3 +194,11 @@ tr.tc-sel td { background: var(--c-panel-3); }
 .fx-b { font-weight: 800; } .fx-i { font-style: italic; }
 .fx-bar { display: block; width: 100%; height: auto; border-radius: 8px; }
 .fx-sw { display: inline-flex; width: 22px; height: 22px; border: 0; background: none; } .fx-sw svg { width: 20px; height: 20px; }
+
+/* layouts: os conjuntos de várias TVs lado a lado e a marca de quantas TVs o modelo usa */
+.tc-set-row { display: flex; gap: 4px; padding: 6px; background: #05070b; align-items: flex-end; }
+.tc-set-tv { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.tc-set-tv .tvc-previa { max-width: none; width: 100%; border-radius: 2px; }
+.tc-set-row.port .tc-set-tv .tvc-previa { max-width: 140px; }
+.tc-set { grid-column: span 2; }
+.pf-chip.tc-tvs { font-weight: 700; }
