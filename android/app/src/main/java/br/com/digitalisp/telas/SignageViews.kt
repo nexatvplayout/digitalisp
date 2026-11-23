@@ -121,7 +121,9 @@ class SignItemView(
     private var preparedH = -1
     private val ops = ArrayList<(Canvas) -> Unit>()
     private var dynamic: ((Canvas) -> Unit)? = null
-    private val look get() = env.look
+    /** As cores do slide com arte própria (o texto segue a arte); null = as do tema. */
+    private var slideLook: SignLook? = null
+    private val look get() = slideLook ?: env.look
     private val ptBr = Locale("pt", "BR")
 
     /** Precisa de redesenho a cada segundo? */
@@ -170,7 +172,60 @@ class SignItemView(
     }
 
     private fun background(w: Int, h: Int, color: Int = look.bg) {
+        if (backdrop(w, h)) return
         ops += { c -> c.drawColor(color) }
+    }
+
+    /**
+     * O fundo próprio do slide (DIGITAL ISP, como a prévia do painel): a arte (`fields.artFile`) em cover, a foto com o
+     * véu escuro em gradiente (0,82 → 0,60); sem arte, o gradiente da paleta (`fields.palette`). False sem nenhum dos dois.
+     */
+    private fun backdrop(w: Int, h: Int): Boolean {
+        if (item.kind != "slide") return false
+        val art = bmp(item.art)
+        val pal = Signage.PALETTES[item.palette]
+        val full = RectF(0f, 0f, w.toFloat(), h.toFloat())
+        if (art != null) {
+            ops += { c ->
+                c.drawColor(Color.BLACK)
+                coverAt(c, art, full, if (item.artPhoto) 0.72f else 0.5f, 0.5f)
+                if (item.artPhoto) {
+                    paint.style = Paint.Style.FILL
+                    paint.shader = LinearGradient(0f, 0f, w.toFloat(), 0f, 0xD1000000.toInt(), 0x99000000.toInt(), Shader.TileMode.CLAMP)
+                    c.drawRect(full, paint)
+                    paint.shader = null
+                }
+            }
+            return true
+        }
+        if (pal != null) {
+            val light = env.look.light
+            val bg = env.look.bg
+            ops += { c ->
+                paint.style = Paint.Style.FILL
+                // 135°: do canto de cima à esquerda para o de baixo à direita
+                paint.shader = if (light) LinearGradient(0f, 0f, w.toFloat(), h.toFloat(), intArrayOf(Color.WHITE, Color.WHITE, pal.lightCorner), floatArrayOf(0f, 0.55f, 1f), Shader.TileMode.CLAMP)
+                else LinearGradient(0f, 0f, w.toFloat(), h.toFloat(), intArrayOf(pal.darkStart, bg, bg), floatArrayOf(0f, 0.7f, 1f), Shader.TileMode.CLAMP)
+                c.drawRect(full, paint)
+                paint.shader = null
+            }
+            return true
+        }
+        return false
+    }
+
+    /** Cobre a caixa com a imagem, cortando o que sobra em volta do ponto (fx, fy) da imagem (0 a 1, como background-position). */
+    private fun coverAt(c: Canvas, b: Bitmap, dst: RectF, fx: Float, fy: Float) {
+        val bw = b.width.toFloat()
+        val bh = b.height.toFloat()
+        if (bw <= 0 || bh <= 0) return
+        val scale = maxOf(dst.width() / bw, dst.height() / bh)
+        val sw = dst.width() / scale
+        val sh = dst.height() / scale
+        val sx = (bw - sw) * fx
+        val sy = (bh - sh) * fy
+        paint.isFilterBitmap = true
+        c.drawBitmap(b, Rect(sx.toInt(), sy.toInt(), (sx + sw).toInt(), (sy + sh).toInt()), dst, paint)
     }
 
     private fun prepare(w: Int, h: Int) {
@@ -264,7 +319,7 @@ class SignItemView(
         return side * 1.06f + l.height
     }
 
-    private fun templateColor(tpl: String): Int = when (tpl) {
+    private fun templateColor(tpl: String): Int = Signage.PALETTES[item.palette]?.accent?.takeIf { item.kind == "slide" } ?: when (tpl) {
         "boas-vindas" -> 0xFF16A34A.toInt()
         "aniversariantes" -> 0xFFDB2777.toInt()
         "reconhecimento" -> 0xFFF59E0B.toInt()
@@ -309,9 +364,32 @@ class SignItemView(
 
     private fun slide(w: Int, h: Int) {
         val tpl = item.template.ifEmpty { "comunicado" }
+        // arte de fundo: o texto segue a arte (foto e tone dark = claro; tone light = escuro), qualquer que seja o tema
+        slideLook = if (item.kind == "slide" && bmp(item.art) != null && tpl != "imagem-com-legenda") {
+            if (item.artLight && !item.artPhoto) env.look.copy(text = 0xFF0F172A.toInt(), dim = 0xFF334155.toInt(), light = true)
+            else env.look.copy(text = 0xFFF8FAFC.toInt(), dim = 0xFFE2E8F0.toInt(), light = false)
+        } else null
         val color = templateColor(tpl)
         val label = item.label.ifEmpty { Signage.templateLabel(tpl) }
         when (tpl) {
+            "oferta", "combo" -> {
+                background(w, h)
+                accentBar(w, h, color)
+                priceSlide(w, h, label, color)
+                return
+            }
+            "precos", "horario" -> {
+                background(w, h)
+                accentBar(w, h, color)
+                rowsSlide(w, h, label, color)
+                return
+            }
+            "redes" -> {
+                background(w, h)
+                accentBar(w, h, color)
+                socialSlide(w, h, label, color)
+                return
+            }
             "imagem-com-legenda" -> {
                 ops += { c -> c.drawColor(Color.BLACK) }
                 bmp(item.file)?.let { b -> ops += { c -> drawCover(c, b, RectF(0f, 0f, w.toFloat(), h.toFloat())) } }
@@ -355,6 +433,146 @@ class SignItemView(
         background(w, h)
         if (tpl == "seguranca") hazard(w, h) else accentBar(w, h, color)
         generic(w, h, label, color)
+    }
+
+    // ------------------------------------------------------------------ modelos do comércio (DIGITAL ISP)
+
+    /** Oferta e combo: etiqueta, produto, texto ou a lista do combo, validade; o preço numa placa ao lado (ou embaixo). */
+    private fun priceSlide(w: Int, h: Int, label: String, color: Int) {
+        val r = box(w, h)
+        val wide = r.width() > r.height() * 1.15f
+        val base = minOf(r.width(), r.height() * 1.4f)
+        val plateW = if (wide) r.width() * 0.34f else r.width()
+        val plateH = if (wide) minOf(r.height() * 0.5f, plateW * 0.75f) else r.height() * 0.24f
+        val qrUrl = item.qr
+        val qrSide = if (qrUrl == null) 0f else if (wide) minOf(plateW * 0.45f, r.height() - plateH - base * 0.12f).coerceAtLeast(0f) else minOf(r.width() * 0.3f, r.height() * 0.18f)
+        val text = if (wide) RectF(r.left, r.top, r.right - plateW - r.width() * 0.05f, r.bottom)
+        else RectF(r.left, r.top, r.right, r.bottom - plateH - base * 0.04f)
+        var y = header(text, item.tag.ifEmpty { label }, item.title, color)
+        val until = item.until?.let { d -> "Válido até ${d.substring(8, 10)}/${d.substring(5, 7)} ou enquanto durar o estoque." }
+        val untilPx = base * 0.035f
+        val untilReserve = if (until != null) untilPx * 2f else 0f
+        val body = if (item.template == "combo" && item.rows.isNotEmpty()) item.rows.joinToString("\n") { (a, b) -> if (b.isEmpty()) "• $a" else "• $a $b" } else item.text
+        if (body.isNotEmpty()) {
+            val px = base * 0.055f
+            val l = SignText.fit(body, text.width().toInt(), (text.bottom - y - untilReserve).toInt().coerceAtLeast(1), px, px * 0.5f, look.text, false, Signage.MAX_LINES)
+            val yy = y
+            ops += { c -> SignText.draw(c, l, text.left, yy) }
+            y += l.height
+        }
+        if (until != null) {
+            val l = SignText.fit(until, text.width().toInt(), untilReserve.toInt(), untilPx, untilPx * 0.6f, look.dim, false, 2)
+            ops += { c -> SignText.draw(c, l, text.left, text.bottom - l.height) }
+        }
+        // a placa do preço: amarela com texto escuro (no tema claro, na cor do fundo da paleta com texto branco)
+        val qrBelow = if (wide && qrSide > 40f) qrSide * 1.25f + base * 0.04f else 0f
+        val plate = if (wide) {
+            val top = r.top + (r.height() - plateH - qrBelow) / 2
+            RectF(r.right - plateW, top, r.right, top + plateH)
+        } else RectF(r.left, r.bottom - plateH, if (qrSide > 40f) r.right - qrSide * 1.2f else r.right, r.bottom)
+        val light = look.light
+        val plateColor = if (light) (Signage.PALETTES[item.palette]?.darkStart ?: color) else 0xFFFACC15.toInt()
+        val plateText = if (light) Color.WHITE else 0xFF0F172A.toInt()
+        ops += { c ->
+            paint.style = Paint.Style.FILL
+            paint.color = plateColor
+            c.drawRoundRect(plate, base * 0.025f, base * 0.025f, paint)
+        }
+        val parts = ArrayList<StaticLayout>()
+        val pw = (plate.width() * 0.9f).toInt()
+        if (item.oldPrice.isNotEmpty()) parts += SignText.fit("De ${item.oldPrice} por", pw, (plate.height() * 0.2f).toInt(), base * 0.035f, base * 0.02f, plateText, true, 1, TextLayout.Alignment.ALIGN_CENTER)
+        parts += SignText.fit(item.price.ifEmpty { "—" }, pw, (plate.height() * 0.55f).toInt(), base * (if (item.price.length > 10) 0.085f else 0.11f), base * 0.04f, plateText, true, 1, TextLayout.Alignment.ALIGN_CENTER)
+        if (item.unit.isNotEmpty()) parts += SignText.fit(item.unit, pw, (plate.height() * 0.2f).toInt(), base * 0.035f, base * 0.02f, plateText, true, 1, TextLayout.Alignment.ALIGN_CENTER)
+        val gap = base * 0.01f
+        val total = parts.sumOf { it.height } + gap * (parts.size - 1)
+        var py = plate.centerY() - total / 2
+        for (l in parts) {
+            val yy = py
+            ops += { c -> SignText.draw(c, l, plate.left + (plate.width() - pw) / 2, yy) }
+            py += l.height + gap
+        }
+        if (qrUrl != null && qrSide > 40f) {
+            if (wide) qr(qrUrl, plate.centerX() - qrSide / 2, plate.bottom + base * 0.04f, qrSide)
+            else qr(qrUrl, r.right - qrSide, r.bottom - qrSide * 1.15f, qrSide, caption = false)
+        }
+    }
+
+    /** Vitrine de preços e horário: uma linha por item, o nome à esquerda e o preço (ou o horário) à direita. */
+    private fun rowsSlide(w: Int, h: Int, label: String, color: Int) {
+        val r0 = box(w, h)
+        val base = minOf(r0.width(), r0.height() * 1.4f)
+        val wide = r0.width() > r0.height()
+        val qrUrl = item.qr
+        val qrSide = if (qrUrl == null) 0f else minOf(r0.width(), r0.height()) * 0.28f
+        val r = RectF(r0)
+        if (qrSide > 0) { if (wide) r.right -= qrSide * 1.3f else r.bottom -= qrSide * 1.3f }
+        var y = header(r, label, item.title, color, 0.09f)
+        val notePx = base * 0.035f
+        val noteReserve = if (item.note.isNotEmpty()) notePx * 2f else 0f
+        val rows = item.rows.ifEmpty { item.text.split('\n').filter { it.isNotBlank() }.map { it.trim() to "" } }
+        if (rows.isNotEmpty()) {
+            val avail = r.bottom - y - noteReserve
+            val rowH = (avail / rows.size).coerceAtMost(base * 0.12f)
+            val px = rowH * 0.55f
+            val name = SignText.paint(px, look.text, false)
+            val value = SignText.paint(px, look.text, true)
+            for ((a, b) in rows) {
+                val baseline = y + rowH * 0.7f
+                val vw = if (b.isEmpty()) 0f else value.measureText(b)
+                val lineY = y + rowH
+                ops += { c ->
+                    SignText.line(c, a, r.left, baseline, (r.width() - vw - px).coerceAtLeast(1f), name)
+                    if (b.isNotEmpty()) c.drawText(b, r.right - vw, baseline, value)
+                    paint.style = Paint.Style.FILL
+                    paint.color = 0x5994A3B8
+                    c.drawRect(r.left, lineY - 1f, r.right, lineY, paint)
+                }
+                y += rowH
+            }
+        }
+        if (item.note.isNotEmpty()) {
+            val l = SignText.fit(item.note, r.width().toInt(), noteReserve.toInt(), notePx, notePx * 0.6f, look.dim, false, 2)
+            ops += { c -> SignText.draw(c, l, r.left, r.bottom - l.height) }
+        }
+        if (qrUrl != null) {
+            if (wide) qr(qrUrl, r0.right - qrSide, r0.top + (r0.height() - qrSide * 1.2f) / 2, qrSide)
+            else qr(qrUrl, r0.centerX() - qrSide / 2, r0.bottom - qrSide * 1.25f, qrSide)
+        }
+    }
+
+    /** Redes sociais: o perfil (@) grande na cor de destaque, o texto, o site e o QR. */
+    private fun socialSlide(w: Int, h: Int, label: String, color: Int) {
+        val r0 = box(w, h)
+        val base = minOf(r0.width(), r0.height() * 1.4f)
+        val qrUrl = item.qr
+        val wide = r0.width() > r0.height()
+        val qrSide = if (qrUrl == null) 0f else if (wide) minOf(r0.height() * 0.7f, r0.width() * 0.35f) else minOf(r0.width() * 0.6f, r0.height() * 0.36f)
+        val r = RectF(r0)
+        if (qrSide > 0) { if (wide) r.right -= qrSide * 1.2f else r.bottom -= qrSide * 1.3f }
+        var y = header(r, label, item.title, color)
+        if (item.handle.isNotEmpty()) {
+            val px = base * 0.1f
+            val l = SignText.fit(item.handle, r.width().toInt(), (r.height() * 0.25f).toInt(), px, px * 0.4f, color, true, 2)
+            val yy = y
+            ops += { c -> SignText.draw(c, l, r.left, yy) }
+            y += l.height + px * 0.3f
+        }
+        val sitePx = base * 0.045f
+        val siteReserve = if (item.site.isNotEmpty()) sitePx * 1.8f else 0f
+        if (item.text.isNotEmpty()) {
+            val px = base * 0.055f
+            val l = SignText.fit(item.text, r.width().toInt(), (r.bottom - y - siteReserve).toInt().coerceAtLeast(1), px, px * 0.5f, look.text, false, 5)
+            val yy = y
+            ops += { c -> SignText.draw(c, l, r.left, yy) }
+        }
+        if (item.site.isNotEmpty()) {
+            val l = SignText.fit(item.site, r.width().toInt(), siteReserve.toInt(), sitePx, sitePx * 0.6f, look.dim, false, 1)
+            ops += { c -> SignText.draw(c, l, r.left, r.bottom - l.height) }
+        }
+        if (qrUrl != null) {
+            if (wide) qr(qrUrl, r0.right - qrSide, r0.top + (r0.height() - qrSide * 1.2f) / 2, qrSide)
+            else qr(qrUrl, r0.centerX() - qrSide / 2, r0.bottom - qrSide * 1.25f, qrSide)
+        }
     }
 
     /** Faixa zebrada de segurança no alto. */
@@ -1029,7 +1247,7 @@ class SignPlaylistView(
             for (f in files) {
                 val file = env.file(f) ?: continue
                 // fotos de aniversariantes são pequenas na tela
-                val small = item.kind == "birthdays" || (item.kind == "slide" && item.template == "aniversariantes")
+                val small = (item.kind == "birthdays" || (item.kind == "slide" && item.template == "aniversariantes")) && f !== item.art
                 SignBitmaps.decode(file, if (small) 256 else zw, if (small) 256 else zh, alpha = f === item.file && item.kind == "logo")?.let { map[f.sha256] = it }
             }
             handler.post { if (my == gen && running) show(item, map, my) }

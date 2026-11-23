@@ -87,10 +87,33 @@ data class SignageItem(
     val goal: Int = 0,
     /** imagem: `contain` (inteira, com fundo) ou `cover` (cobre a zona, cortando) */
     val contain: Boolean = false,
+    /** slide: a arte de fundo (`fields.artFile`); sem ela, o fundo é a cor da paleta ou do tema */
+    val art: SignageFile? = null,
+    /** a arte é foto (leva o véu escuro e o texto claro) */
+    val artPhoto: Boolean = false,
+    /** o texto sobre a arte é escuro (`tone: light`) */
+    val artLight: Boolean = false,
+    /** slide: a chave de [Signage.PALETTES] ("" = a cor do tema) */
+    val palette: String = "",
+    /** modelos do comércio (oferta, combo, vitrine de preços, horário, redes) */
+    val price: String = "",
+    val oldPrice: String = "",
+    val unit: String = "",
+    val tag: String = "",
+    val note: String = "",
+    val handle: String = "",
+    val site: String = "",
+    /** oferta: válido até (YYYY-MM-DD) */
+    val until: String? = null,
+    /** vitrine de preços e horário: as linhas "nome | preço" já separadas */
+    val rows: List<Pair<String, String>> = emptyList(),
 ) {
-    /** Arquivos que o item precisa (a imagem e as fotos). */
-    val files: List<SignageFile> get() = listOfNotNull(file) + people.mapNotNull { it.photo }
+    /** Arquivos que o item precisa (a imagem, a arte de fundo e as fotos). */
+    val files: List<SignageFile> get() = listOfNotNull(file, art) + people.mapNotNull { it.photo }
 }
+
+/** Cores de uma paleta do slide (as mesmas de `.th-<chave>` em public/shared/tvcorp-previa.css): destaque, começo do fundo escuro e canto do fundo claro. */
+data class SignPalette(val accent: Int, val darkStart: Int, val lightCorner: Int)
 
 data class SignageBlock(
     val id: String,
@@ -137,7 +160,40 @@ object Signage {
     val TEMPLATES = listOf(
         "comunicado", "boas-vindas", "aniversariantes", "reconhecimento", "seguranca", "evento",
         "vaga", "indicador", "cardapio", "qr", "imagem-com-legenda", "data-comemorativa",
+        // DIGITAL ISP: os modelos do comércio
+        "oferta", "precos", "combo", "horario", "redes",
     )
+
+    /** As paletas do slide (`fields.palette`), conferidas com TVC_PALETTES e tvcorp-previa.css. */
+    val PALETTES: Map<String, SignPalette> = mapOf(
+        "azul" to SignPalette(0xFF1D4ED8.toInt(), 0xFF1D4ED8.toInt(), 0xFFBFDBFE.toInt()),
+        "verde" to SignPalette(0xFF15803D.toInt(), 0xFF166534.toInt(), 0xFFBBF7D0.toInt()),
+        "petroleo" to SignPalette(0xFF0F766E.toInt(), 0xFF115E59.toInt(), 0xFF99F6E4.toInt()),
+        "vinho" to SignPalette(0xFF9F1239.toInt(), 0xFF9F1239.toInt(), 0xFFFECDD3.toInt()),
+        "roxo" to SignPalette(0xFF6D28D9.toInt(), 0xFF6D28D9.toInt(), 0xFFDDD6FE.toInt()),
+        "laranja" to SignPalette(0xFFC2410C.toInt(), 0xFF9A3412.toInt(), 0xFFFED7AA.toInt()),
+        "grafite" to SignPalette(0xFF334155.toInt(), 0xFF334155.toInt(), 0xFFCBD5E1.toInt()),
+        "vermelho" to SignPalette(0xFFB91C1C.toInt(), 0xFF991B1B.toInt(), 0xFFFECACA.toInt()),
+        "marrom" to SignPalette(0xFF92400E.toInt(), 0xFF92400E.toInt(), 0xFFFDE68A.toInt()),
+        "rosa" to SignPalette(0xFFBE185D.toInt(), 0xFF9D174D.toInt(), 0xFFFBCFE8.toInt()),
+        "dourado" to SignPalette(0xFFA16207.toInt(), 0xFF854D0E.toInt(), 0xFFFEF08A.toInt()),
+    )
+
+    /** "nome | preço" por linha (até [MAX_LINES]); o último "|" separa. Igual ao rowsOf da prévia. */
+    fun rows(text: String): List<Pair<String, String>> = text.split('\n').map { it.trim() }.filter { it.isNotEmpty() }.take(MAX_LINES).map {
+        val i = it.lastIndexOf('|')
+        if (i < 0) it to "" else it.substring(0, i).trim() to it.substring(i + 1).trim()
+    }
+
+    /** A arte de fundo do slide: `fields.artFile` (só imagem que o Android abre: foto JPEG/PNG/WebP; SVG não). */
+    private fun art(f: JSONObject): Triple<SignageFile, Boolean, Boolean>? {
+        val o = f.optJSONObject("artFile") ?: return null
+        val file = file(o) ?: return null
+        val key = ConfigParser.str(f, "art")?.lowercase().orEmpty()
+        val photo = (o.opt("photo") as? Boolean) ?: key.startsWith("foto-")
+        val light = ConfigParser.str(o, "tone")?.lowercase() == "light"
+        return Triple(file, photo, light)
+    }
     /** Categoria do comunicado → modelo do slide. */
     val POST_TEMPLATE = mapOf(
         "comunicado" to "comunicado", "rh" to "comunicado", "beneficio" to "comunicado", "aviso" to "comunicado",
@@ -414,7 +470,23 @@ object Signage {
                 val f = o.optJSONObject("fields") ?: JSONObject()
                 val tpl = ConfigParser.str(o, "template")?.lowercase()?.takeIf { it in TEMPLATES } ?: "comunicado"
                 val lines = textLines(f.optJSONArray("lines"))
+                val art = art(f)
+                val commerce = tpl in setOf("oferta", "precos", "combo", "horario", "redes")
+                val text = txt(f, "text", MAX_TEXT).ifEmpty { lines }
                 base.copy(
+                    art = art?.first,
+                    artPhoto = art?.second == true,
+                    artLight = art?.third == true,
+                    palette = ConfigParser.str(f, "palette")?.lowercase()?.takeIf { it in PALETTES }.orEmpty(),
+                    price = txt(f, "price", 20).replace('\n', ' '),
+                    oldPrice = txt(f, "oldPrice", 20).replace('\n', ' '),
+                    unit = txt(f, "unit", 20).replace('\n', ' '),
+                    tag = txt(f, "tag", 30).replace('\n', ' '),
+                    note = txt(f, "note", 80).replace('\n', ' '),
+                    handle = txt(f, "handle", 40).replace('\n', ' '),
+                    site = txt(f, "site", 60).replace('\n', ' '),
+                    until = day(ConfigParser.str(f, "until")),
+                    rows = if (tpl == "precos" || tpl == "horario" || tpl == "combo") rows(text) else emptyList(),
                     template = tpl,
                     title = txt(f, "title", MAX_TITLE).replace('\n', ' '),
                     text = txt(f, "text", MAX_TEXT).ifEmpty { lines },
@@ -426,7 +498,7 @@ object Signage {
                     menu = menu(f.optJSONArray("items")),
                     people = people(f.optJSONArray("people")),
                     kpi = f.optJSONObject("kpi")?.let { kpi(it) },
-                ).takeIf { it.title.isNotEmpty() || it.text.isNotEmpty() || it.file != null || it.menu.isNotEmpty() || it.people.isNotEmpty() || it.kpi != null }
+                ).takeIf { it.title.isNotEmpty() || it.text.isNotEmpty() || it.file != null || it.menu.isNotEmpty() || it.people.isNotEmpty() || it.kpi != null || (commerce && (it.price.isNotEmpty() || it.handle.isNotEmpty())) }
             }
             "post" -> {
                 val cat = ConfigParser.str(o, "category")?.lowercase() ?: "comunicado"
@@ -498,6 +570,11 @@ object Signage {
         "vaga" -> "Vaga interna"
         "indicador" -> "Indicador"
         "cardapio" -> "Cardápio"
+        "oferta" -> "Oferta"
+        "precos" -> "Preços"
+        "combo" -> "Combo"
+        "horario" -> "Horário de funcionamento"
+        "redes" -> "Siga a gente"
         "qr" -> "Aponte a câmera"
         "data-comemorativa" -> "Data comemorativa"
         "imagem-com-legenda" -> ""
