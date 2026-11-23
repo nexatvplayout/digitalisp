@@ -18,7 +18,6 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function faltaDados(t, x) {
   const a = j(t.address, {}) || {};
   const falta = [];
-  if (!x.fantasia) falta.push('nome fantasia');
   if (!t.document || t.document_type !== 'cnpj') falta.push('CNPJ');
   if (!t.contact_name) falta.push('responsável');
   if (!t.contact_email) falta.push('e-mail');
@@ -54,7 +53,7 @@ async function guiaDaRevenda(tenantId) {
   const falta = faltaDados(t, x);
   return emOrdem([
     { id: 'dados', titulo: 'Dados da revenda', obrigatorio: true, feito: !falta.length, falta,
-      texto: 'Nome fantasia, CNPJ, responsável, contato e endereço. Aparecem nas cobranças dos seus clientes.' },
+      texto: 'CNPJ, responsável, contato e endereço. Aparecem nas cobranças dos seus clientes.' },
     { id: 'logo', titulo: 'Sua logo', obrigatorio: true, feito: logo, ir: '#tvcorp/config',
       texto: 'A logo que aparece na entrada do painel dos seus clientes e na abertura das telas deles. Envie em Configurações → Logomarca.' },
     { id: 'planos', titulo: 'Planos para os seus clientes', obrigatorio: true, feito: planos > 0, conta: planos, ir: '#rv-planos',
@@ -111,7 +110,7 @@ export async function guiaRevenda(tenantId) {
   const falta = faltaDados(t, x);
   const steps = [
     { id: 'dados', titulo: 'Dados da revenda', obrigatorio: true, feito: !falta.length, falta,
-      texto: 'Nome fantasia, CNPJ, responsável, contato e endereço. Aparecem nas faturas e no relatório para o anunciante.' },
+      texto: 'CNPJ, responsável, contato e endereço. Aparecem nas faturas e no relatório para o anunciante.' },
     { id: 'logo', titulo: 'Logo da revenda', obrigatorio: true, feito: logo, ir: '#tvcorp/config',
       texto: 'A logo que aparece na abertura das telas, no cadastro da TV e na imagem sem internet. Envie em Configurações → Logomarca.' },
     { id: 'cliente', titulo: 'Primeiro cliente final', obrigatorio: true, feito: clientes > 0, conta: clientes, ir: '#tvcorp/unidades',
