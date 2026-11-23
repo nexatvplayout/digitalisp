@@ -18,6 +18,7 @@ import paintDados from './tvcorp-dados.js';
 import paintIndicadores from './tvcorp-indicadores.js';
 import paintRh from './tvcorp-rh.js';
 import paintBarras from './tvcorp-barras.js';
+import paintGadgets from './tvcorp-gadgets.js';
 import { paintAlertas, paintAprovacoes } from './tvcorp-rede.js';
 import paintCelular from './tvcorp-celular.js';
 import paintRelatorios from './tvcorp-relatorios.js';
@@ -39,6 +40,7 @@ export const TABS = [
   { id: 'layouts', label: 'Layouts', perm: 'tvcorp.manage', paint: paintLayouts },
   { id: 'grade', label: 'Grade', perm: 'tvcorp.manage', paint: paintGrade },
   { id: 'dados', label: 'Notícias e dados', perm: 'tvcorp.manage', paint: paintDados },
+  { id: 'gadgets', label: 'Gadgets', perm: 'tvcorp.manage', paint: paintGadgets },
   { id: 'indicadores', label: 'Indicadores', perm: 'tvcorp.manage', paint: paintIndicadores },
   { id: 'rh', label: 'RH', perm: 'tvcorp.manage', paint: paintRh },
   { id: 'barras', label: 'Barras e blocos', perm: 'tvcorp.manage', paint: paintBarras },

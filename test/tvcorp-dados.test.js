@@ -113,7 +113,7 @@ test('datas comemorativas: Páscoa, móveis e campanhas do mês', () => {
 });
 
 test('fontes: configuração só com o que é permitido', () => {
-  assert.deepEqual(F.cleanFeed('rss', { config: { source: 'agencia-brasil' } }).config, { source: 'agencia-brasil' });
+  assert.deepEqual(F.cleanFeed('rss', { config: { source: 'agencia-brasil' } }).config, { source: 'agencia-brasil', secondsEach: 12 }, 'o tempo de cada notícia: 12 s se não disser');
   assert.equal(F.cleanFeed('rss', { config: { source: 'agencia-brasil' } }).name, 'Agência Brasil');
   assert.throws(() => F.cleanFeed('rss', { config: { source: 'portal-comercial' } }), /lista permitida/);
   assert.throws(() => F.cleanFeed('rss', { config: { source: 'own', url: 'http://empresa.example/rss' } }), /https/);

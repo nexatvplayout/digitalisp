@@ -59,6 +59,8 @@ export function cleanFeed(kind, b, { partial = false, cur = null } = {}) {
       if (source === 'own') out.config = { source, url: cleanHttpsUrl(c.url, 'Endereço do RSS') || (() => { throw fail(400, 'Endereço do RSS: informe o endereço https:// do feed da empresa.'); })(), credit: line(c.credit, 60) };
       else if (NEWS.has(source)) out.config = { source };
       else throw fail(400, 'Fonte de notícias fora da lista permitida.');
+      // DIGITAL ISP: quantos segundos cada notícia fica na tela antes da próxima (5 a 120; padrão 12)
+      out.config.secondsEach = intIn(c.secondsEach, 5, 120, 12);
     } else if (kind === 'quotes') {
       const provider = c.provider ?? 'awesome';
       if (!Object.hasOwn(QUOTE_PROVIDERS, provider)) throw fail(400, 'Fonte de cotações inválida.');

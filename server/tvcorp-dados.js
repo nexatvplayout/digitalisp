@@ -1088,7 +1088,8 @@ export function createTvcorpDados({
           const off = await hiddenNews(f.id);
           return c.items.slice(0, 15).filter((i) => !off.has(newsKey(i))).map((i, k) => {
             const img = fileOf(i);
-            return { id: `n${id}-${k + 1}`, kind: 'news', title: f.name, source: SOURCE_SAFE(c.source), at: c.at, single: true, ...(img ? { image: img } : {}),
+            const each = Number(j(f.config, {})?.secondsEach) || 12;
+            return { id: `n${id}-${k + 1}`, kind: 'news', title: f.name, source: SOURCE_SAFE(c.source), at: c.at, single: true, seconds: Math.min(120, Math.max(5, each)), ...(img ? { image: img } : {}),
               items: [{ title: i.title, source: SOURCE_SAFE(c.source), at: i.at ?? null, ...(i.link ? { qr: i.link } : {}) }] };
           });
         }

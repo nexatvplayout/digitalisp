@@ -62,8 +62,10 @@ function editFeed(x, reload, kindKey = 'rss') {
       const hint = note('');
       const sync = () => { const own = src.value === 'own'; url.disabled = !own; credit.disabled = !own; const p = CAT.news.find((y) => y.key === src.value); hint.textContent = p ? `Uso livre com o crédito. Na tela: "Fonte: ${p.credit}".` : 'Só o RSS da própria empresa (intranet, blog). Portais comerciais de notícia pedem contrato de licença: não cadastre.'; if (p && !name.value) name.value = p.name; };
       src.addEventListener('change', sync); sync();
-      put(box, f('Fonte', src), f('Endereço', url), f('Crédito na tela', credit), hint);
-      read = () => { if (src.value !== 'own') return { source: src.value }; if (!/^https:\/\//.test(url.value.trim())) throw new Error('O endereço precisa começar com https://'); return { source: 'own', url: url.value.trim(), credit: credit.value.trim() }; };
+      const each = el('input', { type: 'number', min: '5', max: '120', value: String(c.secondsEach ?? 12) });
+      put(box, f('Fonte', src), f('Endereço', url), f('Crédito na tela', credit), f('Cada notícia fica na tela (segundos, 5 a 120)', each), hint);
+      const segs = () => Math.max(5, Math.min(120, Math.round(Number(each.value) || 12)));
+      read = () => { if (src.value !== 'own') return { source: src.value, secondsEach: segs() }; if (!/^https:\/\//.test(url.value.trim())) throw new Error('O endereço precisa começar com https://'); return { source: 'own', url: url.value.trim(), credit: credit.value.trim(), secondsEach: segs() }; };
     } else if (k === 'quotes') {
       const picks = new Set(c.currencies || ['USD', 'EUR']);
       const provider = el('select', {}, ...Object.entries(CAT.providers).map(([k, l]) => opt(k, l, (c.provider || 'awesome') === k)));
@@ -117,7 +119,8 @@ function newsCards(x) {
       toast(i.hidden ? 'A notícia voltou para a programação.' : 'Notícia tirada da programação: as telas param de mostrar na próxima atualização.');
       await paint();
     });
-    put(wrap, label(`Notícias de ${x.name} na programação (${vai} de ${items.length})`),
+    put(wrap, label(`Notícias de ${x.name} na programação (${vai} de ${items.length}) · cada uma fica ${x.config?.secondsEach ?? 12} s na tela`),
+      note('Para mudar o tempo de cada notícia, use "Editar" nesta fonte.', 'small dim'),
       items.length ? el('div', { class: 'tc-news-grid' }, ...items.map((i) => el('div', { class: `tc-news-card${i.hidden ? ' off' : ''}` },
         i.image ? el('img', { src: i.image, alt: '', loading: 'lazy' }) : el('div', { class: 'tc-news-nofoto', text: 'Sem foto' }),
         el('div', { class: 'tc-news-body' }, el('b', { text: i.title }), el('span', { class: 'dim small', text: [i.at ? when(i.at) : '', i.hidden ? 'fora da programação' : ''].filter(Boolean).join(' · ') }),
