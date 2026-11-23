@@ -342,3 +342,14 @@
 .tvc-web-warn { font-size: 3cqw; color: var(--tfg); }
 .tvc-tk-leve { font-weight: 400; }
 .tvc-tk-it span { font-style: italic; }
+
+/* zona por cima (overlay): vidro escuro com o fundo translúcido por degrau de 20 % (tvc-op-0 a 100), texto claro */
+.tvc-ov { padding: 3%; box-sizing: border-box; }
+.tvc-ov > * { border-radius: 6px; --tfg: #ffffff; --tdim: #e2e8f0; color: #ffffff; }
+.tvc-ov.tvc-op-0 > * { background: transparent; }
+.tvc-ov.tvc-op-20 > * { background: rgba(2, 6, 23, 0.2); }
+.tvc-ov.tvc-op-40 > * { background: rgba(2, 6, 23, 0.4); }
+.tvc-ov.tvc-op-60 > * { background: rgba(2, 6, 23, 0.6); }
+.tvc-ov.tvc-op-80 > * { background: rgba(2, 6, 23, 0.8); }
+.tvc-ov.tvc-op-100 > * { background: #020617; }
+.tvc-zone.ov .tvc-zb { stroke: rgba(245, 179, 28, 0.55); stroke-dasharray: 1 0.8; }

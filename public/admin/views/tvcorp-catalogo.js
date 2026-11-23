@@ -163,7 +163,7 @@ export function checkZones(zones) {
   }
   for (let i = 0; i < zones.length; i++) for (let k = i + 1; k < zones.length; k++) {
     const a = zones[i]; const b = zones[k];
-    if (a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h) return `As zonas "${a.id}" e "${b.id}" estão uma por cima da outra.`;
+    if (Boolean(a.overlay) === Boolean(b.overlay) && a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h) return `As zonas "${a.id}" e "${b.id}" estão uma por cima da outra (marque "Por cima" na que fica sobre a outra).`;
   }
   return null;
 }
