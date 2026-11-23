@@ -42,7 +42,7 @@ export async function paintResumo(root) {
       el('h3', { text: 'Seu plano com a DIGITAL ISP' }),
       el('p', {}, el('b', { text: u.plano?.name || '—' }), ` · telas: ${u.telas} em uso${u.chaves ? ` + ${u.chaves} chave(s) esperando` : ''} (${livre})`),
       el('p', { class: 'dim', text: `Telas vendidas nos planos dos clientes: ${u.vendidas}. Clientes: ${u.clientes}${u.limiteClientes != null ? ` de ${u.limiteClientes}` : ''}.` }),
-      conta.link ? el('p', {}, 'Endereço de entrada dos seus clientes: ', el('b', { text: conta.link })) : null));
+      el('p', { class: 'dim', text: 'Cada cliente tem o próprio endereço de entrada, com a sua marca: ele aparece no cadastro do cliente (Clientes).' })));
 }
 
 /* ================================================================== clientes */
@@ -66,13 +66,13 @@ export async function paintClientes(root) {
       el('td', { text: c.cobranca?.modo === 'sistema' ? 'Pelo sistema' : 'Por fora' }))) : [el('tr', {}, el('td', { colspan: 6, class: 'dim', text: s ? 'Nada encontrado.' : 'Nenhum cliente ainda. Cadastre o primeiro.' }))]));
   };
   q.addEventListener('input', draw);
-  root.replaceChildren(
+  root.replaceChildren(...[
     !planos.some((p) => p.ativo) ? el('p', { class: 'gd-falta', text: 'Crie pelo menos um plano em "Planos" antes de cadastrar clientes.' }) : null,
     el('div', { class: 'card' },
       el('div', { class: 'rv-bar' }, q, el('button', { class: 'primary', type: 'button', text: '+ Novo cliente', onclick: () => abrir(null) })),
       el('div', { class: 'rv-scroll' }, el('table', { class: 'rv-table' },
         el('thead', {}, el('tr', {}, ...['Cliente', 'Cidade', 'Plano', 'Situação', 'Telas no ar', 'Cobrança'].map((h) => el('th', { text: h })))), tbody))),
-    box);
+    box].filter(Boolean));
   draw();
 }
 
@@ -99,6 +99,8 @@ function clienteForm(c, planos, done, box) {
           mostrarAcesso(box, 'Nova senha do cliente', { link: d.acesso.link, login: r.login, senha: r.senha });
         }) }) : null,
         el('button', { type: 'button', class: 'small', text: 'Fechar', onclick: () => f.remove() }))),
+    editando ? el('p', { class: 'rv-link' }, 'Endereço de entrada deste cliente: ', el('b', { text: `${location.origin}/c/${c.slug}` }), ' ',
+      el('button', { type: 'button', class: 'small', text: 'Copiar', onclick: () => navigator.clipboard?.writeText(`${location.origin}/c/${c.slug}`).then(() => toast('Copiado.'), () => {}) })) : null,
     sec('Cliente',
       field('Tipo', pessoa),
       field('Nome / razão social', inp('name', c?.name, { required: true, maxlength: 80 })),
@@ -106,7 +108,7 @@ function clienteForm(c, planos, done, box) {
       field('CPF ou CNPJ', inp('document', fmtDoc(c?.document), { inputmode: 'numeric' }))),
     sec('Contato',
       field('Responsável', inp('contactName', c?.contactName, { maxlength: 80 })),
-      field('E-mail (é o login dele)', inp('contactEmail', c?.contactEmail, { type: 'email', required: true, disabled: editando })),
+      field('E-mail (é o login dele)', inp('contactEmail', c?.contactEmail, { type: 'email', required: true }), { hint: editando ? 'Trocar o e-mail troca o login do cliente.' : '' }),
       field('Telefone', inp('phone', fmtPhone(c?.phone), { inputmode: 'tel' })),
       field('WhatsApp', inp('whatsapp', fmtPhone(c?.whatsapp), { inputmode: 'tel' }))),
     sec('Endereço',
@@ -131,6 +133,7 @@ function clienteForm(c, planos, done, box) {
     if (Number.isNaN(valor)) { toast('Valor mensal inválido.', true); return; }
     if (!v.planoId) { toast('Escolha o plano do cliente.', true); return; }
     const body = {
+      contactEmail: v.contactEmail,
       pessoa: v.pessoa, name: v.name, fantasia: v.fantasia, document: v.document, contactName: v.contactName, phone: v.phone, whatsapp: v.whatsapp,
       address: { zip: v.zip, street: v.street, number: v.number, complement: v.complement, district: v.district, city: p.city || '', state: p.uf || '' },
       uf: p.uf || '', municipio: p.city || '', municipioIbge: p.cityIbge, planoId: Number(v.planoId), status: v.status, notes: v.notes,
