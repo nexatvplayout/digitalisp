@@ -80,7 +80,7 @@ export async function paintAlertas(box, ctx) {
   });
   const row = (x, live) => el('tr', {},
     el('td', {}, el('span', { class: `pf-level ${x.level}`, text: severityOf(x.level).label }), ' ', el('b', { text: x.title }), el('div', { class: 'dim small', text: (x.text || '').slice(0, 120) })),
-    el('td', { text: alertScopeText(x.scope) }), el('td', { text: `${when(x.startsAt)} até ${when(x.until)}` }), el('td', { text: `${x.delivered ?? 0} tela(s)` }), el('td', { text: x.createdBy || '—' }),
+    el('td', { text: alertScopeText(x.scope) }), el('td', { text: `${when(x.startsAt)} até ${when(x.until)}` }), el('td', { text: `${x.delivered ?? 0} tela(s)`, 'data-alerta': String(x.id) }), el('td', { text: x.createdBy || '—' }),
     el('td', { class: 'pf-actions' }, live ? btn('Encerrar', guard(async () => { if (!confirm(`Encerrar o alerta "${x.title}"? Sai das telas em até 30 segundos.`)) return; await tapi(`/api/tvcorp/rede/alerts/${x.id}/cancel`, { method: 'POST' }); toast('Alerta encerrado.'); await again(); }), 'small danger') : null));
   const heads = ['Alerta', 'Para onde', 'Período', 'Mostraram', 'Enviado por', ''];
   put(box,
@@ -97,6 +97,13 @@ export async function paintAlertas(box, ctx) {
   // o mapa mede a caixa: só depois de a aba entrar na página
   if (A.kind === 'radius') setTimeout(openMap, 0);
   paintPicks();
+  // a coluna Mostraram anda sozinha enquanto há alerta em vigor (a TV recebe segundos depois do envio); só os números mudam
+  clearInterval(paintAlertas.tick);
+  if ((r.active || []).length) paintAlertas.tick = setInterval(async () => {
+    if (!box.isConnected) { clearInterval(paintAlertas.tick); return; }
+    const n = await tapi('/api/tvcorp/rede/alerts').catch(() => null);
+    for (const x of [...(n?.active || []), ...(n?.history || [])]) { const td = box.querySelector?.(`[data-alerta="${x.id}"]`); if (td) td.textContent = `${x.delivered ?? 0} tela(s)`; }
+  }, 10000);
 }
 
 /* ------------------------------------------------------------------ Aprovações */
