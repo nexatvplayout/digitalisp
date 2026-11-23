@@ -39,6 +39,11 @@ function itensTipos(arquivo, agora) {
       { name: 'Marcos Silva', day: 18, month: hoje.getMonth() + 1, sector: 'Logística', initials: 'MS', photo: f('foto-marcos.svg') },
       { name: 'Carla Dias', day: 27, month: hoje.getMonth() + 1, sector: 'RH', initials: 'CD' }] },
     { id: 'k1', kind: 'kpi', seconds: s, name: 'Produção diária', value: 940, target: 1000, unit: 'peças', band: 'warn', direction: 'up', at: agora },
+    // a notícia sozinha (single), com a foto guardada pelo servidor e sem foto
+    { id: 'n1-1', kind: 'news', single: true, seconds: s, title: 'g1', source: 'g1', image: f('oferta-b.svg'),
+      items: [{ title: 'Prefeitura anuncia novo programa de qualificação profissional para jovens da região', source: 'g1', at: agora }] },
+    { id: 'n1-2', kind: 'news', single: true, seconds: s, title: 'Agência Brasil', source: 'Agência Brasil',
+      items: [{ title: 'Chuvas devem continuar no fim de semana em boa parte do país', source: 'Agência Brasil', at: agora }] },
     { id: 'n1', kind: 'news', seconds: s, title: 'Notícias', source: 'Agência Brasil', at: agora, items: [
       { title: 'Governo anuncia novo programa de qualificação', source: 'Agência Brasil', at: agora - 3600000 },
       { title: 'Chuvas devem continuar no fim de semana', source: 'Agência Brasil', at: agora - 7200000 },

@@ -139,6 +139,10 @@
           delete o.fields[k]; // o objeto do arquivo não é texto: não vai para o desenho
         });
       }
+      if (o.kind === 'news' && o.image && typeof o.image === 'object') {
+        var sn = shaDe(o.image);
+        o.image = sn && mapa[sn] ? mapa[sn] : null;
+      }
       if (o.kind === 'post') {
         var sp = shaDe(o.image) || shaDe(o.media);
         o.image = sp && mapa[sp] ? mapa[sp] : null;

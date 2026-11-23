@@ -243,6 +243,8 @@
       });
       return a.sinal(corpo).then(function (res) {
         online(true);
+        // o servidor respondeu: o erro de rede/servidor de antes (502 de uma publicação, por exemplo) já passou
+        if (est.erroDeRede) { est.erroDeRede = false; erro(null); }
         est.falhasSinal = 0;
         hora(res.horaServidor);
         if (lote) { est.log = N.baixarLote(est.log, lote); A.gravar('exibicao', est.log); }
@@ -267,7 +269,7 @@
         return cadastrar();
       }
       if (e && e.semRede) online(false);
-      else erro(e && e.message);
+      else { erro(e && e.message); est.erroDeRede = true; }
       est.falhasSinal++;
       timerCiclo = setTimeout(ciclo, N.espera(est.falhasSinal - 1) * 1000);
     });
@@ -300,10 +302,17 @@
 
   var fila = null;
 
+  // arquivos que falharam em duas rodadas inteiras de download (404, hash que não confere): não seguram mais a troca;
+  // o item que precisa deles é pulado na tela (sem isso, um arquivo quebrado prendia a TV na programação antiga)
+  var falhasArquivo = {}, desistidos = {};
+
   function reconciliar() {
     if (!est.nova) return Promise.resolve();
     return A.presentes().then(function (pres) {
-      var d = N.decidirTroca(est.atual, est.nova, pres);
+      var p2 = {}, k;
+      for (k in pres) p2[k] = pres[k];
+      for (k in desistidos) p2[k] = true;
+      var d = N.decidirTroca(est.atual, est.nova, p2);
       if (d.acao === 'manter') { est.nova = null; A.gravar('cfgNova', null); est.baixando = null; return; }
       if (d.acao === 'trocar') {
         // fotos que ainda faltam (opcionais) seguem baixando depois da troca; até chegarem, as iniciais
@@ -334,7 +343,14 @@
       fila = null;
       if (r.semRede) online(false);
       if (r.falharam.length) est.erro = r.falharam.length + ' arquivo(s) não conferiram ou não baixaram: ' + r.falharam[0].motivo;
-      return reconciliar();
+      r.falharam.forEach(function (f) {
+        falhasArquivo[f.sha256] = (falhasArquivo[f.sha256] || 0) + 1;
+        if (falhasArquivo[f.sha256] >= 2) desistidos[f.sha256] = true;
+      });
+      // sem rede, não desiste de nada: espera a rede voltar
+      if (r.semRede) return;
+      // tenta de novo no próximo ciclo (não em seguida, para não rodar sem parar)
+      return r.falharam.length ? undefined : reconciliar();
     });
   }
 
@@ -482,7 +498,19 @@
   function comandos(a, lista) {
     (Array.isArray(lista) ? lista : []).forEach(function (c) {
       var t = c && c.type;
-      if (t === 'reload') { a.comandoFeito(c.id, true, 'recarregado'); desenhar(true); }
+      if (t === 'reload') {
+        // Recarregar: busca a configuração de novo (ignora o rev guardado), tenta outra vez os arquivos que falharam e redesenha
+        falhasArquivo = {}; desistidos = {};
+        a.comandoFeito(c.id, true, 'recarregado');
+        a.config('').then(function (r) {
+          hora(r.horaServidor);
+          if (!r.json) return;
+          est.cfgNova = r.json; A.gravar('cfgNova', r.json);
+          est.nova = N.lerConfig(r.json, { teste: teste, marcaAtivacao: A.ler('marcaAtivacao', null) });
+          if (est.atual && est.nova.rev === est.atual.rev) { est.nova = null; est.cfgNova = null; A.gravar('cfgNova', null); desenhar(true); return; }
+          return reconciliar();
+        }).catch(function (e) { erro('recarregar: ' + (e && e.message)); desenhar(true); });
+      }
       else if (t === 'restart-app') a.comandoFeito(c.id, true, 'reiniciando o app').then(P.reiniciarApp);
       else if (t === 'clear-content' || t === 'clear-cache') {
         A.guardados().then(function (g) { return Promise.all(g.map(A.apagar)); }).then(function () {

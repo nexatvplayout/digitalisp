@@ -12,7 +12,7 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  var VERSAO = '1.0.19';
+  var VERSAO = '1.0.20';
   var TZ_PADRAO = 'America/Sao_Paulo';
   var SHA = /^[0-9a-f]{64}$/;
   var DIA = /^\d{4}-\d{2}-\d{2}$/;
@@ -180,6 +180,10 @@
       var lista = Array.isArray(o.items) ? o.items : (Array.isArray(o.headlines) ? o.headlines : []);
       it.news = lista.slice(0, 12).map(function (n) { return n && umaLinha(str(n, 'title') || '', 140); }).filter(Boolean);
       if (!it.news.length) return null;
+      // a notícia sozinha (single) com a foto: cópia do servidor (/tvcorp/noticia/<sha>), baixada como opcional (sem ela, o
+      // degradê escuro com a mesma faixa; a troca de programação não espera a foto)
+      var fn = o.image && typeof o.image === 'object' ? arquivo(o.image, teste) : null;
+      if (fn) { fn.opcional = true; it.files.push(fn); }
     } else if (kind === 'birthdays') {
       var p = Array.isArray(o.people) ? o.people : [];
       it.people = p.slice(0, 40).map(function (x) {
