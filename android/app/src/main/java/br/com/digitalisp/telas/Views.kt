@@ -106,10 +106,27 @@ object Ui {
     }
 }
 
-/** Moldura do vídeo: encaixa o filho na proporção do vídeo (faixas pretas no que sobrar). */
+/**
+ * Moldura do vídeo: por padrão encaixa o filho na proporção do vídeo, inteiro (faixas pretas no que sobrar). Com [cover]
+ * (zona de vídeo com `fit: 'cover'`), preenche a moldura e corta as bordas.
+ */
 class VideoFrame(ctx: Context) : FrameLayout(ctx) {
-    /** A zona do vídeo tem formato (recorte): o player desenha numa TextureView (a SurfaceView ignora o recorte). */
+    /** A zona do vídeo tem formato (recorte) ou corta as bordas: o player desenha numa TextureView (a SurfaceView ignora o recorte). */
     var forceTexture = false
+
+    /** Preencher a zona cortando as bordas (`fit: 'cover'`); falso = proporcional, sem cortar. */
+    var cover = false
+        set(v) {
+            if (v != field) {
+                field = v
+                if (v) forceTexture = true
+                requestLayout()
+            }
+        }
+
+    init {
+        clipChildren = true
+    }
 
     var aspect: Float = 16f / 9f
         set(v) {
@@ -126,7 +143,8 @@ class VideoFrame(ctx: Context) : FrameLayout(ctx) {
         if (w == 0 || h == 0) return
         var cw = w
         var ch = (w / aspect).toInt()
-        if (ch > h) {
+        // proporcional: o vídeo inteiro cabe (faixas pretas); cover: o vídeo cobre tudo (as bordas saem da moldura)
+        if (if (cover) ch < h else ch > h) {
             ch = h
             cw = (h * aspect).toInt()
         }

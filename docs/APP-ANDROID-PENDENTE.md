@@ -1,6 +1,6 @@
 # App Android: o que já lê do contrato e o que ainda falta
 
-Situação em 23/11/2026, versão **0.3.0** (versionCode 3). Referência de desenho: `public/shared/tvcorp-previa.js` e
+Situação em 23/11/2026, versão **0.3.1** (versionCode 4). Referência de desenho: `public/shared/tvcorp-previa.js` e
 `.css` do main (o app da Samsung desenha igual). Todos os campos são opcionais: sem eles, a tela fica como antes.
 
 > **Testado só nos testes da JVM e na compilação do release.** Não havia emulador nem TV box nesta máquina: o desenho
@@ -27,6 +27,7 @@ Situação em 23/11/2026, versão **0.3.0** (versionCode 3). Referência de dese
 | `safety` com `record: null` | sem a linha do recorde |
 | Itens `agenda`, `reviews`, `dashboard`, `directions`, `web` | desenhados no aparelho; o `web` numa WebView ocupando a zona, recarregada a cada `refreshMin` |
 | `clock` com `face`, `tz`, `label`, `seconds`, `date` | digital ou de ponteiros, no fuso do gadget |
+| Vídeo ao vivo da zona (0.3.1) | proporcional por padrão (inteiro, faixas pretas); preenche cortando as bordas só com `fit: 'cover'` na zona de vídeo (TextureView) |
 | `signage.wall` | `menu` com `sync`: o item de cada playlist pela conta `syncPosition` com a hora confiável; `wall`: o quadro do conjunto com a janela desta TV (`wallWindow`) |
 | Comando `identify` | por 10 s, por cima de tudo: o número grande da posição, o nome da tela e o do conjunto; responde ok |
 

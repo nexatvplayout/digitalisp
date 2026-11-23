@@ -34,6 +34,8 @@ data class SignageZone(
     val shape: String = "", val edgeColor: Int = 0, val edgeWidth: Float = 0f,
     /** Camada de cima (um gadget sobre a imagem ou o vídeo), com o fundo escuro translúcido em [opacity]% (0 a 100). */
     val overlay: Boolean = false, val opacity: Int = 60,
+    /** Zona de vídeo: preencher cortando as bordas (`fit: 'cover'`); falso = proporcional, sem cortar (o padrão). */
+    val cover: Boolean = false,
 )
 
 data class SignageLayoutCfg(val portrait: Boolean, val background: Int?, val zones: List<SignageZone>, val audio: SignAudio? = null) {
@@ -364,6 +366,7 @@ object Signage {
             id, x, y, w, h, kind, txt(o, "text", MAX_TEXT), qrText(ConfigParser.str(o, "qr")), txt(o, "title", MAX_TITLE),
             shape = shape, edgeColor = edgeColor, edgeWidth = edgeWidth,
             overlay = overlay, opacity = int(o, "opacity", 60).coerceIn(0, 100),
+            cover = kind == ZONE_VIDEO && ConfigParser.str(o, "fit")?.lowercase() == "cover",
         )
     }
 

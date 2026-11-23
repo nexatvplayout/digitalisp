@@ -114,6 +114,7 @@ object SignageLayout {
                 else -> fixed(z, s, hooks)?.let { SignPlaylistView(ctx, listOf(it), zQuiet, e).also { p -> lists.add(p) } }
             }
             if (v == null) continue
+            if (v === frame) frame.cover = z.cover // proporcional por padrão; cortando as bordas só com `fit: 'cover'`
             if (z.shape.isEmpty()) {
                 root.addView(v, lp)
             } else {
