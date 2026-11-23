@@ -30,6 +30,7 @@ import { localParts, validTz } from './tz.js';
 import * as R from './tvcorp-rh.js';
 import * as F from './tvcorp-fontes.js';
 import { safeFetch } from './web/net.js';
+import { cleanRemoteUrl, sheetCsvUrl, remoteCached, icsEvents, sheetMenu, REMOTE } from './fontes-remotas.js';
 import { DATES, DATE_KINDS, cleanDateKeys, datesOn, upcomingDates } from '../public/shared/tvcorp-datas.js';
 
 const { fail, line, idOf, sha256 } = R;
@@ -133,7 +134,9 @@ export function cleanWidget(kind, b, { partial = false, cur = null } = {}) {
       const time = hm(e?.time, 'o horário'); const end = hm(e?.end, 'o fim');
       return { date, ...(time ? { time } : {}), ...(end ? { end } : {}), title, ...(line(e?.place, 60) ? { place: line(e.place, 60) } : {}) };
     }).sort((a, b) => `${a.date}${a.time || ''}`.localeCompare(`${b.date}${b.time || ''}`));
-    out.data = { title: line(d.title, 60) || 'Agenda', events };
+    let icsUrl = '';
+    try { icsUrl = cleanRemoteUrl(d.icsUrl, 'Agenda'); } catch (e) { throw fail(400, e.message); }
+    out.data = { title: line(d.title, 60) || 'Agenda', events, ...(icsUrl ? { icsUrl } : {}) };
   } else if (kind === 'reviews') {
     const list = Array.isArray(d.items) ? d.items : [];
     if (!list.length || list.length > GADGET_LIMITS.reviews) throw fail(400, `Avaliações: de 1 a ${GADGET_LIMITS.reviews}.`);
@@ -166,7 +169,9 @@ export function cleanWidget(kind, b, { partial = false, cur = null } = {}) {
       if (items.some((x) => Object.hasOwn(x, 'price') && (x.price == null || x.price < 0))) throw fail(400, 'Cardápio: preço em reais (um número).');
       if (items.length) days[String(w)] = items;
     }
-    out.data = { title: line(d.title, 60) || 'Cardápio do dia', days, showPrice: d.showPrice === true };
+    let csvUrl = '';
+    try { csvUrl = cleanRemoteUrl(d.csvUrl, 'Cardápio') ; } catch (e) { throw fail(400, e.message); }
+    out.data = { title: line(d.title, 60) || 'Cardápio do dia', days, showPrice: d.showPrice === true, ...(csvUrl ? { csvUrl: sheetCsvUrl(csvUrl) } : {}) };
   }
   if (cur && !out.data) out.data = cur;
   return out;
@@ -670,6 +675,24 @@ export function createTvcorpDados({
     app.get(`${P}/widgets`, M, ah(async (req, res) => {
       res.json({ kinds: WIDGET_KINDS, zones: WORLD_ZONES, widgets: (await db.all('SELECT * FROM tvcorp_widgets WHERE tenant_id = ? ORDER BY kind, name, id', [req.tenantId])).map(widgetDto) });
     }));
+    app.post(`${P}/widgets/conferir-fonte`, M, ah(async (req, res) => {
+      const b = req.body || {}; let url;
+      try { url = cleanRemoteUrl(b.url, b.kind === 'agenda' ? 'Agenda' : 'Planilha'); } catch (e) { throw fail(400, e.message); }
+      if (!url) throw fail(400, 'Cole o endereço.');
+      if (b.kind !== 'agenda') url = sheetCsvUrl(url);
+      let text;
+      try { const r = await (fetcher || safeFetch)(url, { timeout: 8000, redirects: 3, maxBytes: REMOTE.maxBytes }); if (r.status < 200 || r.status >= 300) throw new Error(`a fonte respondeu ${r.status}`); text = r.text(); }
+      catch (e) { throw fail(400, `Não consegui abrir o endereço (${String(e.message || e).slice(0, 80)}). Confira se ele é público.`); }
+      if (b.kind === 'agenda') {
+        if (!/BEGIN:VCALENDAR/i.test(text)) throw fail(400, 'Esse endereço não é de uma agenda (.ics). No Google Agenda use "Endereço público no formato iCal"; no Outlook, "Publicar agenda" > link ICS.');
+        const ev = icsEvents(text, { tz: (await settings(req.tenantId)).tz, from: now() });
+        return res.json({ ok: true, count: ev.length, sample: ev.slice(0, 3) });
+      }
+      const days = sheetMenu(R.parseCsv(text, { maxRows: 400 }), { parseNumber: F.parseNumber }).days;
+      const n = new Set(Object.values(days).flat().map((x) => x.name)).size;
+      if (!n) throw fail(400, 'Não achei a coluna "item" (ou prato, produto) na planilha. Ponha na primeira linha: item, preço, descrição e, se quiser, dia.');
+      res.json({ ok: true, count: n, sample: Object.values(days).flat().slice(0, 3) });
+    }));
     app.post(`${P}/widgets`, M, ah(async (req, res) => {
       const kind = req.body?.kind;
       const w = cleanWidget(kind, req.body);
@@ -944,6 +967,23 @@ export function createTvcorpDados({
       : db.all('SELECT * FROM tvcorp_people WHERE tenant_id = ? AND active = 1 ORDER BY name, id', [tenantId]);
   }
   const photoOf = (p) => (photoUrl && p.photo && Number(p.photo_consent) && /^[0-9a-f]{64}$/.test(p.photo_sha || '') ? (() => { const url = photoUrl(p.photo); return /^https:\/\//.test(url || '') ? { url, sha256: p.photo_sha, bytes: Number(p.photo_bytes) } : null; })() : null);
+  /** O texto de uma fonte remota (https público, até 2 MB), guardado 15 min; null se nunca respondeu. */
+  const remoteText = (url) => remoteCached(url, async (u) => { const r = await (fetcher || safeFetch)(u, { timeout: 8000, redirects: 3, maxBytes: REMOTE.maxBytes }); if (r.status < 200 || r.status >= 300) throw new Error(`a fonte respondeu ${r.status}`); return r.text(); });
+  /** O cardápio com a planilha: os pratos do dia vêm dela (cai nos digitados se a planilha não responder). */
+  async function withSheet(w) {
+    if (!w.data.csvUrl) return w;
+    const text = await remoteText(w.data.csvUrl);
+    const days = text ? sheetMenu(R.parseCsv(text, { maxRows: 400 }), { parseNumber: F.parseNumber }).days : null;
+    return days && Object.keys(days).length ? { ...w, data: { ...w.data, days: Object.fromEntries(Object.entries(days).map(([k, v]) => [k, v.slice(0, 12)])) } } : w;
+  }
+  /** A agenda com o .ics: os compromissos dele somados aos digitados, de hoje em diante. */
+  async function agendaEvents(w, tz) {
+    const own = w.data.events || [];
+    if (!w.data.icsUrl) return own;
+    const text = await remoteText(w.data.icsUrl);
+    const ext = text ? icsEvents(text, { tz, from: now() }) : [];
+    return [...own, ...ext].sort((a, b) => `${a.date}${a.time || ''}`.localeCompare(`${b.date}${b.time || ''}`));
+  }
   function menuToday(w, day) {
     const items = w.data.days?.[String(day.weekday)] || [];
     if (!items.length) return null;
@@ -1041,7 +1081,7 @@ export function createTvcorpDados({
         else if (kind !== 'widget') w = await db.get('SELECT * FROM tvcorp_widgets WHERE tenant_id = ? AND kind = ? ORDER BY id LIMIT 1', [tenantId, kind]);
         if (!w || (kind !== 'widget' && w.kind !== kind)) return null;
         const d = widgetDto(w);
-        if (d.kind === 'menu') { const m = menuToday(d, day); return m ? { id: `m${d.id}`, kind: 'menu', ...m } : null; }
+        if (d.kind === 'menu') { const m = menuToday(await withSheet(d), day); return m ? { id: `m${d.id}`, kind: 'menu', ...m } : null; }
         if (d.kind === 'countdown') return (d.data.until || d.data.at) > t - 86400_000 ? { id: `w${d.id}`, kind: 'countdown', title: d.data.title, target: d.data.at, ...(d.data.until ? { until: d.data.until } : {}), text: d.data.text || '' } : null;
         if (d.kind === 'safety') return { id: `w${d.id}`, kind: 'safety', ...safetyOf(d, day.ymd) };
         if (d.kind === 'worldclock') return { id: `w${d.id}`, kind: 'worldclock', clocks: d.data.zones.map((z) => ({ tz: z, label: ZONE.get(z)?.label || z })) };
@@ -1052,7 +1092,7 @@ export function createTvcorpDados({
         }
         if (d.kind === 'clock') return { id: `w${d.id}`, kind: 'clock', face: d.data.face, tz: d.data.tz || s.tz, label: d.data.label || '', showSeconds: d.data.showSeconds !== false, date: d.data.date !== false };
         if (d.kind === 'agenda') {
-          const next = (d.data.events || []).filter((e) => e.date >= day.ymd).slice(0, GADGET_LIMITS.agendaShown);
+          const next = (await agendaEvents(d, s.tz)).filter((e) => e.date >= day.ymd).slice(0, GADGET_LIMITS.agendaShown);
           return next.length ? { id: `w${d.id}`, kind: 'agenda', title: d.data.title, today: day.ymd, events: next } : null;
         }
         if (d.kind === 'reviews') return { id: `w${d.id}`, kind: 'reviews', title: d.data.title, items: d.data.items, ...(d.data.qr ? { qr: d.data.qr } : {}) };

@@ -60,8 +60,14 @@ function editWidget(w, reload, kindKey = 'countdown') {
     const ev = el('textarea', { rows: '8', placeholder: 'Um por linha: data | horário | compromisso | local\n25/11 | 09:00-10:00 | Reunião geral | Auditório\n28/11 | | Treinamento de brigada | Pátio' });
     const br = (iso) => (iso ? iso.split('-').reverse().join('/') : '');
     ev.value = (d.events || []).map((e) => [br(e.date), [e.time, e.end].filter(Boolean).join('-'), e.title, e.place || ''].join(' | ')).join('\n');
-    put(box, f('Título', title), f('Compromissos (até 40)', ev, 'A tela mostra de hoje em diante, até 6 por vez. Data como 25/11 (o ano é o próximo 25/11) ou 25/11/2027.'));
-    read = () => ({ title: title.value.trim(), events: lines(ev.value).map((l) => {
+    const ics = el('input', { type: 'url', value: d.icsUrl || '', placeholder: 'Cole aqui o endereço iCal (.ics) da agenda' });
+    const icsOk = el('p', { class: 'small', 'aria-live': 'polite' });
+    const conferir = guard(async () => { icsOk.textContent = 'Conferindo…'; const r = await tapi('/api/tvcorp/widgets/conferir-fonte', { method: 'POST', body: { kind: 'agenda', url: ics.value } }).catch((e) => { icsOk.textContent = e.message; return null; }); if (r) icsOk.textContent = `Achei ${r.count} compromisso(s) dos próximos 45 dias${r.sample?.[0] ? `, por exemplo: ${r.sample[0].title}` : ''}.`; });
+    put(box, f('Título', title),
+      f('Agenda do Google ou do Outlook (opcional)', ics, 'Google Agenda: Configurações da agenda > "Endereço público no formato iCal" (ou o endereço secreto). Outlook: Calendário > Publicar agenda > link ICS. A tela atualiza sozinha a cada 15 minutos.'),
+      btns(btn('Conferir o link', conferir, 'small')), icsOk,
+      f('Compromissos digitados (até 40, somam com os da agenda)', ev, 'A tela mostra de hoje em diante, até 6 por vez. Data como 25/11 (o ano é o próximo 25/11) ou 25/11/2027.'));
+    read = () => ({ title: title.value.trim(), icsUrl: ics.value.trim(), events: lines(ev.value).map((l) => {
       const [dt = '', hr = '', what = '', place = ''] = l.split('|').map((x) => x.trim());
       const m = /^(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?$/.exec(dt); const now = new Date();
       let y = m?.[3] ? Number(m[3]) : now.getFullYear();
@@ -102,8 +108,14 @@ function editWidget(w, reload, kindKey = 'countdown') {
     const title = el('input', { type: 'text', maxlength: '60', value: d.title || '', placeholder: 'Ex.: Cardápio do refeitório' });
     const showPrice = el('input', { type: 'checkbox', checked: Boolean(d.showPrice) });
     const areas = Object.fromEntries(MENU_DAYS.map((n) => { const a = el('textarea', { rows: '4', placeholder: 'Um prato por linha. Preço opcional depois de " | ": Prato feito | 18,90' }); a.value = (d.days?.[String(n)] || []).map((x) => `${x.name}${x.price != null ? ` | ${String(x.price).replace('.', ',')}` : ''}`).join('\n'); return [n, a]; }));
-    put(box, f('Título', title), el('div', { class: 'tc-week-menu' }, ...MENU_DAYS.map((n) => f(WEEK_SHORT[n], areas[n]))), el('label', { class: 'pf-check' }, showPrice, el('span', { text: 'Mostrar o preço na tela' })), note('A tela mostra o cardápio do dia (até 12 pratos).'));
-    read = () => ({ title: title.value.trim(), showPrice: showPrice.checked, days: Object.fromEntries(MENU_DAYS.map((n) => [String(n), lines(areas[n].value).slice(0, 12).map((l) => { const [nm, pr] = l.split('|').map((x) => x.trim()); const price = pr ? Number(pr.replace(',', '.')) : null; return Number.isFinite(price) ? { name: nm, price } : { name: nm }; })])) });
+    const csv = el('input', { type: 'url', value: d.csvUrl || '', placeholder: 'Cole aqui o link da planilha do Google' });
+    const csvOk = el('p', { class: 'small', 'aria-live': 'polite' });
+    const conferirCsv = guard(async () => { csvOk.textContent = 'Conferindo…'; const r = await tapi('/api/tvcorp/widgets/conferir-fonte', { method: 'POST', body: { kind: 'menu', url: csv.value } }).catch((e) => { csvOk.textContent = e.message; return null; }); if (r) csvOk.textContent = `Achei ${r.count} item(ns)${r.sample?.[0] ? `, por exemplo: ${r.sample[0].name}${r.sample[0].price != null ? ` (R$ ${String(r.sample[0].price).replace('.', ',')})` : ''}` : ''}.`; });
+    put(box, f('Título', title),
+      f('Planilha do Google (opcional: cardápio ou tabela de preços que se atualiza sozinha)', csv, 'Na primeira linha: item, preço, descrição e, se quiser, dia (seg, ter… ou vazio para todo dia). Compartilhe como "qualquer pessoa com o link pode ver" e cole o link. A tela confere a cada 15 minutos; com a planilha, os pratos digitados abaixo só valem se ela não responder.'),
+      btns(btn('Conferir a planilha', conferirCsv, 'small')), csvOk,
+      el('div', { class: 'tc-week-menu' }, ...MENU_DAYS.map((n) => f(WEEK_SHORT[n], areas[n]))), el('label', { class: 'pf-check' }, showPrice, el('span', { text: 'Mostrar o preço na tela' })), note('A tela mostra o cardápio do dia (até 12 pratos).'));
+    read = () => ({ title: title.value.trim(), showPrice: showPrice.checked, csvUrl: csv.value.trim(), days: Object.fromEntries(MENU_DAYS.map((n) => [String(n), lines(areas[n].value).slice(0, 12).map((l) => { const [nm, pr] = l.split('|').map((x) => x.trim()); const price = pr ? Number(pr.replace(',', '.')) : null; return Number.isFinite(price) ? { name: nm, price } : { name: nm }; })])) });
   }
   box.addEventListener('input', paintPv); box.addEventListener('change', paintPv); paintPv();
   dialog(w ? `${widgetLabel(kind)} · ${w.name}` : `Novo: ${widgetLabel(kind)}`, el('div', { class: 'tc-two' }, el('div', { class: 'pf-grid' }, f('Nome', name), box), el('div', {}, label('Como aparece na TV'), pv)), {
