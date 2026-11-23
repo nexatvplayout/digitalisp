@@ -308,11 +308,13 @@ export function buildCatalog() {
 }
 let memo = null;
 /** Todos os templates (gerados uma vez por carga da página). */
-export const templateCatalog = () => (memo ||= buildCatalog());
+/** PREMIUM: os templates com foto própria gerada por IA (GPT Image, artes foto-*). A busca acha também por "premium". */
+export const isPremium = (t) => /^foto-/.test(String(t?.fields?.art || ''));
+export const templateCatalog = () => (memo ||= buildCatalog().map((t) => (isPremium(t) ? { ...t, premium: true, search: `${t.search} premium foto` } : t)));
 
 /** Filtra pela busca (sem acento, todas as palavras), grupo, segmento, peça e formato. */
-export function filterTemplates(list, { q = '', group = '', segment = '', piece = '', orient = '' } = {}) {
+export function filterTemplates(list, { q = '', group = '', segment = '', piece = '', orient = '', premium = '' } = {}) {
   const words = strip(q).split(/\s+/).filter(Boolean);
-  return list.filter((t) => (!group || t.group === group) && (!segment || t.segment === segment) && (!piece || t.piece === piece) && (!orient || t.orient === orient)
+  return list.filter((t) => (!group || t.group === group) && (!segment || t.segment === segment) && (!piece || t.piece === piece) && (!orient || t.orient === orient) && (!premium || (premium === 'sim') === Boolean(t.premium))
     && words.every((w) => t.search.includes(w)));
 }
