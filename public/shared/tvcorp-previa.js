@@ -13,6 +13,7 @@
 // news{source,items[{title,source,at}]}; quotes{items[{label,value,change,prefix,decimals}],at,source}; menu{title,day,
 // items[{name,price}|"texto"]}; countdown{title,target,text}; safety{since,record,goal}; worldclock{clocks[{label,tz}]}; text{title,text}.
 import { qrSvg } from './telas-previa.js';
+import { shapeCommands, edgeCommands, toPathD } from './tvcorp-formas.js';
 import { TVC_ART, TVC_PALETTES, TVC_SIZE_FIELDS } from './tvcorp-tipos.js';
 
 const NS = 'http://www.w3.org/2000/svg';
@@ -351,6 +352,7 @@ export const frameOf = (orientation) => (orientation === 'port' ? { w: 90, h: 16
  * O layout por zonas: um SVG com cada zona no lugar (x, y, largura e altura pelos atributos) e, dentro, o que ela mostra.
  * opts.selected destaca uma zona; opts.labels põe o nome dela no canto; opts.onZone(id) torna as zonas clicáveis.
  */
+let CLIP_SEQ = 0;
 export function layoutPreview(layout = {}, opts = {}) {
   // DIGITAL ISP: opts.wall { cols, rows, bezel, orientation } desenha o videowall inteiro (o layout no tamanho do conjunto)
   const fr = opts.wall ? wallFrame(opts.wall) : frameOf(layout.orientation);
@@ -359,14 +361,24 @@ export function layoutPreview(layout = {}, opts = {}) {
   wrap.setAttribute('aria-label', `Prévia do layout${layout.name ? ` ${layout.name}` : ''}: ${(layout.zones || []).map((z) => ZONE_NAMES[z.kind] || z.kind).join(', ')}`);
   const svg = s('svg', { class: 'tvc-svg', viewBox: `0 0 ${fr.w} ${fr.h}`, preserveAspectRatio: 'xMidYMid meet' });
   svg.append(s('rect', { class: `tvc-bg ${themeClass(opts.theme)}`, x: 0, y: 0, width: fr.w, height: fr.h }));
+  // a cor de fundo própria do layout (azul, verde...): por atributo; os fundos padrão (escuro, claro, preto) seguem o tema
+  if (/^#[0-9a-f]{6}$/i.test(layout.background || '') && !['#0b1220', '#eef2f7', '#000000'].includes(layout.background.toLowerCase())) svg.append(s('rect', { x: 0, y: 0, width: fr.w, height: fr.h, fill: layout.background }));
   // a camada de baixo primeiro, a de cima (overlay) por último: ela fica sobre a imagem
-  const ordered = [...(layout.zones || []).filter((z) => !z.overlay), ...(layout.zones || []).filter((z) => z.overlay)];
+  // em cada camada, os retângulos e depois os formatos (a zona recortada entra na vizinha)
+  const zs = layout.zones || []; const lay = (ov) => [...zs.filter((z) => Boolean(z.overlay) === ov && !z.shape), ...zs.filter((z) => Boolean(z.overlay) === ov && z.shape)];
+  const ordered = [...lay(false), ...lay(true)];
+  const defs = s('defs', {}); svg.append(defs);
   for (const zone of ordered) {
     const x = (zone.x / 100) * fr.w; const y = (zone.y / 100) * fr.h; const w = (zone.w / 100) * fr.w; const hh = (zone.h / 100) * fr.h;
     const g = s('g', { class: `tvc-zone k-${zone.kind}${zone.overlay ? ' ov' : ''}${opts.selected === zone.id ? ' sel' : ''}`, 'data-zone': zone.id });
     const fo = s('foreignObject', { x: x.toFixed(2), y: y.toFixed(2), width: w.toFixed(2), height: hh.toFixed(2) });
+    // o formato: um clipPath em coordenadas do quadro, ligado ao foreignObject por atributo (sem estilo pelo script)
+    const cut = zone.shape ? shapeCommands(zone.shape, w, hh, x, y) : null;
+    if (cut) { const id = `tvcclip${++CLIP_SEQ}`; const cp = s('clipPath', { id }); cp.append(s('path', { d: toPathD(cut) })); defs.append(cp); fo.setAttribute('clip-path', `url(#${id})`); }
     fo.append(h('div', zone.overlay ? `tvc-z tvc-ov tvc-op-${Math.round(Math.max(0, Math.min(100, zone.opacity ?? 60)) / 20) * 20}` : 'tvc-z', zoneContent(zone, opts)));
-    g.append(fo, s('rect', { class: 'tvc-zb', x: (x + 0.3).toFixed(2), y: (y + 0.3).toFixed(2), width: Math.max(0, w - 0.6).toFixed(2), height: Math.max(0, hh - 0.6).toFixed(2), rx: 0.8 }));
+    g.append(fo, cut ? s('path', { class: 'tvc-zb', d: toPathD(cut) }) : s('rect', { class: 'tvc-zb', x: (x + 0.3).toFixed(2), y: (y + 0.3).toFixed(2), width: Math.max(0, w - 0.6).toFixed(2), height: Math.max(0, hh - 0.6).toFixed(2), rx: 0.8 }));
+    // o filete: largura em % da altura da tela
+    if (cut && zone.edge) g.append(s('path', { class: 'tvc-edge', d: toPathD(edgeCommands(zone.shape, w, hh, x, y)), stroke: zone.edge.color, 'stroke-width': ((Number(zone.edge.width) || 1) / 100 * fr.h).toFixed(2) }));
     if (opts.labels) {
       const t = s('text', { class: 'tvc-zl', x: (x + 1.5).toFixed(2), y: (y + 4.2).toFixed(2) });
       t.textContent = `${zone.id} · ${ZONE_NAMES[zone.kind] || zone.kind}`;

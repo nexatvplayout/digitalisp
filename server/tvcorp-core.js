@@ -4,6 +4,7 @@
 // `plays` do sinal de vida. O banco e as rotas ficam em server/tvcorp.js; o catálogo em public/shared/tvcorp-tipos.js.
 import { qrKind } from '../public/shared/qr-conteudo.js';
 import * as W from '../public/shared/tvcorp-wall.js';
+import { ZONE_SHAPE_KEYS, EDGE_LIMITS } from '../public/shared/tvcorp-formas.js';
 import {
   TVC_LIMITS as L, TVC_ZONE, TVC_ZONE_KEYS, TVC_ZONE_ID_RE, TVC_PLAYLIST_ZONES, TVC_ORIENTATION_KEYS, TVC_LAYOUT_MODEL, TVC_SLIDE_MODEL,
   TVC_REF_KIND, TVC_SCOPE, TVC_SCOPE_KEYS, TVC_ITEM_KINDS, TVC_FIT_KEYS, TVC_POST_CATEGORY_KEYS, itemRef, parseItemRef, tvcScopeHits,
@@ -135,6 +136,17 @@ export function cleanZone(z, i = 0) {
     if (!Number.isFinite(op) || op < 0 || op > 100) throw fail(400, `${what}: a opacidade do fundo vai de 0 a 100.`);
     out.opacity = op;
   }
+  // DIGITAL ISP: o formato (recorte não retangular, public/shared/tvcorp-formas.js) e o filete na borda do recorte
+  if (z.shape != null && z.shape !== '') {
+    if (!ZONE_SHAPE_KEYS.includes(z.shape)) throw fail(400, `${what}: formato de zona desconhecido.`);
+    out.shape = z.shape;
+    if (z.edge && typeof z.edge === 'object') {
+      const color = String(z.edge.color || '').toLowerCase(); const width = Math.round(Number(z.edge.width) * 10) / 10;
+      if (!/^#[0-9a-f]{6}$/.test(color)) throw fail(400, `${what}: a cor do filete é #rrggbb.`);
+      if (!(width >= EDGE_LIMITS.min && width <= EDGE_LIMITS.max)) throw fail(400, `${what}: a espessura do filete vai de ${EDGE_LIMITS.min} a ${EDGE_LIMITS.max}.`);
+      out.edge = { color, width };
+    }
+  }
   if (TVC_PLAYLIST_ZONES.includes(kind) && z.hint && TVC_REF_KIND[z.hint]) out.hint = z.hint;
   return out;
 }
@@ -148,10 +160,12 @@ export function cleanZones(list) {
   if (zones.filter((z) => z.kind === 'video').length > L.videoZones) throw fail(400, 'No máximo uma zona de vídeo por layout.');
   // a de cima pode ficar sobre a de baixo; duas da mesma camada, não
   for (let i = 0; i < zones.length; i++) for (let k = i + 1; k < zones.length; k++) {
-    if (Boolean(zones[i].overlay) === Boolean(zones[k].overlay) && overlap(zones[i], zones[k])) throw fail(400, `As zonas "${zones[i].id}" e "${zones[k].id}" estão uma por cima da outra.`);
+    // a zona com formato (recorte) pode entrar na vizinha: o recorte é quem decide o que aparece
+    if (Boolean(zones[i].overlay) === Boolean(zones[k].overlay) && !zones[i].shape && !zones[k].shape && overlap(zones[i], zones[k])) throw fail(400, `As zonas "${zones[i].id}" e "${zones[k].id}" estão uma por cima da outra.`);
   }
-  // a ordem é a de desenhar: primeiro a camada de baixo, depois a de cima
-  return [...zones.filter((z) => !z.overlay), ...zones.filter((z) => z.overlay)];
+  // a ordem é a de desenhar: primeiro a camada de baixo, depois a de cima; em cada uma, os retângulos e depois os formatos
+  const layer = (ov) => [...zones.filter((z) => Boolean(z.overlay) === ov && !z.shape), ...zones.filter((z) => Boolean(z.overlay) === ov && z.shape)];
+  return [...layer(false), ...layer(true)];
 }
 /** Fundo do layout: só uma cor (#rrggbb); o app não desenha imagem de fundo. */
 export function cleanBackground(v) {

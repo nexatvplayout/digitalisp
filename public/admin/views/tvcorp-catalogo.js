@@ -46,7 +46,7 @@ export const LIMITS = Object.freeze({
 });
 
 /** Os modelos de layout de fábrica (§4.2), os do catálogo comum. */
-export const FACTORY_LAYOUTS = TVC_LAYOUT_MODELS.map((m) => ({ key: m.key, label: m.label, desc: m.desc, orientation: m.orientation, background: m.background, segment: m.segment || 'geral', set: m.set || null, main: layoutMainOf(m), zones: m.zones.map(({ hint, ...z }) => ({ ...z })) }));
+export const FACTORY_LAYOUTS = TVC_LAYOUT_MODELS.map((m) => ({ key: m.key, label: m.label, desc: m.desc, orientation: m.orientation, background: m.background, segment: m.segment || 'geral', set: m.set || null, main: layoutMainOf(m), special: Boolean(m.special), zones: m.zones.map(({ hint, ...z }) => ({ ...z })) }));
 /** Os conjuntos de várias TVs (menu board): as telas, na ordem da esquerda para a direita. */
 export const FACTORY_SETS = TVC_LAYOUT_SETS.map((x) => ({ ...x, screens: [...x.screens] }));
 export const LAYOUT_SEGMENTS = TVC_LAYOUT_SEGMENTS.map((x) => ({ ...x }));
@@ -163,7 +163,7 @@ export function checkZones(zones) {
   }
   for (let i = 0; i < zones.length; i++) for (let k = i + 1; k < zones.length; k++) {
     const a = zones[i]; const b = zones[k];
-    if (Boolean(a.overlay) === Boolean(b.overlay) && a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h) return `As zonas "${a.id}" e "${b.id}" estão uma por cima da outra (marque "Por cima" na que fica sobre a outra).`;
+    if (Boolean(a.overlay) === Boolean(b.overlay) && !a.shape && !b.shape && a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h) return `As zonas "${a.id}" e "${b.id}" estão uma por cima da outra (marque "Por cima" na que fica sobre a outra).`;
   }
   return null;
 }

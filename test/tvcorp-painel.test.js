@@ -109,7 +109,7 @@ test('abas: todas as da §6, pela permissão tvcorp.manage', () => {
 
 test('catálogo: os modelos de layout passam na conferência do contrato; nome curto, dias, faixa do indicador', () => {
   for (const l of C.FACTORY_LAYOUTS) assert.equal(C.checkZones(l.zones), null, l.key);
-  assert.equal(C.FACTORY_LAYOUTS.length, 184); assert.equal(C.FACTORY_SETS.length, 5); assert.equal(C.SLIDE_TEMPLATES.length, 17);
+  assert.equal(C.FACTORY_LAYOUTS.length, 209); assert.equal(C.FACTORY_SETS.length, 5); assert.equal(C.SLIDE_TEMPLATES.length, 17);
   assert.match(C.checkZones([{ id: 'a', kind: 'video', x: 0, y: 0, w: 50, h: 50 }, { id: 'b', kind: 'video', x: 50, y: 0, w: 50, h: 50 }]), /uma zona de vídeo/);
   assert.match(C.checkZones([{ id: 'a', kind: 'playlist', x: 60, y: 0, w: 50, h: 50 }]), /passa da borda/);
   assert.match(C.checkZones(Array.from({ length: 7 }, (_, i) => ({ id: `z${i}`, kind: 'clock', x: 0, y: 0, w: 10, h: 10 }))), /No máximo 6/);

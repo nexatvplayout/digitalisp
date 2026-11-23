@@ -362,3 +362,5 @@
 .tvc-previa.wall { max-width: 100%; }
 .tvc-bezel { fill: #05070b; }
 .tvc-wall-n { font: 700 22px/1 "IBM Plex Sans", Arial, sans-serif; fill: rgba(255, 255, 255, 0.55); stroke: rgba(0, 0, 0, 0.6); stroke-width: 0.8px; paint-order: stroke; text-anchor: middle; dominant-baseline: middle; pointer-events: none; }
+/* formatos especiais: o filete na borda do recorte */
+.tvc-edge { fill: none; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }

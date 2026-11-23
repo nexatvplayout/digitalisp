@@ -10,6 +10,7 @@ import { themeOf } from './tvcorp-midias.js';
 import { radioPicker } from './tvcorp-radio.js';
 import { wifiQr, vcardQr, qrKind, qrLabel } from '../../shared/qr-conteudo.js';
 import { quadroPx, formatoDe, FORMATO_TXT, dicaArte, quadrosDoLayout } from './tvcorp-quadros.js';
+import { ZONE_SHAPES, EDGE_COLORS } from '../../shared/tvcorp-formas.js';
 import { WALL_GRIDS, WALL_MODES, bezelPct, platformOf, WALL_UNSUPPORTED, PLATFORM_LABEL } from '../../shared/tvcorp-wall.js';
 
 const NS = 'http://www.w3.org/2000/svg';
@@ -104,19 +105,21 @@ export function zoneCanvas(st, onChange) {
 export function layoutEditor(lay, reload, factoryKey = null, copyOf = null) {
   const base = lay || copyOf || FACTORY_LAYOUT[factoryKey] || FACTORY_LAYOUT['video-lateral-barra'];
   const st = {
-    name: lay?.name || (copyOf ? `${copyOf.name} (cópia)` : factoryKey ? base.label : ''), orientation: base.orientation || 'land', background: (lay || copyOf)?.background || '#0b1220',
+    name: lay?.name || (copyOf ? `${copyOf.name} (cópia)` : factoryKey ? base.label : ''), orientation: base.orientation || 'land', background: (lay || copyOf || (factoryKey ? base : null))?.background || '#0b1220',
     zones: (base.zones || []).map((z) => ({ ...z })), sel: 0, factoryKey: (lay || copyOf)?.factoryKey || factoryKey || null,
   };
   const name = el('input', { type: 'text', maxlength: String(LIMITS.name), value: st.name, placeholder: 'Ex.: Recepção da matriz' });
   const orient = el('select', {}, opt('land', 'Deitada (16:9)', st.orientation === 'land'), opt('port', 'Em pé (9:16, totem)', st.orientation === 'port'));
-  const bg = el('select', {}, ...BACKGROUNDS.map(([v, t]) => opt(v, t, st.background === v)));
+  // a cor do modelo pronto que não está na lista (verde-água, roxo...) entra como "Cor do modelo"
+  const bgList = BACKGROUNDS.some(([v]) => v === st.background) ? BACKGROUNDS : [...BACKGROUNDS, [st.background, 'Cor do modelo']];
+  const bg = el('select', {}, ...bgList.map(([v, t]) => opt(v, t, st.background === v)));
   const rowsBox = el('div', { class: 'tc-zones-wrap' }); const pv = el('div', { class: 'tc-pv-box' }); const err = el('p', { class: 'pf-err small', 'aria-live': 'polite' });
   const canvas = zoneCanvas(st, (why) => { if (why === 'select') paintRows(); else { paintRows(); paintPv(); } });
   // a rádio de fundo (só em layout sem a zona de vídeo do canal); refresh() a cada mudança das zonas
   const radio = radioPicker(lay?.id ?? null, () => st.zones.some((z) => z.kind === 'video'));
   const paintPv = () => {
     radio.refresh();
-    put(pv, layoutPreview({ orientation: st.orientation, zones: st.zones, name: st.name }, previewOpts(st)));
+    put(pv, layoutPreview({ orientation: st.orientation, zones: st.zones, name: st.name, background: st.background }, previewOpts(st)));
     // o clima sem cidade sai vazio na tela: avisa aqui, onde a zona é escolhida
     const semCidade = !HAS_CITY && st.zones.some((z) => z.kind === 'weather' || z.sample === 'weather' || WIDGETS.find((w) => w.id === Number(z.widget))?.kind === 'weather');
     err.textContent = checkZones(st.zones) || (semCidade ? 'Atenção: nenhuma cidade para o clima. Sem ela, a zona de clima fica vazia na tela. Escolha a cidade em Configurações ou cadastre uma fonte de clima em Notícias e dados.' : '');
@@ -160,7 +163,15 @@ export function layoutEditor(lay, reload, factoryKey = null, copyOf = null) {
     const layer = (z) => (z.kind === 'video' ? null : el('span', { class: 'tc-layer' },
       el('label', { class: 'pf-check' }, el('input', { type: 'checkbox', checked: Boolean(z.overlay), 'aria-label': `Zona ${z.id} por cima`, onchange: (e) => { if (e.target.checked) { z.overlay = true; z.opacity ??= 60; } else { delete z.overlay; delete z.opacity; } canvas.paint(); paintRows(); paintPv(); } }), el('span', { text: 'Por cima' })),
       z.overlay ? el('select', { 'aria-label': `Fundo da zona ${z.id}`, onchange: (e) => { z.opacity = Number(e.target.value); paintPv(); } }, ...[0, 20, 40, 60, 80, 100].map((v) => opt(v, v ? `fundo ${v}%` : 'sem fundo', (z.opacity ?? 60) === v))) : null));
-    const params = (z) => [layer(z), ...(ZONE_KIND[z.kind]?.params || []).map((k) => (k === 'widget' ? widgetPick(z) : k === 'qr' ? qrField(z) : el('input', { type: k === 'qr' ? 'url' : 'text', maxlength: String(PARAM[k][1]), value: z[k] || '', placeholder: PARAM[k][0], 'aria-label': `${PARAM[k][0]} da zona ${z.id}`, onchange: (e) => { z[k] = e.target.value.trim(); paintPv(); } })))];
+    // o formato da zona (recorte) e o filete na borda do recorte
+    const shapePick = (z) => el('span', { class: 'tc-layer' },
+      el('select', { 'aria-label': `Formato da zona ${z.id}`, onchange: (e) => { if (e.target.value) z.shape = e.target.value; else { delete z.shape; delete z.edge; } canvas.paint(); paintRows(); paintPv(); } },
+        opt('', 'Retângulo', !z.shape), ...ZONE_SHAPES.map((x) => opt(x.key, x.label, z.shape === x.key))),
+      z.shape ? el('select', { 'aria-label': `Filete da zona ${z.id}`, onchange: (e) => { if (e.target.value) z.edge = { color: e.target.value, width: z.edge?.width || 1 }; else delete z.edge; paintRows(); paintPv(); } },
+        opt('', 'sem filete', !z.edge), ...EDGE_COLORS.map(([c, t]) => opt(c, `filete ${t.toLowerCase()}`, z.edge?.color === c))) : null,
+      z.edge ? el('select', { 'aria-label': `Espessura do filete da zona ${z.id}`, onchange: (e) => { z.edge = { ...z.edge, width: Number(e.target.value) }; paintPv(); } },
+        ...[[0.5, 'fino'], [1, 'médio'], [2, 'grosso']].map(([v, t]) => opt(v, t, Number(z.edge.width) === v))) : null);
+    const params = (z) => [shapePick(z), layer(z), ...(ZONE_KIND[z.kind]?.params || []).map((k) => (k === 'widget' ? widgetPick(z) : k === 'qr' ? qrField(z) : el('input', { type: k === 'qr' ? 'url' : 'text', maxlength: String(PARAM[k][1]), value: z[k] || '', placeholder: PARAM[k][0], 'aria-label': `${PARAM[k][0]} da zona ${z.id}`, onchange: (e) => { z[k] = e.target.value.trim(); paintPv(); } })))];
     const tam = (z) => { const px = quadroPx(st, z); return el('td', { class: 'small', title: z.kind === 'playlist' ? dicaArte({ px }) : '' }, el('b', { text: `${px.w}×${px.h}` }), el('div', { class: 'dim', text: FORMATO_TXT[formatoDe(px)] })); };
     const dicas = st.zones.filter((z) => z.kind === 'playlist').map((z) => note(`Quadro "${z.id}": ${dicaArte({ px: quadroPx(st, z) })}`, 'small'));
     put(rowsBox, table(['Zona', 'O que mostra', 'Esquerda %', 'Alto %', 'Largura %', 'Altura %', 'Na TV (px)', 'Conteúdo fixo', ''], st.zones.map((z, i) => el('tr', { class: st.sel === i ? 'tc-sel' : '' },
@@ -192,7 +203,7 @@ export function layoutEditor(lay, reload, factoryKey = null, copyOf = null) {
     save: async () => {
       const msg = checkZones(st.zones); if (msg) throw new Error(msg);
       if (!name.value.trim()) throw new Error('Dê um nome ao layout.');
-      const body = { name: name.value.trim(), orientation: st.orientation, zones: st.zones.map(({ id, kind, x, y, w, h, title, text, qr, hint }) => ({ id, kind, x, y, w, h, ...(title ? { title } : {}), ...(text ? { text } : {}), ...(qr ? { qr } : {}), ...(hint ? { hint } : {}) })), background: st.background, factoryKey: st.factoryKey };
+      const body = { name: name.value.trim(), orientation: st.orientation, zones: st.zones.map((z) => Object.fromEntries(Object.entries(z).filter(([, v]) => v !== '' && v != null))), background: st.background, factoryKey: st.factoryKey };
       const saved = lay ? await tapi(`/api/tvcorp/layouts/${lay.id}`, { method: 'PATCH', body }) : await tapi('/api/tvcorp/layouts', { method: 'POST', body });
       await radio.save(saved?.id ?? lay?.id); // a rádio de fundo, depois que o layout existe
       toast('Layout salvo. As telas com grade neste layout trocam em até 1 minuto.');
@@ -232,22 +243,23 @@ export default async function paintLayouts(box, ctx) {
     factoryBox);
 }
 /** O filtro dos modelos prontos (segmento, formato e quantas TVs): fica entre uma visita e outra à aba. */
-const FV = { segment: '', orient: '', tvs: '', main: '' };
+const FV = { segment: '', orient: '', tvs: '', main: '', shape: '' };
 /** Os modelos prontos: os de uma TV e os conjuntos de várias TVs (menu board), filtrados. */
 function factoryView(reload) {
   const box = el('div', {});
   const sel = (k, first, options) => el('select', { 'aria-label': first, onchange: (e) => { FV[k] = e.target.value; paint(); } }, opt('', first, !FV[k]), ...options.map(([v, t]) => opt(v, t, FV[k] === v)));
   const bar = el('div', { class: 'pf-bar' }, sel('segment', 'Todos os segmentos', LAYOUT_SEGMENTS.map((x) => [x.key, x.label])), sel('orient', 'Deitado e em pé', [['land', 'Deitado'], ['port', 'Em pé']]),
     sel('tvs', 'Uma ou várias TVs', [['1', 'Uma TV'], ['n', 'Várias TVs (conjunto)']]),
-    sel('main', 'Principal: qualquer', [['playlist', 'Principal: playlist'], ['video', 'Principal: vídeo ao vivo']]));
+    sel('main', 'Principal: qualquer', [['playlist', 'Principal: playlist'], ['video', 'Principal: vídeo ao vivo']]),
+    sel('shape', 'Formato: todos', [['special', 'Formatos especiais'], ['rect', 'Só retângulos']]));
   const count = el('span', { class: 'dim small' });
   const grid = el('div', { class: 'tc-lgrid' });
   const segLabel = (k) => LAYOUT_SEGMENTS.find((x) => x.key === k)?.label || '';
   const paint = () => {
     const ok = (x) => (!FV.segment || x.segment === FV.segment) && (!FV.orient || x.orientation === FV.orient);
-    const singles = FV.tvs === 'n' ? [] : FACTORY_LAYOUTS.filter((l) => !l.set && ok(l) && (!FV.main || l.main === FV.main));
+    const singles = FV.tvs === 'n' ? [] : FACTORY_LAYOUTS.filter((l) => !l.set && ok(l) && (!FV.main || l.main === FV.main) && (!FV.shape || (FV.shape === 'special') === l.special));
     // os conjuntos de várias TVs são de playlist (cardápio): somem quando o filtro pede o vídeo ao vivo
-    const sets = FV.tvs === '1' || FV.main === 'video' ? [] : FACTORY_SETS.filter(ok);
+    const sets = FV.tvs === '1' || FV.main === 'video' || FV.shape === 'special' ? [] : FACTORY_SETS.filter(ok);
     count.textContent = `${singles.length + sets.length} modelo(s)`;
     put(grid,
       ...sets.map((x) => el('div', { class: 'tc-lcard tc-set' },
@@ -256,7 +268,7 @@ function factoryView(reload) {
           btns(btn('Usar este conjunto', () => setDialog(x, reload), 'small primary'))))),
       ...singles.map((l) => el('div', { class: 'tc-lcard' },
         layoutPreview(l, { ...previewOpts(l), labels: false }),
-        el('div', { class: 'tc-lcard-b' }, el('div', {}, chip('1 TV', 'tc-tvs'), ' ', chip(segLabel(l.segment)), ' ', l.main === 'video' ? chip('Vídeo ao vivo') : l.main === 'playlist' ? chip('Playlist') : null), el('b', { text: l.label }), el('div', { class: 'dim small', text: l.desc }),
+        el('div', { class: 'tc-lcard-b' }, el('div', {}, chip('1 TV', 'tc-tvs'), ' ', chip(segLabel(l.segment)), ' ', l.main === 'video' ? chip('Vídeo ao vivo') : l.main === 'playlist' ? chip('Playlist') : null, l.special ? ' ' : null, l.special ? chip('Formato especial') : null), el('b', { text: l.label }), el('div', { class: 'dim small', text: l.desc }),
           quadrosTxt(l) ? el('div', { class: 'small tc-quadros', text: `Quadros das playlists: ${quadrosTxt(l)}` }) : null,
           btns(btn('Usar este modelo', () => layoutEditor(null, reload, l.key), 'small primary'))))));
     if (!sets.length && !singles.length) put(grid, empty('Nenhum modelo com esses filtros.'));
