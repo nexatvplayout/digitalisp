@@ -830,15 +830,28 @@ object Engine {
     }
 
     /** Transporte de verdade para o [OfflineFetch]: HttpURLConnection, com Range para continuar. */
+    /** O último motivo de um arquivo não ter baixado (HTTP 403 em host…), para o diagnóstico e o sinal de vida. */
+    @Volatile private var lastFetchError: String? = null
+
+    private fun host(url: String): String = try { URL(url).host } catch (_: Exception) { "?" }
+
+    /** Arquivos da grade (TV Corporativa): quantos dos pedidos estão prontos e o último erro de download. */
+    @Volatile var signageNote = ""
+        private set
+
     private val httpTransport = OfflineTransport { url, from ->
         val conn = URL(url).openConnection() as HttpURLConnection
         conn.connectTimeout = 15_000
         conn.readTimeout = 30_000
         conn.instanceFollowRedirects = true
         if (from > 0) conn.setRequestProperty("Range", "bytes=$from-")
-        val code = conn.responseCode
+        val code = try { conn.responseCode } catch (e: IOException) {
+            lastFetchError = "${e.javaClass.simpleName} em ${host(url)}"
+            throw e
+        }
         if (code != 200 && code != 206) {
             conn.disconnect()
+            lastFetchError = "HTTP $code em ${host(url)}"
             throw IOException("HTTP $code")
         }
         OfflineResponse(code, conn.inputStream)
@@ -1086,12 +1099,18 @@ object Engine {
                                     signageRetryAt[f.sha256] = SystemClock.elapsedRealtime() + 30 * 60_000L
                                     noteError("Imagem da TV Corporativa não confere (sha256 ou tamanho); o item fica de fora.")
                                 }
-                                else -> signageRetryAt[f.sha256] = SystemClock.elapsedRealtime() + 2 * 60_000L
+                                else -> {
+                                    signageRetryAt[f.sha256] = SystemClock.elapsedRealtime() + 2 * 60_000L
+                                    // vai no sinal de vida (lastError): o painel vê por que a imagem não aparece
+                                    noteError("Arquivo da grade não baixou (${lastFetchError ?: "sem conexão"}); tento de novo em 2 min.")
+                                }
                             }
                             if (r == OfflineFetch.Result.OK) toUi { it.onSignageFiles() }
                         },
                         cancelled = { signageAgain },
                     )
+                    val ready = wanted.count { signageFile(it) != null }
+                    signageNote = "$ready de ${wanted.size} arquivo(s) prontos" + (if (ready < wanted.size) lastFetchError?.let { " · último erro: $it" }.orEmpty() else "")
                 } while (signageAgain)
             } catch (_: Exception) {
             } finally {
