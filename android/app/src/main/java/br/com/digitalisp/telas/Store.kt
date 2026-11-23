@@ -160,6 +160,11 @@ class Store(ctx: Context) {
         get() = p.getString("marca", null)
         set(v) { if (v == null) p.edit().remove("marca").commit() else p.edit().putString("marca", v).commit() }
 
+    /** O último clima bom do /config (o JSON do contrato), para a zona de clima seguir por até 6 h sem ele. */
+    var weatherJson: String?
+        get() = p.getString("weather", null)
+        set(v) { p.edit().putString("weather", v).apply() }
+
     // ---- último estado da tela, para valer sem rede (1.2.6) ----
     /** Painel de senha como estava (core/QueueCache): só o que a tela mostra, nunca o tipo de problema. */
     var queueJson: String?
