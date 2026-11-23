@@ -503,10 +503,12 @@
       // videowall: a posição sai do epoch do conjunto (a mesma conta nas outras TVs); senão, do começo desta faixa
       var t0 = prog.conjunto && prog.conjunto.modo === 'wall' ? prog.conjunto.epoch
         : (inicioFaixa[chave] || (inicioFaixa[chave] = ctx.agora()));
-      setTimeout(function () {
+      var tentativas = 0;
+      var comecar = function () {
         if (!document.documentElement.contains(t)) return;
         var cw = primeira.offsetWidth, W = t.offsetWidth;
-        if (!cw || !W) return;
+        // a página ainda sem tamanho: tenta de novo logo depois
+        if (!cw || !W) { if (tentativas++ < 20) setTimeout(comecar, 250); return; }
         // voltas suficientes para cobrir a faixa duas vezes: anda uma "volta longa" (n voltas) e recomeça no mesmo desenho
         var n = Math.max(1, Math.ceil(W / cw));
         for (var k = 1; k < n * 2; k++) trilho.appendChild(volta());
@@ -524,7 +526,8 @@
           t.appendChild(st);
           trilho.style.animation = nome + ' ' + (dur / 1000) + 's linear ' + (-fase / 1000) + 's infinite';
         }
-      }, 60);
+      };
+      setTimeout(comecar, 60);
     }
 
     /** Os avisos da tela: os com estilo (ticker.rich) quando vierem, senão só o texto (ticker.items). */
@@ -615,11 +618,15 @@
      * de 2018–2020 não têm clip-path: path()), medidos no tamanho real da zona; e o filete (zone.edge) num <svg> por cima,
      * na largura em % da altura da tela. Devolve o polygon() (para o ao vivo, na camada dele) ou null.
      */
-    function recorte(c, zona, alvo) {
+    function recorte(c, zona, alvo, tentativa) {
       var P = raiz.TelasPrevia;
       if (!zona.forma || !P || !P.shapePolygon) return null;
       var W = c.offsetWidth, H = c.offsetHeight;
-      if (!W || !H) return null;
+      if (!W || !H) {
+        // a página ainda sem tamanho (desenhada antes de aparecer): tenta de novo logo depois
+        if ((tentativa || 0) < 20) timers.push(setTimeout(function () { if (c.parentNode) recorte(c, zona, alvo, (tentativa || 0) + 1); }, 250));
+        return null;
+      }
       var pts = P.shapePolygon(zona.forma, W, H);
       if (!pts || pts.length < 3) return null; // formato que esta versão não conhece: o retângulo
       var lista = pts.map(function (p) { return p[0] + '% ' + p[1] + '%'; }).join(', ');
@@ -689,7 +696,7 @@
         alvo.style.width = jan.scaleX + '%'; alvo.style.height = jan.scaleY + '%';
         raizEl.appendChild(alvo);
       }
-      bloco.layout.zonas.forEach(function (zona) {
+      N.zonasParaTela(bloco.layout.zonas, bloco.itens).forEach(function (zona) {
         var c = el('div', 'zona zona-' + zona.kind);
         c.style.left = zona.x + '%'; c.style.top = zona.y + '%'; c.style.width = zona.w + '%'; c.style.height = zona.h + '%';
         // a zona por cima: acima da camada do ao vivo (z-index 1) e com o vidro translúcido da prévia (.tvc-ov.tvc-op-N)
@@ -700,7 +707,7 @@
         var recorteCss = recorte(c, zona, alvo);
         var itens = bloco.itens[zona.id] || [];
         // o ao vivo fica na camada dele, posicionada na tela: a zona do quadro do conjunto vira % desta tela (com o recorte)
-        if (zona.kind === 'video') { var rv = N.retanguloNaTela(zona, jan); if (recorteCss) rv.recorte = recorteCss; zonaVideo(c, prog, rv); }
+        if (zona.kind === 'video') { var rv = N.retanguloNaTela(zona, jan); rv.cobrir = true; if (recorteCss) rv.recorte = recorteCss; zonaVideo(c, prog, rv); }
         else if (zona.kind === 'playlist') playlist(c, itens, prog);
         else if (zona.kind === 'ticker') faixa(c, avisosDa(prog).concat(itens.filter(function (i) { return i.kind === 'text'; }).map(function (i) { return { texto: i.title || i.text }; })), prog);
         else if (raiz.TelasPrevia && !itens.length && ['clock', 'logo', 'weather', 'qr', 'text'].indexOf(zona.kind) >= 0) zonaFixa(c, zona, prog);

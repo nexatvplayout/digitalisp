@@ -419,3 +419,25 @@ test('zona com formato: shape e edge (só com shape; largura de 0.2 a 3 % da alt
   const z = N.lerConfig(cfg('r', [b])).blocos[0].layout.zonas;
   assert.deepEqual([z[0].forma, z[1].forma, z[1].filete, z[2].forma, z[2].filete], [null, 'onda-esq', { cor: '#29d3e5', largura: 3 }, null, null]);
 });
+
+test('vídeo em cover: a proporção do vídeo cobre a zona, dentro da tela', () => {
+  // a zona main do layout 4 (63 % × 88 % de 1920×1080): 1210×950; o 16:9 que a cobre tem 1689×950, encostado à esquerda
+  const r = N.retanguloCobrir([0, 0, 1209.6, 950.4], 16 / 9, 1920, 1080).map(Math.round);
+  assert.deepEqual(r, [0, 0, 1690, 950]);
+  // zona larga e baixa: a largura manda, centrada na altura
+  assert.deepEqual(N.retanguloCobrir([0, 400, 1920, 200], 16 / 9, 1920, 1080).map(Math.round), [0, 0, 1920, 1080]);
+});
+
+test('zona só de itens sem nenhum: some, e a de cima na mesma coluna ocupa o espaço', () => {
+  const zonas = [
+    { id: 'bar', kind: 'ticker', x: 0, y: 88, w: 100, h: 12 },
+    { id: 'qr', kind: 'qr', x: 65, y: 4, w: 33, h: 40 },
+    { id: 'reviews', kind: 'widget', x: 65, y: 47, w: 33, h: 38 },
+    { id: 'main', kind: 'video', x: 0, y: 0, w: 63, h: 88 }];
+  const z = N.zonasParaTela(zonas, {});
+  assert.deepEqual(z.map((x) => x.id), ['bar', 'qr', 'main']);
+  assert.equal(z[1].h, 81);
+  assert.equal(zonas[1].h, 40, 'não muda o bloco');
+  // com itens, fica como veio
+  assert.deepEqual(N.zonasParaTela(zonas, { reviews: [{ id: 'w1' }] }).map((x) => x.id), ['bar', 'qr', 'reviews', 'main']);
+});

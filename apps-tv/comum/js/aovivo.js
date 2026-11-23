@@ -23,11 +23,26 @@
   // ------------------------------------------------------------------ motor AVPlay (Tizen)
 
   function motorAvplay(camada, log) {
-    var av = raiz.webapis.avplay, obj = null, enchendo = false, aberto = false, calado = false;
+    var av = raiz.webapis.avplay, obj = null, enchendo = false, aberto = false, calado = false, aspecto = 16 / 9, ultimo = null;
     function retangulo(r) {
       // AVPlay usa a resolução base de 1920×1080, qualquer que seja a da página
       var bw = 1920, bh = 1080;
-      return [Math.round(r.x * bw / 100), Math.round(r.y * bh / 100), Math.round(r.w * bw / 100), Math.round(r.h * bh / 100)];
+      var q = [r.x * bw / 100, r.y * bh / 100, r.w * bw / 100, r.h * bh / 100];
+      if (r.cobrir && q[2] > 0 && q[3] > 0) q = N.retanguloCobrir(q, aspecto, bw, bh);
+      return [Math.round(q[0]), Math.round(q[1]), Math.round(q[2]), Math.round(q[3])];
+    }
+    /** O tamanho do vídeo do stream (para o "cover" sair na proporção certa); sem a informação, 16:9. */
+    function lerAspecto() {
+      try {
+        var info = av.getCurrentStreamInfo() || [];
+        for (var i = 0; i < info.length; i++) {
+          if (info[i].type !== 'VIDEO') continue;
+          var ex = JSON.parse(info[i].extra_info || '{}');
+          var w = Number(ex.Width), h = Number(ex.Height);
+          if (w > 0 && h > 0) { aspecto = w / h; return true; }
+        }
+      } catch (e) { /* modelo antigo */ }
+      return false;
     }
     return {
       nome: 'avplay',
@@ -59,7 +74,11 @@
             onevent: function () {},
             oncurrentplaytime: function () {}
           });
+          ultimo = r;
           av.prepareAsync(function () {
+            // o "cover" na proporção do vídeo de verdade (o retângulo de exibição vai além da zona; o <object> da zona é o
+            // buraco na página por onde ele aparece, e o resto fica por baixo do HTML)
+            if (r.cobrir && lerAspecto()) { var q2 = retangulo(r); try { av.setDisplayRect(q2[0], q2[1], q2[2], q2[3]); } catch (e) { /* nada */ } }
             // durante um alerta o ao vivo fica parado (o AVPlay não tem mudo próprio; o mudo do sistema calaria o bipe)
             if (calado) return;
             try { av.play(); } catch (e) { aoErro('AVPlay play: ' + e.message); }
@@ -69,6 +88,7 @@
         }
       },
       posicionar: function (r) {
+        ultimo = r;
         if (obj) { obj.style.left = r.x + '%'; obj.style.top = r.y + '%'; obj.style.width = r.w + '%'; obj.style.height = r.h + '%'; obj.hidden = false; }
         if (aberto) { var q = retangulo(r); try { av.setDisplayRect(q[0], q[1], q[2], q[3]); } catch (e) { /* nada */ } }
       },
@@ -123,6 +143,8 @@
         if (!v) return;
         v.style.left = r.x + '%'; v.style.top = r.y + '%'; v.style.width = r.w + '%'; v.style.height = r.h + '%';
         v.style.webkitClipPath = r.recorte || ''; v.style.clipPath = r.recorte || '';
+        // zona de layout: o vídeo preenche a zona (cover), sem faixas pretas
+        v.style.objectFit = r.cobrir ? 'cover' : 'contain';
         v.hidden = false;
       },
       amostra: function () {

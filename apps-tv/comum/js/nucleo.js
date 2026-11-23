@@ -12,7 +12,7 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  var VERSAO = '1.0.17';
+  var VERSAO = '1.0.18';
   var TZ_PADRAO = 'America/Sao_Paulo';
   var SHA = /^[0-9a-f]{64}$/;
   var DIA = /^\d{4}-\d{2}-\d{2}$/;
@@ -372,6 +372,47 @@
       t -= lista[i];
     }
     return { index: lista.length - 1, offset: lista[lista.length - 1], remaining: 0 };
+  }
+
+  // as zonas que só mostram o que vier nos itens (sem item, ficam vazias)
+  var SO_COM_ITENS = ['playlist', 'widget', 'news', 'quotes', 'countdown', 'safety', 'worldclock', 'queue'];
+
+  /**
+   * As zonas como vão para a tela: a zona que só mostra itens e está sem nenhum (um gadget sem widget escolhido, uma
+   * playlist vazia) sai, e a zona logo acima dela, na mesma coluna, cresce até o fim dela — em vez de uma caixa vazia.
+   * Não muda o bloco: devolve cópias.
+   */
+  function zonasParaTela(zonas, itens) {
+    var vazia = function (z) { return SO_COM_ITENS.indexOf(z.kind) >= 0 && !(itens[z.id] && itens[z.id].length); };
+    var out = zonas.map(function (z) { var c = {}; for (var k in z) c[k] = z[k]; return c; });
+    var ficam = [];
+    out.forEach(function (z) {
+      if (!vazia(z)) { ficam.push(z); return; }
+      // a de cima: mesma coluna (x e largura quase iguais), terminando logo acima (até 6 % de vão), não vazia
+      var cima = null;
+      out.forEach(function (o) {
+        if (o === z || vazia(o) || o.overlay !== z.overlay || o.kind === 'ticker') return;
+        if (Math.abs(o.x - z.x) > 0.6 || Math.abs(o.w - z.w) > 0.6) return;
+        var fim = o.y + o.h;
+        if (fim <= z.y + 0.6 && z.y - fim <= 6 && (!cima || fim > cima.y + cima.h)) cima = o;
+      });
+      if (cima) cima.h = z.y + z.h - cima.y;
+    });
+    return ficam;
+  }
+
+  /**
+   * O retângulo de exibição do vídeo em "cover": a proporção do vídeo cobrindo a zona inteira [x, y, w, h] (px), centrado
+   * nela e empurrado para dentro da tela (bw × bh); a parte que passa da zona fica por baixo da página.
+   */
+  function retanguloCobrir(z, aspecto, bw, bh) {
+    var a = aspecto > 0 ? aspecto : 16 / 9;
+    var w = z[2], h = z[3];
+    if (w / h < a) w = h * a; else h = w / a;
+    var x = z[0] + (z[2] - w) / 2, y = z[1] + (z[3] - h) / 2;
+    x = Math.max(0, Math.min(bw - w, x)); y = Math.max(0, Math.min(bh - h, y));
+    if (w > bw) { x = 0; } if (h > bh) { y = 0; }
+    return [x, y, w, h];
   }
 
   /** O retângulo de uma zona (em % do quadro do conjunto) em % da tela desta TV. Sem videowall: o mesmo. */
@@ -792,7 +833,7 @@
     contarExibicao: contarExibicao, loteExibicao: loteExibicao, baixarLote: baixarLote, corpoSinal: corpoSinal,
     espera: espera, camadaSemConteudo: camadaSemConteudo, linhaDiagnostico: linhaDiagnostico,
     nivelAlerta: nivelAlerta, cabecaAlerta: cabecaAlerta, definirArtes: definirArtes, lerAudio: lerAudio, esperaRadio: esperaRadio,
-    lerConjunto: lerConjunto, janelaConjunto: janelaConjunto, posicaoSincronizada: posicaoSincronizada, retanguloNaTela: retanguloNaTela,
+    lerConjunto: lerConjunto, janelaConjunto: janelaConjunto, retanguloCobrir: retanguloCobrir, zonasParaTela: zonasParaTela, posicaoSincronizada: posicaoSincronizada, retanguloNaTela: retanguloNaTela,
     vigiaNovo: vigiaNovo, vigiaAoVivo: vigiaAoVivo, vigiaFalhou: vigiaFalhou, esperaAoVivo: esperaAoVivo
   };
 });

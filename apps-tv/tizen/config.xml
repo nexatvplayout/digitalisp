@@ -7,7 +7,7 @@
   package: 10 letras/números, único por app; id = package + "." + nome.
 -->
 <widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets"
-        id="https://digitalisp.com.br/telas" version="1.0.17" viewmodes="maximized">
+        id="https://digitalisp.com.br/telas" version="1.0.18" viewmodes="maximized">
   <tizen:application id="DgIspTela1.Telas" package="DgIspTela1" required_version="4.0"/>
   <content src="index.html"/>
   <feature name="http://tizen.org/feature/screen.size.all"/>
