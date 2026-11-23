@@ -212,3 +212,8 @@ tr.tc-sel td { background: var(--c-panel-3); }
 
 .tc-qrf { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
 .tc-qrf input { flex: 1; min-width: 140px; }
+
+/* efeitos dos itens da playlist */
+.tc-fx { width: auto; padding: 2px 4px; font-size: .8rem; }
+.tc-fxbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 10px; }
+.tc-fxbar select { width: auto; }

@@ -396,8 +396,12 @@ export function itemInWindow(it, today) {
   return true;
 }
 /** As restrições do item que o app confere sozinho (só quando há): dias, faixa e período. */
+/** As entradas do item na tela: corte seco (padrão), esmaecer, deslizar ou aproximar; e o zoom lento na foto (Ken Burns). */
+export const TRANSITIONS = Object.freeze(['fade', 'slide', 'zoom']);
 export function itemWhen(it) {
   const out = {};
+  if (TRANSITIONS.includes(it.params?.transition)) out.transition = it.params.transition;
+  if (it.params?.kenburns === true) out.kenburns = true;
   if (it.days?.length) out.days = it.days;
   if (it.timeFrom != null) { out.from = it.timeFrom; out.to = it.timeTo; }
   if (it.validFrom) out.dateFrom = it.validFrom;

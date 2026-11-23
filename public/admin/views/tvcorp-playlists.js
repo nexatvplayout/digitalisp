@@ -145,6 +145,9 @@ async function editItems(pl, reload) {
         el('span', { class: 'tc-grip', 'aria-hidden': 'true', text: '⋮⋮' }),
         el('button', { class: 'tc-item-name', type: 'button', onclick: () => { sel = i; paint(); } }, el('b', { text: itemTitle(it, src) }), el('span', { class: 'dim small', text: whenText(it) })),
         s, el('span', { class: 'dim small', text: 's' }),
+        el('select', { class: 'tc-fx', 'aria-label': 'Como o item entra na tela', title: 'Como o item entra na tela', onchange: (e) => { it.params = { ...it.params, transition: e.target.value || undefined }; if (!e.target.value) delete it.params.transition; } },
+          ...[['', 'Entra: corte'], ['fade', 'Esmaecer'], ['slide', 'Deslizar'], ['zoom', 'Aproximar']].map(([v, t]) => opt(v, t, (it.params?.transition || '') === v))),
+        it.refKind === 'media' && src.media.find((x) => x.id === it.refId)?.kind !== 'video' ? el('label', { class: 'pf-check small', title: 'A foto aproxima devagar enquanto está na tela' }, el('input', { type: 'checkbox', checked: Boolean(it.params?.kenburns), onchange: (e) => { it.params = { ...it.params }; if (e.target.checked) it.params.kenburns = true; else delete it.params.kenburns; } }), el('span', { text: 'Zoom lento' })) : null,
         btn('Quando passa', () => { wb.hidden = !wb.hidden; }, 'small'),
         el('button', { class: 'btn small', type: 'button', 'aria-label': 'Subir', onclick: () => move(i, i - 1), disabled: i === 0 }, '↑'),
         el('button', { class: 'btn small', type: 'button', 'aria-label': 'Descer', onclick: () => move(i, i + 1), disabled: i === items.length - 1 }, '↓'),
@@ -258,7 +261,12 @@ async function editItems(pl, reload) {
     sel = items.length - 1; paint();
   };
   paint();
-  dialog(`Itens da playlist · ${pl.name}`, el('div', {}, ondePassa, el('div', { class: 'tc-two' },
+  // a mesma entrada (e o zoom lento) em todos os itens de uma vez
+  const fxAll = el('select', { 'aria-label': 'Entrada para todos' }, ...[['', 'Corte seco'], ['fade', 'Esmaecer'], ['slide', 'Deslizar'], ['zoom', 'Aproximar']].map(([v, t]) => opt(v, t)));
+  const kbAll = el('input', { type: 'checkbox' });
+  const aplicarTodos = () => { for (const x of items) { x.params = { ...x.params }; if (fxAll.value) x.params.transition = fxAll.value; else delete x.params.transition; if (kbAll.checked && x.refKind === 'media') x.params.kenburns = true; else delete x.params.kenburns; } paint(); toast('Aplicado a todos os itens. Salve a playlist.'); };
+  const fxBar = el('div', { class: 'tc-fxbar' }, el('span', { class: 'small', text: 'Efeito em todos:' }), fxAll, el('label', { class: 'pf-check small' }, kbAll, el('span', { text: 'Zoom lento nas fotos' })), btn('Aplicar', aplicarTodos, 'small'));
+  dialog(`Itens da playlist · ${pl.name}`, el('div', {}, ondePassa, fxBar, el('div', { class: 'tc-two' },
     el('div', {}, total, list, note('Arraste pela alça (⋮⋮) ou use as setas. Clique no nome para ver a prévia.')),
     el('div', {}, label('Acrescentar'), el('div', { class: 'pf-grid' }, f('Tipo', kind), pick, range, pickHint, quick, candLabel, candPv, btns(btn('+ Acrescentar', add, 'primary'))),
       label('Prévia do item marcado na lista'), pv))), {
