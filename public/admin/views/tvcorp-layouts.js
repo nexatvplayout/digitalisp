@@ -102,12 +102,18 @@ export function zoneCanvas(st, onChange) {
 }
 
 /** O editor do layout (novo, a partir de um modelo de fábrica, ou um que já existe). */
-export function layoutEditor(lay, reload, factoryKey = null, copyOf = null) {
+export function layoutEditor(lay, reload, factoryKey = null, copyOf = null, { aoVivo = false } = {}) {
   const base = lay || copyOf || FACTORY_LAYOUT[factoryKey] || FACTORY_LAYOUT['video-lateral-barra'];
   const st = {
     name: lay?.name || (copyOf ? `${copyOf.name} (cópia)` : factoryKey ? base.label : ''), orientation: base.orientation || 'land', background: (lay || copyOf || (factoryKey ? base : null))?.background || '#0b1220',
     zones: (base.zones || []).map((z) => ({ ...z })), sel: 0, factoryKey: (lay || copyOf)?.factoryKey || factoryKey || null,
   };
+  // o modelo de playlist com o vídeo ao vivo (HLS) no lugar da playlist principal (a zona main, ou a maior playlist)
+  if (aoVivo && !st.zones.some((z) => z.kind === 'video')) {
+    const pls = st.zones.filter((z) => z.kind === 'playlist');
+    const main = pls.find((z) => z.id === 'main') || pls.sort((a, b) => b.w * b.h - a.w * a.h)[0];
+    if (main) { main.kind = 'video'; delete main.hint; delete main.overlay; st.name = `${st.name} (vídeo ao vivo)`; }
+  }
   const name = el('input', { type: 'text', maxlength: String(LIMITS.name), value: st.name, placeholder: 'Ex.: Recepção da matriz' });
   const orient = el('select', {}, opt('land', 'Deitada (16:9)', st.orientation === 'land'), opt('port', 'Em pé (9:16, totem)', st.orientation === 'port'));
   // a cor do modelo pronto que não está na lista (verde-água, roxo...) entra como "Cor do modelo"
@@ -270,7 +276,9 @@ function factoryView(reload) {
         layoutPreview(l, { ...previewOpts(l), labels: false }),
         el('div', { class: 'tc-lcard-b' }, el('div', {}, chip('1 TV', 'tc-tvs'), ' ', chip(segLabel(l.segment)), ' ', l.main === 'video' ? chip('Vídeo ao vivo') : l.main === 'playlist' ? chip('Playlist') : null, l.special ? ' ' : null, l.special ? chip('Formato especial') : null), el('b', { text: l.label }), el('div', { class: 'dim small', text: l.desc }),
           quadrosTxt(l) ? el('div', { class: 'small tc-quadros', text: `Quadros das playlists: ${quadrosTxt(l)}` }) : null,
-          btns(btn('Usar este modelo', () => layoutEditor(null, reload, l.key), 'small primary'))))));
+          btns(btn('Usar este modelo', () => layoutEditor(null, reload, l.key), 'small primary'),
+            // o mesmo modelo com o canal ao vivo no lugar da playlist principal
+            l.main === 'playlist' && !l.zones.some((z) => z.kind === 'video') ? btn('Usar com vídeo ao vivo', () => layoutEditor(null, reload, l.key, null, { aoVivo: true }), 'small') : null)))));
     if (!sets.length && !singles.length) put(grid, empty('Nenhum modelo com esses filtros.'));
   };
   put(box, bar, count, grid);
