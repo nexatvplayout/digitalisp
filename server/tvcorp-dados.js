@@ -106,12 +106,14 @@ export function cleanWidget(kind, b, { partial = false, cur = null } = {}) {
     if (until != null && (!Number.isFinite(until) || until <= at)) throw fail(400, 'Contador: o fim vem depois do começo.');
     out.data = { title, at, text: line(d.text, 120), ...(until != null ? { until } : {}) };
   } else if (kind === 'safety') {
+    // mode 'since': "dias desde" um marco qualquer (inauguração, última manutenção, clientes atendidos desde…), sem recorde
+    const since = d.mode === 'since';
     const last = R.cleanYmd(d.lastAccident);
-    if (!last) throw fail(400, 'Dias sem acidente: a data do último acidente.');
+    if (!last) throw fail(400, since ? 'Dias desde: escolha a data do marco.' : 'Dias sem acidente: a data do último acidente.');
     const record = d.record == null || d.record === '' ? 0 : Math.round(Number(d.record));
     const goal = d.goal == null || d.goal === '' ? null : Math.round(Number(d.goal));
     if (!Number.isInteger(record) || record < 0 || record > 36500 || (goal != null && (!Number.isInteger(goal) || goal < 1 || goal > 36500))) throw fail(400, 'Dias sem acidente: recorde e meta em dias.');
-    out.data = { title: line(d.title, 60) || 'Dias sem acidente', lastAccident: last, record, goal };
+    out.data = { title: line(d.title, 60) || (since ? 'Dias desde' : 'Dias sem acidente'), lastAccident: last, record: since ? 0 : record, goal, ...(since ? { mode: 'since' } : {}) };
   } else if (kind === 'worldclock') {
     const zones = Array.isArray(d.zones) ? [...new Set(d.zones.map(String))] : [];
     if (!zones.length || zones.length > 6 || zones.some((z) => !ZONE.has(z))) throw fail(400, 'Relógio mundial: de 1 a 6 cidades da lista.');
@@ -992,6 +994,7 @@ export function createTvcorpDados({
   function safetyOf(w, ymd) {
     const last = w.data.lastAccident;
     const days = Math.max(0, Math.round((Date.UTC(...ymd.split('-').map((n, i) => Number(n) - (i === 1 ? 1 : 0))) - Date.UTC(...last.split('-').map((n, i) => Number(n) - (i === 1 ? 1 : 0)))) / 86400_000));
+    if (w.data.mode === 'since') return { title: w.data.title || 'Dias desde', days, record: null, goal: w.data.goal ?? null, since: last };
     return { title: w.data.title || 'Dias sem acidente', days, record: Math.max(Number(w.data.record) || 0, days), goal: w.data.goal ?? null, since: last };
   }
   const fresh = (f) => f && Number(f.enabled) && f.fetched_at && now() - Number(f.fetched_at) <= F.FEED_LIMITS.staleMs ? j(f.cache, null) : null;

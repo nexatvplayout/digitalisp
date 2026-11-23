@@ -16,8 +16,8 @@ const MENU_DAYS = [1, 2, 3, 4, 5, 6, 0];
 let ZONES = []; // os fusos do relógio mundial (a lista do servidor)
 let FEEDS = []; // as fontes (o clima escolhe a dele)
 let KPIS = []; // os indicadores (o painel de indicadores escolhe os dele)
-function editWidget(w, reload, kindKey = 'countdown') {
-  const kind = w?.kind || kindKey; const d = w?.data || {};
+function editWidget(w, reload, kindKey = 'countdown', preset = {}) {
+  const kind = w?.kind || kindKey; const d = { ...preset, ...(w?.data || {}) };
   const name = el('input', { type: 'text', maxlength: '80', value: w?.name || '', placeholder: 'Nome no painel' });
   const box = el('div', { class: 'pf-grid' }); const pv = el('div', {});
   let read = () => ({});
@@ -31,11 +31,13 @@ function editWidget(w, reload, kindKey = 'countdown') {
       f('Termina em (opcional)', until, 'Depois de começar, a tela mostra quanto falta para terminar (promoção, inscrições, evento).'), f('Texto curto (opcional)', text));
     read = () => ({ title: title.value.trim(), at: fromLocalInput(target.value), ...(until.value ? { until: fromLocalInput(until.value) } : {}), text: text.value.trim() });
   } else if (kind === 'safety') {
-    const title = el('input', { type: 'text', maxlength: '60', value: d.title || '', placeholder: 'Dias sem acidente' });
+    const desde = d.mode === 'since';
+    const title = el('input', { type: 'text', maxlength: '60', value: d.title || '', placeholder: desde ? 'Ex.: Dias desde a inauguração' : 'Dias sem acidente' });
     const since = el('input', { type: 'date', value: d.lastAccident || '' });
     const record = el('input', { type: 'number', min: '0', value: d.record ?? '' }); const goal = el('input', { type: 'number', min: '1', value: d.goal ?? '' });
-    put(box, f('Título', title), f('Data do último acidente', since, 'A tela conta os dias sozinha a partir desta data.'), el('div', { class: 'pf-grid two' }, f('Recorde (dias)', record), f('Meta (dias)', goal)));
-    read = () => ({ title: title.value.trim(), lastAccident: since.value || null, record: record.value === '' ? null : Number(record.value), goal: goal.value === '' ? null : Number(goal.value) });
+    if (desde) put(box, f('Título', title), f('Data do marco', since, 'A tela conta os dias desde esta data, sozinha. Ex.: inauguração, última manutenção, início da campanha.'), f('Meta (dias, opcional)', goal));
+    else put(box, f('Título', title), f('Data do último acidente', since, 'A tela conta os dias sozinha a partir desta data.'), el('div', { class: 'pf-grid two' }, f('Recorde (dias)', record), f('Meta (dias)', goal)));
+    read = () => ({ ...(desde ? { mode: 'since' } : {}), title: title.value.trim(), lastAccident: since.value || null, record: record.value === '' ? null : Number(record.value), goal: goal.value === '' ? null : Number(goal.value) });
   } else if (kind === 'worldclock') {
     const picks = new Set(d.zones || []);
     put(box, label('Cidades (até 6)'), el('div', { class: 'pf-checks tall' }, ...ZONES.map(({ tz, label: l }) => el('label', { class: 'pf-check' },
@@ -125,7 +127,7 @@ function editWidget(w, reload, kindKey = 'countdown') {
       if (kind === 'countdown' && !data.at) throw new Error('Escolha a data e a hora do evento.');
       if (kind === 'countdown' && data.title.length < 2) throw new Error('Escreva o nome do evento.');
       if (kind === 'countdown' && data.until && data.until <= data.at) throw new Error('O fim precisa ser depois do começo.');
-      if (kind === 'safety' && !data.lastAccident) throw new Error('Escolha a data do último acidente.');
+      if (kind === 'safety' && !data.lastAccident) throw new Error(data.mode === 'since' ? 'Escolha a data do marco.' : 'Escolha a data do último acidente.');
       if (kind === 'worldclock' && !data.zones.length) throw new Error('Escolha pelo menos uma cidade.');
       if (kind === 'dashboard' && !data.kpis.length) throw new Error('Escolha pelo menos um indicador.');
       if (kind === 'web' && !/^https:\/\//.test(data.url)) throw new Error('O endereço precisa começar com https://');
@@ -168,7 +170,7 @@ export default async function paintBarras(box, ctx) {
     el('div', { class: 'card tc-sec' },
       el('h3', { text: 'Blocos informativos (widgets)' }),
       note('Os gadgets da tela: contador para eventos e promoções, relógio (digital ou analógico), clima com previsão, agenda e salas, painel de indicadores, avaliações de clientes, como chegar, página da internet, dias sem acidente, relógio mundial e cardápio da semana. Entram numa playlist (item "Gadget") ou direto numa zona do layout (zona "Gadget").'),
-      btns(...WIDGET_KINDS.map((k) => btn(`+ ${k.label}`, () => editWidget(null, again, k.key), 'small'))),
+      btns(...WIDGET_KINDS.map((k) => btn(`+ ${k.label}`, () => editWidget(null, again, k.key), 'small')), btn('+ Dias desde (um marco)', () => editWidget(null, again, 'safety', { mode: 'since' }), 'small')),
       widgets.length ? el('div', { class: 'tc-wgrid' }, ...widgets.map((w) => el('div', { class: 'tc-wcard' },
         itemPreview(widgetItem(w, { kpis: KPIS, feeds: FEEDS }), { theme: themeOf() }),
         el('div', { class: 'tc-lcard-b' }, chip(widgetLabel(w.kind)), ' ', el('b', { text: w.name }), el('div', { class: 'dim small', text: `atualizado ${when(w.updatedAt)}` }),
