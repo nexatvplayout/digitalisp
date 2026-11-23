@@ -406,10 +406,53 @@
     mostrarAlerta();
   }
 
+  // ---- o som do alerta: um bipe de dois tons (Web Audio, sem arquivo), quando o alerta pede som (sound: true). Toca mesmo
+  // com a tela no mudo: é emergência (o volume do aparelho vale). Extremo repete a cada 30 s enquanto estiver na tela; os
+  // outros níveis, uma vez
+  var somAlerta = { id: null, timer: null, ctx: null };
+  function bipe() {
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      var c = somAlerta.ctx || (somAlerta.ctx = new AC());
+      if (c.state === 'suspended' && c.resume) c.resume();
+      var t0 = c.currentTime + 0.05;
+      for (var i = 0; i < 8; i++) {
+        var o = c.createOscillator(), g = c.createGain(), t = t0 + i * 0.42;
+        o.type = 'square';
+        o.frequency.value = i % 2 ? 740 : 988;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.linearRampToValueAtTime(0.3, t + 0.02);
+        g.gain.setValueAtTime(0.3, t + 0.34);
+        g.gain.linearRampToValueAtTime(0.0001, t + 0.38);
+        o.connect(g); g.connect(c.destination);
+        o.start(t); o.stop(t + 0.4);
+      }
+    } catch (e) { erro('som do alerta: ' + e.message); }
+  }
+  function somDoAlerta(a) {
+    var id = a && a.sound ? String(a.id) + ':' + (a.title || '') : null;
+    if (id === somAlerta.id) return;
+    if (somAlerta.timer) { clearInterval(somAlerta.timer); somAlerta.timer = null; }
+    somAlerta.id = id;
+    if (!id) return;
+    bipe();
+    if (N.nivelAlerta(a.level) === 2) somAlerta.timer = setInterval(bipe, 30000);
+  }
+
+  /** Alerta na tela: o som do programa (ao vivo, rádio de fundo, vídeos da playlist) fica calado até ele sair. */
+  function calarPrograma(sim) {
+    if (ctxTela.aoVivo && ctxTela.aoVivo.calar) ctxTela.aoVivo.calar(sim);
+    if (ctxTela.radio && ctxTela.radio.calar) ctxTela.radio.calar(sim);
+    if (telaObj && telaObj.calar) telaObj.calar(sim);
+  }
+
   function mostrarAlerta() {
     var a = est.alerta, c = $('alerta');
     if (a && a.until && a.until <= agora()) a = est.alerta = null;
     c.hidden = !a;
+    calarPrograma(!!a);
+    somDoAlerta(a);
     if (!a) return;
     // o nível chega como 'info' | 'warn' | 'critical': sem a conversão a classe virava nivel-NaN (sem fundo, o texto
     // branco solto por cima do conteúdo, 1.0.9)

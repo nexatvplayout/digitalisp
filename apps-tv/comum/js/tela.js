@@ -37,10 +37,19 @@
       raizEl.innerHTML = '';
     }
 
+    var calado = false;
+    /** Alerta na tela: os vídeos da playlist ficam mudos (cada um volta ao seu mudo depois). */
+    function calar(sim) {
+      calado = !!sim;
+      videos.forEach(function (v) { v.muted = calado || !!v._mudo; });
+    }
+
     function novoVideo() {
       var v = el('video', 'midia');
       v.muted = !!ctx.mudo || ctx.volume === 0;
       v.volume = Math.max(0, Math.min(1, (ctx.volume === undefined ? 100 : ctx.volume) / 100));
+      v._mudo = v.muted;
+      if (calado) v.muted = true;
       v.setAttribute('playsinline', '');
       v.autoplay = true;
       videos.push(v);
@@ -316,6 +325,8 @@
           if (it.raw && it.raw.sound === false) v.muted = true;
           // vídeo com som: a rádio de fundo fica abafada enquanto ele toca
           var comSom = !v.muted && ctx.radio;
+          v._mudo = v.muted;
+          if (calado) v.muted = true;
           if (comSom) ctx.radio.abafar(true);
           if (it.contain || (it.raw && it.raw.fit === 'contain')) v.className += ' contain';
           var fim = false;
@@ -630,6 +641,7 @@
 
     return {
       mostrar: mostrar,
+      calar: calar,
       // limpar por fora (tela revogada, TV desligada pelo horário, conteúdo apagado) para também o ao vivo
       limpar: function () { limpar(); if (ctx.aoVivo) ctx.aoVivo.parar(); if (ctx.radio) ctx.radio.parar(); },
       atual: function () { return atual; }

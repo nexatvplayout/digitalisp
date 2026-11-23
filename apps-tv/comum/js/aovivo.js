@@ -23,7 +23,7 @@
   // ------------------------------------------------------------------ motor AVPlay (Tizen)
 
   function motorAvplay(camada, log) {
-    var av = raiz.webapis.avplay, obj = null, enchendo = false, aberto = false;
+    var av = raiz.webapis.avplay, obj = null, enchendo = false, aberto = false, calado = false;
     function retangulo(r) {
       // AVPlay usa a resolução base de 1920×1080, qualquer que seja a da página
       var bw = 1920, bh = 1080;
@@ -60,6 +60,8 @@
             oncurrentplaytime: function () {}
           });
           av.prepareAsync(function () {
+            // durante um alerta o ao vivo fica parado (o AVPlay não tem mudo próprio; o mudo do sistema calaria o bipe)
+            if (calado) return;
             try { av.play(); } catch (e) { aoErro('AVPlay play: ' + e.message); }
           }, function (e) { aoErro('AVPlay prepare: ' + ((e && e.name) || e)); });
         } catch (e) {
@@ -83,6 +85,11 @@
         aberto = false;
         if (obj) obj.hidden = true;
       },
+      calar: function (sim) {
+        calado = !!sim;
+        if (!aberto) return;
+        try { if (calado) av.pause(); else av.play(); } catch (e) { /* nada */ }
+      },
       // a TV escondeu o app (outro app na frente) e voltou
       suspender: function () { try { av.suspend(); } catch (e) { /* nada */ } },
       retomar: function () { try { av.restore(); } catch (e) { /* nada */ } }
@@ -92,7 +99,7 @@
   // ------------------------------------------------------------------ motor <video> (webOS e navegador)
 
   function motorVideo(camada, op) {
-    var v = null;
+    var v = null, calado = false;
     return {
       nome: 'video',
       abrir: function (url, r, aoErro) {
@@ -103,7 +110,7 @@
           v.autoplay = true;
           camada.appendChild(v);
         }
-        v.muted = op.mudo();
+        v.muted = calado || op.mudo();
         v.volume = Math.max(0, Math.min(1, op.volume() / 100));
         v.onerror = function () { aoErro('vídeo: erro ' + (v.error ? v.error.code : '?')); };
         v.onended = function () { aoErro('o ao vivo terminou'); };
@@ -127,6 +134,7 @@
         try { v.pause(); v.removeAttribute('src'); v.load(); } catch (e) { /* nada */ }
         v.hidden = true;
       },
+      calar: function (sim) { calado = !!sim; if (v) v.muted = calado || op.mudo(); },
       suspender: function () {}, retomar: function () {}
     };
   }
@@ -140,7 +148,7 @@
   function criar(camada, op) {
     var padrao = temAvplay() ? motorAvplay(camada) : motorVideo(camada, op), comoVideo = null;
     var motor = padrao;
-    var url = null, ret = null, vigia = null, timer = null, aoReserva = null, ativo = false;
+    var url = null, ret = null, vigia = null, timer = null, aoReserva = null, ativo = false, calado = false;
 
     /**
      * O retângulo passa da tela (videowall: esta TV mostra só um pedaço do vídeo do conjunto). O AVPlay só desenha dentro
@@ -174,8 +182,10 @@
       motor = motorPara(r);
       url = u; ret = r; ativo = true;
       vigia = N.vigiaNovo(op.agora());
+      motor.calar(calado);
       motor.abrir(u, r, falha);
       timer = setInterval(function () {
+        if (calado) { vigia = N.vigiaNovo(op.agora()); return; } // parado de propósito (alerta): o vigia não conta
         var a = motor.amostra();
         a.agora = op.agora();
         decidir(N.vigiaAoVivo(vigia, a).acao);
@@ -198,6 +208,15 @@
       // HLS precisa do AVPlay ou do HLS nativo do <video>; um vídeo comum (mp4) toca em qualquer um
       suporta: function (u) { return padrao.nome === 'avplay' || temHlsNativo() || !/\.m3u8(\?|$)/i.test(String(u || '')); },
       tocar: tocar,
+      /** Alerta na tela: o ao vivo fica sem som (o AVPlay, parado); depois volta. */
+      calar: function (sim) {
+        sim = !!sim;
+        if (sim === calado) return;
+        calado = sim;
+        padrao.calar(sim);
+        if (motor !== padrao) motor.calar(sim);
+        if (!sim) vigia = N.vigiaNovo(op.agora());
+      },
       parar: parar,
       ativo: function () { return ativo; },
       url: function () { return ativo ? url : null; }

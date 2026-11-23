@@ -12,13 +12,13 @@
   var N = raiz.TelasNucleo;
 
   function criar(op) {
-    var el = null, atual = null, rodada = 0, timer = null, vigia = null, ultimoTempo = -1, parado = 0, abafada = false;
+    var el = null, atual = null, rodada = 0, timer = null, vigia = null, ultimoTempo = -1, parado = 0, abafada = false, calada = false;
 
     function aplicarVolume() {
       if (!el || !atual) return;
       var tela = Math.max(0, Math.min(100, Number(op.volume()) || 0));
       el.volume = Math.max(0, Math.min(1, (tela / 100) * (atual.volume / 100)));
-      el.muted = !!op.mudo() || tela === 0 || abafada;
+      el.muted = !!op.mudo() || tela === 0 || abafada || calada;
     }
 
     function limparTimers() {
@@ -81,7 +81,10 @@
     /** Abafa a rádio enquanto um vídeo da playlist toca com som (os dois juntos embolam). */
     function abafar(sim) { abafada = !!sim; aplicarVolume(); }
 
-    return { tocar: tocar, parar: parar, abafar: abafar, volume: aplicarVolume, atual: function () { return atual; } };
+    /** Alerta na tela: a rádio fica muda até ele sair. */
+    function calar(sim) { calada = !!sim; aplicarVolume(); }
+
+    return { tocar: tocar, parar: parar, abafar: abafar, calar: calar, volume: aplicarVolume, atual: function () { return atual; } };
   }
 
   raiz.TelasRadio = { criar: criar };
