@@ -114,11 +114,25 @@ async function nowText(d) {
   const shown = (r.lastPlays?.items || []).slice(0, 4).map((x) => x.name);
   return `${parts.join(' · ')}${zones.length ? ` · ${zones.join(', ')}` : ''}${shown.length ? ` · mostrou há pouco: ${shown.join(', ')}${r.lastPlays.at ? ` (${when(r.lastPlays.at)})` : ''}` : ''}`;
 }
+/** Como a tela está agora, em tamanho grande: a grade que vale, o layout, as playlists dela e o canal dela, ao vivo. */
+const verAgora = (d) => guard(async () => {
+  const r = await tapi(`/api/tvcorp/devices/${d.id}/now`);
+  const lay = r?.block ? D().layouts.find((l) => l.id === r.block.layoutId) : null;
+  if (!lay) { toast('Esta tela está no formato de sempre (nenhuma grade vale agora): não há layout para mostrar.', true); return; }
+  const grade = D().schedules.find((x) => x.id === r.block.id);
+  const porTela = await tapi('/api/hls/telas').catch(() => ({}));
+  const canais = await tapi('/api/hls').catch(() => []);
+  const hid = porTela?.[d.id] ?? officeOf(d.officeId)?.channelId ?? null;
+  const canalUrl = (Array.isArray(canais) ? canais : []).find((c) => c.id === Number(hid))?.url || null;
+  const { abrirPreviaViva } = await import('./tvcorp-previa-viva.js');
+  await abrirPreviaViva(lay, { zonePlaylists: grade?.zonePlaylists || null, canalUrl, titulo: `Agora na tela · ${d.name}` });
+});
 /** Captura, agora e comandos de uma tela. */
 function deviceDialog(d, ctx = null) {
   const st = statusOf(d);
   const img = el('img', { class: 'pf-shot tc-shot', alt: `Captura da tela ${d.name}`, hidden: true });
-  const shotNote = note(d.shotAt ? 'Carregando a captura…' : 'Sem captura ainda. Peça uma em "Captura da tela".');
+  const semCaptura = /tizen|webos|samsung|lg/i.test(`${d.model || ''} ${d.android || ''}`);
+  const shotNote = note(d.shotAt ? 'Carregando a captura…' : semCaptura ? 'Esta TV (Samsung/LG) não deixa o app tirar foto da tela. Use "▶ Ver a tela agora": o painel monta, em tamanho grande, o que está passando nela, com o vídeo ao vivo e as playlists.' : 'Sem captura ainda. Peça uma em "Captura da tela" ou use "▶ Ver a tela agora".');
   if (d.shotAt) tblob(`/api/tvcorp/rede/devices/${d.id}/screenshot`).then((u) => { if (u) { img.src = u; img.hidden = false; shotNote.textContent = `Captura de ${when(d.shotAt)}`; } else shotNote.textContent = 'Captura indisponível no exemplo.'; }, () => { shotNote.textContent = 'Não foi possível abrir a captura.'; });
   const nowBox = note('Carregando o que está passando…');
   nowText(d).then((t) => { nowBox.textContent = t; }, () => { nowBox.textContent = 'Ainda sem a informação do que está passando.'; });
@@ -127,7 +141,7 @@ function deviceDialog(d, ctx = null) {
     el('dl', { class: 'pf-dl' },
       el('dt', { text: 'Unidade' }), el('dd', { text: officeOf(d.officeId)?.name || '—' }),
       el('dt', { text: 'Situação' }), el('dd', { text: sinceText(d) }),
-      el('dt', { text: 'Passando agora' }), el('dd', {}, nowBox),
+      el('dt', { text: 'Passando agora' }), el('dd', {}, nowBox, btns(btn('▶ Ver a tela agora', verAgora(d), 'small primary'))),
       el('dt', { text: 'App' }), el('dd', { text: [d.appVersion || '—', d.model, d.android ? `Android ${d.android}` : '', d.net ? `rede ${d.net}` : ''].filter(Boolean).join(' · ') }),
       d.lastError ? el('dt', { text: 'Último erro' }) : null, d.lastError ? el('dd', { class: 'pf-err', text: d.lastError }) : null),
     programacaoDaTela(d, () => ctx?.reload?.()),

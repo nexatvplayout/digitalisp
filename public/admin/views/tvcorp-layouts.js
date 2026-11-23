@@ -109,6 +109,8 @@ export function layoutEditor(lay, reload, factoryKey = null, copyOf = null, { ao
     name: lay?.name || (copyOf ? `${copyOf.name} (cópia)` : factoryKey ? base.label : ''), orientation: base.orientation || 'land', background: (lay || copyOf || (factoryKey ? base : null))?.background || '#0b1220',
     zones: (base.zones || []).map((z) => ({ ...z })), sel: 0, factoryKey: (lay || copyOf)?.factoryKey || factoryKey || null,
   };
+  // zona de gadget do modelo pronto: já escolhe o gadget do cliente do mesmo tipo (relógio, avaliações…), se houver um
+  for (const z of st.zones) if (z.kind === 'widget' && z.widget == null && z.sample) { const w = WIDGETS.find((x) => x.kind === z.sample); if (w) z.widget = w.id; }
   // o modelo de playlist com o vídeo ao vivo (HLS) no lugar da playlist principal (a zona main, ou a maior playlist)
   if (aoVivo && !st.zones.some((z) => z.kind === 'video')) {
     const pls = st.zones.filter((z) => z.kind === 'playlist');
@@ -129,7 +131,11 @@ export function layoutEditor(lay, reload, factoryKey = null, copyOf = null, { ao
     put(pv, layoutPreview({ orientation: st.orientation, zones: st.zones, name: st.name, background: st.background }, previewOpts(st)));
     // o clima sem cidade sai vazio na tela: avisa aqui, onde a zona é escolhida
     const semCidade = !HAS_CITY && st.zones.some((z) => z.kind === 'weather' || z.sample === 'weather' || WIDGETS.find((w) => w.id === Number(z.widget))?.kind === 'weather');
-    err.textContent = checkZones(st.zones) || (semCidade ? 'Atenção: nenhuma cidade para o clima. Sem ela, a zona de clima fica vazia na tela. Escolha a cidade em Configurações ou cadastre uma fonte de clima em Notícias e dados.' : '');
+    // o que deixaria a tela com um buraco: gadget sem escolher e o QR de exemplo
+    const semGadget = st.zones.filter((z) => z.kind === 'widget' && z.widget == null).map((z) => z.id);
+    const qrExemplo = st.zones.filter((z) => z.kind === 'qr' && /exemplo.com.br/.test(String(z.qr || ''))).map((z) => z.id);
+    const avisos = [semGadget.length ? `Escolha o gadget da zona ${semGadget.join(', ')} (na tabela abaixo; crie em Barras e blocos se ainda não tiver): sem ele, essa parte fica vazia na TV.` : '', qrExemplo.length ? `Troque o endereço de exemplo do QR code da zona ${qrExemplo.join(', ')} pelo seu (ou monte um Wi-Fi/contato).` : ''];
+    err.textContent = checkZones(st.zones) || [...avisos, semCidade ? 'Atenção: nenhuma cidade para o clima. Sem ela, a zona de clima fica vazia na tela. Escolha a cidade em Configurações ou cadastre uma fonte de clima em Notícias e dados.' : ''].filter(Boolean).join(' ');
   };
   function paintRows() {
     const num = (z, k) => el('input', { type: 'number', min: '0', max: '100', step: '1', value: String(z[k]), class: 'tc-num-in', 'aria-label': `${k} da zona ${z.id}`,

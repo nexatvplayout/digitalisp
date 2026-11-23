@@ -26,7 +26,7 @@ async function tocar(video, url, aviso) {
  * Abre a prévia. layout: { orientation, zones, background, name }. zonePlaylists: { zona: playlistId } (da grade), opcional:
  * sem ele, cada zona de playlist ganha um seletor (começa na primeira playlist).
  */
-export async function abrirPreviaViva(layout, { zonePlaylists = null, titulo = '' } = {}) {
+export async function abrirPreviaViva(layout, { zonePlaylists = null, titulo = '', canalUrl = null } = {}) {
   const paradas = [];
   const parar = () => { while (paradas.length) { try { paradas.pop()(); } catch { /* já parou */ } } };
   const [canais, src, pls] = await Promise.all([tapi('/api/hls').catch(() => []), sources(), tapi('/api/tvcorp/playlists').catch(() => null)]);
@@ -34,7 +34,7 @@ export async function abrirPreviaViva(layout, { zonePlaylists = null, titulo = '
   const playlists = listOf(pls, 'playlists');
   const zonasPl = (layout.zones || []).filter((z) => z.kind === 'playlist');
   const escolha = Object.fromEntries(zonasPl.map((z) => [z.id, zonePlaylists?.[z.id] ?? playlists[0]?.id ?? null]));
-  const canal = el('select', { 'aria-label': 'Canal ao vivo' }, ...listaCanais.map((c, i) => opt(c.url, c.name || `Canal ${i + 1}`, i === 0)));
+  const canal = el('select', { 'aria-label': 'Canal ao vivo' }, ...listaCanais.map((c, i) => opt(c.url, c.name || `Canal ${i + 1}`, canalUrl ? c.url === canalUrl : i === 0)));
   const aviso = el('p', { class: 'small dim', 'aria-live': 'polite' });
   const palco = el('div', { class: 'tc-live-palco' });
   const seletores = zonasPl.map((z) => {
