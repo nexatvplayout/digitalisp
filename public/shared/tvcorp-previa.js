@@ -336,6 +336,8 @@ function zoneContent(zone, opts) {
     }
     case 'clock': return h('div', `tvc-z-clock ${th}`, h('b', '', opts.clock || nowClock()), h('span', '', opts.date || new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })));
     case 'weather': return h('div', `tvc-z-weather ${th}`, h('b', '', '27°'), h('span', '', opts.city || 'Clima da unidade'));
+    // o texto fixo da zona (boas-vindas, horário, Wi-Fi): o título e a frase que o cliente escreveu
+    case 'text': return zone.title || zone.text ? h('div', `tvc-it tvc-it-text ${th}`, zone.title ? h('div', 'tvc-it-t', zone.title) : null, zone.text ? h('div', 'tvc-it-x', zone.text) : null) : h('div', `tvc-z-empty ${th}`, 'Texto');
     case 'qr': return h('div', `tvc-z-qr ${th}`, opts.qr ? qrSvg(opts.qr, 'tvc-z-qrc') : h('div', 'tvc-z-qrph'), h('span', '', opts.qrLabel || 'Aponte a câmera'));
     case 'logo': return h('div', `tvc-z-logo ${th}`, opts.logo ? Object.assign(h('img', ''), { alt: 'Logomarca', src: opts.logo }) : h('span', '', opts.brand || 'Logomarca'));
     case 'queue': return h('div', `tvc-z-queue ${th}`, h('span', '', 'SENHA'), h('b', '', 'A 042'), h('span', '', 'Guichê 2'));

@@ -424,6 +424,19 @@ export const TVC_LAYOUT_MODELS = Object.freeze([
     zones: [Z('main', 'playlist', 0, 0, 100, 100, { hint: 'media' })] },
   { key: 'menu3p-3', segment: 'alimentacao', set: 'menu-3-em-pe', label: 'Bebidas (TV 3 de 3, em pé)', desc: 'Em pé: bebidas, sobremesas e o QR code.', orientation: 'port', background: '#0b1220',
     zones: [Z('title', 'text', 0, 0, 100, 8, { title: 'Bebidas e sobremesas' }), Z('main', 'playlist', 0, 8, 100, 74, { hint: 'media' }), Z('qr', 'qr', 0, 82, 100, 18, { qr: 'https://exemplo.com.br', title: 'Aponte a câmera' })] },
+  // pedido do dono (23/11): boas-vindas no alto com a hora, o clima à esquerda, o principal no meio, as informações à direita e a faixa
+  { key: 'boas-vindas-info', segment: 'geral', label: 'Boas-vindas com clima e informações', desc: 'Boas-vindas e hora no alto, clima à esquerda, a playlist no meio, horário de atendimento, Wi-Fi e redes à direita, e o texto rolante.', orientation: 'land', background: '#0b1220',
+    zones: [Z('top', 'text', 0, 0, 74, 14, { title: 'Bem-vindo!', text: 'Sua informação, na hora certa.' }), Z('clock', 'clock', 74, 0, 26, 14),
+      Z('clima', 'weather', 0, 14, 23, 74), Z('main', 'playlist', 23, 14, 54, 74, { hint: 'media' }),
+      Z('info', 'text', 77, 14, 23, 74, { title: 'Informações', text: 'Atendimento: 09:00 às 18:00 · Wi-Fi: Visitantes · Siga-nos @suaempresa' }), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'boas-vindas-info-aovivo', segment: 'geral', label: 'Boas-vindas com clima, informações e vídeo ao vivo', desc: 'O mesmo, com o vídeo ao vivo (HLS) no meio.', orientation: 'land', background: '#0b1220',
+    zones: [Z('top', 'text', 0, 0, 74, 14, { title: 'Bem-vindo!', text: 'Sua informação, na hora certa.' }), Z('clock', 'clock', 74, 0, 26, 14),
+      Z('clima', 'weather', 0, 14, 23, 74), Z('main', 'video', 23, 14, 54, 74),
+      Z('info', 'text', 77, 14, 23, 74, { title: 'Informações', text: 'Atendimento: 09:00 às 18:00 · Wi-Fi: Visitantes · Siga-nos @suaempresa' }), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'provedor-boas-vindas', segment: 'provedor', label: 'Provedor: boas-vindas com clima e informações', desc: 'Para a loja do provedor: boas-vindas e hora no alto, o QR para assinar à esquerda, os planos na playlist do meio e o Wi-Fi e as redes à direita.', orientation: 'land', background: '#0b1220',
+    zones: [Z('top', 'text', 0, 0, 74, 14, { title: 'Bem-vindo!', text: 'Sua informação, na hora certa.' }), Z('clock', 'clock', 74, 0, 26, 14),
+      Z('assine', 'qr', 0, 14, 23, 74, { qr: 'https://exemplo.com.br', title: 'Assine já' }), Z('main', 'playlist', 23, 14, 54, 74, { hint: 'media' }),
+      Z('info', 'text', 77, 14, 23, 74, { title: 'Informações', text: 'Atendimento: 09:00 às 18:00 · Wi-Fi: Visitantes · Siga-nos @suaempresa' }), Z('bar', 'ticker', 0, 88, 100, 12)] },
   // DIGITAL ISP: os gerados por família (formas × segmento), 4 com a playlist e 4 com o vídeo ao vivo por segmento
   ...familyLayouts(),
 ].map((m) => Object.freeze({ segment: 'geral', ...m, zones: Object.freeze(m.zones) })));
