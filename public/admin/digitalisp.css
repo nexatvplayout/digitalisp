@@ -160,3 +160,14 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
 
 .rv-slug { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .rv-slug input { flex: 1; min-width: 160px; }
+
+/* superadmin: integrações */
+.ig-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; margin-top: 10px; }
+.ig-card h3 { margin: 0; font-size: 1rem; }
+.ig-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+.ig-chip { font-size: .72rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.ig-chip.ok { background: rgba(46,197,111,.18); color: #5fe39a; }
+.ig-chip.bad { background: rgba(255,82,82,.18); color: #ff8a80; }
+.ig-chip.wait { background: rgba(245,179,28,.18); color: #f5c55c; }
+.ig-res.ok { color: #5fe39a; } .ig-res.bad { color: #ff8a80; }
+.ig-sec { margin: 22px 0 0; }

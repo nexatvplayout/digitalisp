@@ -20,6 +20,7 @@ import { mountGuia } from './guia.js';
 import { mountEnderecos } from './enderecos.js';
 import { bindContas, assertNovaTela } from './contas.js';
 import { mountRevenda } from './revenda.js';
+import { mountIntegracoes } from './integracoes.js';
 import { mountRadios, loadRadios, audioOf } from './radios.js';
 import { mountHls, carregarHls, channelsOf as hlsChannels, streamOf as hlsStream } from './hls.js';
 import { createTvcorp } from './tvcorp.js';
@@ -139,6 +140,7 @@ app.post('/api/me/logout', ah(async (req, res) => {
 }));
 
 mountPlataforma(app);
+mountIntegracoes(app, { needsPlatform }); // superadmin: de onde vêm clima, cotações, notícias, CEP, mapa e rádios (server/integracoes.js)
 mountGuia(app, { needs, signedIn, needsPlatform, ah }); // configuração guiada (server/guia.js)
 mountRevenda(app, { needs, signedIn });
 mountHls(app, { needs, ah, onChange: (tid) => telas?.forget(tid) }); // canais ao vivo (HLS) (server/hls.js)

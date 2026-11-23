@@ -74,6 +74,7 @@ const VIEWS = {
   tvcorp: { area: ['revenda', 'cliente'], load: async (sub) => (await tvcorp()).load(sub), leave: () => tvcorpMod?.leave?.() },
   revendas: { area: 'plataforma', load: async () => (await plat()).paintRevendas($('#rvPanel')) },
   planos: { area: 'plataforma', load: async () => (await plat()).paintPlanos($('#plPanel')) },
+  integracoes: { area: 'plataforma', load: async () => (await import('./views/integracoes.js')).paintIntegracoes($('#igPanel')) },
   cobrancas: { area: 'plataforma', load: async () => (await plat()).paintCobrancas($('#cbPanel')) },
   mapa: { area: 'plataforma', load: async () => (await plat()).paintMapa($('#mpPanel')), leave: async () => (await plat()).leaveMapa() },
   conta: { area: null, load: () => paintConta() },
