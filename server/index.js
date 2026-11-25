@@ -22,6 +22,7 @@ import { mountEnderecos } from './enderecos.js';
 import { bindContas, assertNovaTela } from './contas.js';
 import { mountRevenda } from './revenda.js';
 import { mountIntegracoes } from './integracoes.js';
+import { mountSenhaRecuperar } from './senha-recuperar.js';
 import { mountDominios, entradaDoDominio } from './dominios.js';
 import { mountQrcodes } from './qrcodes.js';
 import { hostTenantId } from './domains.js';
@@ -99,7 +100,7 @@ app.get('/readyz', ah(async (_req, res) => { await db.get('SELECT 1 AS ok'); res
 
 /* ------------------------------------------------------------------ auditoria */
 // o sinal de vida e a captura das telas chegam a cada 30 s por aparelho: só ruído no log
-const NOT_AUDITED = new Set(['/admin/login', '/platform/login', '/telas/heartbeat', '/telas/screenshot']);
+const NOT_AUDITED = new Set(['/admin/senha/esqueci', '/admin/senha/redefinir', '/admin/login', '/platform/login', '/telas/heartbeat', '/telas/screenshot']);
 app.use('/api', (req, res, next) => {
   if (req.method === 'GET' || NOT_AUDITED.has(req.path.replace(/\/+$/, '').toLowerCase())) return next();
   const where = req.originalUrl.split('?')[0];
@@ -131,6 +132,8 @@ app.post('/api/admin/login', ah(async (req, res) => {
     throw err;
   }
 }));
+// "esqueci minha senha" da revenda e do cliente final, por e-mail (server/senha-recuperar.js)
+mountSenhaRecuperar(app, { ipOf: clientIp });
 app.get('/api/me', signedIn, ah(async (req, res) => {
   const tenant = req.user.tenantId != null ? await tenancy.getTenant(req.user.tenantId) : null;
   const plan = tenant ? await tenancy.effectivePlan(tenant) : null;

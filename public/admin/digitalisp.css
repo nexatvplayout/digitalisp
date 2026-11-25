@@ -141,6 +141,11 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
 
 .gd-entrou { background: rgba(245, 179, 28, .14); border-color: rgba(245, 179, 28, .5); }
 .login-nome { margin: 4px 0 10px; text-align: center; }
+.login-esqueci { justify-self: center; background: none; border: 0; padding: 4px; color: var(--c-dim); font: inherit; font-size: .86rem; text-decoration: underline; cursor: pointer; }
+.login-esqueci:hover { color: var(--c-fg-2); }
+.login-titulo { margin: 0; text-align: center; font-size: 1.2rem; }
+.login-ajuda { margin: 0; font-size: .86rem; }
+#esqueciMsg.ok { color: var(--c-fg-2); }
 .kpi.ok b { color: #5fe3e9; } .kpi.warn b { color: #f5c55c; }
 .rv-acesso { margin-top: 16px; border-color: var(--brand-cyan); }
 .tc-sub { margin: 4px 0 0; font-size: .86rem; }

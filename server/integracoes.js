@@ -11,6 +11,7 @@ import { safeFetch } from './web/net.js';
 import { config } from './config.js';
 import { RADIOS_FILE } from './radios.js';
 import fs from 'node:fs';
+import { emailEstado, testarEmail } from './email.js';
 
 const ah = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
@@ -31,7 +32,7 @@ const FIXAS = [
 const PENDENTES = [
   { id: 'cobranca', nome: 'Boleto e Pix', usa: 'Cobrança automática das revendas e dos clientes finais', nota: 'Escolher o provedor (Asaas, Efí, Mercado Pago, banco) e criar a conta. Hoje a cobrança é marcada à mão ("por fora").' },
   { id: 'whatsapp', nome: 'WhatsApp', usa: 'Avisos de tela fora do ar e de cobrança', nota: 'Precisa de uma conta do WhatsApp Business (API oficial da Meta ou um provedor).' },
-  { id: 'email', nome: 'E-mail', usa: 'Recuperar senha e avisos por e-mail', nota: 'Precisa de um serviço de envio (SMTP) com o domínio digitalisp.com.br.' },
+  { id: 'email', nome: 'E-mail', usa: 'Recuperar senha e avisos por e-mail', nota: 'Precisa de um serviço de envio (SMTP) com o domínio digitalisp.com.br: ponha SMTP_URL e MAIL_FROM no .env do servidor (veja .env.exemplo).' },
 ];
 
 function radiosInfo() {
@@ -44,10 +45,13 @@ export function mountIntegracoes(app, { needsPlatform }) {
   const V = needsPlatform('platform.view'); const S = needsPlatform('platform.settings');
   r.get('/', V, ah(async (_req, res) => {
     const rad = radiosInfo();
+    // o e-mail sai de "a contratar" quando o SMTP_URL está no servidor (server/email.js)
+    const em = emailEstado();
+    const email = em.ligado ? [{ id: 'email', nome: 'E-mail', fonte: `${em.servidor} · remetente ${em.remetente}`, usa: 'Recuperar senha ("Esqueci minha senha" no login da revenda e do cliente)', chave: true, testavel: true }] : [];
     res.set('Cache-Control', 'no-store').json({
       clima: await weatherConfig(),
-      fixas: FIXAS.map(({ teste, ...f }) => ({ ...f, testavel: Boolean(teste) || f.id === 'radios', ...(f.id === 'radios' ? { info: `${rad.total} rádios${rad.updatedAt ? ` · lista de ${new Date(rad.updatedAt).toLocaleDateString('pt-BR')}` : ''}` } : {}) })),
-      pendentes: PENDENTES,
+      fixas: [...FIXAS.map(({ teste, ...f }) => ({ ...f, testavel: Boolean(teste) || f.id === 'radios', ...(f.id === 'radios' ? { info: `${rad.total} rádios${rad.updatedAt ? ` · lista de ${new Date(rad.updatedAt).toLocaleDateString('pt-BR')}` : ''}` } : {}) })), ...email],
+      pendentes: em.ligado ? PENDENTES.filter((p) => p.id !== 'email') : PENDENTES,
       armazenamento: { driver: config.storage?.driver || 'local', nota: config.storage?.driver === 'r2' ? 'Cloudflare R2' : 'No disco do servidor (o R2 da Cloudflare entra quando o bucket for criado)' },
     });
   }));
@@ -59,6 +63,7 @@ export function mountIntegracoes(app, { needsPlatform }) {
   r.post('/:id/testar', V, ah(async (req, res) => {
     const id = String(req.params.id);
     if (id === 'clima') return res.json(await testWeather());
+    if (id === 'email') { try { const m = await testarEmail(); return res.json(m ? { ok: true, message: m } : { ok: false, message: 'Sem SMTP_URL no servidor.' }); } catch (e) { return res.json({ ok: false, message: `O SMTP recusou: ${String(e.message || e).slice(0, 140)}` }); } }
     if (id === 'radios') { const x = radiosInfo(); return res.json({ ok: x.total > 0, message: x.total ? `${x.total} rádios na lista` : 'A lista de rádios não foi encontrada no servidor.' }); }
     const f = FIXAS.find((x) => x.id === id && x.teste);
     if (!f) return res.status(404).json({ error: 'Integração sem teste.' });

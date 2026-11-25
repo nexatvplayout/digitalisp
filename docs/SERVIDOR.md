@@ -40,6 +40,15 @@ export XDG_RUNTIME_DIR=/run/user/$(id -u)   # para o systemctl --user funcionar 
 - **Senhas iniciais:** as do `superadmin` e do `admin` da revenda padrão foram geradas no servidor e ficam no `.env`. O dono
   as lê pelo terminal dele e troca no primeiro acesso.
 - **Token do túnel:** gravado com `bin/gravar-token`, no servidor.
+- **"Esqueci minha senha" (revenda e cliente final):** só aparece no login com o e-mail ligado. Ponha no
+  `~/.config/digitalisp/digitalisp.env` o `SMTP_URL` do provedor de envio (ex.: `smtps://usuario:senha@smtp.provedor.com:465`)
+  e o `MAIL_FROM` (`DIGITAL ISP <nao-responda@digitalisp.com.br>`; o domínio precisa estar liberado no provedor, com SPF e
+  DKIM no DNS), e reinicie o serviço. Em Integrações (superadmin), o E-mail sai de "a contratar" e ganha o botão Testar. O link
+  usa o `PLATFORM_PUBLIC_URL` (ou o domínio verificado da própria revenda), vale 30 minutos e uma vez só.
+- **Recuperar o acesso pelo terminal** (sem e-mail; também para a equipe da plataforma), no servidor, na pasta `app`:
+  `npm run admin:reset -- <e-mail>` gera uma senha nova (pede troca no primeiro acesso), destrava e reativa a conta;
+  `npm run admin:reset -- --platform superadmin` faz o mesmo para a equipe; `npm run admin:reset -- --list <texto>` só
+  procura (útil quando o login diz "Usuário ou senha incorretos" e não se sabe se a conta existe).
 
 ## Atualizar (depois de subir o `main` para o GitHub)
 

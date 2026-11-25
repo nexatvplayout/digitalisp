@@ -28,9 +28,13 @@ const gravarToken = (t) => { if (sessionStorage.getItem(TOKEN_KEY)) { if (t) ses
 document.title = KIND === 'plataforma' ? 'DIGITAL ISP · Plataforma' : 'DIGITAL ISP · Painel';
 
 /* ------------------------------------------------------------------ entrada */
+/** Qual cartão da entrada aparece: a entrada, o pedido do link ou a senha nova. */
+function cartao(id) { for (const f of ['loginForm', 'esqueciForm', 'redefinirForm']) $(`#${f}`).hidden = f !== id; }
 function showLogin(msg = '') {
   $('#app').hidden = true;
   $('#login').hidden = false;
+  cartao('loginForm');
+  esqueciDisponivel();
   const err = $('#loginErr');
   err.hidden = !msg; err.textContent = msg;
   const f = $('#loginForm');
@@ -55,6 +59,59 @@ $('#loginForm').addEventListener('submit', async (e) => {
     $('#loginErr').hidden = false;
     $('#loginErr').textContent = PORTA_CLIENTE && /incorretos/.test(err.message) ? `${err.message} Este endereço é só do cliente dele: a revenda entra em ${location.origin}/admin.` : err.message;
   }
+});
+
+/* ------------------------------------------------------------------ esqueci minha senha (revenda e cliente final) */
+// o link só aparece quando o servidor tem e-mail ligado (SMTP_URL); a equipe da plataforma recupera no servidor
+let senhaEmail = null;
+async function esqueciDisponivel() {
+  if (KIND === 'plataforma') return;
+  if (senhaEmail === null) { try { senhaEmail = Boolean((await api('/api/admin/senha')).email); } catch { senhaEmail = false; } }
+  $('#esqueciAbrir').hidden = !senhaEmail;
+}
+$('#esqueciAbrir').addEventListener('click', () => {
+  cartao('esqueciForm');
+  const f = $('#esqueciForm');
+  f.username.value = $('#loginForm').username.value.trim();
+  $('#esqueciMsg').hidden = true;
+  f.username.focus();
+});
+for (const b of $$('#login [data-voltar]')) b.addEventListener('click', () => showLogin());
+$('#esqueciForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const f = e.currentTarget; const msg = $('#esqueciMsg'); const btn = f.querySelector('button[type=submit]');
+  btn.disabled = true;
+  try {
+    const r = await api('/api/admin/senha/esqueci', { method: 'POST', body: { username: f.username.value.trim(), ...(PORTA_CLIENTE ? { tenant: PORTA_CLIENTE } : {}) } });
+    msg.classList.add('ok'); msg.textContent = r.message;
+  } catch (err) { msg.classList.toggle('ok', false); msg.textContent = err.message; }
+  finally { msg.hidden = false; btn.disabled = false; }
+});
+// o link do e-mail: /admin/#redefinir=<código> (o código fica depois do "#": não vai a nenhum servidor nem log)
+let codigoRedefinir = null;
+function abrirRedefinir(codigo) {
+  codigoRedefinir = codigo;
+  history.replaceState(null, '', location.pathname); // tira o código da barra e do histórico
+  $('#app').hidden = true; $('#login').hidden = false;
+  cartao('redefinirForm');
+  $('#redefinirMsg').hidden = true;
+  $('#redefinirForm').password.focus();
+}
+$('#redefinirForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const f = e.currentTarget; const msg = $('#redefinirMsg');
+  msg.hidden = true;
+  if (f.password.value !== f.password2.value) { msg.textContent = 'As duas senhas não são iguais.'; msg.hidden = false; return; }
+  try {
+    const r = await api('/api/admin/senha/redefinir', { method: 'POST', body: { token: codigoRedefinir, password: f.password.value } });
+    f.reset(); codigoRedefinir = null;
+    // as sessões antigas caíram com a troca: entra de novo com a senha nova
+    state.token = null; gravarToken(null);
+    showLogin();
+    $('#loginForm').username.value = r.username || '';
+    $('#loginForm').password.focus();
+    toast(r.message || 'Senha nova criada. Entre com ela.');
+  } catch (err) { msg.textContent = err.message; msg.hidden = false; }
 });
 
 async function logout() {
@@ -149,6 +206,9 @@ async function faixaGuia() {
 let voltando = false;
 window.addEventListener('hashchange', (e) => {
   if (voltando) { voltando = false; return; }
+  // o link do e-mail colado numa aba onde o painel já estava aberto (só o "#" muda, a página não recarrega)
+  const cod = KIND !== 'plataforma' && /^#redefinir=([A-Za-z0-9_-]{30,100})$/.exec(location.hash)?.[1];
+  if (cod) { abrirRedefinir(cod); return; }
   // só conta o que está sendo digitado na tela aberta (a escondida não incomoda), e o formulário novo ainda vazio não conta
   const sujo = document.querySelector('.view:not([hidden]) form.dirty, dialog[open] form.dirty');
   if (sujo && !confirm('Há alterações não salvas. Sair desta tela e perder o que foi digitado?')) {
@@ -258,5 +318,7 @@ if (location.hash === '#entrar') {
   if (t) sessionStorage.setItem(TOKEN_KEY, t);
   history.replaceState(null, '', location.pathname);
 }
+const redefinir = /^#redefinir=([A-Za-z0-9_-]{30,100})$/.exec(location.hash)?.[1];
 state.token = lerToken();
-if (state.token) start(); else showLogin();
+if (redefinir && KIND !== 'plataforma') abrirRedefinir(redefinir);
+else if (state.token) start(); else showLogin();

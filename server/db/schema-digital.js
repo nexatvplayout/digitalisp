@@ -119,6 +119,17 @@ CREATE TABLE IF NOT EXISTS isp_faturas_cliente (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS isp_faturas_cliente_ref ON isp_faturas_cliente(cliente_id, referencia);
 CREATE INDEX IF NOT EXISTS isp_faturas_cliente_rev ON isp_faturas_cliente(revenda_id, status, vencimento);
+-- "esqueci minha senha" (server/senha-recuperar.js): só o hash do código do link; vale 30 min, uma vez
+CREATE TABLE IF NOT EXISTS isp_senha_reset (
+  id         ${id},
+  user_id    ${big} NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token_hash TEXT NOT NULL UNIQUE,
+  expires_at ${big} NOT NULL,
+  used_at    ${big},
+  created_at ${big} NOT NULL,
+  ip         TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS isp_senha_reset_user ON isp_senha_reset(user_id);
 -- canais ao vivo (HLS) da conta; a unidade escolhe um em telas_offices.channel_id
 CREATE TABLE IF NOT EXISTS isp_hls (
   id         ${id},

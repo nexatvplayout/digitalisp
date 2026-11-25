@@ -32,6 +32,30 @@
       </label>
       <button class="primary" type="submit">Entrar</button>
       <p class="err" id="loginErr" role="alert" hidden></p>
+      <button class="link login-esqueci" type="button" id="esqueciAbrir" hidden>Esqueci minha senha</button>
+    </form>
+    <!-- "Esqueci minha senha" (server/senha-recuperar.js): o pedido do link e a senha nova pelo link do e-mail -->
+    <form class="login-card" id="esqueciForm" hidden>
+      <h2 class="login-titulo">Esqueci minha senha</h2>
+      <p class="dim login-ajuda">Informe o e-mail da conta. Enviamos um link para você criar uma senha nova (vale 30 minutos).</p>
+      <label class="fld">E-mail
+        <input name="username" type="email" autocomplete="username" inputmode="email" required>
+      </label>
+      <button class="primary" type="submit">Enviar o link</button>
+      <p class="err" id="esqueciMsg" role="status" hidden></p>
+      <button class="link login-esqueci" type="button" data-voltar>Voltar para a entrada</button>
+    </form>
+    <form class="login-card" id="redefinirForm" hidden>
+      <h2 class="login-titulo">Criar uma nova senha</h2>
+      <label class="fld">Senha nova (12 caracteres ou mais)
+        <input name="password" type="password" autocomplete="new-password" minlength="12" required>
+      </label>
+      <label class="fld">Repita a senha nova
+        <input name="password2" type="password" autocomplete="new-password" minlength="12" required>
+      </label>
+      <button class="primary" type="submit">Salvar a senha nova</button>
+      <p class="err" id="redefinirMsg" role="alert" hidden></p>
+      <button class="link login-esqueci" type="button" data-voltar>Voltar para a entrada</button>
     </form>
   </div>
 
