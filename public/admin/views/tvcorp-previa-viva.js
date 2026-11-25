@@ -26,7 +26,7 @@ async function tocar(video, url, aviso) {
  * a TV recebe (POST /api/tvcorp/layouts/ao-vivo): a grade que usa o layout, ou as playlists escolhidas no próprio layout.
  * zonePlaylists: as da grade que está sendo editada. zoneItems: os itens que uma tela recebe agora (Ver a tela agora).
  */
-export async function abrirPreviaViva(layout, { zonePlaylists = null, titulo = '', canalUrl = null, zoneItems = null } = {}) {
+export async function abrirPreviaViva(layout, { zonePlaylists = null, titulo = '', canalUrl = null, zoneItems = null, nota = null } = {}) {
   const paradas = [];
   const parar = () => { while (paradas.length) { try { paradas.pop()(); } catch { /* já parou */ } } };
   let somLigado = false;
@@ -78,11 +78,13 @@ export async function abrirPreviaViva(layout, { zonePlaylists = null, titulo = '
       passo();
     }
     aplicaSom();
+    // as playlists escolhidas sem nada valendo agora: diz por que a zona está vazia
+    if (zonePlaylists && !Object.values(itensDaZona).some((l) => Array.isArray(l) && l.length)) aviso.textContent = 'Nada para passar agora: a playlist está vazia ou os itens dela não valem neste dia e horário.';
   }
   canal.addEventListener('change', montar);
   const som = btn('🔇 Ligar o som', () => { somLigado = !somLigado; som.textContent = somLigado ? '🔊 Desligar o som' : '🔇 Ligar o som'; som.setAttribute('aria-pressed', String(somLigado)); aplicaSom(); }, 'small');
   som.setAttribute('aria-pressed', 'false');
-  const origem = zoneItems ? null : vivo?.grade ? `Como as telas recebem agora: grade "${vivo.grade.name}".` : vivo ? 'Como as telas recebem: as playlists escolhidas no layout (nenhuma grade usa este layout ainda).' : null;
+  const origem = nota || (zoneItems ? null : vivo?.grade ? `Como as telas recebem agora: grade "${vivo.grade.name}".` : vivo ? 'Como as telas recebem: as playlists escolhidas no layout (nenhuma grade usa este layout ainda).' : null);
   const { dlg } = dialog(titulo || `Prévia ao vivo${layout.name ? ` · ${layout.name}` : ''}`, el('div', { class: 'tc-live' },
     el('div', { class: 'tc-live-bar' }, listaCanais.length && (layout.zones || []).some((z) => z.kind === 'video') ? el('label', { class: 'tc-live-sel' }, el('span', { class: 'small', text: 'Canal' }), canal) : null,
       som, btn('Tela cheia', () => palco.requestFullscreen?.().catch(() => {}), 'small')),
