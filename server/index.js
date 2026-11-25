@@ -38,6 +38,7 @@ import { getJson as netGetJson } from './web/net.js';
 import { createNewsImages } from './noticias-img.js'; // a cópia da foto de cada notícia (uma por vez na tela)
 import { prepareMediaImage } from './tvcorp-midia.js'; // a foto da notícia em WebP vira JPEG
 import { forecast as weatherForecast } from './weather.js'; // o clima das telas (Open-Meteo/INMET, com cache e cota)
+import { sitePlans } from './site-planos.js'; // os planos ativos e públicos no site (GET /api/site/planos)
 
 const bootedAt = Date.now();
 const ah = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -94,6 +95,7 @@ if (config.platform.canonicalHost) {
 const pkgVersion = (() => { try { return JSON.parse(fs.readFileSync(path.join(config.root, 'package.json'), 'utf8')).version || '0.1.0'; } catch { return '0.1.0'; } })();
 const VERSAO = (() => { try { const [n, commit, em] = fs.readFileSync(path.join(config.root, 'VERSAO'), 'utf8').trim().split('|'); return { numero: `${pkgVersion.split('.').slice(0, 2).join('.')}.${n}`, commit, em }; } catch { return { numero: `${pkgVersion} (local)`, commit: null, em: new Date(bootedAt).toISOString() }; } })();
 app.get('/api/versao', (_req, res) => res.set('Cache-Control', 'no-cache').json(VERSAO));
+app.get('/api/site/planos', ah(async (_req, res) => res.set('Cache-Control', 'public, max-age=60').json({ plans: await sitePlans() })));
 app.get('/healthz', (_req, res) => res.json({ ok: true, uptime: Math.round((Date.now() - bootedAt) / 1000) }));
 app.get('/readyz', ah(async (_req, res) => { await db.get('SELECT 1 AS ok'); res.json({ ok: true }); }));
 

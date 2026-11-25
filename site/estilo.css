@@ -465,3 +465,29 @@ textarea { resize: vertical; }
 @media (max-width: 420px) {
   .layout figcaption { flex-direction: column; }
 }
+
+/* Planos das revendas (preenchidos pelo /api/site/planos) */
+.planos { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); align-items: stretch; }
+.planos-1 { grid-template-columns: minmax(260px, 420px); }
+.planos-aviso { grid-column: 1 / -1; color: var(--texto-suave); margin: 0; }
+.plano { position: relative; display: flex; flex-direction: column; gap: 12px; }
+.plano h3 { margin: 0; }
+.plano-destaque { border: 2px solid var(--azul); box-shadow: 0 18px 40px rgba(13,128,255,.18); }
+.plano-selo {
+  position: absolute; top: -13px; left: 24px; padding: 3px 12px; border-radius: 999px;
+  background: var(--azul); color: #fff; font-size: .75rem; font-weight: 700; letter-spacing: .03em; text-transform: uppercase;
+}
+.cartao .plano-preco { color: var(--marinho); }
+.plano-preco b { font-size: 2rem; line-height: 1.1; }
+.plano-preco span { color: var(--texto-suave); }
+.plano-itens { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; flex: 1; }
+.plano-itens li { position: relative; padding-left: 26px; color: var(--texto); font-size: .95rem; }
+.plano-itens li::before {
+  content: ""; position: absolute; left: 0; top: .35em; width: 14px; height: 8px;
+  border-left: 2.5px solid var(--azul); border-bottom: 2.5px solid var(--azul); transform: rotate(-45deg);
+}
+.plano-itens .plano-telas { font-weight: 700; color: var(--marinho); }
+.plano-botao { text-align: center; margin-top: 4px; }
+.plano-botao-sec { background: #fff; color: var(--azul-escuro); border-color: var(--azul); }
+.plano-botao-sec:hover { background: rgba(13,128,255,.08); }
+.planos-nota { color: var(--texto-suave); font-size: .9rem; margin-top: 18px; }

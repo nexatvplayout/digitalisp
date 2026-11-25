@@ -146,7 +146,8 @@ export async function paintPlanos(root) {
     const f = el('form', { class: 'card pl-card' },
       el('div', { class: 'pl-head' },
         el('div', {}, el('h3', { text: p.name }), el('span', { class: 'dim mono small', text: p.code })),
-        el('label', { class: 'pl-active' }, el('input', { type: 'checkbox', name: 'active', checked: p.active, disabled: fixed }), ' Ativo (pode ser vendido)')),
+        el('div', { class: 'pl-flags' }, el('label', { class: 'pl-active' }, el('input', { type: 'checkbox', name: 'active', checked: p.active, disabled: fixed }), ' Ativo (pode ser vendido)'),
+          el('label', { class: 'pl-active' }, el('input', { type: 'checkbox', name: 'public', checked: p.public && !fixed, disabled: fixed }), ' Mostrar no site'))),
       el('div', { class: 'rv-grid2' },
         field('Nome', inp('name', p.name, { maxlength: 60 })),
         field('Preço mensal (R$)', inp('price', centsToInput(p.priceCents), { inputmode: 'decimal' })),
@@ -166,6 +167,7 @@ export async function paintPlanos(root) {
       const body = { name: v.name, description: v.description, priceCents: price ?? 0 };
       if (!fixed) {
         body.active = f.active.checked;
+        body.public = f.public.checked;
         body.limits = Object.fromEntries(LIMITS.map(([k]) => [k, v[`l_${k}`] === '' || v[`l_${k}`] == null ? null : Number(v[`l_${k}`])]));
         body.features = Object.fromEntries(CAT.FEATURE_KEYS.map((k) => [k, Boolean(f[`m_${k}`]?.checked)]));
         body.profileId = null; // os módulos ficam no próprio plano
