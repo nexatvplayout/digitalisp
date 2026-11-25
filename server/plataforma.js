@@ -11,6 +11,7 @@ import * as T from './tenancy.js';
 import { PLATFORM_PERMISSIONS, checkPasswordPolicy, USERNAME_RE } from './authcore.js';
 import { clientIp } from './clientip.js';
 import { mountFeatureProfiles, storedFeatures } from './funcionalidades.js';
+import { hiddenCodes, setSiteVisible } from './site-planos.js'; // "Mostrar no site" de cada plano
 import { mountRevendas, saveExtras, loadExtras, extrasDto } from './revendas.js';
 
 const { fail } = T;
@@ -257,7 +258,10 @@ export function mountPlataforma(app) {
     return out;
   };
 
-  r.get('/plans', A('platform.view'), ah(async (_req, res) => res.json(await T.listPlans())));
+  r.get('/plans', A('platform.view'), ah(async (_req, res) => {
+    const hidden = await hiddenCodes();
+    res.json((await T.listPlans()).map((p) => ({ ...p, siteVisible: p.code !== T.UNLIMITED_PLAN && !hidden.has(p.code) })));
+  }));
   r.post('/plans', A('platform.plans'), ah(async (req, res) => {
     const f = planInput(req.body || {});
     const profileId = await profileOf(req.body || {});
@@ -277,6 +281,7 @@ export function mountPlataforma(app) {
     const profileId = await profileOf(b);
     if (profileId !== undefined) f.profile_id = profileId;
     if (f.code && f.code !== cur.code && await db.get('SELECT id FROM plans WHERE code = ?', [f.code])) throw fail(409, 'Já existe um plano com esse código.');
+    if (b.siteVisible !== undefined && cur.code !== T.UNLIMITED_PLAN) await setSiteVisible(f.code || cur.code, Boolean(b.siteVisible));
     const keys = Object.keys(f);
     if (keys.length) await db.run(`UPDATE plans SET ${keys.map((k) => `${k} = ?`).join(', ')} WHERE id = ?`, [...keys.map((k) => f[k]), cur.id]);
     T.invalidateTenants();

@@ -1,5 +1,5 @@
-// Os planos no site (GET /api/site/planos, sem login): só os ativos e marcados "Mostrar no site", sem o Ilimitado e sem
-// códigos internos de cobrança; os módulos saem pelo nome que o superadmin vê.
+// Os planos no site (GET /api/site/planos, sem login): todos os do superadmin menos o Ilimitado e os desmarcados em
+// "Mostrar no site"; sem códigos internos de cobrança; os módulos saem pelo nome que o superadmin vê.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { tmpDir } from './helpers/tmp.js';
@@ -7,7 +7,7 @@ import { boot, cleanup, api, platformLogin } from './helpers/srv.js';
 
 process.env.DATA_DIR = tmpDir('nexa-siteplanos');
 
-test('o site mostra os planos ativos e públicos', async (t) => {
+test('o site mostra os planos do superadmin, menos os tirados do site', async (t) => {
   const s = await boot();
   t.after(async () => { await s.stop?.(); cleanup(process.env.DATA_DIR); });
   const anon = api(s.base);
@@ -19,13 +19,16 @@ test('o site mostra os planos ativos e públicos', async (t) => {
   };
   await mk('vitrine', { description: 'Para começar.', trialDays: 7 });
   await mk('inativo', { active: false });
-  const oculto = await mk('oculto', { public: false });
+  const oculto = await mk('oculto');
+  assert.equal((await P('PATCH', `/api/platform/plans/${oculto.id}`, { siteVisible: false })).status, 200);
+  assert.equal((await P('GET', '/api/platform/plans')).data.find((p) => p.code === 'oculto').siteVisible, false);
 
   const r = await anon('GET', '/api/site/planos');
   assert.equal(r.status, 200);
   const codes = r.data.plans.map((p) => p.code);
-  assert.ok(codes.includes('vitrine'));
-  for (const c of ['inativo', 'oculto', 'ilimitado']) assert.ok(!codes.includes(c), c);
+  for (const c of ['vitrine', 'inativo', 'revenda-inicial']) assert.ok(codes.includes(c), c);
+  for (const c of ['oculto', 'ilimitado']) assert.ok(!codes.includes(c), c);
+  assert.ok(!r.data.plans.some((p) => /Rascunho sugerido/.test(p.description)), 'sem a nota de rascunho');
   const v = r.data.plans.find((p) => p.code === 'vitrine');
   assert.equal(v.priceCents, 19900);
   assert.equal(v.limits.telas, 10);
@@ -33,7 +36,7 @@ test('o site mostra os planos ativos e públicos', async (t) => {
   assert.ok(v.modules.includes('Mapa das telas'));
   assert.equal(v.gatewayRefs, undefined, 'nada de dados internos de cobrança');
 
-  // marcar "Mostrar no site" pelo superadmin faz o plano aparecer
-  assert.equal((await P('PATCH', `/api/platform/plans/${oculto.id}`, { public: true })).status, 200);
+  // marcar "Mostrar no site" de novo faz o plano voltar
+  assert.equal((await P('PATCH', `/api/platform/plans/${oculto.id}`, { siteVisible: true })).status, 200);
   assert.ok((await anon('GET', '/api/site/planos')).data.plans.some((p) => p.code === 'oculto'));
 });
