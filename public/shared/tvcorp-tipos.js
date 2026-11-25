@@ -49,7 +49,7 @@ export const TVC_FIT_KEYS = Object.freeze(TVC_FITS.map((f) => f.key));
 /* ------------------------------------------------------------------ zonas do layout (contrato §4.1 zones[].kind) */
 /**
  * auto: o conteúdo vem da configuração da tela ou do servidor, sem playlist. playlist: a zona recebe uma playlist na grade.
- * params: os campos que a zona aceita (texto, endereço do QR, rótulo).
+ * params: os campos que a zona aceita (texto, endereço do QR, rótulo; widget = o gadget escolhido direto no layout, sem playlist).
  */
 export const TVC_ZONES = Object.freeze([
   { key: 'video', label: 'Vídeo do canal', desc: 'O canal ao vivo (grade, playout e ao vivo). No máximo um por layout.' },
@@ -62,10 +62,14 @@ export const TVC_ZONES = Object.freeze([
   { key: 'text', label: 'Texto fixo', desc: 'Um título e uma frase fixos.', params: ['title', 'text'] },
   { key: 'news', label: 'Notícias', desc: 'As manchetes das fontes escolhidas, com a fonte e a hora.', playlist: true },
   { key: 'quotes', label: 'Cotações', desc: 'Dólar, euro e outras moedas, com a hora da cotação.', playlist: true },
-  { key: 'countdown', label: 'Contagem regressiva', desc: 'Dias e horas até um evento.', playlist: true },
-  { key: 'safety', label: 'Dias sem acidente', desc: 'Os dias sem acidente, o recorde e a meta.', playlist: true },
-  { key: 'worldclock', label: 'Relógio mundial', desc: 'A hora em outras cidades.', params: ['title'] },
+  { key: 'countdown', label: 'Contagem regressiva', desc: 'Quanto falta para começar ou para terminar um evento: dias, horas, minutos e segundos.', playlist: true, params: ['widget'] },
+  { key: 'safety', label: 'Dias sem acidente', desc: 'Os dias sem acidente, o recorde e a meta.', playlist: true, params: ['widget'] },
+  { key: 'worldclock', label: 'Relógio mundial', desc: 'A hora em outras cidades.', params: ['title', 'widget'] },
   { key: 'queue', label: 'Chamada de senha', desc: 'A senha chamada e as últimas chamadas (quando a unidade tem a chamada de senha).' },
+  // DIGITAL ISP: qualquer gadget direto na zona (relógio, clima, agenda, indicadores, avaliações, como chegar, página)
+  // DIGITAL ISP: a imagem de uma entrada HDMI da TV (decodificador, câmera, computador); a entrada é escolhida no menu do app da TV
+  { key: 'hdmi', label: 'Entrada HDMI da TV', desc: 'A imagem de uma entrada HDMI da TV (decodificador, câmera, computador). A entrada (HDMI 1, 2, 3…) é escolhida no menu do app da TV Samsung. No máximo uma por layout, sem o vídeo do canal.' },
+  { key: 'widget', label: 'Gadget', desc: 'Um gadget escolhido na aba Barras e blocos: relógio, clima, agenda, indicadores, avaliações, como chegar, página e outros.', params: ['widget'] },
 ]);
 export const TVC_ZONE = Object.freeze(Object.fromEntries(TVC_ZONES.map((z) => [z.key, z])));
 export const TVC_ZONE_KEYS = Object.freeze(TVC_ZONES.map((z) => z.key));
@@ -81,7 +85,7 @@ export const TVC_ZONE_ID_RE = /^[a-z][a-z0-9-]{0,15}$/;
 export const TVC_REF_KINDS = Object.freeze([
   { key: 'media', label: 'Imagem ou slide', needsId: true },
   { key: 'post', label: 'Comunicado', needsId: true },
-  { key: 'widget', label: 'Contador, dias sem acidente, relógio mundial ou cardápio', needsId: true },
+  { key: 'widget', label: 'Gadget (contador, relógio, clima, agenda, indicadores…)', needsId: true },
   { key: 'kpi', label: 'Indicador', needsId: true },
   { key: 'birthdays', label: 'Aniversariantes', auto: true },
   { key: 'news', label: 'Notícias', auto: true },
@@ -93,7 +97,9 @@ export const TVC_REF_KIND = Object.freeze(Object.fromEntries(TVC_REF_KINDS.map((
 export const TVC_REF_KIND_KEYS = Object.freeze(TVC_REF_KINDS.map((k) => k.key));
 
 /** Os itens que a tela recebe (contrato §4.1 zones[...][].kind). */
-export const TVC_ITEM_KINDS = Object.freeze(['image', 'slide', 'birthdays', 'kpi', 'news', 'quotes', 'post', 'menu', 'countdown', 'safety', 'worldclock']);
+export const TVC_ITEM_KINDS = Object.freeze(['image', 'slide', 'birthdays', 'kpi', 'news', 'quotes', 'post', 'menu', 'countdown', 'safety', 'worldclock',
+  // DIGITAL ISP: os gadgets novos
+  'weather', 'clock', 'agenda', 'reviews', 'dashboard', 'directions', 'web']);
 
 /**
  * O id do item na tela (o mesmo que volta em plays[].ref): m<id> mídia, p<id> comunicado, k<id> indicador, w<id> widget,
@@ -121,6 +127,8 @@ export function parseItemRef(ref) {
   if (s === 'w:posts') return { refKind: 'posts', refId: 0 };
   if (s === 'n:all') return { refKind: 'news', refId: 0 };
   if (s === 'q:all') return { refKind: 'quotes', refId: 0 };
+  const one = /^n([1-9][0-9]{0,15})-([1-9][0-9]?)$/.exec(s); // uma notícia da fonte (DIGITAL ISP: uma por vez, com a foto)
+  if (one) return { refKind: 'news', refId: Number(one[1]) };
   const m = /^([mpkwcnq])([1-9][0-9]{0,15})$/.exec(s);
   if (!m) return null;
   const kind = { m: 'media', p: 'post', k: 'kpi', w: 'widget', c: 'card', n: 'news', q: 'quotes' }[m[1]];
@@ -160,6 +168,120 @@ export const TVC_DAYS = Object.freeze([
 
 /* ------------------------------------------------------------------ modelos de layout (de fábrica) */
 const Z = (id, kind, x, y, w, h, extra = {}) => Object.freeze({ id, kind, x, y, w, h, ...extra });
+/* ------------------------------------------------------------------ DIGITAL ISP: modelos por família (formas × segmento) */
+/**
+ * Os modelos gerados: para cada segmento, 4 com a playlist como zona principal e 4 com o vídeo ao vivo (o canal em HLS),
+ * deitados e em pé, alguns com os gadgets por cima da imagem. A forma dá as posições (o principal, as casas dos gadgets e
+ * a faixa); o segmento dá os gadgets que fazem sentido nele, na ordem de importância (a primeira casa recebe o primeiro).
+ * As casas "pequenas" (por cima da imagem) só aceitam gadgets que cabem num canto (relógio, clima, QR, logomarca, contador).
+ */
+function familyLayouts() {
+  const QR = (title) => ({ kind: 'qr', id: 'qr', name: 'QR code', small: true, extra: { qr: 'https://exemplo.com.br', title } });
+  const G = {
+    clock: { kind: 'clock', id: 'clock', name: 'relógio', small: true },
+    weather: { kind: 'weather', id: 'weather', name: 'clima', small: true },
+    logo: { kind: 'logo', id: 'logo', name: 'logomarca', small: true, extra: { opacity: 0 } },
+    countdown: { kind: 'countdown', id: 'countdown', name: 'contador', small: true },
+    quotes: { kind: 'quotes', id: 'quotes', name: 'cotações' },
+    news: { kind: 'news', id: 'news', name: 'notícias' },
+    queue: { kind: 'queue', id: 'queue', name: 'senha' },
+    safety: { kind: 'safety', id: 'safety', name: 'dias sem acidente' },
+    world: { kind: 'worldclock', id: 'world', name: 'relógio mundial', extra: { title: 'Horário pelo mundo' } },
+    agenda: { kind: 'widget', id: 'agenda', name: 'agenda', extra: { sample: 'agenda' } },
+    dash: { kind: 'widget', id: 'dash', name: 'indicadores', extra: { sample: 'dashboard' } },
+    reviews: { kind: 'widget', id: 'reviews', name: 'avaliações', extra: { sample: 'reviews' } },
+    directions: { kind: 'widget', id: 'directions', name: 'como chegar', extra: { sample: 'directions' } },
+    ads: { kind: 'playlist', id: 'ads', name: 'anúncios', extra: { hint: 'media' } },
+  };
+  // os segmentos (as mesmas chaves de TVC_LAYOUT_SEGMENTS) e os gadgets de cada um, do mais ao menos importante
+  const SEG = [
+    ['geral', 'Uso geral', 'Geral', [G.clock, G.weather, G.news, QR('Saiba mais'), G.logo]],
+    ['loja', 'Loja e varejo', 'Loja', [QR('Compre pelo site'), G.countdown, G.reviews, G.clock, G.logo]],
+    ['alimentacao', 'Restaurante e lanchonete', 'Restaurante', [QR('Peça pelo celular'), G.reviews, G.clock, G.directions, G.countdown]],
+    ['saude', 'Clínica e farmácia', 'Clínica', [G.queue, G.clock, QR('Agende sua consulta'), G.weather, G.directions]],
+    ['academia', 'Academia', 'Academia', [G.countdown, G.clock, QR('Baixe o app de treino'), G.dash, G.weather]],
+    ['escola', 'Escola', 'Escola', [G.agenda, G.clock, G.countdown, G.weather, G.news]],
+    ['recepcao', 'Recepção', 'Recepção', [G.queue, G.weather, G.agenda, G.clock, QR('Fale conosco')]],
+    ['corporativo', 'Escritório', 'Escritório', [G.dash, G.agenda, G.quotes, G.clock, G.news]],
+    ['industria', 'Indústria', 'Indústria', [G.safety, G.dash, G.clock, G.news, G.weather]],
+    ['provedor', 'Provedor de internet', 'Provedor', [QR('Assine pelo celular'), G.directions, G.reviews, G.clock, G.weather]],
+    ['igreja', 'Igreja', 'Igreja', [G.agenda, G.countdown, QR('Contribua e participe'), G.clock, G.weather]],
+    ['hotel', 'Hotel', 'Hotel', [G.world, G.weather, QR('Wi-Fi dos hóspedes'), G.directions, G.clock]],
+    ['elevador', 'Elevador e condomínio', 'Elevador', [G.clock, G.ads, G.news, G.weather, QR('Avisos do condomínio')]],
+    ['evento', 'Evento', 'Evento', [G.countdown, G.agenda, QR('Programação completa'), G.clock, G.weather]],
+  ];
+  // as formas: o principal (M), as casas dos gadgets (S, em ordem; small: só gadget de canto, por cima da imagem) e a faixa
+  // small: casa de canto, por cima da imagem; strip: a faixa de cima das telas em pé (só gadget de canto, sem ficar por cima)
+  const S = (x, y, w, h, small = false, strip = false) => ({ x, y, w, h, small, strip });
+  const SHAPES = {
+    playlist: [
+      { key: 'lateral', lab: 'com lateral', name: 'com lateral de gadgets', o: 'land', main: [0, 0, 70, 88], slots: [S(70, 0, 30, 30), S(70, 30, 30, 30), S(70, 60, 30, 28)], bar: [0, 88, 100, 12] },
+      { key: 'rodape', lab: 'com gadgets embaixo', name: 'com gadgets embaixo', o: 'land', main: [0, 0, 100, 64], slots: [S(0, 64, 34, 24), S(34, 64, 33, 24), S(67, 64, 33, 24)], bar: [0, 88, 100, 12] },
+      { key: 'por-cima', lab: 'com gadgets por cima', name: 'em tela cheia com gadgets por cima', o: 'land', main: [0, 0, 100, 88], slots: [S(76, 4, 22, 22, true), S(2, 4, 22, 22, true)], bar: [0, 88, 100, 12], overlay: true },
+      { key: 'em-pe', lab: 'em pé', name: 'em pé com gadgets', o: 'port', main: [0, 10, 100, 58], slots: [S(0, 0, 100, 10, false, true), S(0, 68, 50, 22), S(50, 68, 50, 22)], bar: [0, 90, 100, 10] },
+    ],
+    video: [
+      { key: 'em-l', lab: 'em L', name: 'em L com gadgets', o: 'land', main: [0, 0, 75, 88], slots: [S(75, 0, 25, 44), S(75, 44, 25, 44)], bar: [0, 88, 100, 12] },
+      { key: 'lateral', lab: 'com lateral', name: 'com lateral de três gadgets', o: 'land', main: [0, 0, 72, 88], slots: [S(72, 0, 28, 30), S(72, 30, 28, 29), S(72, 59, 28, 29)], bar: [0, 88, 100, 12] },
+      { key: 'por-cima', lab: 'com gadget por cima', name: 'em tela cheia com gadget por cima', o: 'land', main: [0, 0, 100, 88], slots: [S(76, 4, 22, 22, true)], bar: [0, 88, 100, 12], overlay: true },
+      { key: 'em-pe', lab: 'em pé', name: 'em pé com gadgets', o: 'port', main: [0, 10, 100, 34], slots: [S(0, 0, 100, 10, false, true), S(0, 44, 100, 24), S(0, 68, 100, 22)], bar: [0, 90, 100, 10] },
+    ],
+  };
+  const join = (xs) => (xs.length > 1 ? `${xs.slice(0, -1).join(', ')} e ${xs[xs.length - 1]}` : xs[0] || '');
+  // os cantos das casas por cima da imagem (acima da faixa): a forma "por cima" troca de canto para não repetir modelo
+  const CORNERS = [[76, 4], [2, 4], [76, 62], [2, 62]];
+  const sig = (o, zs) => o + JSON.stringify(zs.map((z) => [z.kind, z.x, z.y, z.w, z.h, z.sample || '', z.overlay ? 1 : 0]));
+  const seen = new Set();
+  const out = [];
+  for (const [seg, segLabel, short, gadgets] of SEG) {
+    for (const mainKind of ['playlist', 'video']) {
+      for (const sh of SHAPES[mainKind]) {
+        // os gadgets da forma: as casas pequenas pegam os de canto; as outras, na ordem do segmento. Se sair igual a um
+        // modelo já feito, gira o canto e o tamanho da casa (forma por cima) e só depois o começo da lista de gadgets
+        const SIZES = [null, [26, 18], [18, 26]];
+        let zones = [];
+        for (let a = 0; a < 60; a++) {
+          const corner = a % 4; const size = SIZES[Math.floor(a / 4) % 3]; const skip = Math.floor(a / 12);
+          const list = [...gadgets.slice(skip), ...gadgets.slice(0, skip)];
+          const used = new Set(); zones = [];
+          sh.slots.forEach((slot, i) => {
+            const g = list.find((x) => !used.has(x.id) && (!(slot.small || slot.strip) || x.small)) || null;
+            if (!g) return;
+            used.add(g.id);
+            const [w, h] = slot.small && size ? size : [slot.w, slot.h];
+            const [cx, cy] = CORNERS[(corner + (i ? 1 : 0)) % 4];
+            // o canto de baixo encosta na faixa (y + altura = 84)
+            const [x, y] = slot.small ? [cx === 76 ? 98 - w : 2, cy === 4 ? 4 : 84 - h] : [slot.x, slot.y];
+            zones.push(Z(g.id, g.kind, x, y, w, h, { ...(g.extra || {}), ...(slot.small ? { overlay: true, opacity: g.id === 'logo' ? 0 : 60 } : {}) }));
+          });
+          if (!seen.has(sig(sh.o, zones))) break;
+        }
+        seen.add(sig(sh.o, zones));
+        const main = Z('main', mainKind, ...sh.main, mainKind === 'playlist' ? { hint: 'media' } : {});
+        const bar = sh.bar ? [Z('bar', 'ticker', ...sh.bar)] : [];
+        const names = zones.map((z) => (gadgets.find((g) => g.id === z.id) || {}).name);
+        const what = mainKind === 'video' ? 'vídeo ao vivo' : 'playlist';
+        out.push({
+          key: `f-${seg}-${mainKind === 'video' ? 'aovivo' : 'playlist'}-${sh.key}`, segment: seg, main: mainKind, family: true,
+          label: `${short}: ${what} ${sh.lab}`.slice(0, 60),
+          desc: `${segLabel}: ${mainKind === 'video' ? 'o canal ao vivo' : 'a playlist'} ${sh.name} (${join(names)})${bar.length ? ' e o texto rolante' : ''}.`,
+          orientation: sh.o, background: '#0b1220',
+          zones: [main, ...zones, ...bar],
+        });
+      }
+    }
+  }
+  return out;
+}
+/**
+ * A zona principal do modelo: a de id "main" ou a maior (o vídeo ao vivo vence quando existe). Para o filtro
+ * "Principal: playlist / vídeo ao vivo" da aba Layouts. Devolve 'video', 'playlist' ou 'other'.
+ */
+export function layoutMainOf(m) {
+  const zs = m?.zones || [];
+  const z = zs.find((x) => x.id === 'main') || [...zs].sort((a, b) => b.w * b.h - a.w * a.h)[0];
+  return z?.kind === 'video' ? 'video' : z?.kind === 'hdmi' ? 'hdmi' : z?.kind === 'playlist' ? 'playlist' : 'other';
+}
 /**
  * Os layouts prontos. Cada zona em % da tela (inteiros 0 a 100). hint: o conteúdo sugerido para a playlist da zona (o
  * painel abre a playlist já filtrada). O cliente copia um destes para tvcorp_layouts quando personaliza.
@@ -179,17 +301,257 @@ export const TVC_LAYOUT_MODELS = Object.freeze([
     zones: [Z('left', 'playlist', 0, 0, 50, 100), Z('right', 'playlist', 50, 0, 50, 100)] },
   { key: 'tres-quadros', label: 'Três quadros', desc: 'O vídeo grande e duas playlists à direita.', orientation: 'land', background: '#0b1220',
     zones: [Z('main', 'video', 0, 0, 66, 100), Z('top', 'playlist', 66, 0, 34, 50), Z('bottom', 'playlist', 66, 50, 34, 50)] },
-  { key: 'recepcao', label: 'Recepção', desc: 'O vídeo, a chamada de senha e o texto rolante.', orientation: 'land', background: '#0b1220',
+  { key: 'recepcao', segment: 'recepcao', label: 'Recepção', desc: 'O vídeo, a chamada de senha e o texto rolante.', orientation: 'land', background: '#0b1220',
     zones: [Z('main', 'video', 0, 0, 70, 88), Z('queue', 'queue', 70, 0, 30, 88), Z('bar', 'ticker', 0, 88, 100, 12)] },
-  { key: 'refeitorio', label: 'Refeitório', desc: 'O cardápio do dia, o vídeo e o texto rolante.', orientation: 'land', background: '#0b1220',
+  { key: 'refeitorio', segment: 'industria', label: 'Refeitório', desc: 'O cardápio do dia, o vídeo e o texto rolante.', orientation: 'land', background: '#0b1220',
     zones: [Z('menu', 'playlist', 0, 0, 40, 88, { hint: 'widget' }), Z('main', 'video', 40, 0, 60, 88), Z('bar', 'ticker', 0, 88, 100, 12)] },
-  { key: 'chao-de-fabrica', label: 'Chão de fábrica', desc: 'Os indicadores, os dias sem acidente e o texto rolante.', orientation: 'land', background: '#0b1220',
+  { key: 'chao-de-fabrica', segment: 'industria', label: 'Chão de fábrica', desc: 'Os indicadores, os dias sem acidente e o texto rolante.', orientation: 'land', background: '#0b1220',
     zones: [Z('kpis', 'playlist', 0, 0, 65, 88, { hint: 'kpi' }), Z('safety', 'safety', 65, 0, 35, 88), Z('bar', 'ticker', 0, 88, 100, 12)] },
-  { key: 'totem', label: 'Totem em pé', desc: 'Em pé: o vídeo em cima, a playlist embaixo e o texto rolante.', orientation: 'port', background: '#0b1220',
+  { key: 'totem', segment: 'loja', label: 'Totem em pé', desc: 'Em pé: o vídeo em cima, a playlist embaixo e o texto rolante.', orientation: 'port', background: '#0b1220',
     zones: [Z('main', 'video', 0, 0, 100, 45), Z('content', 'playlist', 0, 45, 100, 45), Z('bar', 'ticker', 0, 90, 100, 10)] },
-].map((m) => Object.freeze({ ...m, zones: Object.freeze(m.zones) })));
+  // ---------------------------------------------------------------- DIGITAL ISP: layouts com os gadgets, por segmento
+  // (sample: o gadget de exemplo que a prévia desenha na zona "Gadget"; o cliente escolhe o dele no editor)
+  { key: 'recepcao-relogio-clima', segment: 'recepcao', label: 'Recepção com hora e clima', desc: 'O vídeo, a hora, o clima, um QR code e o texto rolante.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'video', 0, 0, 70, 88), Z('clock', 'clock', 70, 0, 30, 30), Z('weather', 'weather', 70, 30, 30, 30), Z('qr', 'qr', 70, 60, 30, 28, { qr: 'https://exemplo.com.br', title: 'Aponte a câmera' }), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'recepcao-agenda', segment: 'recepcao', label: 'Recepção com agenda', desc: 'Conteúdo, a agenda do dia, a hora e o texto rolante.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'playlist', 0, 0, 65, 88), Z('agenda', 'widget', 65, 0, 35, 60, { sample: 'agenda' }), Z('clock', 'widget', 65, 60, 35, 28, { sample: 'clock' }), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'recepcao-em-pe', segment: 'recepcao', label: 'Recepção em pé', desc: 'Em pé: a logomarca, o conteúdo, a agenda e o texto rolante.', orientation: 'port', background: '#0b1220',
+    zones: [Z('logo', 'logo', 0, 0, 100, 12), Z('main', 'playlist', 0, 12, 100, 50), Z('agenda', 'widget', 0, 62, 100, 28, { sample: 'agenda' }), Z('bar', 'ticker', 0, 90, 100, 10)] },
+  { key: 'loja-vitrine-avaliacoes', segment: 'loja', label: 'Vitrine com avaliações', desc: 'As ofertas grandes, as avaliações dos clientes e o QR code.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'playlist', 0, 0, 72, 100, { hint: 'media' }), Z('reviews', 'widget', 72, 0, 28, 62, { sample: 'reviews' }), Z('qr', 'qr', 72, 62, 28, 38, { qr: 'https://exemplo.com.br', title: 'Aponte a câmera' })] },
+  { key: 'loja-promocao-contador', segment: 'loja', label: 'Promoção com contador', desc: 'As ofertas, a contagem para a promoção acabar e o texto rolante.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'playlist', 0, 0, 68, 88, { hint: 'media' }), Z('countdown', 'countdown', 68, 0, 32, 88), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'loja-totem-promocao', segment: 'loja', label: 'Totem de promoção', desc: 'Em pé: as ofertas, a contagem regressiva e o texto rolante.', orientation: 'port', background: '#0b1220',
+    zones: [Z('main', 'playlist', 0, 0, 100, 68, { hint: 'media' }), Z('countdown', 'countdown', 0, 68, 100, 22), Z('bar', 'ticker', 0, 90, 100, 10)] },
+  { key: 'mercado-duas-ofertas', segment: 'loja', label: 'Duas vitrines de ofertas', desc: 'Dois quadros de ofertas lado a lado e o texto rolante.', orientation: 'land', background: '#0b1220',
+    zones: [Z('left', 'playlist', 0, 0, 50, 88, { hint: 'media' }), Z('right', 'playlist', 50, 0, 50, 88, { hint: 'media' }), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'salao-espera', segment: 'loja', label: 'Salão e barbearia', desc: 'Os serviços e preços, as avaliações dos clientes e a hora.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'playlist', 0, 0, 65, 88, { hint: 'media' }), Z('reviews', 'widget', 65, 0, 35, 55, { sample: 'reviews' }), Z('clock', 'widget', 65, 55, 35, 33, { sample: 'clock' }), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'farmacia-balcao', segment: 'saude', label: 'Farmácia', desc: 'Ofertas e dicas de saúde, a hora, o clima e o texto rolante.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'playlist', 0, 0, 70, 88), Z('clock', 'clock', 70, 0, 30, 40), Z('weather', 'weather', 70, 40, 30, 48), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'clinica-espera', segment: 'saude', label: 'Sala de espera da clínica', desc: 'O vídeo, a chamada de senha, os médicos do dia e o texto rolante.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'video', 0, 0, 65, 88), Z('queue', 'queue', 65, 0, 35, 50), Z('agenda', 'widget', 65, 50, 35, 38, { sample: 'agenda' }), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'clinica-em-pe', segment: 'saude', label: 'Clínica em pé', desc: 'Em pé: a chamada de senha, as dicas de saúde, a hora e o texto rolante.', orientation: 'port', background: '#0b1220',
+    zones: [Z('queue', 'queue', 0, 0, 100, 30), Z('main', 'playlist', 0, 30, 100, 50), Z('clock', 'clock', 0, 80, 100, 10), Z('bar', 'ticker', 0, 90, 100, 10)] },
+  { key: 'academia-treino', segment: 'academia', label: 'Academia', desc: 'O vídeo de treino, a contagem para a próxima aula e a hora.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'video', 0, 0, 62, 88), Z('countdown', 'countdown', 62, 0, 38, 50), Z('clock', 'widget', 62, 50, 38, 38, { sample: 'clock' }), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'academia-aulas-em-pe', segment: 'academia', label: 'Grade de aulas em pé', desc: 'Em pé: as aulas do dia, as campanhas e o texto rolante.', orientation: 'port', background: '#0b1220',
+    zones: [Z('agenda', 'widget', 0, 0, 100, 40, { sample: 'agenda' }), Z('main', 'playlist', 0, 40, 100, 50), Z('bar', 'ticker', 0, 90, 100, 10)] },
+  { key: 'escola-patio', segment: 'escola', label: 'Pátio da escola', desc: 'Os avisos, os eventos da semana, o clima e o texto rolante.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'playlist', 0, 0, 60, 88), Z('agenda', 'widget', 60, 0, 40, 50, { sample: 'agenda' }), Z('weather', 'weather', 60, 50, 40, 38), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'escola-em-pe', segment: 'escola', label: 'Escola em pé', desc: 'Em pé: a logomarca, os avisos, as notícias e o texto rolante.', orientation: 'port', background: '#0b1220',
+    zones: [Z('logo', 'logo', 0, 0, 100, 12), Z('main', 'playlist', 0, 12, 100, 48), Z('news', 'news', 0, 60, 100, 28), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'escritorio-indicadores', segment: 'corporativo', label: 'Escritório com indicadores', desc: 'O painel de indicadores em cima, os comunicados, a hora e o texto rolante.', orientation: 'land', background: '#0b1220',
+    zones: [Z('kpis', 'widget', 0, 0, 100, 48, { sample: 'dashboard' }), Z('main', 'playlist', 0, 48, 62, 40), Z('clock', 'clock', 62, 48, 38, 40), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'escritorio-fusos', segment: 'corporativo', label: 'Escritório com fusos', desc: 'Os comunicados, o relógio mundial e o texto rolante.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'playlist', 0, 0, 70, 88), Z('clock', 'widget', 70, 0, 30, 32, { sample: 'clock' }), Z('world', 'worldclock', 70, 32, 30, 56), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'sala-reuniao', segment: 'corporativo', label: 'Porta da sala de reunião', desc: 'A agenda da sala, a hora e o clima.', orientation: 'land', background: '#0b1220',
+    zones: [Z('agenda', 'widget', 0, 0, 60, 100, { sample: 'agenda' }), Z('clock', 'widget', 60, 0, 40, 55, { sample: 'clock' }), Z('weather', 'weather', 60, 55, 40, 45)] },
+  { key: 'sala-reuniao-em-pe', segment: 'corporativo', label: 'Sala de reunião em pé', desc: 'Em pé: o nome da sala, a agenda e a hora.', orientation: 'port', background: '#0b1220',
+    zones: [Z('title', 'text', 0, 0, 100, 12, { title: 'Sala de reunião' }), Z('agenda', 'widget', 0, 12, 100, 60, { sample: 'agenda' }), Z('clock', 'widget', 0, 72, 100, 28, { sample: 'clock' })] },
+  { key: 'industria-seguranca', segment: 'industria', label: 'Indústria: segurança e metas', desc: 'Os dias sem acidente, o painel de indicadores e o texto rolante.', orientation: 'land', background: '#0b1220',
+    zones: [Z('safety', 'safety', 0, 0, 38, 88), Z('kpis', 'widget', 38, 0, 62, 88, { sample: 'dashboard' }), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'industria-turnos-em-pe', segment: 'industria', label: 'Indústria em pé', desc: 'Em pé: os dias sem acidente, os comunicados, a hora e o texto rolante.', orientation: 'port', background: '#0b1220',
+    zones: [Z('safety', 'safety', 0, 0, 100, 30), Z('main', 'playlist', 0, 30, 100, 50), Z('clock', 'clock', 0, 80, 100, 10), Z('bar', 'ticker', 0, 90, 100, 10)] },
+  { key: 'provedor-loja', segment: 'provedor', label: 'Loja do provedor', desc: 'O canal ao vivo, os planos, o QR code e o texto rolante.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'video', 0, 0, 65, 88), Z('plans', 'playlist', 65, 0, 35, 60, { hint: 'media' }), Z('qr', 'qr', 65, 60, 35, 28, { qr: 'https://exemplo.com.br', title: 'Aponte a câmera' }), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'provedor-vitrine-em-pe', segment: 'provedor', label: 'Vitrine do provedor em pé', desc: 'Em pé: os planos, o QR code e como chegar.', orientation: 'port', background: '#0b1220',
+    zones: [Z('main', 'playlist', 0, 0, 100, 60, { hint: 'media' }), Z('qr', 'qr', 0, 60, 100, 18, { qr: 'https://exemplo.com.br', title: 'Aponte a câmera' }), Z('dir', 'widget', 0, 78, 100, 22, { sample: 'directions' })] },
+  { key: 'igreja-avisos', segment: 'igreja', label: 'Igreja: avisos e programação', desc: 'Os avisos, a programação da semana e o texto rolante.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'playlist', 0, 0, 65, 88), Z('agenda', 'widget', 65, 0, 35, 88, { sample: 'agenda' }), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'igreja-em-pe', segment: 'igreja', label: 'Igreja em pé', desc: 'Em pé: a contagem para o próximo encontro, os avisos e a hora.', orientation: 'port', background: '#0b1220',
+    zones: [Z('countdown', 'countdown', 0, 0, 100, 22), Z('main', 'playlist', 0, 22, 100, 58), Z('clock', 'clock', 0, 80, 100, 10), Z('bar', 'ticker', 0, 90, 100, 10)] },
+  { key: 'hotel-recepcao', segment: 'hotel', label: 'Recepção de hotel', desc: 'O conteúdo, o relógio mundial, o clima e o texto rolante.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'playlist', 0, 0, 70, 88), Z('world', 'worldclock', 70, 0, 30, 44), Z('weather', 'widget', 70, 44, 30, 44, { sample: 'weather' }), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'hotel-lobby-em-pe', segment: 'hotel', label: 'Lobby de hotel em pé', desc: 'Em pé: a logomarca, o clima com previsão, o conteúdo e como chegar.', orientation: 'port', background: '#0b1220',
+    zones: [Z('logo', 'logo', 0, 0, 100, 12), Z('weather', 'widget', 0, 12, 100, 20, { sample: 'weather' }), Z('main', 'playlist', 0, 32, 100, 48), Z('dir', 'widget', 0, 80, 100, 20, { sample: 'directions' })] },
+  { key: 'restaurante-salao', segment: 'alimentacao', label: 'Salão do restaurante', desc: 'O vídeo, o cardápio do dia e o texto rolante.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'video', 0, 0, 60, 88), Z('menu', 'playlist', 60, 0, 40, 88, { hint: 'widget' }), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'cafeteria-balcao-em-pe', segment: 'alimentacao', label: 'Balcão da cafeteria em pé', desc: 'Em pé: o cardápio com preço, as avaliações e o texto rolante.', orientation: 'port', background: '#0b1220',
+    zones: [Z('main', 'playlist', 0, 0, 100, 68, { hint: 'media' }), Z('reviews', 'widget', 0, 68, 100, 22, { sample: 'reviews' }), Z('bar', 'ticker', 0, 90, 100, 10)] },
+  { key: 'evento-contagem', segment: 'evento', label: 'Evento com contagem', desc: 'A contagem regressiva grande, a hora, o clima, o conteúdo e o texto rolante.', orientation: 'land', background: '#0b1220',
+    zones: [Z('countdown', 'countdown', 0, 0, 60, 62), Z('clock', 'widget', 60, 0, 40, 31, { sample: 'clock' }), Z('weather', 'weather', 60, 31, 40, 31), Z('main', 'playlist', 0, 62, 100, 26), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'noticias-cotacoes', segment: 'geral', label: 'Notícias e cotações', desc: 'As notícias, as cotações, a hora, o clima e o texto rolante.', orientation: 'land', background: '#0b1220',
+    zones: [Z('news', 'news', 0, 0, 50, 88), Z('quotes', 'quotes', 50, 0, 25, 88), Z('clock', 'widget', 75, 0, 25, 44, { sample: 'clock' }), Z('weather', 'weather', 75, 44, 25, 44), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'painel-de-dados', segment: 'geral', label: 'Painel de dados', desc: 'O painel de indicadores, as notícias e as cotações.', orientation: 'land', background: '#0b1220',
+    zones: [Z('kpis', 'widget', 0, 0, 100, 60, { sample: 'dashboard' }), Z('news', 'news', 0, 60, 60, 40), Z('quotes', 'quotes', 60, 60, 40, 40)] },
+  // ---------------------------------------------------------------- widgets por cima da imagem (overlay: fundo translúcido)
+  { key: 'video-relogio-canto', segment: 'geral', label: 'Vídeo com a hora no canto', desc: 'O vídeo em tela cheia e a hora por cima, no canto de cima.', orientation: 'land', background: '#000000',
+    zones: [Z('main', 'video', 0, 0, 100, 100), Z('clock', 'widget', 78, 3, 20, 16, { sample: 'clock', overlay: true, opacity: 60 })] },
+  { key: 'video-logo-canto', segment: 'geral', label: 'Vídeo com a logomarca no canto', desc: 'O vídeo em tela cheia e a logomarca por cima, como numa emissora de TV.', orientation: 'land', background: '#000000',
+    zones: [Z('main', 'video', 0, 0, 100, 100), Z('logo', 'logo', 2, 3, 16, 14, { overlay: true, opacity: 0 })] },
+  { key: 'vitrine-relogio-clima', segment: 'loja', label: 'Vitrine com hora e clima por cima', desc: 'As ofertas em tela cheia, com a hora e o clima por cima, nos cantos de cima.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'playlist', 0, 0, 100, 100, { hint: 'media' }), Z('clock', 'clock', 2, 3, 20, 16, { overlay: true, opacity: 60 }), Z('weather', 'weather', 78, 3, 20, 16, { overlay: true, opacity: 60 })] },
+  { key: 'vitrine-qr-canto', segment: 'loja', label: 'Vitrine com QR code por cima', desc: 'As ofertas em tela cheia e o QR code por cima, no canto de baixo.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'playlist', 0, 0, 100, 100, { hint: 'media' }), Z('qr', 'qr', 82, 62, 16, 34, { qr: 'https://exemplo.com.br', title: 'Aponte a câmera', overlay: true, opacity: 80 })] },
+  { key: 'promocao-contador-por-cima', segment: 'loja', label: 'Promoção com contador por cima', desc: 'A oferta em tela cheia e a contagem para a promoção acabar por cima, embaixo.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'playlist', 0, 0, 100, 100, { hint: 'media' }), Z('countdown', 'countdown', 30, 70, 40, 27, { overlay: true, opacity: 60 })] },
+  { key: 'totem-relogio-por-cima', segment: 'loja', label: 'Totem com a hora por cima', desc: 'Em pé: o anúncio em tela cheia, a hora por cima e o texto rolante embaixo.', orientation: 'port', background: '#0b1220',
+    zones: [Z('main', 'playlist', 0, 0, 100, 90, { hint: 'media' }), Z('clock', 'widget', 55, 2, 42, 9, { sample: 'clock', overlay: true, opacity: 60 }), Z('bar', 'ticker', 0, 90, 100, 10)] },
+  // ---------------------------------------------------------------- elevador (telas pequenas de 21" a 32")
+  { key: 'elevador-em-pe', segment: 'elevador', label: 'Elevador em pé', desc: 'Em pé: a hora e o clima, os anúncios, as notícias curtas e os avisos do condomínio.', orientation: 'port', background: '#0b1220',
+    zones: [Z('clock', 'clock', 0, 0, 50, 12), Z('weather', 'weather', 50, 0, 50, 12), Z('main', 'playlist', 0, 12, 100, 52, { hint: 'media' }), Z('news', 'news', 0, 64, 100, 24), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'elevador-em-pe-condominio', segment: 'elevador', label: 'Elevador do condomínio em pé', desc: 'Em pé: o nome do prédio e a hora, os anúncios, a agenda do condomínio e os avisos.', orientation: 'port', background: '#0b1220',
+    zones: [Z('title', 'text', 0, 0, 60, 10, { title: 'Condomínio' }), Z('clock', 'clock', 60, 0, 40, 10), Z('main', 'playlist', 0, 10, 100, 54, { hint: 'media' }), Z('agenda', 'widget', 0, 64, 100, 24, { sample: 'agenda' }), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'elevador-em-pe-simples', segment: 'elevador', label: 'Elevador em pé simples', desc: 'Em pé: a hora, um anúncio grande e os avisos (letra grande para tela pequena).', orientation: 'port', background: '#0b1220',
+    zones: [Z('clock', 'widget', 0, 0, 100, 14, { sample: 'clock' }), Z('main', 'playlist', 0, 14, 100, 72, { hint: 'media' }), Z('bar', 'ticker', 0, 86, 100, 14)] },
+  { key: 'elevador-deitado', segment: 'elevador', label: 'Elevador deitado', desc: 'Os anúncios, a hora, o clima, as notícias curtas e os avisos.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'playlist', 0, 0, 65, 86, { hint: 'media' }), Z('clock', 'clock', 65, 0, 35, 26), Z('weather', 'weather', 65, 26, 35, 24), Z('news', 'news', 65, 50, 35, 36), Z('bar', 'ticker', 0, 86, 100, 14)] },
+  { key: 'elevador-deitado-cheio', segment: 'elevador', label: 'Elevador deitado em tela cheia', desc: 'Um anúncio em tela cheia com a hora no canto e os avisos embaixo.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'playlist', 0, 0, 80, 86, { hint: 'media' }), Z('clock', 'widget', 80, 0, 20, 86, { sample: 'clock' }), Z('bar', 'ticker', 0, 86, 100, 14)] },
+  // elevador: os modelos das telas de elevador de prédio comercial e condomínio (anúncio em cima, manchete, avisos e o rodapé com hora e clima)
+  { key: 'elevador-deitado-manchete', segment: 'elevador', label: 'Elevador deitado com manchete', desc: 'A foto grande, a manchete embaixo com a logomarca e o rodapé com a hora, o clima e os avisos.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'playlist', 0, 0, 100, 66, { hint: 'media' }), Z('news', 'news', 0, 66, 86, 24), Z('logo', 'logo', 86, 66, 14, 24), Z('clock', 'clock', 0, 90, 16, 10), Z('weather', 'weather', 16, 90, 24, 10), Z('bar', 'ticker', 40, 90, 60, 10)] },
+  { key: 'elevador-deitado-anuncio-avisos', segment: 'elevador', label: 'Elevador deitado com anúncio e avisos', desc: 'O anúncio à esquerda, os comunicados do prédio à direita e o rodapé com a hora, o clima e os avisos.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'playlist', 0, 0, 62, 90, { hint: 'media' }), Z('avisos', 'playlist', 62, 0, 38, 90), Z('clock', 'clock', 0, 90, 16, 10), Z('weather', 'weather', 16, 90, 24, 10), Z('bar', 'ticker', 40, 90, 60, 10)] },
+  { key: 'elevador-em-pe-anuncio-avisos', segment: 'elevador', label: 'Elevador em pé com anúncio, manchete e avisos', desc: 'Em pé: o anúncio em cima, a manchete do dia, os comunicados do condomínio e o rodapé com a hora e o clima.', orientation: 'port', background: '#0b1220',
+    zones: [Z('main', 'playlist', 0, 0, 100, 42, { hint: 'media' }), Z('news', 'news', 0, 42, 100, 12), Z('avisos', 'playlist', 0, 54, 100, 38), Z('clock', 'clock', 0, 92, 22, 8), Z('weather', 'weather', 22, 92, 28, 8), Z('bar', 'ticker', 50, 92, 50, 8)] },
+  { key: 'elevador-em-pe-sindico', segment: 'elevador', label: 'Elevador em pé com aviso do síndico', desc: 'Em pé, fundo claro: notícias e anúncios em cima, a faixa "Aviso do síndico" e o comunicado em letra grande.', orientation: 'port', background: '#eef2f7',
+    zones: [Z('main', 'playlist', 0, 0, 100, 40, { hint: 'media' }), Z('title', 'text', 0, 40, 100, 7, { title: 'Aviso do síndico', text: 'Residencial' }), Z('avisos', 'playlist', 0, 47, 100, 45), Z('clock', 'clock', 0, 92, 20, 8), Z('weather', 'weather', 20, 92, 30, 8), Z('bar', 'ticker', 50, 92, 50, 8)] },
+  { key: 'elevador-em-pe-marca', segment: 'elevador', label: 'Elevador em pé com a marca do prédio', desc: 'Em pé, fundo claro: a logomarca e a foto lado a lado, o nome do prédio e os comunicados com foto.', orientation: 'port', background: '#eef2f7',
+    zones: [Z('logo', 'logo', 0, 0, 38, 36), Z('main', 'playlist', 38, 0, 62, 36, { hint: 'media' }), Z('title', 'text', 0, 36, 100, 7, { title: 'Edifício Residencial' }), Z('avisos', 'playlist', 0, 43, 100, 49), Z('clock', 'clock', 0, 92, 25, 8), Z('bar', 'ticker', 25, 92, 75, 8)] },
+  { key: 'elevador-em-pe-duas-partes', segment: 'elevador', label: 'Elevador em pé dividido em dois', desc: 'Em pé: o anúncio em cima e o comunicado embaixo, do mesmo tamanho, com o rodapé da hora e do clima.', orientation: 'port', background: '#0b1220',
+    zones: [Z('main', 'playlist', 0, 0, 100, 46, { hint: 'media' }), Z('avisos', 'playlist', 0, 46, 100, 46), Z('clock', 'clock', 0, 92, 22, 8), Z('weather', 'weather', 22, 92, 28, 8), Z('bar', 'ticker', 50, 92, 50, 8)] },
+  { key: 'elevador-em-pe-recados-qr', segment: 'elevador', label: 'Elevador em pé com recados e QR code', desc: 'Em pé: o anúncio com um QR code no canto, a chamada dos recados digitais e os comunicados do condomínio.', orientation: 'port', background: '#0b1220',
+    zones: [Z('main', 'playlist', 0, 0, 100, 40, { hint: 'media' }), Z('title', 'text', 0, 40, 100, 14, { title: 'Recados do condomínio agora são digitais', text: 'Fique por dentro dos avisos do prédio.' }), Z('avisos', 'playlist', 0, 54, 100, 38), Z('clock', 'clock', 0, 92, 30, 8), Z('bar', 'ticker', 30, 92, 70, 8), Z('qr', 'qr', 74, 22, 22, 16, { qr: 'https://exemplo.com.br', title: 'Saiba mais', overlay: true, opacity: 80 })] },
+  // ---------------------------------------------------------------- telas de um conjunto (menu board de várias TVs; ver TVC_LAYOUT_SETS)
+  { key: 'menu2d-1', segment: 'alimentacao', set: 'menu-2-deitadas', label: 'Cardápio (TV 1 de 2)', desc: 'O cardápio com preço.', orientation: 'land', background: '#0b1220',
+    zones: [Z('title', 'text', 0, 0, 100, 12, { title: 'Cardápio' }), Z('main', 'playlist', 0, 12, 100, 88, { hint: 'media' })] },
+  { key: 'menu2d-2', segment: 'alimentacao', set: 'menu-2-deitadas', label: 'Destaques (TV 2 de 2)', desc: 'O vídeo ou a foto do destaque e o QR code.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'playlist', 0, 0, 75, 100, { hint: 'media' }), Z('qr', 'qr', 75, 0, 25, 100, { qr: 'https://exemplo.com.br', title: 'Aponte a câmera' })] },
+  { key: 'menu3d-1', segment: 'alimentacao', set: 'menu-3-deitadas', label: 'Lanches (TV 1 de 3)', desc: 'O título e a vitrine dos lanches.', orientation: 'land', background: '#0b1220',
+    zones: [Z('title', 'text', 0, 0, 100, 12, { title: 'Lanches' }), Z('main', 'playlist', 0, 12, 100, 88, { hint: 'media' })] },
+  { key: 'menu3d-2', segment: 'alimentacao', set: 'menu-3-deitadas', label: 'Destaque (TV 2 de 3)', desc: 'A promoção do dia em tela cheia.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'playlist', 0, 0, 100, 100, { hint: 'media' })] },
+  { key: 'menu3d-3', segment: 'alimentacao', set: 'menu-3-deitadas', label: 'Bebidas (TV 3 de 3)', desc: 'Bebidas e sobremesas, com o QR code do pedido.', orientation: 'land', background: '#0b1220',
+    zones: [Z('title', 'text', 0, 0, 100, 12, { title: 'Bebidas e sobremesas' }), Z('main', 'playlist', 0, 12, 75, 88, { hint: 'media' }), Z('qr', 'qr', 75, 12, 25, 88, { qr: 'https://exemplo.com.br', title: 'Aponte a câmera' })] },
+  { key: 'menu4d-1', segment: 'alimentacao', set: 'menu-4-deitadas', label: 'Combos (TV 1 de 4)', desc: 'Os combos.', orientation: 'land', background: '#0b1220',
+    zones: [Z('title', 'text', 0, 0, 100, 12, { title: 'Combos' }), Z('main', 'playlist', 0, 12, 100, 88, { hint: 'media' })] },
+  { key: 'menu4d-2', segment: 'alimentacao', set: 'menu-4-deitadas', label: 'Lanches (TV 2 de 4)', desc: 'Os lanches.', orientation: 'land', background: '#0b1220',
+    zones: [Z('title', 'text', 0, 0, 100, 12, { title: 'Lanches' }), Z('main', 'playlist', 0, 12, 100, 88, { hint: 'media' })] },
+  { key: 'menu4d-3', segment: 'alimentacao', set: 'menu-4-deitadas', label: 'Acompanhamentos (TV 3 de 4)', desc: 'Porções e acompanhamentos.', orientation: 'land', background: '#0b1220',
+    zones: [Z('title', 'text', 0, 0, 100, 12, { title: 'Acompanhamentos' }), Z('main', 'playlist', 0, 12, 100, 88, { hint: 'media' })] },
+  { key: 'menu4d-4', segment: 'alimentacao', set: 'menu-4-deitadas', label: 'Bebidas (TV 4 de 4)', desc: 'Bebidas, sobremesas e o QR code do pedido.', orientation: 'land', background: '#0b1220',
+    zones: [Z('title', 'text', 0, 0, 100, 12, { title: 'Bebidas e sobremesas' }), Z('main', 'playlist', 0, 12, 75, 88, { hint: 'media' }), Z('qr', 'qr', 75, 12, 25, 88, { qr: 'https://exemplo.com.br', title: 'Aponte a câmera' })] },
+  { key: 'menu2p-1', segment: 'alimentacao', set: 'menu-2-em-pe', label: 'Cardápio (TV 1 de 2, em pé)', desc: 'Em pé: o cardápio com preço.', orientation: 'port', background: '#0b1220',
+    zones: [Z('title', 'text', 0, 0, 100, 8, { title: 'Cardápio' }), Z('main', 'playlist', 0, 8, 100, 92, { hint: 'media' })] },
+  { key: 'menu2p-2', segment: 'alimentacao', set: 'menu-2-em-pe', label: 'Destaque (TV 2 de 2, em pé)', desc: 'Em pé: o destaque e o QR code.', orientation: 'port', background: '#0b1220',
+    zones: [Z('main', 'playlist', 0, 0, 100, 82, { hint: 'media' }), Z('qr', 'qr', 0, 82, 100, 18, { qr: 'https://exemplo.com.br', title: 'Aponte a câmera' })] },
+  { key: 'menu3p-1', segment: 'alimentacao', set: 'menu-3-em-pe', label: 'Lanches (TV 1 de 3, em pé)', desc: 'Em pé: os lanches.', orientation: 'port', background: '#0b1220',
+    zones: [Z('title', 'text', 0, 0, 100, 8, { title: 'Lanches' }), Z('main', 'playlist', 0, 8, 100, 92, { hint: 'media' })] },
+  { key: 'menu3p-2', segment: 'alimentacao', set: 'menu-3-em-pe', label: 'Destaque (TV 2 de 3, em pé)', desc: 'Em pé: a promoção do dia.', orientation: 'port', background: '#0b1220',
+    zones: [Z('main', 'playlist', 0, 0, 100, 100, { hint: 'media' })] },
+  { key: 'menu3p-3', segment: 'alimentacao', set: 'menu-3-em-pe', label: 'Bebidas (TV 3 de 3, em pé)', desc: 'Em pé: bebidas, sobremesas e o QR code.', orientation: 'port', background: '#0b1220',
+    zones: [Z('title', 'text', 0, 0, 100, 8, { title: 'Bebidas e sobremesas' }), Z('main', 'playlist', 0, 8, 100, 74, { hint: 'media' }), Z('qr', 'qr', 0, 82, 100, 18, { qr: 'https://exemplo.com.br', title: 'Aponte a câmera' })] },
+  // pedido do dono (23/11): boas-vindas no alto com a hora, o clima à esquerda, o principal no meio, as informações à direita e a faixa
+  { key: 'boas-vindas-info', segment: 'geral', label: 'Boas-vindas com clima e informações', desc: 'Boas-vindas e hora no alto, clima à esquerda, a playlist no meio, horário de atendimento, Wi-Fi e redes à direita, e o texto rolante.', orientation: 'land', background: '#0b1220',
+    zones: [Z('top', 'text', 0, 0, 74, 14, { title: 'Bem-vindo!', text: 'Sua informação, na hora certa.' }), Z('clock', 'clock', 74, 0, 26, 14),
+      Z('clima', 'weather', 0, 14, 23, 74), Z('main', 'playlist', 23, 14, 54, 74, { hint: 'media' }),
+      Z('info', 'text', 77, 14, 23, 74, { title: 'Informações', text: 'Atendimento: 09:00 às 18:00 · Wi-Fi: Visitantes · Siga-nos @suaempresa' }), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'boas-vindas-info-aovivo', segment: 'geral', label: 'Boas-vindas com clima, informações e vídeo ao vivo', desc: 'O mesmo, com o vídeo ao vivo (HLS) no meio.', orientation: 'land', background: '#0b1220',
+    zones: [Z('top', 'text', 0, 0, 74, 14, { title: 'Bem-vindo!', text: 'Sua informação, na hora certa.' }), Z('clock', 'clock', 74, 0, 26, 14),
+      Z('clima', 'weather', 0, 14, 23, 74), Z('main', 'video', 23, 14, 54, 74),
+      Z('info', 'text', 77, 14, 23, 74, { title: 'Informações', text: 'Atendimento: 09:00 às 18:00 · Wi-Fi: Visitantes · Siga-nos @suaempresa' }), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'provedor-boas-vindas', segment: 'provedor', label: 'Provedor: boas-vindas com clima e informações', desc: 'Para a loja do provedor: boas-vindas e hora no alto, o QR para assinar à esquerda, os planos na playlist do meio e o Wi-Fi e as redes à direita.', orientation: 'land', background: '#0b1220',
+    zones: [Z('top', 'text', 0, 0, 74, 14, { title: 'Bem-vindo!', text: 'Sua informação, na hora certa.' }), Z('clock', 'clock', 74, 0, 26, 14),
+      Z('assine', 'qr', 0, 14, 23, 74, { qr: 'https://exemplo.com.br', title: 'Assine já' }), Z('main', 'playlist', 23, 14, 54, 74, { hint: 'media' }),
+      Z('info', 'text', 77, 14, 23, 74, { title: 'Informações', text: 'Atendimento: 09:00 às 18:00 · Wi-Fi: Visitantes · Siga-nos @suaempresa' }), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  // ---------------------------------------------------------------- DIGITAL ISP: formatos especiais (recorte e filete)
+  // special: o filtro "Formatos especiais"; shape/edge: public/shared/tvcorp-formas.js (o app antigo desenha o retângulo)
+  { key: 'fx-boas-vindas-onda', special: true, segment: 'recepcao', label: 'Boas-vindas com foto em onda', desc: 'O painel de boas-vindas com o clima à esquerda e a foto entrando em onda, com filete ciano.', orientation: 'land', background: '#1d4ed8',
+    zones: [Z('title', 'text', 3, 12, 44, 40, { title: 'Bem-vindo!', text: 'Grandes experiências começam aqui.' }), Z('weather', 'weather', 3, 58, 34, 30), Z('main', 'playlist', 40, 0, 60, 100, { hint: 'media', shape: 'onda-esq', edge: { color: '#29d3e5', width: 1.2 } })] },
+  { key: 'fx-onda-direita-loja', special: true, segment: 'loja', label: 'Vitrine com foto em onda à esquerda', desc: 'A oferta em onda à esquerda, o QR code e a hora à direita.', orientation: 'land', background: '#0b1220',
+    zones: [Z('qr', 'qr', 66, 8, 30, 46, { qr: 'https://exemplo.com.br', title: 'Compre pelo site' }), Z('clock', 'clock', 66, 60, 30, 30), Z('main', 'playlist', 0, 0, 64, 100, { hint: 'media', shape: 'onda-dir', edge: { color: '#f5b31c', width: 1 } })] },
+  { key: 'fx-provedor-diagonal', special: true, segment: 'provedor', label: 'Provedor com foto em diagonal', desc: 'O texto e o QR code da assinatura à esquerda, a foto em diagonal e o texto rolante.', orientation: 'land', background: '#0b1220',
+    zones: [Z('title', 'text', 3, 6, 40, 36, { title: 'Internet de verdade', text: 'Fibra óptica com suporte local.' }), Z('qr', 'qr', 3, 46, 26, 40, { qr: 'https://exemplo.com.br', title: 'Assine pelo celular' }), Z('main', 'playlist', 34, 0, 66, 88, { hint: 'media', shape: 'diagonal-esq', edge: { color: '#29d3e5', width: 1 } }), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'fx-provedor-onda-avaliacoes', special: true, segment: 'provedor', label: 'Provedor com onda e avaliações', desc: 'Os planos em onda à esquerda, o QR code e as avaliações em cantos arredondados.', orientation: 'land', background: '#0b1220',
+    zones: [Z('qr', 'qr', 65, 4, 33, 40, { qr: 'https://exemplo.com.br', title: 'Assine pelo celular', shape: 'cantos' }), Z('reviews', 'widget', 65, 47, 33, 38, { sample: 'reviews', shape: 'cantos' }), Z('main', 'playlist', 0, 0, 63, 88, { hint: 'media', shape: 'onda-dir', edge: { color: '#29d3e5', width: 1 } }), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'fx-academia-diagonal', special: true, segment: 'academia', label: 'Academia com diagonal e contador', desc: 'A foto em diagonal à esquerda, o contador e a hora à direita.', orientation: 'land', background: '#111827',
+    zones: [Z('countdown', 'countdown', 64, 6, 34, 50), Z('clock', 'clock', 64, 60, 34, 32), Z('main', 'playlist', 0, 0, 66, 100, { hint: 'media', shape: 'diagonal-dir', edge: { color: '#22c55e', width: 1.5 } })] },
+  { key: 'fx-hotel-arco-rodape', special: true, segment: 'hotel', label: 'Hotel com arco no rodapé', desc: 'A foto em tela cheia e o arco embaixo com a logomarca, a hora e o clima por cima.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'playlist', 0, 0, 100, 80, { hint: 'media' }), Z('band', 'logo', 0, 64, 100, 36, { shape: 'arco', edge: { color: '#f5b31c', width: 0.8 } }), Z('clock', 'clock', 4, 74, 22, 22, { overlay: true, opacity: 0 }), Z('weather', 'weather', 74, 74, 22, 22, { overlay: true, opacity: 0 })] },
+  { key: 'fx-loja-circulo', special: true, segment: 'loja', label: 'Oferta com círculo de destaque', desc: 'A oferta em tela cheia e o contador num círculo por cima, com filete amarelo.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'playlist', 0, 0, 100, 88, { hint: 'media' }), Z('countdown', 'countdown', 72, 20, 24, 43, { overlay: true, opacity: 80, shape: 'circulo', edge: { color: '#f5b31c', width: 1 } }), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'fx-restaurante-pilulas', special: true, segment: 'alimentacao', label: 'Restaurante com pílulas sobre a foto', desc: 'O prato em tela cheia com a hora, o clima e as avaliações em pílulas por cima.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'playlist', 0, 0, 100, 100, { hint: 'media' }), Z('clock', 'clock', 3, 5, 22, 14, { overlay: true, opacity: 60, shape: 'pilula' }), Z('weather', 'weather', 27, 5, 22, 14, { overlay: true, opacity: 60, shape: 'pilula' }), Z('reviews', 'widget', 58, 76, 39, 18, { sample: 'reviews', overlay: true, opacity: 80, shape: 'pilula' })] },
+  { key: 'fx-mosaico-cantos', special: true, segment: 'geral', label: 'Mosaico com cantos arredondados', desc: 'A playlist grande, as notícias, a hora e o clima em quadros de cantos arredondados.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'playlist', 2, 3, 60, 94, { hint: 'media', shape: 'cantos' }), Z('news', 'news', 64, 3, 34, 46, { shape: 'cantos' }), Z('clock', 'clock', 64, 52, 16, 45, { shape: 'cantos' }), Z('weather', 'weather', 82, 52, 16, 45, { shape: 'cantos' })] },
+  { key: 'fx-evento-losango', special: true, segment: 'evento', label: 'Evento com losango da marca', desc: 'A foto do evento, a logomarca num losango e o contador em pílula por cima.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'playlist', 0, 0, 100, 88, { hint: 'media' }), Z('logo', 'logo', 3, 6, 14, 25, { overlay: true, opacity: 100, shape: 'losango', edge: { color: '#ffffff', width: 0.6 } }), Z('countdown', 'countdown', 60, 66, 37, 18, { overlay: true, opacity: 80, shape: 'pilula' }), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'fx-clinica-gota', special: true, segment: 'saude', label: 'Clínica com foto em gota', desc: 'A chamada de senha e a hora à esquerda, a foto em gota à direita.', orientation: 'land', background: '#0f766e',
+    zones: [Z('queue', 'queue', 2, 4, 40, 56), Z('clock', 'clock', 2, 64, 40, 32), Z('main', 'playlist', 44, 4, 54, 92, { hint: 'media', shape: 'gota', edge: { color: '#ffffff', width: 0.8 } })] },
+  { key: 'fx-escola-onda-base', special: true, segment: 'escola', label: 'Escola com foto em onda e agenda', desc: 'A foto em cima com a borda em onda, a agenda e a hora embaixo.', orientation: 'land', background: '#1e3a8a',
+    zones: [Z('main', 'playlist', 0, 0, 100, 62, { hint: 'media', shape: 'onda-base', edge: { color: '#f5b31c', width: 1 } }), Z('agenda', 'widget', 2, 64, 56, 34, { sample: 'agenda' }), Z('clock', 'clock', 60, 64, 38, 34)] },
+  { key: 'fx-industria-cantos', special: true, segment: 'industria', label: 'Indústria em quadros arredondados', desc: 'Os dias sem acidente, os indicadores e os comunicados em quadros de cantos arredondados.', orientation: 'land', background: '#111827',
+    zones: [Z('main', 'playlist', 2, 3, 58, 82, { hint: 'media', shape: 'cantos' }), Z('safety', 'safety', 62, 3, 36, 40, { shape: 'cantos' }), Z('dash', 'widget', 62, 45, 36, 40, { sample: 'dashboard', shape: 'cantos' }), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'fx-escritorio-gota', special: true, segment: 'corporativo', label: 'Escritório com indicadores em gota', desc: 'A playlist, os indicadores em gota e a agenda.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'playlist', 0, 0, 60, 100, { hint: 'media' }), Z('dash', 'widget', 62, 3, 36, 46, { sample: 'dashboard', shape: 'gota' }), Z('agenda', 'widget', 62, 52, 36, 45, { sample: 'agenda', shape: 'gota' })] },
+  // em pé
+  { key: 'fx-recepcao-em-pe-arco', special: true, segment: 'recepcao', label: 'Recepção em pé com foto em arco', desc: 'Em pé: as boas-vindas e o clima em cima, a foto embaixo com a borda em arco.', orientation: 'port', background: '#1d4ed8',
+    zones: [Z('title', 'text', 4, 3, 92, 16, { title: 'Bem-vindo!', text: 'Que bom ter você aqui.' }), Z('weather', 'weather', 4, 20, 60, 12), Z('main', 'playlist', 0, 30, 100, 70, { hint: 'media', shape: 'arco', edge: { color: '#29d3e5', width: 0.8 } })] },
+  { key: 'fx-academia-em-pe-circulo', special: true, segment: 'academia', label: 'Academia em pé com círculo', desc: 'Em pé: a foto em cima, a hora num círculo na emenda e o contador embaixo.', orientation: 'port', background: '#111827',
+    zones: [Z('main', 'playlist', 0, 0, 100, 58, { hint: 'media', shape: 'onda-base' }), Z('countdown', 'countdown', 4, 72, 92, 26), Z('clock', 'clock', 30, 47, 40, 23, { overlay: true, opacity: 80, shape: 'circulo', edge: { color: '#22c55e', width: 0.8 } })] },
+  { key: 'fx-restaurante-em-pe-pilulas', special: true, segment: 'alimentacao', label: 'Restaurante em pé com pílulas', desc: 'Em pé: o prato em tela cheia, a hora e o clima em pílulas por cima e o texto rolante.', orientation: 'port', background: '#0b1220',
+    zones: [Z('main', 'playlist', 0, 0, 100, 90, { hint: 'media' }), Z('clock', 'clock', 6, 3, 42, 7, { overlay: true, opacity: 60, shape: 'pilula' }), Z('weather', 'weather', 52, 3, 42, 7, { overlay: true, opacity: 60, shape: 'pilula' }), Z('bar', 'ticker', 0, 90, 100, 10)] },
+  { key: 'fx-provedor-em-pe-onda', special: true, segment: 'provedor', label: 'Provedor em pé com onda', desc: 'Em pé: a oferta em cima com a borda em onda, o QR code e as avaliações embaixo.', orientation: 'port', background: '#0b1220',
+    zones: [Z('main', 'playlist', 0, 0, 100, 56, { hint: 'media', shape: 'onda-base', edge: { color: '#29d3e5', width: 0.8 } }), Z('qr', 'qr', 4, 58, 44, 30, { qr: 'https://exemplo.com.br', title: 'Assine pelo celular', shape: 'cantos' }), Z('reviews', 'widget', 52, 58, 44, 30, { sample: 'reviews', shape: 'cantos' }), Z('bar', 'ticker', 0, 90, 100, 10)] },
+  { key: 'fx-elevador-pilulas', special: true, segment: 'elevador', label: 'Elevador com pílulas', desc: 'Em pé: os anúncios em cantos arredondados, a hora e o clima em pílulas e o texto rolante.', orientation: 'port', background: '#0b1220',
+    zones: [Z('main', 'playlist', 3, 2, 94, 68, { hint: 'media', shape: 'cantos' }), Z('clock', 'clock', 4, 72, 44, 8, { shape: 'pilula' }), Z('weather', 'weather', 52, 72, 44, 8, { shape: 'pilula' }), Z('bar', 'ticker', 0, 90, 100, 10)] },
+  { key: 'fx-clinica-em-pe-gota', special: true, segment: 'saude', label: 'Clínica em pé com gota', desc: 'Em pé: a chamada de senha, a foto em gota e a hora.', orientation: 'port', background: '#0f766e',
+    zones: [Z('queue', 'queue', 4, 2, 92, 28), Z('main', 'playlist', 4, 32, 92, 50, { hint: 'media', shape: 'gota', edge: { color: '#ffffff', width: 0.6 } }), Z('clock', 'clock', 4, 84, 92, 14, { shape: 'pilula' })] },
+  // com o vídeo ao vivo
+  { key: 'fx-aovivo-onda', special: true, segment: 'geral', label: 'Vídeo ao vivo em onda', desc: 'O canal ao vivo entrando em onda, com o texto, a hora e o clima à esquerda e o texto rolante.', orientation: 'land', background: '#1d4ed8',
+    zones: [Z('title', 'text', 3, 6, 36, 34, { title: 'Ao vivo agora', text: 'Acompanhe a programação.' }), Z('clock', 'clock', 3, 44, 30, 20), Z('weather', 'weather', 3, 66, 30, 20), Z('main', 'video', 36, 0, 64, 88, { shape: 'onda-esq', edge: { color: '#29d3e5', width: 1 } }), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'fx-aovivo-cantos', special: true, segment: 'corporativo', label: 'Vídeo ao vivo em quadros arredondados', desc: 'O canal ao vivo, os indicadores e a agenda em quadros de cantos arredondados.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'video', 2, 3, 64, 82, { shape: 'cantos' }), Z('dash', 'widget', 68, 3, 30, 40, { sample: 'dashboard', shape: 'cantos' }), Z('agenda', 'widget', 68, 45, 30, 40, { sample: 'agenda', shape: 'cantos' }), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'fx-aovivo-diagonal', special: true, segment: 'igreja', label: 'Culto ao vivo em diagonal', desc: 'A transmissão ao vivo em diagonal, a agenda e o contador para o próximo culto.', orientation: 'land', background: '#312e81',
+    zones: [Z('agenda', 'widget', 64, 4, 34, 50, { sample: 'agenda' }), Z('countdown', 'countdown', 64, 58, 34, 38), Z('main', 'video', 0, 0, 66, 100, { shape: 'diagonal-dir', edge: { color: '#f5b31c', width: 1 } })] },
+  { key: 'fx-aovivo-pilulas', special: true, segment: 'hotel', label: 'Vídeo ao vivo com pílulas', desc: 'O canal ao vivo em tela cheia, o relógio mundial e o clima em pílulas por cima e o texto rolante.', orientation: 'land', background: '#000000',
+    zones: [Z('main', 'video', 0, 0, 100, 88), Z('world', 'worldclock', 3, 5, 34, 14, { title: 'Horário pelo mundo', overlay: true, opacity: 60, shape: 'pilula' }), Z('weather', 'weather', 75, 5, 22, 14, { overlay: true, opacity: 60, shape: 'pilula' }), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'fx-aovivo-em-pe-onda', special: true, segment: 'evento', label: 'Evento em pé com vídeo em onda', desc: 'Em pé: o canal ao vivo com a borda em onda, o contador, a programação e o texto rolante.', orientation: 'port', background: '#312e81',
+    zones: [Z('main', 'video', 0, 0, 100, 36, { shape: 'onda-base', edge: { color: '#f5b31c', width: 0.6 } }), Z('countdown', 'countdown', 4, 38, 92, 22, { shape: 'cantos' }), Z('qr', 'qr', 4, 62, 92, 26, { qr: 'https://exemplo.com.br', title: 'Programação completa', shape: 'cantos' }), Z('bar', 'ticker', 0, 90, 100, 10)] },
+  // ---------------------------------------------------------------- DIGITAL ISP: a entrada HDMI da TV no lugar do ao vivo (app Samsung)
+  { key: 'hdmi-tela-cheia', label: 'HDMI em tela cheia', desc: 'Só a entrada HDMI da TV, escolhida no menu do app Samsung.', orientation: 'land', background: '#000000', zones: [Z('main', 'hdmi', 0, 0, 100, 100)] },
+  { key: 'hdmi-lateral', label: 'HDMI + lateral', desc: 'A entrada HDMI da TV e uma coluna de conteúdo à direita.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'hdmi', 0, 0, 75, 100), Z('right', 'playlist', 75, 0, 25, 100)] },
+  { key: 'hdmi-lateral-barra', label: 'HDMI + lateral + barra', desc: 'Em L: a entrada HDMI, a coluna de conteúdo e o texto rolante embaixo.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'hdmi', 0, 0, 75, 88), Z('right', 'playlist', 75, 0, 25, 88), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'hdmi-barra', label: 'HDMI + barra', desc: 'A entrada HDMI e o texto rolante embaixo.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'hdmi', 0, 0, 100, 88), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'hdmi-dois-quadros', label: 'HDMI + dois quadros', desc: 'A entrada HDMI grande e duas playlists à direita.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'hdmi', 0, 0, 66, 100), Z('top', 'playlist', 66, 0, 34, 50), Z('bottom', 'playlist', 66, 50, 34, 50)] },
+  { key: 'hdmi-gadgets', label: 'HDMI + relógio, clima e notícias', desc: 'A entrada HDMI, o relógio, o clima, as notícias e o texto rolante.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'hdmi', 0, 0, 72, 88), Z('clock', 'clock', 72, 0, 28, 22), Z('weather', 'weather', 72, 22, 28, 22), Z('news', 'news', 72, 44, 28, 44), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'hdmi-recepcao', segment: 'recepcao', label: 'Recepção com HDMI', desc: 'A entrada HDMI, a chamada de senha e o texto rolante.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'hdmi', 0, 0, 70, 88), Z('queue', 'queue', 70, 0, 30, 88), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'hdmi-em-pe', segment: 'loja', label: 'HDMI em pé', desc: 'Em pé: a entrada HDMI em cima, a playlist embaixo e o texto rolante.', orientation: 'port', background: '#0b1220',
+    zones: [Z('main', 'hdmi', 0, 0, 100, 45), Z('content', 'playlist', 0, 45, 100, 45), Z('bar', 'ticker', 0, 90, 100, 10)] },
+  // DIGITAL ISP: os gerados por família (formas × segmento), 4 com a playlist e 4 com o vídeo ao vivo por segmento
+  ...familyLayouts(),
+].map((m) => Object.freeze({ segment: 'geral', ...m, zones: Object.freeze(m.zones) })));
 export const TVC_LAYOUT_MODEL = Object.freeze(Object.fromEntries(TVC_LAYOUT_MODELS.map((m) => [m.key, m])));
 export const TVC_LAYOUT_MODEL_KEYS = Object.freeze(TVC_LAYOUT_MODELS.map((m) => m.key));
+/** Os segmentos dos layouts (o filtro da aba Layouts). */
+export const TVC_LAYOUT_SEGMENTS = Object.freeze([
+  { key: 'geral', label: 'Uso geral' }, { key: 'loja', label: 'Loja e varejo' }, { key: 'alimentacao', label: 'Restaurante e lanchonete' },
+  { key: 'saude', label: 'Clínica e farmácia' }, { key: 'academia', label: 'Academia' }, { key: 'escola', label: 'Escola' },
+  { key: 'recepcao', label: 'Recepção' }, { key: 'corporativo', label: 'Escritório' }, { key: 'industria', label: 'Indústria' },
+  { key: 'provedor', label: 'Provedor de internet' }, { key: 'igreja', label: 'Igreja' }, { key: 'hotel', label: 'Hotel' },
+  { key: 'elevador', label: 'Elevador e condomínio' }, { key: 'evento', label: 'Evento' },
+]);
+/**
+ * Os conjuntos de várias TVs (menu board de lanchonete e restaurante de shopping, vitrine em painel): uma TV por layout,
+ * lado a lado (position 1 = a da esquerda). Cada tela é um layout comum (screens: as chaves em TVC_LAYOUT_MODELS, set:
+ * a chave do conjunto); o painel cria um layout por TV e, se o cliente escolher as TVs, uma grade para cada uma (alcance:
+ * aquela tela). Nada muda no app da tela: cada TV recebe só o layout dela.
+ */
+export const TVC_LAYOUT_SETS = Object.freeze([
+  { key: 'menu-2-deitadas', label: 'Cardápio em 2 TVs deitadas', desc: 'O cardápio com preço numa TV e o destaque com QR code na outra.', orientation: 'land', segment: 'alimentacao', screens: ['menu2d-1', 'menu2d-2'] },
+  { key: 'menu-3-deitadas', label: 'Cardápio em 3 TVs deitadas', desc: 'Lanches, a promoção do dia no meio e bebidas com o QR code do pedido.', orientation: 'land', segment: 'alimentacao', screens: ['menu3d-1', 'menu3d-2', 'menu3d-3'] },
+  { key: 'menu-4-deitadas', label: 'Cardápio em 4 TVs deitadas', desc: 'Combos, lanches, acompanhamentos e bebidas, uma categoria por TV.', orientation: 'land', segment: 'alimentacao', screens: ['menu4d-1', 'menu4d-2', 'menu4d-3', 'menu4d-4'] },
+  { key: 'menu-2-em-pe', label: 'Cardápio em 2 TVs em pé', desc: 'Em pé: o cardápio numa TV e o destaque com QR code na outra.', orientation: 'port', segment: 'alimentacao', screens: ['menu2p-1', 'menu2p-2'] },
+  { key: 'menu-3-em-pe', label: 'Cardápio em 3 TVs em pé', desc: 'Em pé: lanches, a promoção do dia e bebidas com o QR code.', orientation: 'port', segment: 'alimentacao', screens: ['menu3p-1', 'menu3p-2', 'menu3p-3'] },
+].map((x) => Object.freeze({ ...x, screens: Object.freeze(x.screens) })));
 
 /* ------------------------------------------------------------------ modelos de slide */
 /**
@@ -225,6 +587,44 @@ export const TVC_ARTS = Object.freeze([
   { key: 'foto-cafeteria', label: 'Foto: cafeteria', tone: 'dark', photo: true }, { key: 'foto-academia', label: 'Foto: academia', tone: 'dark', photo: true },
   { key: 'foto-clinica', label: 'Foto: recepção de clínica', tone: 'dark', photo: true }, { key: 'foto-barbearia', label: 'Foto: barbearia', tone: 'dark', photo: true },
   { key: 'foto-pet', label: 'Foto: cachorro e gato', tone: 'dark', photo: true }, { key: 'foto-provedor', label: 'Foto: fibra óptica', tone: 'dark', photo: true },
+  // datas promocionais do comércio
+  { key: 'foto-promo-black-friday', label: 'Foto: Black Friday', tone: 'dark', photo: true },
+  { key: 'foto-promo-natal', label: 'Foto: presentes de Natal', tone: 'dark', photo: true },
+  { key: 'foto-promo-maes', label: 'Foto: Dia das Mães', tone: 'dark', photo: true },
+  { key: 'foto-promo-pais', label: 'Foto: Dia dos Pais', tone: 'dark', photo: true },
+  { key: 'foto-promo-criancas', label: 'Foto: Dia das Crianças', tone: 'dark', photo: true },
+  { key: 'foto-promo-namorados', label: 'Foto: Dia dos Namorados', tone: 'dark', photo: true },
+  { key: 'foto-promo-pascoa', label: 'Foto: Páscoa', tone: 'dark', photo: true },
+  { key: 'foto-promo-ano-novo', label: 'Foto: Ano Novo', tone: 'dark', photo: true },
+  { key: 'foto-promo-queima', label: 'Foto: queima de estoque', tone: 'dark', photo: true },
+  { key: 'foto-promo-verao', label: 'Foto: verão', tone: 'dark', photo: true },
+  { key: 'foto-promo-volta-aulas', label: 'Foto: volta às aulas', tone: 'dark', photo: true },
+  { key: 'foto-promo-carnaval', label: 'Foto: Carnaval', tone: 'dark', photo: true },
+  { key: 'foto-promo-junina', label: 'Foto: festa junina', tone: 'dark', photo: true },
+  { key: 'foto-promo-inverno', label: 'Foto: inverno', tone: 'dark', photo: true },
+  { key: 'foto-promo-aniversario-loja', label: 'Foto: aniversário da loja', tone: 'dark', photo: true },
+  { key: 'foto-promo-dia-cliente', label: 'Foto: Dia do Cliente', tone: 'dark', photo: true },
+  // provedor de internet (a vitrine do ISP)
+  { key: 'foto-prov-roteador', label: 'Foto: roteador na sala', tone: 'dark', photo: true },
+  { key: 'foto-prov-sala-tv', label: 'Foto: sala com TV', tone: 'dark', photo: true },
+  { key: 'foto-prov-gamer', label: 'Foto: mesa de jogos', tone: 'dark', photo: true },
+  { key: 'foto-prov-home-office', label: 'Foto: trabalho em casa', tone: 'dark', photo: true },
+  { key: 'foto-prov-instalacao', label: 'Foto: ferramentas de instalação', tone: 'dark', photo: true },
+  { key: 'foto-prov-bobina', label: 'Foto: bobina de fibra', tone: 'dark', photo: true },
+  { key: 'foto-prov-cidade', label: 'Foto: cidade conectada', tone: 'dark', photo: true },
+  { key: 'foto-prov-datacenter', label: 'Foto: data center', tone: 'dark', photo: true },
+  { key: 'foto-prov-streaming', label: 'Foto: sofá e pipoca', tone: 'dark', photo: true },
+  { key: 'foto-prov-casa-inteligente', label: 'Foto: casa inteligente', tone: 'dark', photo: true },
+  { key: 'foto-prov-estudo', label: 'Foto: mesa de estudo', tone: 'dark', photo: true },
+  { key: 'foto-prov-empresa', label: 'Foto: rede da empresa', tone: 'dark', photo: true },
+  { key: 'foto-prov-rural', label: 'Foto: casa no campo', tone: 'dark', photo: true },
+  { key: 'foto-prov-poste', label: 'Foto: poste com fibra', tone: 'dark', photo: true },
+  { key: 'foto-prov-velocidade', label: 'Foto: luzes em alta velocidade', tone: 'dark', photo: true },
+  { key: 'foto-prov-suporte', label: 'Foto: fone de suporte', tone: 'dark', photo: true },
+  { key: 'foto-prov-sinal', label: 'Foto: ondas de sinal', tone: 'dark', photo: true },
+  { key: 'foto-prov-celular', label: 'Foto: celular na mesa', tone: 'dark', photo: true },
+  { key: 'foto-prov-seguranca', label: 'Foto: cadeado e rede', tone: 'dark', photo: true },
+  { key: 'foto-prov-mudanca', label: 'Foto: caixas de mudança', tone: 'dark', photo: true },
   // uso interno da empresa (comunicação interna)
   { key: 'foto-aniversario-baloes', label: 'Foto: balões de aniversário', tone: 'dark', photo: true },
   { key: 'foto-aniversario-bolo', label: 'Foto: bolo de aniversário', tone: 'dark', photo: true },
@@ -269,7 +669,12 @@ export const TVC_STYLE_FIELDS = Object.freeze([
   F('art', 'Arte de fundo', 'choice', { options: TVC_ARTS.map((x) => x.key), labels: TVC_ARTS.map((x) => x.label) }),
   F('palette', 'Cor do slide', 'choice', { options: TVC_PALETTES.map((x) => x.key), labels: TVC_PALETTES.map((x) => x.label) }),
   F('orient', 'Formato', 'choice', { options: ['land', 'port'], labels: ['Deitado (16:9)', 'Em pé (9:16)'] }),
+  // o tamanho de cada elemento (vazio = médio, o de sempre): QR code, selo do preço, foto ou iniciais e título
+  ...['qrSize', 'priceSize', 'photoSize', 'titleSize'].map((key, i) => F(key, ['Tamanho do QR code', 'Tamanho do preço', 'Tamanho da foto ou das iniciais', 'Tamanho do título'][i], 'choice',
+    { options: ['s', 'l', 'xl'], labels: ['Pequeno', 'Grande', 'Muito grande'] })),
 ]);
+/** Os campos de tamanho dos elementos (a prévia vira classe tvc-<campo sem Size>-<valor>). */
+export const TVC_SIZE_FIELDS = Object.freeze(['qrSize', 'priceSize', 'photoSize', 'titleSize']);
 export const TVC_SLIDE_MODELS = Object.freeze([
   { key: 'comunicado', label: 'Comunicado', desc: 'Título, texto e QR opcional.', fields: [TITLE, TEXT, IMAGE, QR] },
   { key: 'boas-vindas', label: 'Boas-vindas', desc: 'Para quem chega: visitante ou novo colega.', fields: [TITLE, F('name', 'Nome', 'line', { max: 60 }), F('sector', 'Setor', 'line', { max: 40 }), TEXT, IMAGE] },
@@ -312,6 +717,13 @@ export const TVC_POST_CATEGORY_KEYS = Object.freeze(TVC_POST_CATEGORIES.map((c) 
 /* ------------------------------------------------------------------ widgets (pacote B: tvcorp_widgets.kind) */
 export const TVC_WIDGETS = Object.freeze([
   { key: 'countdown', label: 'Contagem regressiva' },
+  { key: 'clock', label: 'Relógio' },
+  { key: 'weather', label: 'Clima e previsão' },
+  { key: 'agenda', label: 'Agenda e salas' },
+  { key: 'dashboard', label: 'Painel de indicadores' },
+  { key: 'reviews', label: 'Avaliações e depoimentos' },
+  { key: 'directions', label: 'Como chegar' },
+  { key: 'web', label: 'Página da internet' },
   { key: 'safety', label: 'Dias sem acidente' },
   { key: 'worldclock', label: 'Relógio mundial' },
   { key: 'menu', label: 'Cardápio da semana' },

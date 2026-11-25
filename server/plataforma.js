@@ -208,6 +208,18 @@ export function mountPlataforma(app) {
     res.json(access.issueImpersonation(req.user, t.id));
   }));
 
+  // a revenda esqueceu a senha: gera uma nova para o administrador dela (mostrada uma vez; troca no primeiro acesso)
+  r.post('/tenants/:id/senha', A('platform.tenants'), ah(async (req, res) => {
+    const t = await tenantOr404(idParam(req));
+    const u = (await access.tenantAdmins(t.id))[0];
+    if (!u) throw fail(404, 'A revenda não tem administrador.');
+    const password = randomPassword();
+    await access.resetPassword(u.id, password, { mustChange: true }, t.id);
+    if (!u.active) await db.run('UPDATE users SET active = 1 WHERE id = ?', [u.id]);
+    aud(res, t.id, `gerou nova senha para a revenda ${t.slug}`);
+    res.json({ login: u.username, senha: password });
+  }));
+
   /* ------------------------------------------------------------------ perfis de funcionalidades e planos das revendas */
   // Herdados do NEXA (c51d2469). O plano por número de telas, os planos dos clientes finais e a cobrança vêm no passo 3.
   mountFeatureProfiles(r, { A, ah, aud });

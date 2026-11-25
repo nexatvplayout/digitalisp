@@ -74,7 +74,7 @@ export const SECTIONS = [
   {
     id: 'modos', label: 'Modos especiais',
     menus: [
-      { key: 'prefeitura', label: 'Modo órgão público', optIn: true, desc: 'Repartições, regiões e alertas por alcance para prefeituras (herdado do NEXA Telas). Só liga de propósito.' },
+      { key: 'prefeitura', label: 'Modo órgão público', views: ['prefeitura'], optIn: true, routes: ['* /api/prefeitura*'], guards: ['/api/telas/* (a TV box, pelo token do aparelho; server/telas.js)', '/api/reparticao/* e /reparticao/<link> (o link de controle da repartição)', '/api/totem* e /reparticao/<token>/totem (o totem de senhas; server/telas-senha.js)'], desc: 'Painel da Prefeitura: repartições, regiões, mapa do município, alertas por alcance, senhas, salas, desaparecidos, botão de pânico e link de controle de cada repartição. Só liga de propósito.' },
     ],
   },
 ];

@@ -1,7 +1,7 @@
 /* NEXA Telas: o APK do app das TV box servido pelo próprio servidor (docs/TELAS.md §23; contrato §2 "update").
 
-   O APK da versão atual fica versionado em server/assets/telas-app/ (NEXA-Telas.apk + latest.json, escritos por
-   scripts/telas-app-publicar.mjs a partir do build do android-telas/), e vai junto na imagem (o Dockerfile copia server/).
+   O APK da versão atual fica versionado em server/assets/telas-app/ (Telas.apk + latest.json, escritos por
+   scripts/telas-app-publicar.mjs a partir do build do android/), e vai junto na imagem (o Dockerfile copia server/).
      GET /telas/app/latest.json   { versionCode, versionName, sha256, bytes, url }
      GET /telas/app/latest.apk    o arquivo (application/vnd.android.package-archive)
    O `update` do /api/telas/config aponta para ele quando a prefeitura não definiu outro no padrão dela; o app só instala
@@ -13,7 +13,7 @@ import { createHash } from 'node:crypto';
 import { config } from './config.js';
 
 export const APP_DIR = process.env.TELAS_APP_DIR || path.join(config.root, 'server', 'assets', 'telas-app'); // TELAS_APP_DIR: nos testes
-export const APK_NAME = 'NEXA-Telas.apk';
+export const APK_NAME = 'Telas.apk';
 const MAX_BYTES = 200 * 1024 * 1024;
 
 /**
@@ -67,7 +67,7 @@ export function createAppStore({ dir = APP_DIR } = {}) {
       const l = latest();
       if (!l) return res.status(404).json({ error: 'Nenhum APK do app das telas neste servidor.' });
       res.set('Content-Type', 'application/vnd.android.package-archive');
-      res.set('Content-Disposition', `attachment; filename="NEXA-Telas-${l.versionName || l.versionCode}.apk"`);
+      res.set('Content-Disposition', `attachment; filename="Telas-${l.versionName || l.versionCode}.apk"`);
       res.set('Cache-Control', 'public, max-age=300');
       res.set('ETag', `"${l.sha256}"`);
       res.sendFile(l.file);

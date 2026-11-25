@@ -6,6 +6,7 @@ import { fail, line } from './telas-core.js';
 import { localDay, cleanDay } from './telas-senha-core.js';
 import { LIMITS, CARD_KIND, CARD_KIND_KEYS, CONTENT_CLASS_KEYS, ALERT_TYPE, ALERT_CATEGORY_KEYS, alertHeader, issuerOf, issuerHeader, splitAviso, markAviso } from '../public/shared/telas-tipos.js';
 import { text as cleanText } from './telas-core.js';
+import { parseAvisoStyle, markAvisoStyle } from '../public/shared/faixa.js';
 
 /* ------------------------------------------------------------------ tipos de aviso: o texto sugerido que a prefeitura trocou */
 /**
@@ -81,13 +82,19 @@ export function electoralOn(e, now = Date.now()) {
 export const withheld = (cls, electoral) => Boolean(electoral) && cls === 'institucional';
 /** Os avisos (texto rolante) como a tela recebe: sem a marca da classificação e sem os institucionais no período eleitoral. */
 export function tickerTexts(items, electoral = false) {
-  return (Array.isArray(items) ? items : []).map(splitAviso).filter((a) => !withheld(a.class, electoral)).map((a) => a.text).filter(Boolean);
+  return tickerRich(items, electoral).map((a) => a.text);
+}
+/** Os avisos com o estilo de cada um ({ text, color?, bold?, italic? }), para os apps que desenham a cor, o negrito e o itálico. */
+export function tickerRich(items, electoral = false) {
+  return (Array.isArray(items) ? items : []).map(splitAviso).filter((a) => !withheld(a.class, electoral)).map((a) => parseAvisoStyle(a.text)).filter((a) => a.text);
 }
 /** Um aviso guardado: o texto limpo com a marca canônica da classificação ("[institucional] …"). */
 export function cleanAviso(v, max) {
-  const a = splitAviso(line(v, max + 20));
-  const t = line(a.text, max);
-  return t ? markAviso(t, a.class) : '';
+  // a marca da classificação e a de estilo (cor, negrito, itálico) não contam no limite de letras
+  const a = splitAviso(line(v, max + 70));
+  const st = parseAvisoStyle(a.text);
+  const t = line(st.text, max);
+  return t ? markAviso(markAvisoStyle({ ...st, text: t }), a.class) : '';
 }
 
 /* ------------------------------------------------------------------ cartões de informação (contrato §7.1) */

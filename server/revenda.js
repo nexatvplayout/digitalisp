@@ -62,7 +62,7 @@ async function clienteDto(t, extrasRow = null, planos = null, uso = null) {
   const plano = c.planoClienteId ? (planos?.get(c.planoClienteId) || planoClienteDto(await db.get('SELECT * FROM isp_planos_cliente WHERE id = ?', [c.planoClienteId]))) : null;
   return {
     ...T.tenantDto(t, null), ...(extrasRow ? extrasDto(extrasRow) : await loadExtras(t.id)),
-    pessoa: c.pessoa, planoId: c.planoClienteId, plano: plano ? { id: plano.id, nome: plano.nome, telas: plano.telas, precoCents: plano.precoCents } : null,
+    pessoa: c.pessoa, planoId: c.planoClienteId, plano: plano ? { id: plano.id, nome: plano.nome, telas: plano.telas, precoCents: plano.precoCents, prefeitura: Boolean(plano.modulos?.prefeitura) } : null,
     uso: uso || null,
   };
 }
@@ -246,7 +246,7 @@ export function mountRevenda(app, { needs, signedIn }) {
     const rows = await db.all('SELECT * FROM isp_planos_cliente WHERE revenda_id = ? ORDER BY sort, preco_cents, id', [req.tenantId]);
     const uso = await usoRevenda(req.tenantId);
     const cont = new Map((await db.all("SELECT plano_cliente_id AS p, COUNT(*) AS n FROM isp_conta WHERE tipo = 'cliente' AND revenda_id = ? GROUP BY plano_cliente_id", [req.tenantId])).map((x) => [Number(x.p), Number(x.n)]));
-    const disponiveis = CAT.SECTIONS.map((s) => ({ secao: s.label, modulos: s.menus.filter((m) => !m.optIn).map((m) => ({ key: m.key, label: m.label, desc: m.desc, core: Boolean(m.core), liberado: Boolean(m.core || uso.plano?.features?.[m.key]) })) }));
+    const disponiveis = CAT.SECTIONS.map((s) => ({ secao: s.label, modulos: s.menus.filter((m) => !m.optIn || uso.plano?.features?.[m.key]).map((m) => ({ key: m.key, label: m.label, desc: m.desc, core: Boolean(m.core), liberado: Boolean(m.core || uso.plano?.features?.[m.key]) })) }));
     res.set('Cache-Control', 'no-store').json({ planos: rows.map((p) => ({ ...planoClienteDto(p), clientes: cont.get(Number(p.id)) || 0 })), disponiveis, uso });
   }));
   r.post('/planos', ...R, ah(async (req, res) => {

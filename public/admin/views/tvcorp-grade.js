@@ -9,6 +9,7 @@ import {
 import { layoutPreview } from '../../shared/tvcorp-previa.js';
 import { LIMITS, WEEK_SHORT, ZONE_KIND, minToHm, hmToMin, daysOf, daysText } from './tvcorp-catalogo.js';
 import { themeOf } from './tvcorp-midias.js';
+import { abrirPreviaViva } from './tvcorp-previa-viva.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 const sv = (tag, attrs = {}, text = null) => { const n = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) if (v != null) n.setAttribute(k, String(v)); if (text != null) n.textContent = text; return n; };
@@ -108,7 +109,7 @@ function editSchedule(s, reload) {
   dialog(s ? `Grade · ${s.name}` : 'Nova grade', el('div', {},
     el('div', { class: 'tc-two' },
       el('div', { class: 'pf-grid' }, f('Nome', name), f('Layout', layout), label('Playlist de cada zona'), zonesBox),
-      el('div', {}, label('Como fica na TV'), pv)),
+      el('div', {}, label('Como fica na TV'), pv, btns(btn('▶ Prévia grande ao vivo', () => { const l = lay(); if (l) abrirPreviaViva(l, { zonePlaylists: zp, titulo: `Prévia ao vivo · ${name.value || l.name}` }); }, 'small primary')))),
     label('Quando'),
     el('div', { class: 'pf-checks row' }, ...ORDER.map((n) => el('label', { class: 'pf-check' }, el('input', { type: 'checkbox', checked: days.has(n), onchange: (e) => { if (e.target.checked) days.add(n); else days.delete(n); } }), el('span', { text: WEEK_SHORT[n] })))),
     el('div', { class: 'pf-grid two' }, f('Das', tf, 'Vazio nos dois: o dia todo. "22:00 às 06:00" vira a noite.'), f('Até', tt), f('Começa em (opcional)', df), f('Termina em (opcional)', dt)),

@@ -41,10 +41,10 @@ export const PERMISSIONS = [
   { id: 'orders.manage', area: 'App do espectador', label: 'Ver e atualizar os pedidos da loja' },
   { id: 'content.manage', area: 'App do espectador', label: 'Gerenciar conteúdo dos apps: vitrines, VOD, links e informativos', implies: ['playout.view', 'media.view'] },
   { id: 'audience.manage', area: 'App do espectador', label: 'Responder espectadores: mensagens, caixa de entrada e perfis' },
-  // NEXA Telas (docs/TELAS.md): a rede de telas da prefeitura; o grupo Administradores recebe sozinho (tem todas)
-  { id: 'prefeitura.manage', area: 'NEXA Telas', label: 'Painel da Prefeitura: telas, repartições, regiões, chaves de acesso, links de controle e alertas nas telas' },
+  // a rede de telas da prefeitura (modo órgão público, docs/PREFEITURA.md); o grupo Administradores recebe sozinho (tem todas)
+  { id: 'prefeitura.manage', area: 'Telas', label: 'Painel da Prefeitura: telas, repartições, regiões, chaves de acesso, links de controle e alertas nas telas' },
   // TV Corporativa (docs/TV-CORPORATIVA.md): o modo corporativo do NEXA Telas; o grupo Administradores recebe sozinho
-  { id: 'tvcorp.manage', area: 'NEXA Telas', label: 'TV Corporativa: telas, unidades, mídias, playlists, layouts, grade, RH, indicadores, celular e relatórios' },
+  { id: 'tvcorp.manage', area: 'Telas', label: 'TV Corporativa: telas, unidades, mídias, playlists, layouts, grade, RH, indicadores, celular e relatórios' },
   { id: 'channels.manage', area: 'Administração', label: 'Criar, editar e excluir canais', implies: ['playout.view'] },
   { id: 'users.manage', area: 'Administração', label: 'Gerenciar usuários, grupos e permissões' },
   { id: 'audit.view', area: 'Administração', label: 'Ver o registro de auditoria' },

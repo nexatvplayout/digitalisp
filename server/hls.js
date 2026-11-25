@@ -46,7 +46,7 @@ function cleanUrl(v) {
 }
 
 export function mountHls(app, { needs, ah, onChange = () => {} }) {
-  const M = needs('tvcorp.manage');
+  const M = needs('tvcorp.manage', 'prefeitura.manage'); // a prefeitura também escolhe o canal ao vivo das repartições
   // o canal ao vivo de cada tela: { deviceId: hlsId }
   app.get('/api/hls/telas', M, ah(async (req, res) => {
     const rows = await db.all('SELECT device_id, hls_id FROM isp_tela_hls WHERE tenant_id = ?', [req.tenantId]);

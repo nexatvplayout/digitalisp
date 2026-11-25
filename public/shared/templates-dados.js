@@ -543,3 +543,55 @@ export const INTERNOS = {
     ['institucional', 'comunicado', { title: 'Semana do meio ambiente', text: 'Separe o lixo reciclável e economize papel. Cada atitude conta.' }, 'foto-sustentabilidade', 'verde'],
   ],
 };
+
+/* ------------------------------------------------------------------ provedor de internet com foto (20 prontos) */
+/** A vitrine do provedor com as fotos próprias (foto-prov-*.jpg, geradas com GPT Image): um por foto. Mesmo formato de INTERNOS. */
+export const PROVEDOR_FOTOS = {
+  key: 'provedor-fotos', label: 'Provedor de internet com foto', group: 'outros', kind: 'fixo', nome: 'Conecta Fibra Internet', g: 'f',
+  itens: [
+    ['oferta', 'oferta', { title: 'Plano 500 Mega', price: 'R$ 99,90', oldPrice: 'R$ 119,90', unit: 'por mês', tag: 'OFERTA', text: 'Fibra óptica com instalação e roteador inclusos.' }, 'foto-prov-roteador', 'azul'],
+    ['combo', 'combo', { title: 'Combo casa conectada', text: 'Plano 500 Mega\nTV por internet (pacote básico)\nTelefone fixo', price: 'R$ 149,90', oldPrice: 'R$ 169,70', tag: 'ECONOMIZE R$ 19,80' }, 'foto-prov-sala-tv', 'roxo'],
+    ['oferta', 'oferta', { title: 'Plano 1 Giga para jogar', price: 'R$ 149,90', unit: 'por mês', tag: 'PARA JOGAR', text: 'Baixa latência e conexão estável para jogar sem travar.' }, 'foto-prov-gamer', 'roxo'],
+    ['institucional', 'comunicado', { title: 'Trabalhe de casa sem queda', text: 'Fibra óptica com velocidade estável e suporte técnico todos os dias.' }, 'foto-prov-home-office', 'petroleo'],
+    ['aviso', 'comunicado', { title: 'Instalação em até 48 horas', text: 'Técnicos próprios, com hora marcada e roteador incluso no plano.' }, 'foto-prov-instalacao', 'laranja'],
+    ['institucional', 'comunicado', { title: 'Rede 100% fibra óptica', text: 'Do poste até a sua casa, sem cabo de cobre no caminho.' }, 'foto-prov-bobina', 'azul'],
+    ['institucional', 'comunicado', { title: 'Conectando a cidade', text: 'Milhares de famílias e empresas já navegam com a Conecta Fibra.' }, 'foto-prov-cidade', 'azul'],
+    ['institucional', 'comunicado', { title: 'Estrutura de verdade', text: 'Data center próprio, energia de reserva e monitoramento 24 horas.' }, 'foto-prov-datacenter', 'verde'],
+    ['oferta', 'oferta', { title: 'Plano 700 Mega', price: 'R$ 119,90', oldPrice: 'R$ 139,90', unit: 'por mês', tag: 'PARA A FAMÍLIA', text: 'Filmes e séries em alta definição em todas as telas da casa.' }, 'foto-prov-streaming', 'vermelho'],
+    ['institucional', 'comunicado', { title: 'Casa inteligente sem travar', text: 'Lâmpadas, câmeras e assistentes de voz conectados ao mesmo tempo.' }, 'foto-prov-casa-inteligente', 'petroleo'],
+    ['oferta', 'oferta', { title: 'Plano 300 Mega', price: 'R$ 79,90', unit: 'por mês', tag: 'PARA ESTUDAR', text: 'Aulas, pesquisas e trabalhos da escola sem travar.' }, 'foto-prov-estudo', 'verde'],
+    ['cardapio', 'precos', { title: 'Planos para empresas', text: 'Empresarial 300 Mega | R$ 149,90\nEmpresarial 600 Mega | R$ 199,90\nEmpresarial 1 Giga | R$ 299,90\nIP fixo | R$ 49,90', note: 'Atendimento prioritário e contrato com garantia de banda.' }, 'foto-prov-empresa', 'grafite'],
+    ['institucional', 'comunicado', { title: 'Fibra também no campo', text: 'Levamos internet de qualidade para sítios e chácaras da região.' }, 'foto-prov-rural', 'marrom'],
+    ['aviso', 'comunicado', { title: 'Manutenção programada', text: 'Na terça-feira, das 2h às 5h, a rede do bairro Centro passa por melhorias.' }, 'foto-prov-poste', 'laranja'],
+    ['cardapio', 'precos', { title: 'Nossos planos', text: 'Plano 300 Mega | R$ 79,90\nPlano 500 Mega | R$ 99,90\nPlano 700 Mega | R$ 119,90\nPlano 1 Giga | R$ 149,90', note: 'Valores por mês, com instalação e roteador inclusos.' }, 'foto-prov-velocidade', 'azul'],
+    ['horario', 'horario', { title: 'Suporte técnico', text: 'Todos os dias | 8h às 22h\nEmergência | 24 horas\nLoja | Segunda a sábado, 9h às 18h', note: 'Fale com a gente pelo telefone ou pelo aplicativo.' }, 'foto-prov-suporte', 'petroleo'],
+    ['qr', 'qr', { title: 'Teste a sua velocidade', text: 'Aponte a câmera e veja se o seu plano está entregando tudo.', qr: 'https://exemplo.com.br/conectafibrainternet/velocidade' }, 'foto-prov-sinal', 'azul'],
+    ['redes', 'redes', { title: 'Siga a Conecta Fibra', handle: '@conectafibrainternet', text: 'Dicas, novidades e avisos de manutenção em primeira mão.', qr: 'https://exemplo.com.br/conectafibrainternet/redes' }, 'foto-prov-celular', 'roxo'],
+    ['dica', 'comunicado', { title: 'Navegue com segurança', text: 'Troque a senha da rede sem fio de vez em quando e não a compartilhe com estranhos.' }, 'foto-prov-seguranca', 'grafite'],
+    ['aviso', 'comunicado', { title: 'Mudou de casa?', text: 'Leve a sua internet com você: a mudança de endereço é rápida e sem multa.' }, 'foto-prov-mudanca', 'verde'],
+  ],
+};
+
+/* ------------------------------------------------------------------ datas promocionais com foto (16 prontos) */
+/** As datas do calendário do comércio com as fotos próprias (foto-promo-*.jpg, geradas com GPT Image). Mesmo formato de INTERNOS. */
+export const PROMO_FOTOS = {
+  key: 'datas-promocionais', label: 'Datas promocionais com foto', group: 'varejo', kind: 'fixo', nome: 'Loja Estilo Urbano', g: 'f',
+  itens: [
+    ['promocao', 'oferta', { title: 'Smart TV 50 polegadas', price: 'R$ 1.999,00', oldPrice: 'R$ 2.799,00', unit: 'ou 10x de R$ 199,90', tag: 'BLACK FRIDAY', text: 'Só nesta sexta ou enquanto durar o estoque.' }, 'foto-promo-black-friday', 'dourado'],
+    ['promocao', 'oferta', { title: 'Kit presente de Natal', price: 'R$ 89,90', oldPrice: 'R$ 119,90', tag: 'NATAL', text: 'Embalagem para presente sem custo a mais.' }, 'foto-promo-natal', 'vermelho'],
+    ['promocao', 'oferta', { title: 'Buquê de rosas com chocolates', price: 'R$ 129,90', oldPrice: 'R$ 159,90', tag: 'DIA DAS MÃES', text: 'Encomende até sexta e receba no domingo.' }, 'foto-promo-maes', 'rosa'],
+    ['promocao', 'oferta', { title: 'Kit carteira e relógio', price: 'R$ 199,90', oldPrice: 'R$ 249,90', unit: 'ou 3x de R$ 66,63', tag: 'DIA DOS PAIS', text: 'Presente com embalagem especial.' }, 'foto-promo-pais', 'azul'],
+    ['promocao', 'oferta', { title: 'Urso de pelúcia de 50 cm', price: 'R$ 79,90', oldPrice: 'R$ 99,90', tag: 'DIA DAS CRIANÇAS', text: 'Brinquedos com até 30% de desconto.' }, 'foto-promo-criancas', 'laranja'],
+    ['promocao', 'oferta', { title: 'Kit presente para dois', price: 'R$ 149,90', oldPrice: 'R$ 189,90', tag: 'DIA DOS NAMORADOS', text: 'Surpreenda quem você ama.' }, 'foto-promo-namorados', 'vinho'],
+    ['promocao', 'oferta', { title: 'Ovo de chocolate de 500 g', price: 'R$ 59,90', oldPrice: 'R$ 74,90', tag: 'PÁSCOA', text: 'Leve 3 e pague 2 nos ovos de 250 g.' }, 'foto-promo-pascoa', 'marrom'],
+    ['datas', 'data-comemorativa', { title: 'Feliz Ano Novo!', date: { md: [1, 1] }, text: 'Obrigado pela confiança neste ano. Que o próximo seja ainda melhor!' }, 'foto-promo-ano-novo', 'azul'],
+    ['aviso', 'comunicado', { title: 'Queima de estoque', text: 'Descontos de até 70% em centenas de produtos. Corra: é só até domingo!' }, 'foto-promo-queima', 'vermelho'],
+    ['promocao', 'oferta', { title: 'Óculos de sol', price: 'R$ 99,90', oldPrice: 'R$ 139,90', tag: 'LIQUIDAÇÃO DE VERÃO', text: 'Moda praia e acessórios com preço de verão.' }, 'foto-promo-verao', 'petroleo'],
+    ['promocao', 'oferta', { title: 'Kit material escolar', price: 'R$ 89,90', oldPrice: 'R$ 119,90', tag: 'VOLTA ÀS AULAS', text: 'Cadernos, lápis, canetas e mochila com desconto.' }, 'foto-promo-volta-aulas', 'verde'],
+    ['aviso', 'comunicado', { title: 'Carnaval de ofertas', text: 'Fantasias, máscaras e adereços com preço de folia!' }, 'foto-promo-carnaval', 'roxo'],
+    ['aviso', 'comunicado', { title: 'Arraiá de ofertas', text: 'Milho, pipoca, paçoca e bandeirinhas para a sua festa junina.' }, 'foto-promo-junina', 'laranja'],
+    ['promocao', 'oferta', { title: 'Blusa de tricô', price: 'R$ 99,90', oldPrice: 'R$ 139,90', unit: 'ou 3x de R$ 33,30', tag: 'COLEÇÃO DE INVERNO', text: 'Casacos, malhas e cachecóis para os dias frios.' }, 'foto-promo-inverno', 'grafite'],
+    ['aviso', 'comunicado', { title: 'Aniversário da loja', text: 'Quem ganha presente é você: descontos especiais a semana toda!' }, 'foto-promo-aniversario-loja', 'petroleo'],
+    ['datas', 'data-comemorativa', { title: 'Dia do Cliente', date: { md: [9, 15] }, text: 'Obrigado pela preferência! Hoje tem condições especiais para você.' }, 'foto-promo-dia-cliente', 'dourado'],
+  ],
+};

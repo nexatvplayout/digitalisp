@@ -8,6 +8,11 @@ ligarMascaras(); // CPF, CNPJ, telefone e CEP com a pontuação padrão em todo 
 // as telas e o conteúdo (uns 40 arquivos) só carregam depois da entrada: a tela de login abre na hora
 let tvcorpMod = null;
 const tvcorp = async () => (tvcorpMod ||= (await import('./views/tvcorp.js')).default);
+// o Painel da Prefeitura (modo órgão público): só carrega para quem tem o modo no plano
+let prefMod = null;
+const prefeitura = async () => (prefMod ||= (await import('./views/prefeitura.js')).default);
+/** O modo órgão público está no plano da conta e o usuário tem a permissão. */
+const temPrefeitura = () => state.me?.planFeatures?.prefeitura === true && Boolean(state.me?.permissions?.includes('prefeitura.manage'));
 
 // a porta decide quem entra; cada uma guarda a própria sessão (dá para ter as duas abertas em abas diferentes)
 const KIND = location.pathname === '/superadmin' || location.pathname.startsWith('/superadmin/') ? 'plataforma' : 'revenda';
@@ -72,14 +77,17 @@ const VIEWS = {
   'rv-telas': { area: 'revenda', load: async () => (await rev()).paintTelas($('#rtPanel')), leave: async () => (await rev()).leaveMapa() },
   guia: { area: null, load: async () => (await guiaMod()).paintGuia($('#gdPanel'), S.kind, { onChange: faixaGuia }) },
   tvcorp: { area: ['revenda', 'cliente'], load: async (sub) => (await tvcorp()).load(sub), leave: () => tvcorpMod?.leave?.() },
+  prefeitura: { area: ['revenda', 'cliente'], when: temPrefeitura, load: async (sub) => (await prefeitura()).load(sub), leave: () => prefMod?.leave?.() },
   revendas: { area: 'plataforma', load: async () => (await plat()).paintRevendas($('#rvPanel')) },
   planos: { area: 'plataforma', load: async () => (await plat()).paintPlanos($('#plPanel')) },
+  integracoes: { area: 'plataforma', load: async () => (await import('./views/integracoes.js')).paintIntegracoes($('#igPanel')) },
   cobrancas: { area: 'plataforma', load: async () => (await plat()).paintCobrancas($('#cbPanel')) },
   mapa: { area: 'plataforma', load: async () => (await plat()).paintMapa($('#mpPanel')), leave: async () => (await plat()).leaveMapa() },
+  dominios: { area: ['revenda', 'cliente'], load: async () => (await import('./views/dominios.js')).paintDominios($('#dmPanel')) },
   conta: { area: null, load: () => paintConta() },
 };
 const firstView = () => ({ plataforma: 'revendas', revenda: 'rv-resumo', cliente: 'tvcorp' }[S.area]);
-const pode = (v) => v && (v.area === null || [].concat(v.area).includes(S.area));
+const pode = (v) => v && (v.area === null || [].concat(v.area).includes(S.area)) && (!v.when || v.when());
 
 async function route() {
   if (!state.me) return;
@@ -103,12 +111,13 @@ function rotulo(hash) {
   return (a?.textContent || '').replace(/\d+\/\d+$/, '').trim() || hash.slice(1);
 }
 function abrirAba(v, sub) {
-  const hash = `#${v}${v === 'tvcorp' ? `/${sub || 'resumo'}` : ''}`;
+  const hash = `#${v}${v === 'tvcorp' ? `/${sub || 'resumo'}` : v === 'prefeitura' ? `/${sub || 'mapa'}` : ''}`;
   if (!abas.includes(hash)) abas.push(hash);
   if (abas.length > 12) abas = abas.slice(-12);
   salvarAbas();
   desenharAbas(hash);
   if (v === 'tvcorp') { const t = document.querySelector('#view-tvcorp .head h2'); if (t) t.textContent = rotulo(hash); }
+  if (v === 'prefeitura') { const t = document.querySelector('#view-prefeitura .head h2'); if (t) t.textContent = `Prefeitura · ${rotulo(hash)}`; }
 }
 function desenharAbas(ativa) {
   const bar = $('#abas');
@@ -150,6 +159,13 @@ window.addEventListener('hashchange', (e) => {
 });
 window.addEventListener('beforeunload', (e) => { if (document.querySelector('.view:not([hidden]) form.dirty')) { e.preventDefault(); e.returnValue = ''; } });
 
+/* a versão no ar, no rodapé do menu (para acompanhar as atualizações) */
+fetch('/api/versao', { cache: 'no-store' }).then((r) => r.json()).then((v) => {
+  const quando = v.em ? new Date(v.em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+  $('#versao').textContent = `Versão ${v.numero}${quando ? ` · ${quando}` : ''}`;
+  if (v.commit) $('#versao').title = `Versão do sistema no ar (${v.commit})`;
+}).catch(() => {});
+
 async function start() {
   try {
     state.me = await api(S.kind === 'plataforma' ? '/api/platform/me' : '/api/me');
@@ -165,7 +181,8 @@ async function start() {
     S.conta = await api('/api/conta').catch(() => ({ tipo: 'revenda' }));
     S.area = S.conta.tipo === 'cliente' ? 'cliente' : 'revenda';
   }
-  for (const n of $$('[data-area]')) n.hidden = !n.dataset.area.split(' ').includes(S.area);
+  for (const n of $$('[data-area]')) n.hidden = !n.dataset.area.split(' ').includes(S.area) || (n.hasAttribute('data-pref') && !temPrefeitura());
+  pollPrefeitura();
   const aviso = $('#entrouComo');
   aviso.hidden = !S.conta?.impersonador;
   if (S.conta?.impersonador) aviso.textContent = `Você está no painel do cliente ${state.me.tenant?.name || ''}, aberto pela revenda. Feche esta aba para voltar.`;
@@ -191,6 +208,23 @@ async function marcaDaRevenda() {
     document.title = m.nome;
   } catch { /* revenda inexistente: fica a entrada neutra */ }
 }
+
+/* ------------------------------------------------------------------ prefeitura: o selo do menu */
+/** Telas desligadas e pedidos aguardando a aprovação da SECOM, no selo do menu Prefeitura (a cada minuto). */
+let prefTimer = null;
+async function pollPrefeitura() {
+  const b = $('#pfBadge');
+  clearTimeout(prefTimer);
+  if (!b || !temPrefeitura()) { if (b) b.hidden = true; return; }
+  try {
+    const r = await api('/api/prefeitura/badge');
+    const n = (r.off || 0) + (r.approvals || 0);
+    b.hidden = !n; b.textContent = String(n);
+    b.title = [r.off ? `${r.off} tela(s) desligada(s)` : '', r.approvals ? `${r.approvals} pedido(s) aguardando aprovação` : ''].filter(Boolean).join(' · ');
+  } catch { b.hidden = true; }
+  prefTimer = setTimeout(pollPrefeitura, 60000);
+}
+window.addEventListener('disp:prefeitura-badge', () => { pollPrefeitura(); });
 
 /* ------------------------------------------------------------------ plataforma (views/plataforma.js, carregado só no superadmin) */
 const plat = () => import('./views/plataforma.js');

@@ -10,6 +10,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { boot, cleanup, api, platformLogin, newTenant } from './helpers/srv.js';
+import { canal, usuario, auditoria } from './helpers/prefeitura.js'; // DIGITAL ISP: canal ao vivo (HLS) e usuário de permissão limitada
 
 const ENV = { TELAS_LINK_LOGIN_PER_IP: '500', TELAS_ACTIVATE_PER_IP: '50', TELAS_ALERTS_PER_OFFICE: '14', PUBLIC_HLS_URL: 'https://hls.exemplo.test', PLATFORM_PUBLIC_URL: 'https://painel.exemplo.test', STORAGE_DRIVER: 'local' };
 
@@ -22,7 +23,7 @@ async function roteiro(s, { sqlite = false } = {}) {
   const A = await newTenant(P, s.base, { slug: 'seg-a', planCode: 'p-pref-api', status: 'active' });
   const B = await newTenant(P, s.base, { slug: 'seg-b', planCode: 'p-pref-api', status: 'active' });
   const Cx = await newTenant(P, s.base, { slug: 'seg-c', planCode: 'p-pref-sem', status: 'active' });
-  for (const [T, slug] of [[A, 'seg-a-tv'], [B, 'seg-b-tv'], [Cx, 'seg-c-tv']]) assert.equal((await T.api('POST', '/api/channels', { name: 'TV', slug })).status, 201);
+  for (const [T, slug] of [[A, 'seg-a-tv'], [B, 'seg-b-tv'], [Cx, 'seg-c-tv']]) await canal(T.api, 'TV');
   const post = async (T, url, body, want = 201) => { const r = await T.api('POST', url, body); assert.equal(r.status, want, `${url}: ${JSON.stringify(r.data)}`); return r.data; };
   const office = (T, name, type, extra = {}) => post(T, '/api/prefeitura/offices', { name, type, ...extra });
   const centro = await post(A, '/api/prefeitura/regions', { name: 'Centro' });
@@ -261,7 +262,7 @@ async function roteiro(s, { sqlite = false } = {}) {
   void PCb;
 
   /* ---------------------------------------------------------------- auditoria e log sem segredo */
-  const audit = JSON.stringify((await A.api('GET', '/api/audit?limit=500')).data);
+  const audit = JSON.stringify(await auditoria(s, A.id));
   for (const want of [/BOTÃO DE PÂNICO acionado em \\"UBS Centro\\"/, /RECEBIDO pela Segurança/, /ENCERRADO pela Segurança/, /ENCERRADO pelo Painel da Prefeitura/, /LIBERADO para emitir alertas direto/, /pelo link da Segurança \(CCO\)/, /chave de integração do emissor conveniado \\"Polícia Militar\\" gerada/, /pela chave de integração/, /cartela policial \\"PROCURADO PELA JUSTIÇA\\" \(procedimento IP 123\/2026\) enviada para a aprovação do CCO/, /repartição: Polícia Militar \(API\)/]) assert.match(audit, want);
   assert.ok(!audit.includes(k1.data.key) && !audit.includes(k2.data.key) && !s.out().includes(k1.data.key), 'a chave não vai para a auditoria nem para o log');
   assert.ok(!/Matrícula 0001/.test(audit), 'a matrícula fica só no registro do caso');

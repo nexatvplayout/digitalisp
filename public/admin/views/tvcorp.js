@@ -18,12 +18,14 @@ import paintDados from './tvcorp-dados.js';
 import paintIndicadores from './tvcorp-indicadores.js';
 import paintRh from './tvcorp-rh.js';
 import paintBarras from './tvcorp-barras.js';
+import paintGadgets from './tvcorp-gadgets.js';
 import { paintAlertas, paintAprovacoes } from './tvcorp-rede.js';
 import paintCelular from './tvcorp-celular.js';
 import paintRelatorios from './tvcorp-relatorios.js';
 import paintComandos from './tvcorp-comandos.js';
 import paintInstalar from './tvcorp-instalar.js';
 import paintConfig from './tvcorp-config.js';
+import paintQrcodes from './tvcorp-qrcodes.js';
 
 /** As abas, na ordem do menu. perm: a permissão que a aba pede (hoje todas: tvcorp.manage); live: redesenha com a volta de 10 s. */
 export const TABS = [
@@ -32,11 +34,13 @@ export const TABS = [
   { id: 'unidades', label: 'Unidades e grupos', perm: 'tvcorp.manage', paint: paintUnidades },
   { id: 'midias', label: 'Mídias', perm: 'tvcorp.manage', paint: paintMidias },
   { id: 'templates', label: 'Templates', perm: 'tvcorp.manage', paint: paintTemplates },
+  { id: 'qrcodes', label: 'QR Codes', perm: 'tvcorp.manage', paint: paintQrcodes },
   { id: 'aovivo', label: 'Ao vivo (HLS)', perm: 'tvcorp.manage', paint: paintAoVivo },
   { id: 'playlists', label: 'Playlists', perm: 'tvcorp.manage', paint: paintPlaylists },
   { id: 'layouts', label: 'Layouts', perm: 'tvcorp.manage', paint: paintLayouts },
   { id: 'grade', label: 'Grade', perm: 'tvcorp.manage', paint: paintGrade },
   { id: 'dados', label: 'Notícias e dados', perm: 'tvcorp.manage', paint: paintDados },
+  { id: 'gadgets', label: 'Gadgets', perm: 'tvcorp.manage', paint: paintGadgets },
   { id: 'indicadores', label: 'Indicadores', perm: 'tvcorp.manage', paint: paintIndicadores },
   { id: 'rh', label: 'RH', perm: 'tvcorp.manage', paint: paintRh },
   { id: 'barras', label: 'Barras e blocos', perm: 'tvcorp.manage', paint: paintBarras },

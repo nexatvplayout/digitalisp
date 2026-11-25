@@ -231,7 +231,11 @@ async function roteiro(db, files) {
     const feeds = ok(await A('GET', '/api/tvcorp/feeds')).feeds;
     assert.deepEqual(feeds.map((f) => [f.kind, Boolean(f.fetchedAt), Boolean(f.lastError)]).sort(), [['quotes', true, false], ['rss', false, true], ['rss', true, false], ['weather', true, false]]);
     assert.ok(s.routes.every((u) => u.startsWith('https://')));
-    const news = await s.dados.dataFor(1, matriz, `news:${fn.id}`);
+    // DIGITAL ISP: uma notícia por item (a foto em tela cheia e a faixa); mode 'lista' mantém a lista de manchetes
+    const um = await s.dados.dataFor(1, matriz, `news:${fn.id}`);
+    assert.ok(Array.isArray(um) && um.length >= 2);
+    assert.deepEqual([um[0].id, um[0].single, um[0].items.length, um[0].items[0].title, um[1].id], [`n${fn.id}-1`, true, 1, 'Inflação cai em outubro', `n${fn.id}-2`]);
+    const news = await s.dados.dataFor(1, matriz, { kind: 'news', id: fn.id, params: { mode: 'lista' } });
     assert.deepEqual([news.kind, news.source, news.items[0].title, news.items[0].source, news.items[0].qr, news.items[1].qr], ['news', 'Agência Brasil (EBC) · licença CC BY', 'Inflação cai em outubro', 'Agência Brasil (EBC) · licença CC BY', 'https://agenciabrasil.ebc.com.br/n1', undefined]);
     const q = await s.dados.dataFor(1, matriz, { ref_kind: 'quotes', ref_id: fq.id });
     assert.deepEqual(q.items, [{ label: 'USD', name: 'Dólar americano', value: 5.32, change: -0.4, prefix: 'R$ ', decimals: 2, at: 1795600000000 }]);

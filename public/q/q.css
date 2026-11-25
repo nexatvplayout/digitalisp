@@ -1,0 +1,90 @@
+/* a página que o celular abre ao ler um QR code de mídia ou playlist (server/qrcodes.js) */
+:root { color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, "Segoe UI", Roboto, Arial, sans-serif; background: #0b1220; color: #f1f5f9; }
+.q-head { padding: 20px 16px 8px; }
+.q-head h1 { margin: 0; font-size: 1.3rem; }
+.q-head p { margin: 4px 0 0; color: #94a3b8; font-size: .9rem; }
+.q-itens { display: grid; gap: 14px; padding: 12px 16px 24px; max-width: 720px; margin: 0 auto; }
+.q-item { border-radius: 12px; overflow: hidden; background: #111a2e; }
+.q-item img, .q-item video { display: block; width: 100%; height: auto; }
+.q-item .tvc-previa, .q-item .tvc-sl { width: 100%; }
+.q-slide { aspect-ratio: 16 / 9; container-type: inline-size; }
+.q-slide.port { aspect-ratio: 9 / 16; }
+.q-vazio { color: #94a3b8; text-align: center; padding: 40px 0; }
+.q-pe { text-align: center; color: #475569; font-size: .75rem; padding: 12px 0 24px; }
+/* a apresentação: uma propaganda por vez, a barrinha do tempo, as setas e os pontinhos */
+.q-show { display: flex; flex-direction: column; gap: 10px; }
+.q-palco { cursor: pointer; user-select: none; }
+.q-palco .q-item { margin: 0; }
+.q-palco img, .q-palco video { max-height: 78vh; object-fit: contain; background: #05070b; }
+.q-barra { height: 4px; border-radius: 4px; background: #1e293b; overflow: hidden; }
+.q-barra-in { display: block; height: 100%; width: 0; background: #38bdf8; }
+.q-barra.anda .q-barra-in { animation-name: q-anda; animation-timing-function: linear; animation-fill-mode: forwards; }
+@keyframes q-anda { from { width: 0; } to { width: 100%; } }
+.q-nav { display: flex; align-items: center; justify-content: center; gap: 12px; }
+.q-bt { width: 44px; height: 44px; border-radius: 50%; border: 1px solid #334155; background: #111a2e; color: #f1f5f9; font-size: 1.4rem; cursor: pointer; }
+.q-estado { min-width: 90px; text-align: center; color: #94a3b8; font-size: .9rem; }
+.q-pontos { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.q-ponto { width: 10px; height: 10px; padding: 0; border-radius: 50%; border: 0; background: #334155; cursor: pointer; }
+.q-ponto[aria-current="true"] { background: #38bdf8; }
+.q-ver { margin: 8px auto 0; display: block; padding: 10px 18px; border-radius: 10px; border: 1px solid #334155; background: transparent; color: #cbd5e1; cursor: pointer; }
+.q-lista { display: grid; gap: 14px; margin-top: 12px; }
+.q-lista[hidden] { display: none; }
+.q-barra.anda.s4 .q-barra-in { animation-duration: 4s; }
+.q-barra.anda.s5 .q-barra-in { animation-duration: 5s; }
+.q-barra.anda.s6 .q-barra-in { animation-duration: 6s; }
+.q-barra.anda.s7 .q-barra-in { animation-duration: 7s; }
+.q-barra.anda.s8 .q-barra-in { animation-duration: 8s; }
+.q-barra.anda.s9 .q-barra-in { animation-duration: 9s; }
+.q-barra.anda.s10 .q-barra-in { animation-duration: 10s; }
+.q-barra.anda.s11 .q-barra-in { animation-duration: 11s; }
+.q-barra.anda.s12 .q-barra-in { animation-duration: 12s; }
+.q-barra.anda.s13 .q-barra-in { animation-duration: 13s; }
+.q-barra.anda.s14 .q-barra-in { animation-duration: 14s; }
+.q-barra.anda.s15 .q-barra-in { animation-duration: 15s; }
+.q-barra.anda.s16 .q-barra-in { animation-duration: 16s; }
+.q-barra.anda.s17 .q-barra-in { animation-duration: 17s; }
+.q-barra.anda.s18 .q-barra-in { animation-duration: 18s; }
+.q-barra.anda.s19 .q-barra-in { animation-duration: 19s; }
+.q-barra.anda.s20 .q-barra-in { animation-duration: 20s; }
+.q-barra.anda.s21 .q-barra-in { animation-duration: 21s; }
+.q-barra.anda.s22 .q-barra-in { animation-duration: 22s; }
+.q-barra.anda.s23 .q-barra-in { animation-duration: 23s; }
+.q-barra.anda.s24 .q-barra-in { animation-duration: 24s; }
+.q-barra.anda.s25 .q-barra-in { animation-duration: 25s; }
+.q-barra.anda.s26 .q-barra-in { animation-duration: 26s; }
+.q-barra.anda.s27 .q-barra-in { animation-duration: 27s; }
+.q-barra.anda.s28 .q-barra-in { animation-duration: 28s; }
+.q-barra.anda.s29 .q-barra-in { animation-duration: 29s; }
+.q-barra.anda.s30 .q-barra-in { animation-duration: 30s; }
+.q-barra.anda.s31 .q-barra-in { animation-duration: 31s; }
+.q-barra.anda.s32 .q-barra-in { animation-duration: 32s; }
+.q-barra.anda.s33 .q-barra-in { animation-duration: 33s; }
+.q-barra.anda.s34 .q-barra-in { animation-duration: 34s; }
+.q-barra.anda.s35 .q-barra-in { animation-duration: 35s; }
+.q-barra.anda.s36 .q-barra-in { animation-duration: 36s; }
+.q-barra.anda.s37 .q-barra-in { animation-duration: 37s; }
+.q-barra.anda.s38 .q-barra-in { animation-duration: 38s; }
+.q-barra.anda.s39 .q-barra-in { animation-duration: 39s; }
+.q-barra.anda.s40 .q-barra-in { animation-duration: 40s; }
+.q-barra.anda.s41 .q-barra-in { animation-duration: 41s; }
+.q-barra.anda.s42 .q-barra-in { animation-duration: 42s; }
+.q-barra.anda.s43 .q-barra-in { animation-duration: 43s; }
+.q-barra.anda.s44 .q-barra-in { animation-duration: 44s; }
+.q-barra.anda.s45 .q-barra-in { animation-duration: 45s; }
+.q-barra.anda.s46 .q-barra-in { animation-duration: 46s; }
+.q-barra.anda.s47 .q-barra-in { animation-duration: 47s; }
+.q-barra.anda.s48 .q-barra-in { animation-duration: 48s; }
+.q-barra.anda.s49 .q-barra-in { animation-duration: 49s; }
+.q-barra.anda.s50 .q-barra-in { animation-duration: 50s; }
+.q-barra.anda.s51 .q-barra-in { animation-duration: 51s; }
+.q-barra.anda.s52 .q-barra-in { animation-duration: 52s; }
+.q-barra.anda.s53 .q-barra-in { animation-duration: 53s; }
+.q-barra.anda.s54 .q-barra-in { animation-duration: 54s; }
+.q-barra.anda.s55 .q-barra-in { animation-duration: 55s; }
+.q-barra.anda.s56 .q-barra-in { animation-duration: 56s; }
+.q-barra.anda.s57 .q-barra-in { animation-duration: 57s; }
+.q-barra.anda.s58 .q-barra-in { animation-duration: 58s; }
+.q-barra.anda.s59 .q-barra-in { animation-duration: 59s; }
+.q-barra.anda.s60 .q-barra-in { animation-duration: 60s; }

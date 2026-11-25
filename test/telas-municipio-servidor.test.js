@@ -9,6 +9,7 @@ import assert from 'node:assert/strict';
 import http from 'node:http';
 import { tmpDir } from './helpers/tmp.js'; // pastas nexa-* apagadas no fim, mesmo com o teste falhando
 import { boot, cleanup, api, platformLogin, newTenant } from './helpers/srv.js';
+import { canal, usuario, auditoria } from './helpers/prefeitura.js'; // DIGITAL ISP: canal ao vivo (HLS) e usuário de permissão limitada
 
 process.env.DATA_DIR = tmpDir('nexa-telasmun');
 const { OUTLINE, countPoints, pointInOutline } = await import('../public/shared/telas-geo.js');
@@ -58,13 +59,12 @@ async function roteiro(t, s, ibge) {
   assert.equal((await A.api('POST', '/api/prefeitura/municipio/outline', {})).status, 409, 'tentar de novo sem município');
 
   /* ---- permissão: sem sessão 401; sem prefeitura.manage 403; grupo limitado a um canal 403 */
-  assert.equal((await A.api('POST', '/api/channels', { name: 'TV Prefeitura A', slug: 'mun-a-tv' })).status, 201);
+  await canal(A.api, 'TV Prefeitura A'); // DIGITAL ISP: o canal ao vivo (HLS) no lugar do canal do NEXA
   for (const [m, u, b] of [['GET', '/api/prefeitura/municipio'], ['PUT', '/api/prefeitura/municipio', { uf: 'RJ', ibge: CARAPEBUS }], ['POST', '/api/prefeitura/municipio/outline', {}], ['DELETE', '/api/prefeitura/municipio']]) assert.equal((await anon(m, u, b)).status, 401, `${m} ${u} sem sessão`);
-  const vis = (await A.api('POST', '/api/groups', { name: 'Sem telas', permissions: ['playout.view'] })).data;
-  assert.equal((await A.api('POST', '/api/users', { username: 'semtelas.m', name: 'Sem', password: 'senha-sem-telas-123', groupIds: [vis.id] })).status, 201);
+  // DIGITAL ISP: sem a tela de usuários do NEXA, os usuários de permissão limitada nascem no banco (test/helpers/prefeitura.js)
+  await usuario(s, A.id, { username: 'semtelas.m', password: 'senha-sem-telas-123', permissions: ['tvcorp.manage'] });
   const V = api(s.base, (await anon('POST', '/api/admin/login', { tenant: 'mun-a', username: 'semtelas.m', password: 'senha-sem-telas-123' })).data.token);
-  const lim = (await A.api('POST', '/api/groups', { name: 'Telas de um canal', permissions: ['prefeitura.manage'], channels: ['mun-a-tv'] })).data;
-  assert.equal((await A.api('POST', '/api/users', { username: 'umcanal.m', name: 'Um', password: 'senha-um-canal-1234', groupIds: [lim.id] })).status, 201);
+  await usuario(s, A.id, { username: 'umcanal.m', password: 'senha-um-canal-1234', permissions: ['prefeitura.manage'], channels: ['mun-a-tv'] });
   const L = api(s.base, (await anon('POST', '/api/admin/login', { tenant: 'mun-a', username: 'umcanal.m', password: 'senha-um-canal-1234' })).data.token);
   for (const U of [V, L]) {
     assert.equal((await U('GET', '/api/prefeitura/municipio')).status, 403);
@@ -185,9 +185,8 @@ async function roteiro(t, s, ibge) {
   assert.equal((await put(A, { uf: 'RJ', ibge: RIO })).status, 403);
   assert.equal((await P('DELETE', `/api/platform/tenants/${A.id}/telas-municipio`)).status, 200);
   // e a auditoria do cliente registra a escolha (sem nada além do nome do município)
-  const audit = await A.api('GET', '/api/audit?limit=200');
-  assert.equal(audit.status, 200, JSON.stringify(audit.data));
-  const txt = JSON.stringify(audit.data);
+  // DIGITAL ISP: sem a tela de auditoria do cliente, a leitura é direto no banco (as linhas da conta dele)
+  const txt = JSON.stringify(await auditoria(s, A.id));
   assert.match(txt, /município das telas definido: Carapebus\/RJ \(contorno guardado\); fica travado/);
   assert.doesNotMatch(txt, /São Paulo/, 'a troca feita pelo Superadmin fica na auditoria da plataforma, não na do cliente');
 }

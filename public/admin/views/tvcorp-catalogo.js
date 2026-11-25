@@ -3,7 +3,7 @@
 // os nomes no formato que as abas usam (campos do editor de slide, itens da playlist) e as funções pequenas do painel.
 // Sem DOM e sem dependências além dos catálogos: o teste importa direto.
 import {
-  TVC_LIMITS, TVC_ZONES, TVC_ZONE, TVC_LAYOUT_MODELS, TVC_SLIDE_MODELS, TVC_POST_CATEGORIES, TVC_WIDGETS, TVC_REF_KIND, TVC_SCOPES,
+  TVC_LIMITS, TVC_ZONES, TVC_ZONE, TVC_LAYOUT_MODELS, layoutMainOf, TVC_LAYOUT_SETS, TVC_LAYOUT_SEGMENTS, TVC_SLIDE_MODELS, TVC_POST_CATEGORIES, TVC_WIDGETS, TVC_REF_KIND, TVC_SCOPES,
   TVC_ARTS, TVC_ZONE_ID_RE, isTvcOfficeType,
 } from '../../shared/tvcorp-tipos.js';
 import { DATES, DEFAULT_DATE_KEYS } from '../../shared/tvcorp-datas.js';
@@ -46,7 +46,10 @@ export const LIMITS = Object.freeze({
 });
 
 /** Os modelos de layout de fábrica (§4.2), os do catálogo comum. */
-export const FACTORY_LAYOUTS = TVC_LAYOUT_MODELS.map((m) => ({ key: m.key, label: m.label, desc: m.desc, orientation: m.orientation, background: m.background, zones: m.zones.map(({ hint, ...z }) => ({ ...z })) }));
+export const FACTORY_LAYOUTS = TVC_LAYOUT_MODELS.map((m) => ({ key: m.key, label: m.label, desc: m.desc, orientation: m.orientation, background: m.background, segment: m.segment || 'geral', set: m.set || null, main: layoutMainOf(m), special: Boolean(m.special), zones: m.zones.map(({ hint, ...z }) => ({ ...z })) }));
+/** Os conjuntos de várias TVs (menu board): as telas, na ordem da esquerda para a direita. */
+export const FACTORY_SETS = TVC_LAYOUT_SETS.map((x) => ({ ...x, screens: [...x.screens] }));
+export const LAYOUT_SEGMENTS = TVC_LAYOUT_SEGMENTS.map((x) => ({ ...x }));
 export const FACTORY_LAYOUT = Object.fromEntries(FACTORY_LAYOUTS.map((l) => [l.key, l]));
 
 /** O tipo do campo do catálogo comum -> o campo do editor: text | textarea | url | image | date | datetime | choice. */
@@ -148,6 +151,8 @@ export function checkZones(zones) {
   if (!Array.isArray(zones) || !zones.length) return 'O layout precisa de pelo menos uma zona.';
   if (zones.length > LIMITS.zones) return `No máximo ${LIMITS.zones} zonas por layout.`;
   if (zones.filter((x) => x.kind === 'video').length > 1) return 'No máximo uma zona de vídeo por layout.';
+  if (zones.filter((x) => x.kind === 'hdmi').length > 1) return 'No máximo uma zona de entrada HDMI por layout.';
+  if (zones.some((x) => x.kind === 'hdmi') && zones.some((x) => x.kind === 'video')) return 'A entrada HDMI e o vídeo do canal não ficam no mesmo layout.';
   const ids = new Set();
   for (const q of zones) {
     if (!TVC_ZONE_ID_RE.test(String(q.id || ''))) return `Nome de zona inválido: "${q.id}". Comece com uma letra; use letras minúsculas, números e hífen (até 16).`;
@@ -160,7 +165,7 @@ export function checkZones(zones) {
   }
   for (let i = 0; i < zones.length; i++) for (let k = i + 1; k < zones.length; k++) {
     const a = zones[i]; const b = zones[k];
-    if (a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h) return `As zonas "${a.id}" e "${b.id}" estão uma por cima da outra.`;
+    if (Boolean(a.overlay) === Boolean(b.overlay) && !a.shape && !b.shape && a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h) return `As zonas "${a.id}" e "${b.id}" estão uma por cima da outra (marque "Por cima" na que fica sobre a outra).`;
   }
   return null;
 }

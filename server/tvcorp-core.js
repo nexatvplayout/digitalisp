@@ -2,6 +2,9 @@
 // manda (layout por zonas, slide de modelo, playlist e itens, grade e alcance, configurações), a resolução da grade (qual
 // bloco vale em cada tela, por prioridade, especificidade e data), a montagem da chave `signage` do /config e a leitura do
 // `plays` do sinal de vida. O banco e as rotas ficam em server/tvcorp.js; o catálogo em public/shared/tvcorp-tipos.js.
+import { qrKind } from '../public/shared/qr-conteudo.js';
+import * as W from '../public/shared/tvcorp-wall.js';
+import { ZONE_SHAPE_KEYS, EDGE_LIMITS } from '../public/shared/tvcorp-formas.js';
 import {
   TVC_LIMITS as L, TVC_ZONE, TVC_ZONE_KEYS, TVC_ZONE_ID_RE, TVC_PLAYLIST_ZONES, TVC_ORIENTATION_KEYS, TVC_LAYOUT_MODEL, TVC_SLIDE_MODEL,
   TVC_REF_KIND, TVC_SCOPE, TVC_SCOPE_KEYS, TVC_ITEM_KINDS, TVC_FIT_KEYS, TVC_POST_CATEGORY_KEYS, itemRef, parseItemRef, tvcScopeHits,
@@ -29,6 +32,15 @@ export function cleanName(v, what = 'Nome', max = L.name) {
   return s;
 }
 /** Endereço https (sem usuário e senha no endereço), até 500 caracteres. */
+/** O conteúdo de um QR code: endereço https, Wi-Fi (WIFI:…) ou cartão de contato (BEGIN:VCARD…), até 600 letras. */
+export function cleanQrData(v, what = 'QR code') {
+  const s = String(v ?? '').replace(/\r\n/g, '\n').trim();
+  if (/^WIFI:/i.test(s) || /^BEGIN:VCARD/i.test(s)) {
+    if (s.length > 600 || !qrKind(s)) throw fail(400, `${what}: o Wi-Fi ou o contato está incompleto. Monte de novo pelo painel.`);
+    return s;
+  }
+  return cleanUrl(s, what);
+}
 export function cleanUrl(v, what = 'Endereço') {
   const s = String(v ?? '').trim();
   let u = null;
@@ -109,11 +121,39 @@ export function cleanZone(z, i = 0) {
   if (w < L.zoneMinPct || h < L.zoneMinPct) throw fail(400, `${what}: largura e altura de pelo menos ${L.zoneMinPct}% da tela.`);
   if (x + w > 100 || y + h > 100) throw fail(400, `${what}: passa da borda da tela.`);
   const out = { id, kind, x, y, w, h };
+  // DIGITAL ISP: o vídeo ao vivo fica proporcional (com faixas pretas) por padrão; fit 'cover' preenche a zona cortando as bordas
+  if (kind === 'video' && z.fit === 'cover') out.fit = 'cover';
   const params = TVC_ZONE[kind].params || [];
   if (params.includes('title')) { const t = line(z.title, L.label); if (t) out.title = t; }
   if (params.includes('text')) { const t = line(z.text, L.zoneText); if (t) out.text = t; }
-  if (params.includes('qr') && z.qr) out.qr = cleanUrl(z.qr, `${what}, QR code`);
+  if (params.includes('qr') && z.qr) out.qr = cleanQrData(z.qr, `${what}, QR code`);
   if (kind === 'qr' && !out.qr) throw fail(400, `${what}: diga o endereço do QR code.`);
+  // o gadget (contador, dias sem acidente, relógio mundial) escolhido direto no layout: o id do bloco do cliente
+  if (params.includes('widget') && z.widget != null && z.widget !== '') out.widget = idOf(z.widget, `${what}, gadget`);
+  // DIGITAL ISP: a playlist padrão da zona, escolhida no próprio layout (a grade ou a programação da tela vencem)
+  if (TVC_ZONE[kind]?.playlist && z.playlist != null && z.playlist !== '') out.playlist = idOf(z.playlist, `${what}, playlist`);
+  // o tipo de gadget que o modelo pede (avaliações, relógio…): sem gadget escolhido, a TV recebe um do cliente desse tipo
+  if (params.includes('widget') && typeof z.sample === 'string' && /^[a-z][a-z-]{1,19}$/.test(z.sample)) out.sample = z.sample;
+  // DIGITAL ISP: a zona por cima das outras (widget sobre a imagem), com o fundo translúcido (opacity, 0 a 100 %)
+  if (z.overlay === true) {
+    if (kind === 'video') throw fail(400, `${what}: o vídeo não pode ficar por cima das outras zonas.`);
+    if (kind === 'hdmi') throw fail(400, `${what}: a entrada HDMI não pode ficar por cima das outras zonas.`);
+    out.overlay = true;
+    const op = z.opacity == null || z.opacity === '' ? 60 : Math.round(Number(z.opacity));
+    if (!Number.isFinite(op) || op < 0 || op > 100) throw fail(400, `${what}: a opacidade do fundo vai de 0 a 100.`);
+    out.opacity = op;
+  }
+  // DIGITAL ISP: o formato (recorte não retangular, public/shared/tvcorp-formas.js) e o filete na borda do recorte
+  if (z.shape != null && z.shape !== '') {
+    if (!ZONE_SHAPE_KEYS.includes(z.shape)) throw fail(400, `${what}: formato de zona desconhecido.`);
+    out.shape = z.shape;
+    if (z.edge && typeof z.edge === 'object') {
+      const color = String(z.edge.color || '').toLowerCase(); const width = Math.round(Number(z.edge.width) * 10) / 10;
+      if (!/^#[0-9a-f]{6}$/.test(color)) throw fail(400, `${what}: a cor do filete é #rrggbb.`);
+      if (!(width >= EDGE_LIMITS.min && width <= EDGE_LIMITS.max)) throw fail(400, `${what}: a espessura do filete vai de ${EDGE_LIMITS.min} a ${EDGE_LIMITS.max}.`);
+      out.edge = { color, width };
+    }
+  }
   if (TVC_PLAYLIST_ZONES.includes(kind) && z.hint && TVC_REF_KIND[z.hint]) out.hint = z.hint;
   return out;
 }
@@ -125,10 +165,17 @@ export function cleanZones(list) {
   const zones = list.map(cleanZone);
   if (new Set(zones.map((z) => z.id)).size !== zones.length) throw fail(400, 'Duas zonas com o mesmo nome curto.');
   if (zones.filter((z) => z.kind === 'video').length > L.videoZones) throw fail(400, 'No máximo uma zona de vídeo por layout.');
+  // DIGITAL ISP: a entrada HDMI ocupa a janela de vídeo da TV: uma por layout, e não junto com o vídeo do canal
+  if (zones.filter((z) => z.kind === 'hdmi').length > 1) throw fail(400, 'No máximo uma zona de entrada HDMI por layout.');
+  if (zones.some((z) => z.kind === 'hdmi') && zones.some((z) => z.kind === 'video')) throw fail(400, 'A entrada HDMI e o vídeo do canal não ficam no mesmo layout.');
+  // a de cima pode ficar sobre a de baixo; duas da mesma camada, não
   for (let i = 0; i < zones.length; i++) for (let k = i + 1; k < zones.length; k++) {
-    if (overlap(zones[i], zones[k])) throw fail(400, `As zonas "${zones[i].id}" e "${zones[k].id}" estão uma por cima da outra.`);
+    // a zona com formato (recorte) pode entrar na vizinha: o recorte é quem decide o que aparece
+    if (Boolean(zones[i].overlay) === Boolean(zones[k].overlay) && !zones[i].shape && !zones[k].shape && overlap(zones[i], zones[k])) throw fail(400, `As zonas "${zones[i].id}" e "${zones[k].id}" estão uma por cima da outra.`);
   }
-  return zones;
+  // a ordem é a de desenhar: primeiro a camada de baixo, depois a de cima; em cada uma, os retângulos e depois os formatos
+  const layer = (ov) => [...zones.filter((z) => Boolean(z.overlay) === ov && !z.shape), ...zones.filter((z) => Boolean(z.overlay) === ov && z.shape)];
+  return [...layer(false), ...layer(true)];
 }
 /** Fundo do layout: só uma cor (#rrggbb); o app não desenha imagem de fundo. */
 export function cleanBackground(v) {
@@ -136,6 +183,48 @@ export function cleanBackground(v) {
   return cleanColor(v, 'Cor de fundo');
 }
 /** O layout que o painel mandou (cur: o guardado, numa edição; factoryKey sem zonas: copia o modelo de fábrica). */
+/**
+ * O conjunto de telas que o painel mandou (public/shared/tvcorp-wall.js). As telas o servidor confere (do cliente, não
+ * revogadas, em um só conjunto). Devolve { name, data: { mode, cols, rows, orientation, bezel, sync, epoch, cells, layoutId } }.
+ */
+export function cleanWall(b, cur = null, { now = Date.now() } = {}) {
+  const get = (k, d) => (has(b, k) ? b[k] : cur?.data && k in cur.data ? cur.data[k] : d);
+  const name = cleanName(has(b, 'name') ? b.name : cur?.name, 'Nome do conjunto');
+  const mode = get('mode', 'menu');
+  if (!['menu', 'wall'].includes(mode)) throw fail(400, 'Modo do conjunto: cardápio por tela ou videowall.');
+  const cols = Number(get('cols', 2)); const rows = Number(get('rows', 1));
+  if (!W.WALL_GRIDS.some((g) => g.cols === cols && g.rows === rows)) throw fail(400, 'Grade do conjunto inválida (de 2 a 9 TVs: 2×1 a 6×1, 1×2, 1×3, 2×2, 3×2, 2×3 e 3×3).');
+  const orientation = get('orientation', 'land');
+  if (!['land', 'port'].includes(orientation)) throw fail(400, 'Orientação das TVs: deitada ou em pé.');
+  const bz = get('bezel', {}) || {};
+  const bezel = { x: Number(bz.x) || 0, y: Number(bz.y) || 0 };
+  if (bezel.x < 0 || bezel.y < 0 || bezel.x > W.WALL_LIMITS.maxBezel || bezel.y > W.WALL_LIMITS.maxBezel) throw fail(400, `Moldura: de 0 a ${W.WALL_LIMITS.maxBezel}% da tela.`);
+  bezel.x = Math.round(bezel.x * 10) / 10; bezel.y = Math.round(bezel.y * 10) / 10;
+  const raw = get('cells', []);
+  if (!Array.isArray(raw)) throw fail(400, 'Posições das telas inválidas.');
+  const cells = []; const seenPos = new Set(); const seenDev = new Set();
+  for (const c of raw) {
+    if (c?.deviceId == null || c.deviceId === '') continue;
+    const pos = Number(c.pos); const deviceId = idOf(c.deviceId, 'Tela');
+    if (!Number.isInteger(pos) || pos < 1 || pos > cols * rows) throw fail(400, `Posição ${c.pos} fora da grade.`);
+    if (seenPos.has(pos)) throw fail(400, `Duas telas na posição ${pos}.`);
+    if (seenDev.has(deviceId)) throw fail(400, 'A mesma tela está em duas posições.');
+    seenPos.add(pos); seenDev.add(deviceId); cells.push({ pos, deviceId });
+  }
+  cells.sort((a, c) => a.pos - c.pos);
+  const lid = get('layoutId', null);
+  const layoutId = mode === 'wall' && lid != null && lid !== '' ? idOf(lid, 'Layout do videowall') : null;
+  const epoch = Number.isFinite(Number(cur?.data?.epoch)) ? Number(cur.data.epoch) : now;
+  return { name, data: { mode, cols, rows, orientation, bezel, sync: get('sync', true) !== false, epoch, cells, ...(layoutId ? { layoutId } : {}) } };
+}
+/** O que vai à tela que está num conjunto (signage.wall): a posição dela e as contas comuns. */
+export function wallFor(wall, deviceId) {
+  const cell = (wall?.data?.cells || []).find((c) => c.deviceId === Number(deviceId));
+  if (!cell) return null;
+  const d = wall.data; const { col, row } = W.cellOf(cell.pos, d.cols);
+  return { id: Number(wall.id), name: wall.name, mode: d.mode, cols: d.cols, rows: d.rows, pos: cell.pos, col, row, orientation: d.orientation, bezel: d.bezel, sync: d.sync !== false, epoch: d.epoch };
+}
+
 export function cleanLayout(b, cur = null) {
   const model = b?.factoryKey != null && b.factoryKey !== '' ? TVC_LAYOUT_MODEL[b.factoryKey] : null;
   if (b?.factoryKey != null && b.factoryKey !== '' && !model) throw fail(400, 'Modelo de layout inválido.');
@@ -374,8 +463,12 @@ export function itemInWindow(it, today) {
   return true;
 }
 /** As restrições do item que o app confere sozinho (só quando há): dias, faixa e período. */
+/** As entradas do item na tela: corte seco (padrão), esmaecer, deslizar ou aproximar; e o zoom lento na foto (Ken Burns). */
+export const TRANSITIONS = Object.freeze(['fade', 'slide', 'zoom']);
 export function itemWhen(it) {
   const out = {};
+  if (TRANSITIONS.includes(it.params?.transition)) out.transition = it.params.transition;
+  if (it.params?.kenburns === true) out.kenburns = true;
   if (it.days?.length) out.days = it.days;
   if (it.timeFrom != null) { out.from = it.timeFrom; out.to = it.timeTo; }
   if (it.validFrom) out.dateFrom = it.validFrom;

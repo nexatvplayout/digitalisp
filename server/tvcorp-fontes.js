@@ -59,6 +59,8 @@ export function cleanFeed(kind, b, { partial = false, cur = null } = {}) {
       if (source === 'own') out.config = { source, url: cleanHttpsUrl(c.url, 'Endereço do RSS') || (() => { throw fail(400, 'Endereço do RSS: informe o endereço https:// do feed da empresa.'); })(), credit: line(c.credit, 60) };
       else if (NEWS.has(source)) out.config = { source };
       else throw fail(400, 'Fonte de notícias fora da lista permitida.');
+      // DIGITAL ISP: quantos segundos cada notícia fica na tela antes da próxima (5 a 120; padrão 12)
+      out.config.secondsEach = intIn(c.secondsEach, 5, 120, 12);
     } else if (kind === 'quotes') {
       const provider = c.provider ?? 'awesome';
       if (!Object.hasOwn(QUOTE_PROVIDERS, provider)) throw fail(400, 'Fonte de cotações inválida.');
@@ -88,13 +90,18 @@ export function feedCredit(kind, config) {
 }
 
 /* ------------------------------------------------------------------ as buscas */
-const DEFAULT_UA = 'NEXA-Telas/1.0 (+TV corporativa)';
+const DEFAULT_UA = 'DIGITAL-ISP/1.0 (+telas)';
 /** GET https pelo safeFetch (sem rede interna, prazo e teto). Devolve o texto; HTTP de erro lança. */
 async function getText(url, { fetcher = safeFetch, accept = '*/*' } = {}) {
   if (!/^https:\/\//i.test(String(url))) throw fail(400, 'Só endereços https://.');
   const r = await fetcher(url, { timeout: FEED_LIMITS.timeoutMs, maxBytes: FEED_LIMITS.maxBytes, signal: AbortSignal.timeout(FEED_LIMITS.timeoutMs + 5000), headers: { accept, 'user-agent': DEFAULT_UA } });
   if (r.status >= 400) throw fail(502, `A fonte respondeu com erro (HTTP ${r.status}).`);
-  return r.text();
+  // o texto na codificação da fonte (cabeçalho ou <?xml encoding=…?>): feeds em ISO-8859-1 saíam com acentos quebrados
+  if (!Buffer.isBuffer(r.body)) return r.text();
+  const head = r.body.subarray(0, 200).toString('latin1');
+  const cs = (String(r.headers?.['content-type'] || '').match(/charset=([\w-]+)/i)?.[1] || head.match(/encoding=["']([\w-]+)/i)?.[1] || 'utf-8').toLowerCase();
+  const enc = /^(iso-8859-1|latin-?1|windows-1252|cp1252)$/.test(cs) ? 'windows-1252' : 'utf-8';
+  try { return new TextDecoder(enc).decode(r.body); } catch { return r.text(); }
 }
 let parseFeedImpl = null;
 /** O leitor de RSS/Atom do gerador de caracteres (server/web/fontes.js), carregado só quando precisa. */
@@ -122,6 +129,8 @@ export async function fetchFeed(feed, deps = {}) {
     const items = (feedData.items || []).map((i) => ({
       title: line(i.title, FEED_LIMITS.title), at: Number.isFinite(i.date) ? i.date : null,
       link: /^https:\/\//i.test(String(i.link || '')) ? String(i.link).slice(0, 500) : null,
+      // a foto da manchete (o servidor baixa uma cópia: server/noticias-img.js)
+      ...(/^https?:\/\//i.test(String(i.image || '')) ? { image: String(i.image).slice(0, 500) } : {}),
     })).filter((i) => i.title.length >= 3).slice(0, FEED_LIMITS.items);
     if (!items.length) throw fail(502, 'Nenhuma notícia encontrada: o endereço é mesmo um feed RSS ou Atom?');
     return { source: feedCredit('rss', config), at: t, items };

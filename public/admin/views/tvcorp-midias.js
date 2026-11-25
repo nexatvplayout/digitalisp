@@ -2,15 +2,23 @@
 // ou arrastar e soltar: o servidor ajusta para 1920×1080 ou 1080×1920, sem os dados escondidos), criar slide a partir de
 // um modelo com a prévia ao lado, aprovar ou devolver o que veio das unidades. Os vídeos ficam na biblioteca do canal.
 // Rotas: GET/POST/PATCH/DELETE /api/tvcorp/media[/:id], POST /api/tvcorp/media/image (imagem crua), GET /media/:id/file.
+// "Nova página": o construtor de páginas e avisos (tvcorp-pagina.js), que grava a página como imagem (com o desenho guardado).
 import {
   el, guard, toast, tapi, tupload, tblob, put, f, opt, label, note, empty, btn, btns, chip, dialog, D, T,
   listOf, statusChip, when,
 } from './tvcorp-base.js';
 import { slidePreview } from '../../shared/tvcorp-previa.js';
 import { SLIDE_TEMPLATES, SLIDE_TEMPLATE, LIMITS, ARTS } from './tvcorp-catalogo.js';
+import { pageBuilder } from './tvcorp-pagina.js';
+import { PAGE_PRESETS } from '../../shared/pagina.js';
 
 const V = { kind: '', status: '', office: '' };
 const ACCEPT = ['image/jpeg', 'image/png', 'image/webp'];
+// o vídeo próprio (comercial, institucional, treinamento): o servidor converte para MP4 que toda TV toca (server/tvcorp-video.js)
+const VIDEO_ACCEPT = ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-matroska', 'video/x-msvideo'];
+const VIDEO_MAX = 500 * 1024 * 1024;
+const isVideo = (file) => VIDEO_ACCEPT.includes(file.type) || /\.(mp4|m4v|mov|webm|mkv|avi)$/i.test(file.name || '');
+const mmss = (s) => `${Math.floor((Number(s) || 0) / 60)}:${String((Number(s) || 0) % 60).padStart(2, '0')}`;
 export const themeOf = () => D()?.settings?.theme || { color: '#1d4ed8', mode: 'dark' };
 const officeName = (id) => (id == null ? 'Empresa toda' : D().offices.find((o) => o.id === id)?.name || `unidade #${id}`);
 
@@ -18,7 +26,15 @@ const officeName = (id) => (id == null ? 'Empresa toda' : D().offices.find((o) =
 async function sendImages(files, officeId) {
   let ok = 0;
   for (const file of files) {
-    if (!ACCEPT.includes(file.type)) { toast(`"${file.name}": envie JPEG, PNG ou WebP.`, true); continue; }
+    if (isVideo(file)) {
+      if (file.size > VIDEO_MAX) { toast(`"${file.name}" passa de 500 MB.`, true); continue; }
+      const vt = file.name.replace(/\.[a-z0-9]+$/i, '').slice(0, LIMITS.name);
+      toast(`Enviando "${file.name}"… vídeo grande pode levar alguns minutos.`);
+      await tupload(`/api/tvcorp/media/video?title=${encodeURIComponent(vt)}${officeId ? `&officeId=${officeId}` : ''}`, file, { type: file.type || 'application/octet-stream' });
+      ok++;
+      continue;
+    }
+    if (!ACCEPT.includes(file.type)) { toast(`"${file.name}": envie imagem (JPEG, PNG ou WebP) ou vídeo (MP4, MOV, WebM).`, true); continue; }
     if (file.size > LIMITS.imageBytes) { toast(`"${file.name}" passa de 15 MB.`, true); continue; }
     const title = file.name.replace(/\.[a-z0-9]+$/i, '').slice(0, LIMITS.name);
     await tupload(`/api/tvcorp/media/image?title=${encodeURIComponent(title)}${officeId ? `&officeId=${officeId}` : ''}`, file);
@@ -55,7 +71,7 @@ export function slideEditor(m, images, onSaved, { template = null, fields = null
       if (fd.kind === 'textarea') { input = el('textarea', { rows: '3', maxlength: String(fd.max) }); input.value = st.fields[fd.key] || ''; }
       else if (fd.kind === 'image') input = el('select', {}, opt('', images.length ? 'Sem imagem' : 'Nenhuma imagem na biblioteca ainda', !st.fields[fd.key]), ...images.map((i) => opt(i.id, i.title, Number(st.fields[fd.key]) === i.id)));
       // o formato não tem "o da empresa": sem ele, deitado
-      else if (fd.kind === 'choice') input = el('select', {}, fd.key === 'orient' ? null : opt('', 'O da empresa (Configurações)', !st.fields[fd.key]), ...(fd.options || []).map((o, i) => opt(o, fd.labels?.[i] || o, st.fields[fd.key] === o || (fd.key === 'orient' && !st.fields[fd.key] && o === 'land'))));
+      else if (fd.kind === 'choice') input = el('select', {}, fd.key === 'orient' ? null : opt('', /Size$/.test(fd.key) ? 'Médio (padrão)' : 'O da empresa (Configurações)', !st.fields[fd.key]), ...(fd.options || []).map((o, i) => opt(o, fd.labels?.[i] || o, st.fields[fd.key] === o || (fd.key === 'orient' && !st.fields[fd.key] && o === 'land'))));
       else input = el('input', { type: { date: 'date', datetime: 'datetime-local', url: 'url' }[fd.kind] || 'text', maxlength: fd.max ? String(fd.max) : null, value: st.fields[fd.key] ?? '', placeholder: fd.kind === 'url' ? 'https://…' : null });
       const read = () => {
         if (fd.kind === 'image') st.fields[fd.key] = input.value ? Number(input.value) : null;
@@ -91,6 +107,15 @@ export function slideEditor(m, images, onSaved, { template = null, fields = null
   });
 }
 
+function editVideo(m, onSaved) {
+  const title = el('input', { type: 'text', maxlength: String(LIMITS.name), value: m.title || '' });
+  const sound = el('input', { type: 'checkbox', checked: Boolean(m.fields?.sound) });
+  dialog(`Vídeo · ${m.title}`, el('div', { class: 'pf-grid' }, f('Nome', title),
+    el('label', { class: 'pf-check' }, sound, el('span', { text: 'Tocar o som do vídeo (o volume é o da tela)' })),
+    note(`${m.width || '?'}×${m.height || '?'} · ${mmss(m.seconds)} · ${Math.round((m.bytes || 0) / 1048576)} MB · enviado ${when(m.createdAt)}${m.createdBy ? ` por ${m.createdBy}` : ''}. Na playlist ele toca inteiro.`)), {
+    save: async () => { await tapi(`/api/tvcorp/media/${m.id}`, { method: 'PATCH', body: { title: title.value, sound: sound.checked } }); toast('Vídeo salvo.'); await onSaved(); },
+  });
+}
 function editImage(m, onSaved) {
   const title = el('input', { type: 'text', maxlength: String(LIMITS.name), value: m.title || '' });
   const seconds = el('input', { type: 'number', min: String(LIMITS.secondsMin), max: String(LIMITS.secondsMax), value: String(m.seconds ?? 10) });
@@ -117,22 +142,30 @@ export default async function paintMidias(box, ctx) {
   const again = async () => { await paintMidias(box, ctx); ctx.refreshBadge(); };
   const images = all.filter((m) => m.kind === 'image' && m.status !== 'rejected');
   const shown = all.filter((m) => (!V.kind || m.kind === V.kind) && (!V.status || (m.status || 'ok') === V.status) && (!V.office || String(m.officeId ?? 'empresa') === V.office));
-  const file = el('input', { type: 'file', accept: ACCEPT.join(','), multiple: true, hidden: true, 'aria-label': 'Escolher imagens' });
+  const file = el('input', { type: 'file', accept: [...ACCEPT, ...VIDEO_ACCEPT, '.mp4', '.mov', '.webm', '.mkv', '.avi'].join(','), multiple: true, hidden: true, 'aria-label': 'Escolher imagens ou vídeos' });
+  // vídeo sendo preparado: confere de novo em 15 s (só enquanto a aba está aberta)
+  clearTimeout(paintMidias.again);
+  if (all.some((m) => m.status === 'processing')) paintMidias.again = setTimeout(() => { if (box.isConnected) again(); }, 15000);
   const upOffice = el('select', { 'aria-label': 'De quem é a imagem' }, opt('', 'Empresa toda', true), ...D().offices.map((o) => opt(o.id, o.name)));
-  const upload = guard(async (files) => { const n = await sendImages([...files], Number(upOffice.value) || null); if (n) { toast(`${n} imagem(ns) enviada(s). Ponha numa playlist para ir às telas.`); await again(); } });
+  const upload = guard(async (files) => { const n = await sendImages([...files], Number(upOffice.value) || null); if (n) { toast(`${n} arquivo(s) enviado(s). Vídeo leva um tempo para ficar pronto; depois ponha numa playlist.`); await again(); } });
   file.addEventListener('change', () => { const fl = file.files; if (fl?.length) upload(fl).finally(() => { file.value = ''; }); });
   const drop = el('div', { class: 'tc-drop', role: 'button', tabindex: '0', 'aria-label': 'Arraste as imagens para cá ou clique para escolher',
     onclick: () => file.click(), onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); file.click(); } },
     ondragover: (e) => { e.preventDefault(); drop.classList.add('over'); }, ondragleave: () => drop.classList.remove('over'),
     ondrop: (e) => { e.preventDefault(); drop.classList.remove('over'); if (e.dataTransfer?.files?.length) upload(e.dataTransfer.files); } },
-  el('b', { text: 'Arraste as imagens para cá' }), el('span', { class: 'dim small', text: 'ou clique para escolher. JPEG, PNG ou WebP até 15 MB: o servidor ajusta para a tela (1920×1080 deitada ou 1080×1920 em pé) e tira os dados escondidos da foto.' }));
+  el('b', { text: 'Arraste imagens ou vídeos para cá' }), el('span', { class: 'dim small', text: 'ou clique para escolher. Imagem: JPEG, PNG ou WebP até 15 MB (o servidor ajusta para a tela e tira os dados escondidos). Vídeo: MP4, MOV ou WebM até 500 MB e 10 minutos (o servidor converte para um MP4 que toda TV toca).' }));
   const sel = (key, first, options) => el('select', { 'aria-label': first, onchange: (e) => { V[key] = e.target.value; ctx.repaint(); } }, opt('', first, !V[key]), ...options.map(([v, t]) => opt(v, t, V[key] === String(v))));
   const cards = shown.map((m) => {
-    const thumb = el('div', { class: 'tc-thumb' });
+    const thumb = el('div', { class: `tc-thumb${m.height > m.width ? ' port' : ''}` });
     if (m.kind === 'slide') {
       put(thumb, slidePreview(m.template, m.fields, { theme: themeOf() }));
       // o slide com foto (boas-vindas, reconhecimento…): a miniatura busca a imagem pela sessão e redesenha com ela
       if (m.fields?.image) tblob(`/api/tvcorp/media/${m.fields.image}/file`).then((u) => { if (u) put(thumb, slidePreview(m.template, m.fields, { theme: themeOf(), image: u })); }, () => {});
+    }
+    else if (m.kind === 'video') {
+      const img = el('img', { alt: m.title || 'Vídeo', hidden: true });
+      put(thumb, img, el('span', { class: 'tc-vbadge', text: m.status === 'processing' ? 'Preparando…' : m.status === 'error' ? 'Não converteu' : `▶ ${mmss(m.seconds)}` }));
+      if (m.poster) tblob(m.poster).then((u) => { if (u) { img.src = u; img.hidden = false; } }, () => {});
     }
     else {
       const img = el('img', { alt: m.title || 'Imagem', hidden: true });
@@ -142,22 +175,26 @@ export default async function paintMidias(box, ctx) {
     return el('div', { class: `tc-mcard${m.status === 'pending' ? ' pending' : ''}` }, thumb,
       el('div', { class: 'tc-mcard-b' },
         el('b', { text: m.title || '—' }),
-        el('div', { class: 'dim small', text: `${m.kind === 'slide' ? `Slide · ${SLIDE_TEMPLATE[m.template]?.label || m.template}` : `Imagem${m.width ? ` · ${m.width}×${m.height}` : ''}`} · ${m.seconds || 10} s · ${officeName(m.officeId)}` }),
+        el('div', { class: 'dim small', text: m.kind === 'video' ? `Vídeo${m.width ? ` · ${m.width}×${m.height}` : ''} · ${mmss(m.seconds)}${m.fields?.sound ? ' · com som' : ' · sem som'} · ${officeName(m.officeId)}` : `${m.kind === 'slide' ? `Slide · ${SLIDE_TEMPLATE[m.template]?.label || m.template}` : `${m.fields?.page ? 'Página' : 'Imagem'}${m.width ? ` · ${m.width}×${m.height}` : ''}`} · ${m.seconds || 10} s · ${officeName(m.officeId)}` }),
+        m.status === 'error' && m.fields?.error ? el('div', { class: 'small tc-err', text: m.fields.error }) : null,
         el('div', {}, statusChip(m.status), m.reason ? el('span', { class: 'dim small', text: ` ${m.reason}` }) : null),
         el('div', { class: 'pf-btns left' },
           m.status === 'pending' ? btn('Aprovar', decideMedia(m, true, again), 'small primary') : null,
           m.status === 'pending' ? btn('Devolver', decideMedia(m, false, again), 'small') : null,
-          btn('Editar', () => (m.kind === 'slide' ? slideEditor(m, images, again) : editImage(m, again)), 'small'),
+          m.status === 'processing' ? null : btn('Editar', () => (m.kind === 'slide' ? slideEditor(m, images, again) : m.fields?.page ? pageBuilder(m, images, again) : m.kind === 'video' ? editVideo(m, again) : editImage(m, again)), 'small'),
           btn('Apagar', guard(async () => { if (!confirm(`Apagar "${m.title}"? Sai das playlists e das telas.`)) return; await tapi(`/api/tvcorp/media/${m.id}`, { method: 'DELETE' }); toast('Apagado.'); await again(); }), 'small danger'))));
   });
   put(box,
-    note('A biblioteca da TV Corporativa: imagens e slides que entram nas playlists. Os vídeos (institucional, treinamentos) vão ao ar pela grade do canal, que é o vídeo principal das telas.'),
+    note('A biblioteca: imagens, vídeos e slides que entram nas playlists. O vídeo da playlist toca inteiro na zona dela; o canal ao vivo continua na zona de vídeo do layout.'),
     el('div', { class: 'tc-two' }, drop,
-      el('div', { class: 'pf-grid' }, f('As imagens enviadas são de', upOffice), btns(btn('+ Novo slide', () => slideEditor(null, images, again), 'primary')),
+      el('div', { class: 'pf-grid' }, f('As imagens enviadas são de', upOffice), btns(btn('+ Nova página', () => pageBuilder(null, images, again), 'primary'), btn('+ Novo slide', () => slideEditor(null, images, again))),
+        note('Nova página: monte a tela ou o aviso do seu jeito (fundo de cor, degradê ou foto; texto com cor, negrito, itálico, fonte e tamanho; ícone, imagem, logomarca e QR).'),
         note('PDF ou apresentação: exporte as páginas como imagem no seu programa e envie as imagens.'))),
     file,
-    el('div', { class: 'pf-bar' }, sel('kind', 'Imagens e slides', [['image', 'Só imagens'], ['slide', 'Só slides']]), sel('status', 'Qualquer situação', [['ok', 'Publicados'], ['pending', 'Aguardando aprovação'], ['rejected', 'Devolvidos']]),
+    el('div', { class: 'pf-bar' }, sel('kind', 'Imagens, vídeos e slides', [['image', 'Só imagens e páginas'], ['video', 'Só vídeos'], ['slide', 'Só slides']]), sel('status', 'Qualquer situação', [['ok', 'Publicados'], ['pending', 'Aguardando aprovação'], ['rejected', 'Devolvidos']]),
       sel('office', 'De todos', [['empresa', 'Empresa toda'], ...D().offices.map((o) => [o.id, o.name])]), el('span', { class: 'dim small', text: `${all.length} de ${r?.max || LIMITS.media}` })),
+    label('Páginas e avisos prontos para editar'),
+    el('div', { class: 'pf-btns left tc-pg-presets' }, ...PAGE_PRESETS.map((p) => btn(p.label, () => pageBuilder(null, images, again, { preset: p.key }), 'small'))),
     label('Modelos de slide'),
     el('div', { class: 'tc-tpls' }, ...SLIDE_TEMPLATES.map((t) => el('button', { class: 'tc-tpl', type: 'button', title: `Novo slide: ${t.label}`, onclick: () => slideEditor(null, images, again, { template: t.key }) },
       slidePreview(t.key, t.sample, { theme: themeOf() }), el('span', { text: t.label })))),

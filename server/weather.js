@@ -38,7 +38,7 @@ const CONCURRENT = envInt('WEATHER_CONCURRENT', 4) || 4;
 const QUEUE_MAX = envInt('WEATHER_QUEUE_MAX', 64);
 const TIMEOUT_MS = envInt('WEATHER_TIMEOUT_MS', 10_000) || 10_000;
 const MAX_BYTES = 2 << 20; // a resposta do INMET tem ~250 KB por município (traz ícones em base64)
-const UA = `NEXA-TV/${config.version || '0'} (+https://nexa.tv.br)`;
+const UA = `DIGITAL-ISP/${config.version || '0'} (+https://www.digitalisp.com.br)`;
 const SAMPLE = 5300108; // Brasília: a cidade do "Testar"
 
 export const PROVIDERS = [

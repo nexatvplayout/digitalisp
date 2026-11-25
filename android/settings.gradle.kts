@@ -1,4 +1,4 @@
-// NEXA Telas: app nativo (Kotlin) de quiosque para TV box. Dependências só de google() e mavenCentral().
+// Telas (DIGITAL ISP): app nativo, white-label, (Kotlin) de quiosque para TV box. Dependências só de google() e mavenCentral().
 pluginManagement {
     repositories {
         google()
@@ -12,5 +12,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "nexa-telas"
+rootProject.name = "telas"
 include(":app")

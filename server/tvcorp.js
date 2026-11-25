@@ -9,7 +9,7 @@
      GET    /api/tvcorp/summary                 o Resumo
      PUT    /api/tvcorp/settings                tema, fuso, aprovação, grade padrão, categorias, datas comemorativas
      GET|PUT|DELETE /api/tvcorp/settings/logo   a logomarca (PUT com a imagem crua no corpo)
-     GET|POST /api/tvcorp/media, POST /api/tvcorp/media/image (imagem crua), GET|PATCH|DELETE /api/tvcorp/media/:id,
+     GET|POST /api/tvcorp/media, POST /api/tvcorp/media/image (imagem crua), GET|PATCH|DELETE /api/tvcorp/media/:id (imagem: PATCH { page } guarda o desenho do construtor de páginas),
        PUT /api/tvcorp/media/:id/image (troca a imagem), GET /api/tvcorp/media/:id/file
      GET|POST /api/tvcorp/playlists, GET|PATCH|DELETE /api/tvcorp/playlists/:id, PUT /api/tvcorp/playlists/:id/items
      GET|POST /api/tvcorp/layouts, GET|PATCH|DELETE /api/tvcorp/layouts/:id
@@ -34,6 +34,8 @@ import {
 import { deviceStatus } from '../public/shared/telas-tipos.js';
 import * as K from './tvcorp-core.js';
 import { prepareMediaImage, prepareLogo } from './tvcorp-midia.js';
+import { VIDEO, convertVideo, receiveUpload, enqueue } from './tvcorp-video.js';
+import { cleanPage } from '../public/shared/pagina.js';
 
 const { fail, line, idOf, parseJson: j } = K;
 const ah = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -41,7 +43,7 @@ const num = (v) => (v == null ? null : Number(v));
 const sha256 = (s) => createHash('sha256').update(s).digest('hex');
 export const MEDIA_PREFIX = 'tvcmedia-';
 export const LOGO_PREFIX = 'tvclogo-';
-export const MEDIA_RE = /^tvcmedia-[0-9a-f-]{36}\.jpg$/;
+export const MEDIA_RE = /^tvcmedia-[0-9a-f-]{36}\.(?:jpg|mp4)$/; // .mp4: o vídeo próprio da playlist (tvcorp-video.js)
 export const LOGO_RE = /^tvclogo-[0-9a-f-]{36}\.png$/;
 const CACHE_MS = 30_000;
 const SENT_KEEP_MS = 48 * 3600_000;
@@ -69,6 +71,11 @@ const AUTO_LABEL = { birthdays: 'Aniversariantes', news: 'Notícias', quotes: 'C
 export function createTvcorp({
   db, storage, ffmpeg = null, checkImage = null, dataFor = null, labelFor = null, refExists = null, decideOther = null, hasFeature = null, pendingOther = null,
   forget = () => {}, audit = async () => {}, ipOf = (req) => req.ip, now = () => Date.now(), timers = true, artFile = null,
+  audioOf = null, // (tenantId, layoutId) -> o bloco layout.audio (a rádio de fundo) ou null
+  storageCheck = null, // (tenantId, bytes): o 402 do armazenamento do plano antes de aceitar um vídeo
+  weatherArt = null, // (cond, req) -> { art, artPort }: a foto de fundo do item de clima
+  originOf = null, // (req) -> https://site: completa os endereços relativos dos itens (a foto da notícia)
+  widgetFallback = null, // (tenantId, sample) -> id de um gadget do cliente: a zona de gadget sem gadget escolhido não fica vazia na TV
 }) {
   if (!db) throw new Error('createTvcorp: falta o banco');
   const noStore = (res) => res.set('Cache-Control', 'no-store');
@@ -77,18 +84,20 @@ export function createTvcorp({
   /* ================================================================ leituras guardadas por cliente */
   const cache = new Map(); // tenantId -> { at, data }
   function changed(tenantId) { cache.delete(Number(tenantId)); try { forget(Number(tenantId)); } catch { /* o telas.js refaz depois */ } }
+  const wallDto = (r) => ({ id: Number(r.id), name: r.name, data: j(r.data, {}), createdAt: Number(r.created_at), updatedAt: num(r.updated_at) });
   /** Os dados do dia a dia de um cliente (30 s, ou até a próxima mudança). */
   async function load(tenantId) {
     const id = Number(tenantId); const t = now();
     const c = cache.get(id);
     if (c && t - c.at < CACHE_MS) return c.data;
-    const [srow, layouts, schedules, playlists, items, media] = await Promise.all([
+    const [srow, layouts, schedules, playlists, items, media, walls] = await Promise.all([
       db.get('SELECT data FROM tvcorp_settings WHERE tenant_id = ?', [id]),
       db.all('SELECT * FROM tvcorp_layouts WHERE tenant_id = ?', [id]),
       db.all('SELECT * FROM tvcorp_schedules WHERE tenant_id = ?', [id]),
       db.all('SELECT * FROM tvcorp_playlists WHERE tenant_id = ?', [id]),
       db.all('SELECT * FROM tvcorp_playlist_items WHERE tenant_id = ? ORDER BY playlist_id, sort, id', [id]),
       db.all('SELECT * FROM tvcorp_media WHERE tenant_id = ?', [id]),
+      db.all('SELECT * FROM tvcorp_walls WHERE tenant_id = ?', [id]),
     ]);
     const data = {
       settings: j(srow?.data, {}),
@@ -96,6 +105,7 @@ export function createTvcorp({
       schedules: schedules.map(scheduleDto),
       playlists: new Map(playlists.map((r) => [Number(r.id), { ...playlistDto(r), items: [] }])),
       media: new Map(media.map((r) => [Number(r.id), r])),
+      walls: walls.map(wallDto),
     };
     for (const it of items) data.playlists.get(Number(it.playlist_id))?.items.push(itemDto(it));
     cache.set(id, { at: t, data });
@@ -115,7 +125,8 @@ export function createTvcorp({
     return {
       id: Number(r.id), officeId: num(r.office_id), kind: r.kind, title: r.title, template: r.template || null, fields: j(r.fields, {}), seconds: Number(r.seconds),
       status: r.status, width: num(r.width), height: num(r.height), bytes: num(r.bytes), sha256: r.sha256 || null,
-      file: r.kind === 'image' ? `/api/tvcorp/media/${Number(r.id)}/file` : null, createdBy: r.created_by || '', createdAt: Number(r.created_at), updatedAt: num(r.updated_at),
+      file: r.kind === 'image' ? `/api/tvcorp/media/${Number(r.id)}/file` : null,
+      poster: r.kind === 'video' && j(r.fields, {}).poster ? `/api/tvcorp/media/${Number(r.id)}/poster` : null, createdBy: r.created_by || '', createdAt: Number(r.created_at), updatedAt: num(r.updated_at),
     };
   }
   function playlistDto(r) {
@@ -142,7 +153,7 @@ export function createTvcorp({
   async function own(table, id, tenantId, what) {
     const n = Number(id);
     const row = Number.isInteger(n) && n > 0 ? await db.get(`SELECT * FROM ${table} WHERE id = ? AND tenant_id = ?`, [n, tenantId]) : null;
-    if (!row) throw fail(404, `${what} não encontrad${/^(Layout|Grupo|Pedido)/.test(what) ? 'o' : 'a'}.`);
+    if (!row) throw fail(404, `${what} não encontrad${/^(Layout|Grupo|Pedido|Conjunto)/.test(what) ? 'o' : 'a'}.`);
     return row;
   }
   async function under(table, tenantId, max, what) {
@@ -184,6 +195,11 @@ export function createTvcorp({
   async function keepFile(name, buf) {
     await fs.promises.mkdir(storage.dir, { recursive: true });
     await fs.promises.writeFile(fileOf(name), buf);
+    try { await storage.put(name); } catch { await fs.promises.rm(fileOf(name), { force: true }).catch(() => {}); throw fail(502, 'Não foi possível guardar o arquivo agora. Tente de novo.'); }
+  }
+  async function keepPath(name, src) {
+    await fs.promises.mkdir(storage.dir, { recursive: true });
+    await fs.promises.copyFile(src, fileOf(name));
     try { await storage.put(name); } catch { await fs.promises.rm(fileOf(name), { force: true }).catch(() => {}); throw fail(502, 'Não foi possível guardar o arquivo agora. Tente de novo.'); }
   }
   async function readFile(name) {
@@ -243,6 +259,7 @@ export function createTvcorp({
     });
     changed(tenantId);
     await dropFile(row.file);
+    if (row.kind === 'video') await dropFile(j(row.fields, {}).poster);
   }
   const officeNameOf = async (tenantId, officeId) => (officeId ? (await db.get('SELECT name FROM telas_offices WHERE id = ? AND tenant_id = ?', [officeId, tenantId]))?.name || null : null);
 
@@ -271,6 +288,13 @@ export function createTvcorp({
         const f = imageFile(data.media, r.id, req);
         const caption = line(j(r.fields, {}).caption, L.title);
         return f ? [{ id: ref, kind: 'image', seconds: it.seconds, ...f, ...(caption ? { caption } : {}), fit: 'contain', ...when }] : [];
+      }
+      if (r.kind === 'video') {
+        // o vídeo próprio: toca inteiro (a duração é a do arquivo); sound: o som do vídeo (desligado se não foi escolhido)
+        if (!MEDIA_RE.test(String(r.file || ''))) return [];
+        const f = K.fileContract(fileUrl(r.file, req), r.sha256, r.bytes);
+        const fx = j(r.fields, {});
+        return f ? [{ id: ref, kind: 'video', seconds: Number(r.seconds) || it.seconds, ...f, width: num(r.width), height: num(r.height), sound: Boolean(fx.sound), fit: 'contain', ...when }] : [];
       }
       const model = TVC_SLIDE_MODEL[r.template];
       if (!model) return [];
@@ -313,6 +337,7 @@ export function createTvcorp({
       const x = { ...x0 };
       // comunicado com imagem da biblioteca: o pacote B manda o id (mediaId); a tela recebe o arquivo { url, sha256, bytes }
       if (x.mediaId != null) { const f = imageFile(data.media, x.mediaId, req); delete x.mediaId; if (f) x.image = f; }
+      if (typeof x.image?.url === 'string' && x.image.url.startsWith('/')) { const o = originOf && req ? originOf(req) : null; if (o) x.image = { ...x.image, url: `${o}${x.image.url}` }; else delete x.image; }
       const own = x.id != null && parseItemRef(x.id) ? String(x.id) : null;
       return { ...x, id: own || ref, seconds: Number.isInteger(x.seconds) && x.seconds >= L.secondsMin && x.seconds <= L.secondsMax ? x.seconds : it.seconds, ...when };
     });
@@ -325,8 +350,12 @@ export function createTvcorp({
       orientation: lay.orientation, background: K.COLOR_RE.test(String(lay.background || '')) ? lay.background : '#000000',
       zones: lay.zones.map(({ hint, ...z }) => ({ ...z })),
     };
+    // a rádio de fundo (layout sem vídeo do canal): o app toca o stream no volume da tela; o app antigo ignora
+    const audio = audioOf ? audioOf(tenantId, lay.id) : null;
+    if (audio && !layout.zones.some((z) => z.kind === 'video' || z.kind === 'hdmi')) layout.audio = audio;
     const zones = {};
-    const zp = K.zonePlaylistsFor(lay.zones, s.zonePlaylists);
+    // a playlist escolhida no layout é o padrão da zona; a da grade (ou da programação da tela) vence
+    const zp = { ...Object.fromEntries(lay.zones.filter((z) => z.playlist != null).map((z) => [z.id, z.playlist])), ...K.zonePlaylistsFor(lay.zones, s.zonePlaylists) };
     const today = K.localParts(now(), tzOf(data.settings)).day;
     for (const [zone, pid] of Object.entries(zp)) {
       const pl = data.playlists.get(Number(pid));
@@ -341,6 +370,43 @@ export function createTvcorp({
       const seen = new Set();
       const uniq = out.filter((x) => (seen.has(x.id) ? false : seen.add(x.id)));
       zones[zone] = (pl.shuffle ? K.dayShuffle(uniq, `${seed}:${today}:${pid}`) : uniq).slice(0, L.itemsPerZone);
+    }
+    // o gadget escolhido direto na zona do layout (contador, dias sem acidente, relógio mundial): sem playlist
+    for (const z of lay.zones) {
+      if (zones[z.id]?.length) continue;
+      // zona de gadget sem gadget escolhido (ou com um que sumiu): vai o gadget do cliente do mesmo tipo, ou outro que ele tenha
+      const ids = [];
+      if (z.widget != null) ids.push(Number(z.widget));
+      if (z.kind === 'widget' && widgetFallback) {
+        const alt = await Promise.resolve(widgetFallback(tenantId, z.sample || null)).catch(() => null);
+        if (alt != null && !ids.includes(Number(alt))) ids.push(Number(alt));
+      }
+      for (const wid of ids) {
+        const items = await itemsOf(tenantId, officeId, { refKind: 'widget', refId: wid, seconds: L.secondsMax, params: {} }, data, req, at);
+        if (items.length) { zones[z.id] = items; break; }
+      }
+    }
+    // DIGITAL ISP: a zona do tipo Notícias mostra só notícias. Da playlist dela ficam as notícias; sem nenhuma (ou sem
+    // playlist), entram sozinhas as notícias de todas as fontes de notícias ligadas da empresa, uma por vez com a foto
+    for (const z of lay.zones.filter((x) => x.kind === 'news')) {
+      const own = (zones[z.id] || []).filter((x) => x.kind === 'news');
+      if (own.length) { zones[z.id] = own; continue; }
+      const feeds = await db.all("SELECT id FROM tvcorp_feeds WHERE tenant_id = ? AND kind = 'rss' AND enabled = 1 ORDER BY id", [tenantId]).catch(() => []);
+      const out = [];
+      for (const f of feeds) out.push(...await itemsOf(tenantId, officeId, { refKind: 'news', refId: Number(f.id), seconds: 12, params: {} }, data, req, at));
+      if (out.length) zones[z.id] = out.slice(0, L.itemsPerZone); else delete zones[z.id];
+    }
+    // DIGITAL ISP: todo slide tem as duas versões (deitado e em pé): a zona escolhe. Zona mais alta que larga (na tela de
+    // verdade, 1920×1080 ou 1080×1920) recebe o slide em pé; as outras, deitado. Os anúncios das playlists se ajustam sozinhos.
+    const [TW, TH] = lay.orientation === 'port' ? [1080, 1920] : [1920, 1080];
+    for (const z of lay.zones) {
+      const list = zones[z.id]; if (!list?.length) continue;
+      const orient = (TH * z.h) / 100 > (TW * z.w) / 100 ? 'port' : 'land';
+      zones[z.id] = list.map((it) => {
+        if (it.kind === 'slide' && it.fields && it.fields.orient !== orient) return { ...it, fields: { ...it.fields, orient } };
+        if (it.kind === 'weather' && weatherArt && !it.art) { const a = weatherArt(it.cond, req); return a ? { ...it, ...a } : it; }
+        return it;
+      });
     }
     return {
       id: `s${s.id}`, layout,
@@ -388,7 +454,9 @@ export function createTvcorp({
     K.applyCaps(out);
     const st = K.settingsDto(data.settings);
     const logo = data.settings.logo && LOGO_RE.test(String(data.settings.logo.file || '')) ? K.fileContract(fileUrl(data.settings.logo.file, req), data.settings.logo.sha256, data.settings.logo.bytes, L.logoBytes) : null;
-    const signage = { tz, brand: { logo, color: st.theme.color, mode: st.theme.mode }, blocks: out, fallback: fb ? fb.id : null };
+    // a tela num conjunto (cardápio por tela ou videowall): a posição dela e as contas comuns (o app antigo ignora)
+    const wall = data.walls.map((w) => K.wallFor(w, at.deviceId)).find(Boolean) || null;
+    const signage = { tz, brand: { logo, color: st.theme.color, mode: st.theme.mode }, blocks: out, fallback: fb ? fb.id : null, ...(wall ? { wall } : {}) };
     remember(tid, at.deviceId, signage);
     return signage;
   }
@@ -462,10 +530,10 @@ export function createTvcorp({
 
   /* ================================================================ resumo */
   async function corpDevices(tenantId) {
-    const rows = await db.all(`SELECT d.id, d.name, d.office_id, d.last_seen, d.state, d.revoked_at, d.online_since, o.name AS office_name, o.type AS office_type
+    const rows = await db.all(`SELECT d.id, d.name, d.office_id, d.last_seen, d.state, d.revoked_at, d.online_since, d.android, o.name AS office_name, o.type AS office_type
       FROM telas_devices d JOIN telas_offices o ON o.id = d.office_id AND o.tenant_id = d.tenant_id WHERE d.tenant_id = ? AND d.revoked_at IS NULL ORDER BY d.id`, [tenantId]);
     return rows.filter((r) => isTvcOfficeType(r.office_type)).map((r) => ({
-      id: Number(r.id), name: r.name, officeId: Number(r.office_id), office: r.office_name, lastSeen: num(r.last_seen),
+      id: Number(r.id), name: r.name, officeId: Number(r.office_id), office: r.office_name, lastSeen: num(r.last_seen), system: r.android || '',
       status: deviceStatus({ revokedAt: num(r.revoked_at), lastSeen: num(r.last_seen), state: r.state }, now()),
     }));
   }
@@ -519,6 +587,7 @@ export function createTvcorp({
     if (!storage.list) return;
     try {
       const used = new Set((await db.all('SELECT file FROM tvcorp_media WHERE file IS NOT NULL')).map((r) => r.file));
+      for (const r of await db.all("SELECT fields FROM tvcorp_media WHERE kind = 'video'")) { const p = j(r.fields, {}).poster; if (p) used.add(p); }
       for (const s of await db.all('SELECT data FROM tvcorp_settings')) { const f = j(s.data, {}).logo?.file; if (f) used.add(f); }
       for (const f of await storage.list()) {
         if ((MEDIA_RE.test(f.name) || LOGO_RE.test(f.name)) && !used.has(f.name) && (!f.mtime || t - f.mtime > 3600_000)) await dropFile(f.name);
@@ -565,6 +634,7 @@ export function createTvcorp({
         regions: regions.map((r) => ({ id: Number(r.id), name: r.name, color: r.color || null })),
         devices: devs,
         layouts: [...data.layouts.values()].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')),
+        walls: data.walls,
         playlists: [...data.playlists.values()].map(({ items, ...p }) => ({ ...p, items: items.length })).sort((a, b) => (a.sort - b.sort) || a.name.localeCompare(b.name, 'pt-BR')),
         schedules: data.schedules.map((s) => ({ ...s, isDefault: Number(data.settings.defaultSchedule) === s.id })).sort((a, b) => K.blockOrder(a, b)),
         media: { total: data.media.size },
@@ -636,6 +706,47 @@ export function createTvcorp({
       res.locals.audit = `tv corporativa: slide "${r.title}" (#${id}, modelo ${r.template}) criado`;
       noStore(res).status(201).json(mediaDto(r));
     }));
+    /* o vídeo próprio: o corpo é o arquivo (até 500 MB); a resposta sai logo e a conversão corre na fila do servidor */
+    app.post(`${B}/media/video`, M, ah(async (req, res) => {
+      const q = req.query || {};
+      const officeId = await officeIdOf(q.officeId, req.tenantId);
+      if (!VIDEO.types.includes(String(req.headers['content-type'] || '').split(';')[0].trim())) throw fail(415, 'Envie um vídeo MP4, MOV, WebM ou AVI.');
+      await under('tvcorp_media', req.tenantId, L.media, 'mídias');
+      const declared = Number(req.headers['content-length']) || 0;
+      if (storageCheck) await storageCheck(req.tenantId, declared);
+      const up = await receiveUpload(req);
+      const t = now(); const title = line(q.title, L.title) || 'Vídeo';
+      const sound = q.sound === '1' || q.sound === 'true';
+      const id = Number(await db.insert('INSERT INTO tvcorp_media(tenant_id,office_id,kind,title,file,sha256,bytes,width,height,template,fields,seconds,status,created_by,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+        [req.tenantId, officeId, 'video', title, null, null, up.bytes, null, null, null, JSON.stringify({ sound, processing: true }), 10, 'processing', line(who(req), 64), t, t]));
+      const tenantId = req.tenantId;
+      enqueue(async () => {
+        try {
+          const out = await convertVideo(ffmpeg, up.file, up.dir);
+          const name = `${MEDIA_PREFIX}${randomUUID()}.mp4`; const pname = out.poster ? `${MEDIA_PREFIX}${randomUUID()}.jpg` : null;
+          await keepPath(name, out.mp4); if (pname) await keepPath(pname, out.poster);
+          const st = await fs.promises.stat(out.mp4); const sha = createHash('sha256').update(await fs.promises.readFile(out.mp4)).digest('hex');
+          const row = await db.get('SELECT fields FROM tvcorp_media WHERE id = ? AND tenant_id = ?', [id, tenantId]);
+          if (!row) { await dropFile(name); await dropFile(pname); return; } // apagado enquanto convertia
+          const fx = { ...j(row.fields, {}), poster: pname }; delete fx.processing;
+          await db.run('UPDATE tvcorp_media SET file = ?, sha256 = ?, bytes = ?, width = ?, height = ?, seconds = ?, fields = ?, status = ?, updated_at = ? WHERE id = ? AND tenant_id = ?',
+            [name, sha, st.size, out.width, out.height, out.seconds, JSON.stringify(fx), 'ok', now(), id, tenantId]);
+          changed(tenantId);
+        } catch (err) {
+          const row = await db.get('SELECT fields FROM tvcorp_media WHERE id = ? AND tenant_id = ?', [id, tenantId]).catch(() => null);
+          if (row) await db.run('UPDATE tvcorp_media SET status = ?, fields = ?, bytes = 0, updated_at = ? WHERE id = ? AND tenant_id = ?', ['error', JSON.stringify({ ...j(row.fields, {}), processing: false, error: err?.status ? err.message : 'Não foi possível converter este vídeo.' }), now(), id, tenantId]).catch(() => {});
+          if (!err?.status) console.warn(`[tvcorp] vídeo #${id} não converteu (${String(err?.message || err).slice(0, 160)})`);
+        } finally { await fs.promises.rm(up.dir, { recursive: true, force: true }).catch(() => {}); }
+      });
+      res.locals.audit = `tv corporativa: vídeo "${title}" (#${id}) enviado (${Math.round(up.bytes / 1048576)} MB)`;
+      noStore(res).status(202).json(mediaDto(await own('tvcorp_media', id, req.tenantId, 'Mídia')));
+    }));
+    app.get(`${B}/media/:id/poster`, M, ah(async (req, res) => {
+      const r = await own('tvcorp_media', req.params.id, req.tenantId, 'Mídia');
+      const p = r.kind === 'video' ? j(r.fields, {}).poster : null;
+      if (!p) throw fail(404, 'Este vídeo ainda não tem miniatura.');
+      sendFile(res, await readFile(p), 'image/jpeg');
+    }));
     app.post(`${B}/media/image`, M, rawBody(L.uploadBytes), tooBig, ah(async (req, res) => {
       const q = req.query || {};
       const officeId = await officeIdOf(q.officeId, req.tenantId);
@@ -656,7 +767,7 @@ export function createTvcorp({
       const cur = await own('tvcorp_media', req.params.id, req.tenantId, 'Mídia');
       const b = req.body || {};
       const title = b.title !== undefined ? (line(b.title, L.title) || cur.title) : cur.title;
-      const seconds = b.seconds !== undefined ? K.cleanSeconds(b.seconds) : Number(cur.seconds);
+      const seconds = b.seconds !== undefined && cur.kind !== 'video' ? K.cleanSeconds(b.seconds) : Number(cur.seconds); // o vídeo dura o que o arquivo dura
       const officeId = b.officeId !== undefined ? await officeIdOf(b.officeId, req.tenantId) : num(cur.office_id);
       let fields = cur.fields; let template = cur.template;
       if (cur.kind === 'slide' && (b.fields !== undefined || b.template !== undefined)) {
@@ -666,7 +777,17 @@ export function createTvcorp({
         if (out.mediaIds.includes(Number(cur.id))) throw fail(400, 'O slide não pode citar a si mesmo.');
         fields = JSON.stringify(out.fields);
       }
-      if (cur.kind === 'image' && b.caption !== undefined) { const c = line(b.caption, L.title); fields = JSON.stringify(c ? { caption: c } : {}); }
+      if (cur.kind === 'video' && b.sound !== undefined) fields = JSON.stringify({ ...j(cur.fields, {}), sound: Boolean(b.sound) });
+      if (cur.kind === 'image' && (b.caption !== undefined || b.page !== undefined)) {
+        // a legenda e o desenho da página do construtor (fields.page: só para abrir e editar de novo; a TV recebe o JPEG)
+        const fx = { ...j(cur.fields, {}) };
+        if (b.caption !== undefined) { const c = line(b.caption, L.title); if (c) fx.caption = c; else delete fx.caption; }
+        if (b.page !== undefined) {
+          if (b.page === null) delete fx.page;
+          else { const pg = cleanPage(b.page); if (!pg) throw fail(400, 'O desenho da página veio fora do formato.'); fx.page = pg; }
+        }
+        fields = JSON.stringify(fx);
+      }
       await db.run('UPDATE tvcorp_media SET title = ?, seconds = ?, office_id = ?, fields = ?, template = ?, updated_at = ? WHERE id = ? AND tenant_id = ?',
         [title, seconds, officeId, fields, template, now(), cur.id, req.tenantId]);
       changed(req.tenantId);
@@ -777,6 +898,45 @@ export function createTvcorp({
       res.json({ ok: true });
     }));
 
+    /* ---- conjuntos de telas (DIGITAL ISP) */
+    // as telas do conjunto: do cliente, não revogadas e fora de outro conjunto
+    const checkWallDevices = async (tenantId, data, selfId = null) => {
+      const ids = data.cells.map((c) => c.deviceId);
+      if (!ids.length) return;
+      const rows = await db.all(`SELECT id FROM telas_devices WHERE tenant_id = ? AND revoked_at IS NULL AND id IN (${ids.map(() => '?').join(',')})`, [tenantId, ...ids]);
+      if (rows.length !== ids.length) throw fail(404, 'Tela não encontrada.');
+      const other = (await load(tenantId)).walls.find((w) => w.id !== selfId && w.data.cells.some((c) => ids.includes(c.deviceId)));
+      if (other) throw fail(409, `Uma das telas já está no conjunto "${other.name}". Tire de lá antes.`);
+      if (data.layoutId) await own('tvcorp_layouts', data.layoutId, tenantId, 'Layout');
+    };
+    app.get(`${B}/walls`, M, ah(async (req, res) => noStore(res).json({ walls: (await load(req.tenantId)).walls })));
+    app.post(`${B}/walls`, M, ah(async (req, res) => {
+      const w = K.cleanWall(req.body || {}, null, { now: now() });
+      await under('tvcorp_walls', req.tenantId, L.layouts, 'conjuntos');
+      await checkWallDevices(req.tenantId, w.data);
+      const t = now();
+      const id = Number(await db.insert('INSERT INTO tvcorp_walls(tenant_id,name,data,created_at,updated_at) VALUES(?,?,?,?,?)', [req.tenantId, w.name, JSON.stringify(w.data), t, t]));
+      changed(req.tenantId);
+      res.locals.audit = `tv corporativa: conjunto de telas "${w.name}" (#${id}) criado`;
+      noStore(res).status(201).json(wallDto(await own('tvcorp_walls', id, req.tenantId, 'Conjunto')));
+    }));
+    app.patch(`${B}/walls/:id`, M, ah(async (req, res) => {
+      const cur = wallDto(await own('tvcorp_walls', req.params.id, req.tenantId, 'Conjunto'));
+      const w = K.cleanWall(req.body || {}, cur, { now: now() });
+      await checkWallDevices(req.tenantId, w.data, cur.id);
+      await db.run('UPDATE tvcorp_walls SET name = ?, data = ?, updated_at = ? WHERE id = ? AND tenant_id = ?', [w.name, JSON.stringify(w.data), now(), cur.id, req.tenantId]);
+      changed(req.tenantId);
+      res.locals.audit = `tv corporativa: conjunto de telas "${w.name}" (#${cur.id}) alterado`;
+      noStore(res).json(wallDto(await own('tvcorp_walls', cur.id, req.tenantId, 'Conjunto')));
+    }));
+    app.delete(`${B}/walls/:id`, M, ah(async (req, res) => {
+      const cur = wallDto(await own('tvcorp_walls', req.params.id, req.tenantId, 'Conjunto'));
+      await db.run('DELETE FROM tvcorp_walls WHERE id = ? AND tenant_id = ?', [cur.id, req.tenantId]);
+      changed(req.tenantId);
+      res.locals.audit = `tv corporativa: conjunto de telas "${cur.name}" (#${cur.id}) apagado`;
+      res.json({ ok: true });
+    }));
+
     /* ---- grade */
     const scheduleRow = (s) => { const sc = K.scopeToRow(s.scope); return [s.name, s.layoutId, JSON.stringify(s.zonePlaylists), sc.scope, sc.scope_data, K.daysText(s.days), s.timeFrom, s.timeTo, s.dateFrom, s.dateTo, s.priority]; };
     app.get(`${B}/schedules`, M, ah(async (req, res) => {
@@ -841,7 +1001,9 @@ export function createTvcorp({
       let zones = null;
       if (r.current && o && isTvcOfficeType(o.type)) {
         const b = await blockOf(req.tenantId, at.officeId, r.current, r.data, req, { fallback: r.fallback?.id === r.current.id, seed: at.deviceId, at });
-        if (b) zones = Object.fromEntries(Object.entries(b.zones).map(([z, items]) => [z, items.map((it) => ({ id: it.id, kind: it.kind, seconds: it.seconds, title: it.fields?.title || it.title || it.name || null }))]));
+        // full=1: os itens inteiros, como a TV recebe (a prévia "Ver a tela agora" monta com eles)
+        const full = req.query.full === '1';
+        if (b) zones = Object.fromEntries(Object.entries(b.zones).map(([z, items]) => [z, items.map((it) => (full ? it : { id: it.id, kind: it.kind, seconds: it.seconds, title: it.fields?.title || it.title || it.name || null }))]));
       }
       const lp = lastPlays.get(`${req.tenantId}:${d.id}`);
       const names = lp ? await namesFor(req.tenantId, lp.list.map((p) => { const x = parseItemRef(p.ref); return { ref_kind: x.refKind, ref_id: x.refId }; })) : new Map();
@@ -852,6 +1014,26 @@ export function createTvcorp({
         lastPlays: lp ? { at: lp.at, items: lp.list.map((p) => { const x = parseItemRef(p.ref); return { ...p, name: names.get(`${x.refKind}:${x.refId}`) || p.ref }; }) } : null,
         lastBeat: lastBeat.get(`${req.tenantId}:${d.id}`) ?? num(d.last_seen),
       });
+    }));
+
+    /* ---- a prévia ao vivo de um layout: os itens que a TV recebe, montados pelo mesmo blockOf (sem escolher nada no painel).
+       layoutId (salvo) ou layout (o do editor, ainda não salvo); zonePlaylists (a grade sendo editada) ou a grade que usa o
+       layout; sem grade, as playlists escolhidas no próprio layout. */
+    app.post(`${B}/layouts/ao-vivo`, M, ah(async (req, res) => {
+      const b = req.body || {};
+      const data = await load(req.tenantId);
+      let layoutId = b.layoutId != null && b.layoutId !== '' ? Number(b.layoutId) : null;
+      let layouts = data.layouts;
+      if (b.layout && typeof b.layout === 'object') {
+        const l = K.cleanLayout({ name: 'Prévia', ...b.layout, factoryKey: undefined });
+        // o do editor (pode ter mudança ainda não salva) no lugar do salvo: a mesma rádio e a mesma grade
+        if (!layoutId || !layouts.has(layoutId)) layoutId = -1;
+        layouts = new Map(data.layouts).set(layoutId, { id: layoutId, name: l.name, orientation: l.orientation, zones: l.zones, background: l.background });
+      } else if (!layoutId || !layouts.has(layoutId)) throw fail(404, 'Layout não encontrado.');
+      const grade = b.zonePlaylists ? null : data.schedules.find((s) => Number(s.layoutId) === Number(b.layoutId ?? -2)) || null;
+      const s = { id: 0, name: 'Prévia', days: [], timeFrom: 0, timeTo: 1440, dateFrom: null, dateTo: null, priority: 0, layoutId, zonePlaylists: b.zonePlaylists && typeof b.zonePlaylists === 'object' ? b.zonePlaylists : (grade?.zonePlaylists || {}) };
+      const blk = await blockOf(req.tenantId, null, s, { ...data, layouts }, req, { seed: 'previa' });
+      noStore(res).json({ zones: blk?.zones || {}, audio: blk?.layout?.audio || null, grade: grade ? { id: grade.id, name: grade.name } : null });
     }));
 
     /* ---- histórico dos comandos */
@@ -869,7 +1051,8 @@ export function createTvcorp({
         commands: rows.map((c) => ({
           id: Number(c.id), deviceId: Number(c.device_id), device: c.device_name || `Tela #${Number(c.device_id)}`, type: c.type, by: c.created_by || '', at: Number(c.created_at),
           sentAt: num(c.sent_at), doneAt: num(c.done_at), ok: c.ok == null ? null : Number(c.ok) === 1, detail: c.detail || null,
-          result: c.done_at ? (Number(c.ok) === 1 ? 'Feito' : 'Falhou') : c.sent_at ? 'Entregue à tela' : 'Aguardando a tela',
+          // o app antigo responde "Comando desconhecido nesta versão do app": a TV não sabe fazer, não é falha dela
+          result: c.done_at ? (Number(c.ok) === 1 ? 'Feito' : /desconhecido/i.test(c.detail || '') ? 'Não suportado por esta versão do app' : 'Falhou') : c.sent_at ? 'Entregue à tela' : 'Aguardando a tela',
         })),
       });
     }));
