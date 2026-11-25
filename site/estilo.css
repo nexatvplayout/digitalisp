@@ -423,3 +423,8 @@ textarea { resize: vertical; }
   .foto-faixa figcaption { position: static; background: var(--marinho); padding: 16px 18px; font-size: 1rem; }
   .exemplos { grid-template-columns: 1fr; }
 }
+
+/* Botão de baixar o instalador no cartão */
+.botao-baixar { margin-top: 14px; }
+.app { display: flex; flex-direction: column; }
+.app .botao-baixar { align-self: flex-start; }
