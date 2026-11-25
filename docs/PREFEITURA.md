@@ -70,7 +70,7 @@ O município da prefeitura trava no primeiro cadastro (Painel da Prefeitura → 
 |---|---|---|
 | `public/reparticao/*` (painel da repartição, guichê, totem, sala, equipe, apoio, acompanhante, `rep-*.js`) | mesmos nomes | Iguais; o topo diz "Painel da repartição" / "Repartição · …" no lugar de "NEXA Telas" |
 | `public/shared/telas-tipos.js`, `telas-geo.js`, `telas-amostras.js`, `telas-previa.js`, `telas-salas.js`, `triagem-catalogo.js`, `uf-city.js`, `br-docs.js`, `municipios-ibge.json` | mesmos nomes | Iguais |
-| `android-telas/` (o app das TV box) | `android/` | Portado em 22/11 **sem** pessoas desaparecidas e sem as categorias de alerta da Defesa Civil (ver Pendências) |
+| `android-telas/` (o app das TV box) | `android/` | Portado em 22/11; pessoas desaparecidas (`Missing.kt`, `MissingViews.kt`) e as categorias de alerta da Defesa Civil (`AlertViews.kt`, `category` em `core/Alerts.kt`) voltaram no app 0.3.3 (25/11), iguais ao NEXA |
 
 ### Testes
 
@@ -130,10 +130,9 @@ Estes arquivos citam "prefeitura" mas são de outras partes do NEXA:
 
 ## Pendências
 
-- **App Android (`android/`)**: o app do DIGITAL ISP saiu do NEXA Telas sem **pessoas desaparecidas** (`Missing.kt`,
-  `MissingViews.kt` e os testes `MissingTest`, `MissingQrTest`) e sem as **categorias de alerta da Defesa Civil**
-  (`AlertsDefesaCivilTest`), retirados de propósito em 22/11 (commit dfa5679). O servidor manda os casos de desaparecidos
-  no sinal de vida (`missing`), mas a TV do DIGITAL ISP não mostra. Para a prefeitura ficar completa na TV, esses arquivos
-  do `android-telas/` do NEXA precisam voltar ao `android/` (com o pacote `br.com.digitalisp.telas`) antes de o NEXA
-  apagar o módulo. Cópia guardada em `docs/origem-nexa/android-prefeitura/` (de `android-telas/app/src/main/java/br/com/nexatv/telas/MissingViews.kt`,
-  `.../core/Missing.kt` e `android-telas/app/src/test/java/br/com/nexatv/telas/core/{MissingTest,MissingQrTest,AlertsDefesaCivilTest}.kt`).
+Nenhuma. A última (o app Android sem desaparecidos e sem as categorias de alerta da Defesa Civil, tirados em 22/11 no
+commit dfa5679) foi resolvida no app 0.3.3 (25/11/2026): `core/Missing.kt`, `MissingViews.kt` (a arte usa o
+`ImageArt.decode` do app), `AlertViews.kt` (o ícone da categoria), o `category` de volta em `core/Alerts.kt` e as ligações
+no `Engine`, `Store`, `MainActivity` e no diagnóstico (`Screens`), como no NEXA. Os testes `MissingTest`, `MissingQrTest`
+e `AlertsDefesaCivilTest` voltaram (o `AlertsCabecalhoTest`, que era a cópia sem `category`, saiu). A cópia de origem
+continua em `docs/origem-nexa/android-prefeitura/`.

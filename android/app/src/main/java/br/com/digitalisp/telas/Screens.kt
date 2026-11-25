@@ -716,6 +716,7 @@ class SettingsScreen(act: MainActivity) : Screen(act) {
             line("Som da chamada", act.callSoundSummary())
         }
         if (c?.internal != null) line("Tela interna", act.internalSummary())
+        if (Engine.managed) line("Desaparecidos", act.missingSummary())
         line(
             "Relógio",
             when {

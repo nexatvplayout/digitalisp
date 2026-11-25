@@ -17,11 +17,11 @@ existia no outro produto do dono (a versão 1.3.1) e foi adaptado em 22/11/2026.
 
 | | |
 |---|---|
-| Mantido | abre sozinho ao ligar, quiosque (níveis 0 a 2), vigia que reinicia o vídeo travado, atualização automática pelo campo `update` do `/config`, vídeos guardados e funcionamento sem internet, imagem sem internet (`offline.image`), chamada de senha com voz (opcional), alertas, TV Corporativa (zonas), modo avulso, recuperação depois de reinstalar |
+| Mantido | pessoas desaparecidas (`missing`, do modo órgão público; tiradas em 22/11 e devolvidas na 0.3.3), abre sozinho ao ligar, quiosque (níveis 0 a 2), vigia que reinicia o vídeo travado, atualização automática pelo campo `update` do `/config`, vídeos guardados e funcionamento sem internet, imagem sem internet (`offline.image`), chamada de senha com voz (opcional), alertas, TV Corporativa (zonas), modo avulso, recuperação depois de reinstalar |
 | Novo | a marca da revenda (abertura, cadastro, imagem sem internet), guardada no aparelho; servidor padrão configurável no build |
-| Retirado | pessoas desaparecidas (`missing`), os ícones e as categorias de alerta de Defesa Civil e segurança pública (`category`), os textos e endereços do produto de origem |
+| Retirado | os textos e endereços do produto de origem |
 
-Os alertas continuam (aviso geral, com `header` e `test`); um `category` que o servidor mande é ignorado. A tela interna
+Os alertas continuam com `header`, `test` e `category` (o ícone da categoria da Defesa Civil, devolvido na 0.3.3). A tela interna
 com códigos de emergência (`internal`) continua no app, sem mudança.
 
 ## Compilar

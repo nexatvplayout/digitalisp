@@ -9,6 +9,8 @@ import br.com.digitalisp.telas.core.Alert
 import br.com.digitalisp.telas.core.Alerts
 import br.com.digitalisp.telas.core.ConfigParser
 import br.com.digitalisp.telas.core.LockoutState
+import br.com.digitalisp.telas.core.Missing
+import br.com.digitalisp.telas.core.MissingCase
 import br.com.digitalisp.telas.core.RecentAlert
 import br.com.digitalisp.telas.core.TelaConfig
 import br.com.digitalisp.telas.core.Urls
@@ -154,6 +156,11 @@ class Store(ctx: Context) {
             if (v == null) p.edit().remove("recent").apply()
             else p.edit().putString("recent", JSONObject().put("a", v.alert.toJson()).put("at", v.endedAt).toString()).apply()
         }
+
+    // ---- pessoas desaparecidas (contrato §8): ficam guardadas para valer sem rede, até o `until` de cada caso ----
+    var missing: List<MissingCase>
+        get() = Missing.parse(p.getString("missing", null))
+        set(v) { p.edit().putString("missing", Missing.toJson(v)).commit() }
 
     // ---- marca da revenda (docs/CONTRATO-APP-MARCA.md): guardada para valer sem rede; só o reset de fábrica apaga ----
     var brandJson: String?

@@ -5,17 +5,17 @@ import org.json.JSONObject
 
 /** `level`: 0 = info, 1 = warn, 2 = critical. `until` em epoch ms; 0 = sem fim marcado (vale enquanto estiver na lista). */
 /**
- * Opcionais: `header` = a linha de cima do alerta ("" = o cabeçalho de sempre, pelo nível); `test` = teste ou simulação
- * (a palavra TESTE fica na tela o tempo todo). Um `category` que o servidor mande é ignorado.
+ * Contrato §9 (opcionais): `header` = a linha de cima do alerta ("" = o cabeçalho de sempre, pelo nível); `category` =
+ * o tipo, para o ícone ("" = sem ícone); `test` = teste ou simulação (a palavra TESTE fica na tela o tempo todo).
  */
 data class Alert(
     val id: Long, val title: String, val text: String, val level: Int, val sound: Boolean, val until: Long,
-    val header: String = "", val test: Boolean = false,
+    val header: String = "", val category: String = "", val test: Boolean = false,
 ) {
     fun toJson(): JSONObject = JSONObject()
         .put("id", id).put("title", title).put("text", text)
         .put("level", Alerts.LEVELS[level]).put("sound", sound).put("until", until)
-        .put("header", header).put("test", test)
+        .put("header", header).put("category", category).put("test", test)
 }
 
 /** O último alerta que terminou no horário marcado; aparece na coluna lateral por um tempo. */
@@ -25,6 +25,7 @@ object Alerts {
     val LEVELS = listOf("info", "warn", "critical")
     const val RECENT_MS = 30 * 60 * 1000L
 
+    val CATEGORIES = setOf("meteorologico", "geologico", "tecnologico", "incendio-ar", "saude", "seguranca", "transito", "teste", "outro")
     private val DEFAULT_HEADERS = listOf("AVISO", "ATENÇÃO", "ALERTA")
     private val PT_BR = java.util.Locale("pt", "BR")
 
@@ -32,6 +33,9 @@ object Alerts {
 
     /** Só texto de verdade vale (número, lista, objeto, null = como se ausente). Uma linha só, até 60 caracteres. */
     fun headerOf(raw: Any?): String = (raw as? String)?.replace(Regex("\\s+"), " ")?.trim()?.take(60).orEmpty()
+
+    /** Categoria desconhecida ou de tipo errado = sem ícone. */
+    fun categoryOf(raw: Any?): String = (raw as? String)?.trim()?.lowercase()?.takeIf { it in CATEGORIES }.orEmpty()
 
     /** A linha de cima do alerta em tela cheia: o `header` do servidor em caixa alta ou, sem ele, o de sempre pelo nível. */
     fun headerFor(a: Alert): String = if (a.header.isNotEmpty()) a.header.uppercase(PT_BR) else DEFAULT_HEADERS[a.level.coerceIn(0, 2)]
@@ -47,7 +51,7 @@ object Alerts {
             out.add(
                 Alert(
                     o.optLong("id", 0L), title, text, levelOf(ConfigParser.str(o, "level")), o.optBoolean("sound", false), o.optLong("until", 0L).coerceAtLeast(0L),
-                    header = headerOf(o.opt("header")), test = o.opt("test") == true,
+                    header = headerOf(o.opt("header")), category = categoryOf(o.opt("category")), test = o.opt("test") == true,
                 ),
             )
         }

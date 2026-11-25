@@ -25,6 +25,8 @@ import br.com.digitalisp.telas.core.QueueCache
 import br.com.digitalisp.telas.core.TrustedClock
 import br.com.digitalisp.telas.core.LockCfg
 import br.com.digitalisp.telas.core.EmergencyCode
+import br.com.digitalisp.telas.core.Missing
+import br.com.digitalisp.telas.core.MissingCase
 import br.com.digitalisp.telas.core.Internal
 import br.com.digitalisp.telas.core.NetErrors
 import br.com.digitalisp.telas.core.OfflineItem
@@ -70,6 +72,7 @@ object Engine {
         fun reloadPlayer()
         fun captureScreen(done: (ByteArray?) -> Unit)
         fun onQueueChanged(announce: QueueCall?)
+        fun onMissingChanged()
         fun onCodesChanged()
         /** TV Corporativa: um arquivo novo ficou pronto no aparelho (imagem, logomarca, foto). */
         fun onSignageFiles() {}
@@ -108,6 +111,13 @@ object Engine {
     @Volatile var codes: List<EmergencyCode> = emptyList()
         private set
 
+
+    /** Pessoas desaparecidas em vigor para este aparelho (contrato §8). */
+    @Volatile var missing: List<MissingCase> = emptyList()
+        private set
+    private val photoBusy = AtomicBoolean(false)
+    @Volatile private var photoAgain = false
+    private val photoRetryAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
 
     // ---- diagnóstico do sinal de vida e do relógio ----
     /** Hora (relógio do aparelho) da última tentativa de sinal de vida e o que deu. */
@@ -171,6 +181,7 @@ object Engine {
         config = store.loadConfig()
         alerts = store.alerts
         recent = store.recentAlert
+        missing = store.missing
         brand = Brands.fromStore(store.brandJson)
         clockAnchor = store.clockAnchor
         bootCount = try {
@@ -182,6 +193,7 @@ object Engine {
         ensureRunning()
         syncOffline()
         syncFallbackImage()
+        syncMissingPhotos()
         syncBrandLogo()
         loadPlays()
         syncSignage()
@@ -219,7 +231,7 @@ object Engine {
     fun clockOk(): Boolean = trustedNow() != null
 
     /**
-     * A hora para os vencimentos (alertas, clima): a certa; sem ela, o mínimo que a hora pode ser (a última
+     * A hora para os vencimentos (alertas, desaparecidos, clima): a certa; sem ela, o mínimo que a hora pode ser (a última
      * boa + o tempo desde que o aparelho ligou); sem nada, 0. Assim o que estava na tela continua até a hora voltar, e só
      * some o que com certeza já venceu.
      */
@@ -334,6 +346,7 @@ object Engine {
         config = store.loadConfig()
         alerts = emptyList()
         store.alerts = emptyList()
+        setMissing(emptyList())
         setCodes(emptyList())
         toUi { it.onConfigChanged() }
     }
@@ -593,6 +606,7 @@ object Engine {
         store.wipeToken()
         alerts = emptyList()
         store.alerts = emptyList()
+        setMissing(emptyList())
         setCodes(emptyList())
         noteError("Aparelho desativado no painel (401).")
         QueueLink.sync()
@@ -636,9 +650,12 @@ object Engine {
             toUi { it.onAlertsChanged() }
         }
 
+        // pessoas desaparecidas: campo ausente = recurso desligado (servidor antigo)
+        setMissing(Missing.parse(res.optJSONArray("missing")))
         // códigos de emergência (§17.2): só a tela interna recebe a chave; sem ela, nada
         val codeList = if (res.has("codes")) Internal.codes(res.optJSONArray("codes")) else emptyList()
         main.post { setCodes(codeList) }
+        syncMissingPhotos()
 
         val rev = ConfigParser.str(res, "rev")
         if (rev != null && rev != config?.rev) fetchConfig(api, force = true)
@@ -878,6 +895,71 @@ object Engine {
         toUi { it.onCodesChanged() }
     }
 
+    // ---- pessoas desaparecidas: lista e fotos ----
+    private fun setMissing(fresh: List<MissingCase>) {
+        if (fresh == missing) return
+        missing = fresh
+        store.missing = fresh
+        toUi { it.onMissingChanged() }
+    }
+
+    private fun missingDir(): File = File(app.filesDir, "missing").apply { mkdirs() }
+
+    /** A foto do caso, só se já foi baixada e conferida (sha256 e tamanho). Sem ela, a tela desenha a silhueta. */
+    fun missingPhotoFile(c: MissingCase): File? {
+        val p = c.photo ?: return null
+        return File(missingDir(), p.fileName).takeIf { it.isFile && it.length() == p.bytes }
+    }
+
+    fun missingPhotoCount(): Int = missing.mapNotNull { missingPhotoFile(it)?.name }.distinct().size
+
+    /**
+     * Baixa (uma vez por foto) as fotos que faltam, confere o sha256 e o tamanho, e apaga as de quem saiu da lista.
+     * Foto que não confere é apagada e só é tentada de novo depois de 30 min; falha de rede, depois de 2 min.
+     */
+    fun syncMissingPhotos() {
+        if (!ready.get()) return
+        if (!photoBusy.compareAndSet(false, true)) {
+            photoAgain = true
+            return
+        }
+        Thread({
+            try {
+                do {
+                    photoAgain = false
+                    val dir = missingDir()
+                    val existing = (dir.listFiles() ?: emptyArray()).filter { it.isFile }.associate { it.name to it.length() }
+                    val plan = Missing.photoPlan(missing, existing)
+                    for (name in plan.delete) File(dir, name).delete()
+                    var got = false
+                    for (p in plan.download) {
+                        val now = SystemClock.elapsedRealtime()
+                        if (now < (photoRetryAt[p.sha256] ?: 0L) || net() == "none") continue
+                        when (OfflineFetch.fetchAs(p.fileName, p.asItem(), dir, httpTransport)) {
+                            OfflineFetch.Result.OK -> {
+                                photoRetryAt.remove(p.sha256)
+                                got = true
+                            }
+                            OfflineFetch.Result.BAD_HASH -> {
+                                photoRetryAt[p.sha256] = now + 30 * 60_000L
+                                noteError("Foto de pessoa desaparecida não confere (sha256 ou tamanho); o caso aparece sem foto.")
+                            }
+                            else -> photoRetryAt[p.sha256] = now + 2 * 60_000L
+                        }
+                    }
+                    if (got || plan.delete.isNotEmpty()) toUi { it.onMissingChanged() }
+                } while (photoAgain)
+            } catch (_: Exception) {
+            } finally {
+                photoBusy.set(false)
+            }
+        }, "telas-fotos").apply {
+            isDaemon = true
+            priority = Thread.MIN_PRIORITY
+            start()
+        }
+    }
+
     /** Apaga tudo e volta à escolha do modo. */
     fun resetAll() {
         store.wipeAll()
@@ -887,8 +969,10 @@ object Engine {
         InternalLink.sync()
         alerts = emptyList()
         recent = null
+        missing = emptyList()
         codes = emptyList()
         offlineDir().listFiles()?.forEach { it.delete() }
+        missingDir().listFiles()?.forEach { it.delete() }
         fallbackDir().listFiles()?.forEach { it.delete() }
         fallbackShown = null
         brand = null

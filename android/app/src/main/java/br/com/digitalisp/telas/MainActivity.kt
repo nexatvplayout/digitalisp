@@ -43,6 +43,9 @@ import br.com.digitalisp.telas.core.Brands
 import br.com.digitalisp.telas.core.CardRotation
 import br.com.digitalisp.telas.core.ClockCheck
 import br.com.digitalisp.telas.core.DiagReport
+import br.com.digitalisp.telas.core.Missing
+import br.com.digitalisp.telas.core.MissingCase
+import br.com.digitalisp.telas.core.MissingSchedule
 import br.com.digitalisp.telas.core.VideoMode
 import br.com.digitalisp.telas.core.ProgressSignal
 import br.com.digitalisp.telas.core.QueueCall
@@ -249,6 +252,7 @@ class MainActivity : Activity(), Engine.Ui {
     private var soundPool: SoundPool? = null
     private var soundId = 0
 
+    private lateinit var alertIcon: AlertIcon
     private lateinit var alertHead: LinearLayout
     private lateinit var alertStamp: TestStamp
     // código de emergência hospitalar (tela interna, contrato §17.2): por cima de tudo, na cor do código
@@ -260,6 +264,10 @@ class MainActivity : Activity(), Engine.Ui {
     private var shownCode: EmergencyCode? = null
     private var codeStream = 0
     private var codeAlarmToken = 0
+    private lateinit var missingFull: MissingFullView
+    private lateinit var missingBanner: MissingBannerView
+    private val missingBitmaps = HashMap<String, Bitmap>()
+    private var missingGen = 0
 
     /** Imagem de fora do ar (offline.image) na área do vídeo, quando nada toca; o arquivo e o bitmap já lido dele. */
     private var fallbackView: ImageView? = null
@@ -328,6 +336,7 @@ class MainActivity : Activity(), Engine.Ui {
             if (r - l != oldR - oldL || b - t != oldB - oldT) root.post { buildComposition() }
         }
         applyConfig()
+        loadMissingPhotos()
         loadBrandLogo()
         handler.postDelayed(tick, 1000)
     }
@@ -448,10 +457,12 @@ class MainActivity : Activity(), Engine.Ui {
             gravity = Gravity.CENTER
             visibility = View.GONE
             isClickable = true
-            // linha de cima: o cabeçalho
+            // linha de cima: o ícone da categoria (se houver) e o cabeçalho
+            alertIcon = AlertIcon(this@MainActivity).apply { visibility = View.GONE }
             alertHead = LinearLayout(this@MainActivity).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER
+                addView(alertIcon, LinearLayout.LayoutParams(1, 1))
                 addView(alertLevel, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             }
             addView(alertHead, Ui.lp())
@@ -470,9 +481,14 @@ class MainActivity : Activity(), Engine.Ui {
         stage.addView(compHost, match())
         stage.addView(status, FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM or Gravity.START))
         stage.addView(blackout, match())
-        // chamada de senha nos layouts sem painel: acima do vídeo e da faixa, abaixo do alerta
+        // chamada de senha nos layouts sem painel: acima do vídeo e da faixa, abaixo dos desaparecidos e do alerta
         buildCallCard()
         stage.addView(callCard, match())
+        // pessoas desaparecidas: acima do layout e abaixo do alerta (alerta em tela cheia > desaparecido > o resto)
+        missingFull = MissingFullView(this).apply { visibility = View.GONE }
+        missingBanner = MissingBannerView(this).apply { visibility = View.GONE }
+        stage.addView(missingBanner, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1, Gravity.BOTTOM))
+        stage.addView(missingFull, match())
         stage.addView(alertBox, match())
         stage.addView(alertStamp, match())
         // o código de emergência fica acima do alerta (só existe na tela interna; a pública nunca recebe código)
@@ -650,6 +666,16 @@ class MainActivity : Activity(), Engine.Ui {
         val wantTicker = c?.showsTicker == true
         val wantSide = c?.showsSide == true
 
+        // Faixa do desaparecido: embaixo, por cima do vídeo e no lugar do texto rolante. No painel de senha deitado ela
+        // fica só na coluna da direita (embaixo do canal), para nunca cobrir o painel.
+        val queueWide = c != null && layout == Layout.QUEUE && !portraitStage && qStyle == QueueLayout.CLASSIC
+        val bannerLeft = if (queueWide) (sw * 0.68f).toInt() else 0
+        missingBanner.screenHeight = sh
+        missingBanner.layoutParams = FrameLayout.LayoutParams(sw - bannerLeft, (minOf(sw, sh) * (if (queueWide) 0.2f else 0.17f)).toInt() + ins.bottom, Gravity.BOTTOM or Gravity.START).apply {
+            leftMargin = bannerLeft
+        }
+        missingBanner.setPadding(if (bannerLeft == 0) ins.left else 0, 0, ins.right, ins.bottom)
+        missingFull.setPadding(ins.left, ins.top, ins.right, ins.bottom)
         status.layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM or Gravity.START).apply {
             leftMargin = ins.left
             // acima da faixa de avisos (antes a frase ficava por cima do texto rolante)
@@ -790,9 +816,11 @@ class MainActivity : Activity(), Engine.Ui {
         alertLevel.setTextSize(TypedValue.COMPLEX_UNIT_PX, base * 0.05f)
         alertTitle.setTextSize(TypedValue.COMPLEX_UNIT_PX, base * 0.10f)
         alertText.setTextSize(TypedValue.COMPLEX_UNIT_PX, base * 0.06f)
+        alertIcon.layoutParams = LinearLayout.LayoutParams((base * 0.09f).toInt(), (base * 0.09f).toInt()).apply { rightMargin = (base * 0.025f).toInt() }
         val pad = (base * 0.07f).toInt()
         alertBox.setPadding(pad + ins.left, pad + ins.top, pad + ins.right, pad + ins.bottom)
-        // cartão da chamada: a tela inteira amarela; o texto no centro, dentro da margem
+        // cartão da chamada: a tela inteira amarela; o texto no centro, dentro da margem, sem encostar na faixa do
+        // desaparecido (que fica por cima, embaixo)
         val cardPad = (base * 0.04f).toInt()
         callCard.setPadding(ins.left + cardPad, ins.top + cardPad, ins.right + cardPad, ins.bottom + cardPad)
         val cardW = sw - ins.left - ins.right - 2 * cardPad
@@ -808,6 +836,7 @@ class MainActivity : Activity(), Engine.Ui {
         refreshQueue()
         refreshCallCard()
         refreshCard()
+        refreshMissing()
     }
 
     // ------------------------------------------------------------------ TV Corporativa
@@ -995,6 +1024,40 @@ class MainActivity : Activity(), Engine.Ui {
         fitTicket(callBox, callTicket) { callCardOn }
     }
 
+    // ------------------------------------------------------------------ pessoas desaparecidas (contrato §8)
+
+    /**
+     * Decodifica, fora da thread principal e já reduzidas, as fotos conferidas dos casos em vigor; solta as dos casos
+     * que saíram da lista. Enquanto a foto não está pronta (ou se não conferiu), o caso aparece com a silhueta.
+     */
+    private fun loadMissingPhotos() {
+        val files = HashMap<String, java.io.File>()
+        for (c in Engine.missing) Engine.missingPhotoFile(c)?.let { f -> files[c.photo!!.sha256] = f }
+        missingBitmaps.keys.retainAll(files.keys)
+        // os QR codes ficam guardados só enquanto o caso está na lista
+        MissingArt.retainQr(Engine.missing.mapNotNull { it.qr?.data }.toSet())
+        val todo = files.filterKeys { it !in missingBitmaps }
+        val gen = ++missingGen
+        if (todo.isEmpty()) return
+        val dm = resources.displayMetrics
+        val max = maxOf(dm.widthPixels, dm.heightPixels, 640) / 2
+        Thread({
+            val out = HashMap<String, Bitmap>()
+            for ((sha, f) in todo) MissingArt.decode(f, max, max)?.let { out[sha] = it }
+            handler.post {
+                if (gen == missingGen) {
+                    missingBitmaps.putAll(out)
+                    refreshMissing()
+                }
+            }
+        }, "telas-fotos-tela").start()
+    }
+
+    override fun onMissingChanged() {
+        loadMissingPhotos()
+        refreshMissing() // caso que saiu da lista some da tela na hora
+    }
+
     override fun onCodesChanged() = refreshCode()
 
     /**
@@ -1077,6 +1140,52 @@ class MainActivity : Activity(), Engine.Ui {
         val i = cfg?.internal ?: return "não (tela pública)"
         val n = Internal.active(Engine.codes, Engine.expiryNow()).size
         return "sim" + (i.sector?.let { " · setor $it" } ?: "") + " · ${i.notices.size} aviso(s) · " + (if (n > 0) "$n código(s) em vigor" else "nenhum código") + " · tempo real: " + InternalLink.status
+    }
+
+    /** Os casos que valem agora: sem hora confiável no aparelho, continuam os guardados (só some o que com certeza venceu). */
+    private fun activeMissing(): List<MissingCase> {
+        val all = Engine.missing
+        if (all.isEmpty()) return all
+        return Missing.active(all, Engine.expiryNow())
+    }
+
+    /** Segundos desde a meia-noite no relógio do aparelho (sem correção): o ritmo é o mesmo em todas as telas do prédio. */
+    private fun localSecOfDay(): Int {
+        val cal = Calendar.getInstance()
+        return cal.get(Calendar.HOUR_OF_DAY) * 3600 + cal.get(Calendar.MINUTE) * 60 + cal.get(Calendar.SECOND)
+    }
+
+    private fun refreshMissing() {
+        val c = cfg
+        // fora do horário a tela está apagada; com alerta em tela cheia no ar, os desaparecidos esperam
+        val showing = if (c == null || !scheduleOn || shownAlert != null) null
+        else MissingSchedule.at(activeMissing(), localSecOfDay(), c.effectiveLayout == Layout.QUEUE)
+        if (showing == null) {
+            missingFull.visibility = View.GONE
+            missingBanner.visibility = View.GONE
+            return
+        }
+        val bmp = showing.case.photo?.let { missingBitmaps[it.sha256] }
+        if (showing.full) {
+            missingFull.show(showing.case, bmp)
+            missingFull.visibility = View.VISIBLE
+            missingBanner.visibility = View.GONE
+        } else {
+            missingBanner.show(showing.case, bmp)
+            missingBanner.visibility = View.VISIBLE
+            missingFull.visibility = View.GONE
+        }
+    }
+
+    /** Para o diagnóstico: "2 casos, 1 foto guardada, próxima exibição às 10:20". */
+    fun missingSummary(): String {
+        val active = activeMissing()
+        if (Engine.missing.isEmpty()) return "nenhum caso"
+        val next = MissingSchedule.nextStart(active, localSecOfDay(), cfg?.effectiveLayout == Layout.QUEUE)
+        val photos = Engine.missingPhotoCount()
+        return "${active.size} caso(s) em vigor, $photos foto(s) guardada(s), ${active.count { it.qr != null }} com QR code, " +
+            (if (next == null) "sem próxima exibição" else "próxima exibição às ${MissingSchedule.hhmm(next)}") +
+            (if (active.size != Engine.missing.size) " (${Engine.missing.size - active.size} vencido(s) ou sem hora confiável)" else "")
     }
 
     private fun buildTicker(c: TelaConfig, ins: Insets = Insets(0, 0, 0, 0)): TickerView = TickerView(this).also {
@@ -1831,6 +1940,7 @@ class MainActivity : Activity(), Engine.Ui {
         refreshCode()
         refreshClock()
         refreshCard()
+        refreshMissing()
         // TV Corporativa: troca de bloco na hora certa e o tique das zonas com hora
         if (c.signage != null || signBlock != null) {
             if (pickBlock(c) !== signBlock) buildComposition()
@@ -1931,8 +2041,10 @@ class MainActivity : Activity(), Engine.Ui {
         if (a == null) {
             alertBox.visibility = View.GONE
             alertStamp.visibility = View.GONE
+            refreshMissing()
             return
         }
+        refreshMissing() // com alerta no ar, os desaparecidos esperam
         // a cor é sempre a do nível (azul, âmbar, vermelho), inclusive nos testes
         val (bg, fg) = when (a.level) {
             2 -> 0xFFC62828.toInt() to Color.WHITE
@@ -1943,6 +2055,8 @@ class MainActivity : Activity(), Engine.Ui {
         for (v in listOf(alertLevel, alertTitle, alertText)) v.setTextColor(fg)
         // contrato §9: cabeçalho do servidor (ou o de sempre), ícone da categoria e a palavra TESTE nos simulados
         alertLevel.text = Alerts.headerFor(a)
+        alertIcon.set(a.category, fg)
+        alertIcon.visibility = if (a.category.isEmpty()) View.GONE else View.VISIBLE
         alertStamp.visibility = if (a.test) View.VISIBLE else View.GONE
         alertTitle.text = a.title
         alertTitle.visibility = if (a.title.isEmpty()) View.GONE else View.VISIBLE
@@ -2168,6 +2282,7 @@ class MainActivity : Activity(), Engine.Ui {
             line("Último sinal de vida respondido", if (store.lastHeartbeatAt > 0) fmt.format(Date(store.lastHeartbeatAt)) else "nenhum ainda")
             line("Chamada de senha (tempo real)", if (c?.queue?.enabled == true) QueueLink.status else "desligada")
             line("Conteúdo guardado", Engine.offlineNote.ifEmpty { "${Engine.offlineFiles().size} vídeo(s)" })
+            line("Desaparecidos", missingSummary())
             if (c?.signage != null) line("Arquivos da grade", Engine.signageNote.ifEmpty { "conferindo…" })
         }
         line("Margem da tela (overscan)", "${Engine.store.overscanPct}%")
