@@ -7,6 +7,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { boot, cleanup, api, platformLogin, newTenant, sleep } from './helpers/srv.js';
+import { canal, usuario, auditoria } from './helpers/prefeitura.js'; // DIGITAL ISP: canal ao vivo (HLS) e usuário de permissão limitada
 
 const ENV = { TELAS_LINK_LOGIN_PER_IP: '500', TELAS_ACTIVATE_PER_IP: '50', PUBLIC_HLS_URL: 'https://hls.exemplo.test', PLATFORM_PUBLIC_URL: 'https://painel.exemplo.test', STORAGE_DRIVER: 'local' };
 const SECRET = 'SEGREDO-INTERNO-DA-DIRECAO';
@@ -44,7 +45,7 @@ async function roteiro(s) {
   assert.equal((await P('POST', '/api/platform/plans', { code: 'p-pref', name: 'pref', priceCents: 0, profileId: r0.data.id, limits: { channels: 1 } })).status, 201);
   const A = await newTenant(P, s.base, { slug: 'int-a', planCode: 'p-pref', status: 'active' });
   const B = await newTenant(P, s.base, { slug: 'int-b', planCode: 'p-pref', status: 'active' });
-  for (const [T, slug] of [[A, 'int-a-tv'], [B, 'int-b-tv']]) assert.equal((await T.api('POST', '/api/channels', { name: 'TV', slug })).status, 201);
+  for (const [T, slug] of [[A, 'int-a-tv'], [B, 'int-b-tv']]) await canal(T.api, 'TV');
   const post = async (T, url, body, want = 201) => { const r = await T.api('POST', url, body); assert.equal(r.status, want, `${url}: ${JSON.stringify(r.data)}`); return r.data; };
   const upa = await post(A, '/api/prefeitura/offices', { name: 'UPA Centro', type: 'upa' });
   const ubs = await post(A, '/api/prefeitura/offices', { name: 'UBS Norte', type: 'ubs' });
@@ -195,7 +196,7 @@ async function roteiro(s) {
   assert.equal((await G('POST', `/api/reparticao/interna/notices/${n1.id}/cancel`, {})).status, 200);
   assert.deepEqual((await cfg(T1)).internal.notices.map((n) => n.id), [n2.id]);
   // auditoria: as ações, sem token de endereço
-  const audit = JSON.stringify((await A.api('GET', '/api/audit?limit=500')).data);
+  const audit = JSON.stringify(await auditoria(s, A.id));
   for (const want of [/CÓDIGO AZUL disparado em \\"UPA Centro\\" \(Observação, leito 4\)/, /CÓDIGO AZUL encerrado/, /aviso interno \\"Reunião da equipe\\" \(Aviso da direção\) publicado/, /marcada como INTERNA/]) assert.match(audit, want);
   assert.ok(!audit.includes(readTok) && !audit.includes(fireUrl.split('/').pop()), 'o token não vai à auditoria');
 }

@@ -12,6 +12,7 @@ import { db } from './db.js';
 import * as access from './auth.js';
 import { needs, signedIn, needsPlatform } from './auth.js';
 import * as tenancy from './tenancy.js';
+import { createPlanGate } from './funcionalidades.js';
 import { storage, readInput, isUrl } from './storage.js';
 import { clientIp } from './clientip.js';
 import { clock } from './ntp.js';
@@ -25,6 +26,7 @@ import { mountDominios, entradaDoDominio } from './dominios.js';
 import { mountQrcodes } from './qrcodes.js';
 import { hostTenantId } from './domains.js';
 import { mountRadios, loadRadios, audioOf } from './radios.js';
+import { mountMunicipio } from './prefeitura.js';
 import { mountHls, carregarHls, channelsOf as hlsChannels, streamOf as hlsStream } from './hls.js';
 import { createTvcorp } from './tvcorp.js';
 import { TVC_ART } from '../public/shared/tvcorp-tipos.js';
@@ -70,6 +72,9 @@ app.use('/api/telas', (req, res, next) => {
   next();
 });
 app.use((_req, res, next) => { res.set('X-Content-Type-Options', 'nosniff'); next(); });
+// guardas do catálogo de funcionalidades (public/shared/funcionalidades.js, routes): 403 feature_unavailable para a conta cujo
+// plano não tem o módulo (hoje: o Painel da Prefeitura, /api/prefeitura*). A permissão do usuário segue no needs() de cada rota
+app.use(createPlanGate({ channelTenant: () => null, peekTenantId: access.peekTenantId, resolveTenant: tenancy.resolveTenant }));
 // pedido lento (mais de 400 ms) vai para o log: "[lento] GET /api/tvcorp 1234 ms" (o sinal de vida das telas fica de fora)
 app.use((req, res, next) => {
   const t0 = process.hrtime.bigint();
@@ -267,13 +272,17 @@ telas = createTelas({
   weatherArt: climaArtOf, // a foto de fundo de cada tempo (config.weather.art/artPort)
   tvcorp, tvcorpDados,
   // o ao vivo da zona de vídeo: o canal HLS que a unidade escolheu (NEXA Broadcast, IPTV do provedor, câmera…)
-  streamOf: (tenantId, channelId, req, deviceId) => hlsStream(tenantId, channelId, req, deviceId),
+  // prefeitura (modo órgão público): a repartição sem canal escolhido toca o primeiro canal ao vivo da conta, como o canal da
+  // prefeitura no NEXA; a TV Corporativa sem canal segue sem vídeo ao vivo
+  streamOf: async (tenantId, channelId, req, deviceId) => hlsStream(tenantId, channelId, req, deviceId)
+    ?? (await tenancy.hasFeature(tenantId, 'prefeitura').catch(() => false) ? hlsStream(tenantId, hlsChannels(tenantId)[0]?.id ?? null, req) : null),
   channelsOf: (tenantId) => hlsChannels(tenantId),
   geocode, geocodeAddress: telasGeocoder.find, audit: access.audit, ipOf: clientIp, publicUrl: publicOrigin,
   weatherOf: (ibge) => weatherForecast(ibge),
-  mediaUrl: (filename, req) => { const u = storage.url('media', filename); return !u ? null : isUrl(u) ? u : `${publicOrigin(req)}${u}`; },
+  // os vídeos guardados da prefeitura são as mídias das telas (tvcorp_media, arquivos tvcmedia-* em graphics/)
+  mediaUrl: (filename, req) => { const u = storage.url('graphics', filename); return !u ? null : isUrl(u) ? u : `${publicOrigin(req)}${u}`; },
   openMedia: async (m) => {
-    const src = await readInput('media', m.filename);
+    const src = await readInput('graphics', m.filename);
     if (!isUrl(src)) return fs.createReadStream(src);
     const r = await fetch(src);
     if (!r.ok || !r.body) throw new Error(`armazenamento respondeu ${r.status}`);
@@ -287,6 +296,7 @@ app.post(['/api/tvcorp/rede/keys', '/api/prefeitura/keys'], needs('tvcorp.manage
 telas.mount(app, { needs });
 mountEnderecos(app, { needs, signedIn, ah, geocodeAddress: telasGeocoder.find }); // CEP, ponto no mapa e endereço da unidade (server/enderecos.js)
 tvcorp.mount(app, { needs });
+mountMunicipio(app, { telas, needs, needsPlatform, ah }); // o município da prefeitura: só a plataforma e a revenda dela trocam ou tiram (server/prefeitura.js)
 const tvcorpApiKey = ah(async (req, res, next) => {
   const tok = /^Bearer ([A-Za-z0-9_-]{32,64})$/.exec(req.get('authorization') || '')?.[1];
   const k = tok ? await db.get('SELECT office_id, tenant_id FROM telas_api_keys WHERE token_hash = ?', [createHash('sha256').update(tok).digest('hex')]) : null;
@@ -320,9 +330,14 @@ app.get('/graphics/:name', ah(async (req, res) => {
   if (!/^[a-z0-9][a-z0-9._-]{0,120}$/i.test(name) || name.includes('..')) return res.status(404).end();
   const src = await readInput('graphics', name).catch(() => null);
   if (!src) return res.status(404).end();
+  // a foto de um caso de pessoa desaparecida (server/telas-desaparecidos.js): sem cache em lugar nenhum, para sumir de fato
+  // quando o caso é encerrado
+  const noStore = name.startsWith('desap-');
+  if (noStore) res.set('Cache-Control', 'no-store');
   if (isUrl(src)) return res.redirect(302, src);
   if (!fs.existsSync(src)) return res.status(404).end();
-  res.set('Cache-Control', 'public, max-age=86400').sendFile(src, { dotfiles: 'allow' });
+  if (!noStore) res.set('Cache-Control', 'public, max-age=86400');
+  res.sendFile(src, { dotfiles: 'allow', ...(noStore ? { cacheControl: false } : {}) });
 }));
 app.get('/vendor/hls.mjs', (_req, res) => res.set('Cache-Control', 'public, max-age=86400').type('application/javascript').sendFile(path.join(config.root, 'node_modules', 'hls.js', 'dist', 'hls.min.mjs'))); // prévia do HLS no painel
 app.use('/marca', express.static(path.join(config.root, 'marca'), { maxAge: '1h' }));
@@ -396,6 +411,8 @@ app.use((err, req, res, _next) => {
   if (res.headersSent) return;
   const body = { error: status >= 500 && config.production ? 'Erro interno.' : err.message || 'Erro.' };
   if (err.code && typeof err.code === 'string') body.code = err.code;
+  // o que a rota mandou junto com o erro (fail(status, msg, extra) do módulo das telas: o código, a fila cheia, o limite…)
+  if (status < 500 && err.extra && typeof err.extra === 'object') Object.assign(body, err.extra, { error: body.error });
   res.status(status).json(body);
 });
 

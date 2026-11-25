@@ -6,6 +6,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { boot, cleanup, api, platformLogin, newTenant } from './helpers/srv.js';
+import { canal, usuario, auditoria } from './helpers/prefeitura.js'; // DIGITAL ISP: canal ao vivo (HLS) e usuário de permissão limitada
 
 const ENV = { TELAS_LINK_LOGIN_PER_IP: '500', TELAS_ACTIVATE_PER_IP: '50', PUBLIC_HLS_URL: 'https://hls.exemplo.test' };
 
@@ -20,7 +21,7 @@ test('senha: ordem com motivo, tempos-alvo, "Chamar esta" e mudar a prioridade (
     assert.equal((await P('POST', '/api/platform/plans', { code: 'p-pref', name: 'Prefeitura', priceCents: 0, profileId: prof.data.id, limits: { channels: 1 } })).status, 201);
     const A = await newTenant(P, s.base, { slug: 'ord-a', planCode: 'p-pref', status: 'active' });
     const B = await newTenant(P, s.base, { slug: 'ord-b', planCode: 'p-pref', status: 'active' });
-    assert.equal((await A.api('POST', '/api/channels', { name: 'TV A', slug: 'ord-a-tv' })).status, 201);
+    await canal(A.api, 'TV A'); // DIGITAL ISP: o canal ao vivo (HLS) no lugar do canal do NEXA
     const post = async (T, url, body, want = 201) => { const r = await T.api('POST', url, body); assert.equal(r.status, want, `${url}: ${JSON.stringify(r.data)}`); return r.data; };
     const hosp = await post(A, '/api/prefeitura/offices', { name: 'Hospital Municipal', type: 'hospital' });
     const users = `/api/prefeitura/offices/${hosp.id}/users`;
@@ -98,7 +99,7 @@ test('senha: ordem com motivo, tempos-alvo, "Chamar esta" e mudar a prioridade (
     assert.equal((await GU('POST', '/api/guiche/tickets/1/priority', { priority: 1 })).status, 404, 'o guichê não muda prioridade');
 
     /* ---------------------------------------------------------------- o log da repartição */
-    const audit = JSON.stringify((await A.api('GET', '/api/audit?limit=200')).data);
+    const audit = JSON.stringify(await auditoria(s, A.id));
     assert.ok(audit.includes(`senha ${p60.code} chamada fora da ordem`), 'Chamar esta do atendente no log');
     assert.ok(audit.includes(`senha ${ex.code} chamada fora da ordem`), 'Chamar esta do gestor no log');
     assert.ok(audit.includes(`senha ${last.code} chamada fora da ordem`) && audit.includes('pelo endereço do guichê'), 'Chamar esta do guichê no log');

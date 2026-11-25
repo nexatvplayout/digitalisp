@@ -54,7 +54,7 @@ export async function boot(env = {}) {
       try {
         if ((await fetch(`${base}/healthz`, { signal: AbortSignal.timeout(3000) })).ok) {
           return {
-            base, port, dataDir, out: () => out,
+            base, port, dataDir, databaseUrl: env.DATABASE_URL || null, out: () => out,
             stop: () => new Promise((r) => {
               if (p.exitCode !== null || p.signalCode) return r();
               p.ref(); // esperando a saída: o laço fica vivo até ela (senão o arquivo terminaria com a promessa pendente)
@@ -108,8 +108,17 @@ export async function platformLogin(base, cred = SUPER) {
 }
 
 /** Cria um cliente pela API da plataforma e devolve { id, slug, token } (token do administrador do cliente). */
+/** Um CNPJ válido (dígitos verificadores certos) diferente para cada n: a revenda do DIGITAL ISP é sempre pessoa jurídica. */
+export function cnpjFor(n) {
+  const b = [...String(10000000 + (Number(n) % 89999999)).padStart(8, '0'), '0', '0', '0', '1'].map(Number);
+  const dv = (d, w) => { const s = d.reduce((a, x, i) => a + x * w[i], 0) % 11; return s < 2 ? 0 : 11 - s; };
+  b.push(dv(b, [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2])); b.push(dv(b, [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]));
+  return b.join('');
+}
+let cnpjSeq = Math.floor(Math.random() * 1e6);
 export async function newTenant(P, base, { slug, name, planCode, adminUsername, adminPassword = 'senha-do-cliente-123', status } = {}) {
-  const r = await P('POST', '/api/platform/tenants', { name: name || `Cliente ${slug}`, slug, planCode, contactName: `Contato ${slug}`, contactEmail: `contato@${slug}.example.com`, adminUsername: adminUsername || `admin.${slug}`, adminPassword, mustChange: false, status });
+  // DIGITAL ISP: o "cliente" dos testes herdados do NEXA é uma revenda (a conta da plataforma), que usa as próprias telas
+  const r = await P('POST', '/api/platform/tenants', { name: name || `Cliente ${slug}`, slug, planCode, document: cnpjFor(++cnpjSeq), contactName: `Contato ${slug}`, contactEmail: `contato@${slug}.example.com`, adminUsername: adminUsername || `admin.${slug}`, adminPassword, mustChange: false, status });
   if (r.status !== 201) throw new Error(`criar cliente ${slug}: ${r.status} ${JSON.stringify(r.data)}`);
   const login = await api(base)('POST', '/api/admin/login', { tenant: slug, username: adminUsername || `admin.${slug}`, password: adminPassword });
   if (login.status !== 200) throw new Error(`login do cliente ${slug}: ${login.status} ${JSON.stringify(login.data)}`);

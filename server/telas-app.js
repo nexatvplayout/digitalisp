@@ -67,7 +67,7 @@ export function createAppStore({ dir = APP_DIR } = {}) {
       const l = latest();
       if (!l) return res.status(404).json({ error: 'Nenhum APK do app das telas neste servidor.' });
       res.set('Content-Type', 'application/vnd.android.package-archive');
-      res.set('Content-Disposition', `attachment; filename="NEXA-Telas-${l.versionName || l.versionCode}.apk"`);
+      res.set('Content-Disposition', `attachment; filename="Telas-${l.versionName || l.versionCode}.apk"`);
       res.set('Cache-Control', 'public, max-age=300');
       res.set('ETag', `"${l.sha256}"`);
       res.sendFile(l.file);

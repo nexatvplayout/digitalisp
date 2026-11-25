@@ -10,6 +10,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { boot, cleanup, api, platformLogin, newTenant } from './helpers/srv.js';
+import { canal, usuario, auditoria } from './helpers/prefeitura.js'; // DIGITAL ISP: canal ao vivo (HLS) e usuário de permissão limitada
 
 const sha = (s) => createHash('sha256').update(s).digest('hex');
 const ENV = { TELAS_ACTIVATE_PER_IP: '50', TELAS_RECOVER_PER_IP: '20', PUBLIC_HLS_URL: 'https://hls.exemplo.test' };
@@ -28,7 +29,7 @@ async function roteiro(s, dump) {
   assert.equal((await P('POST', '/api/platform/plans', { code: 'p-pref', name: 'pref', priceCents: 0, profileId: prof.data.id, limits: { channels: 1 } })).status, 201);
   const A = await newTenant(P, s.base, { slug: 'lic-a', planCode: 'p-pref', status: 'active' });
   const B = await newTenant(P, s.base, { slug: 'lic-b', planCode: 'p-pref', status: 'active' });
-  for (const [T, slug] of [[A, 'lic-a-tv'], [B, 'lic-b-tv']]) assert.equal((await T.api('POST', '/api/channels', { name: 'TV', slug })).status, 201);
+  for (const [T, slug] of [[A, 'lic-a-tv'], [B, 'lic-b-tv']]) await canal(T.api, 'TV');
   const post = async (T, url, body, want = 201) => { const r = await T.api('POST', url, body); assert.equal(r.status, want, `${url}: ${JSON.stringify(r.data)}`); return r.data; };
   const escola = await post(A, '/api/prefeitura/offices', { name: 'Escola Central', type: 'escola' });
   const ubsB = await post(B, '/api/prefeitura/offices', { name: 'UBS do B', type: 'ubs' });
@@ -113,7 +114,7 @@ async function roteiro(s, dump) {
   assert.equal((await activate(A, escola, 'hwid lixo', { hwid: 'nao-e-hash' })).deviceId > 0, true, 'hwid malformado na ativação: ignorado');
 
   /* ---------------------------------------------------------------- auditoria e o que o banco guarda */
-  const audit = JSON.stringify((await A.api('GET', '/api/audit?limit=500')).data);
+  const audit = JSON.stringify(await auditoria(s, A.id));
   assert.match(audit, /reativada sozinha após reinstalação do app em \\"Escola Central\\"/);
   const raw = await dump();
   for (const h of [HW1, HW2, HW3, HW4]) {
@@ -129,7 +130,7 @@ async function roteiro(s, dump) {
   assert.ok(limited > 0, 'freio por IP e por minuto');
 }
 
-test('SQLite: a licença sobrevive à reinstalação; migração aditiva das colunas sobre a tabela de antes', { timeout: 300000 }, async () => {
+test('SQLite: a licença sobrevive à reinstalação', { timeout: 300000 }, async () => {
   let s = await boot(ENV);
   const dataDir = s.dataDir;
   const file = path.join(dataDir, 'digitalisp.db');
@@ -138,19 +139,8 @@ test('SQLite: a licença sobrevive à reinstalação; migração aditiva das col
       const db = new DatabaseSync(file, { timeout: 15000, readOnly: true });
       try { return JSON.stringify([db.prepare('SELECT * FROM telas_devices').all(), db.prepare('SELECT * FROM audit_log').all()]); } finally { db.close(); }
     });
-    await s.stop();
-    // a tabela volta ao que era antes desta versão (sem hwid_hash e recovered_at, sem o índice)
-    const db = new DatabaseSync(file, { timeout: 15000 });
-    db.exec('DROP INDEX IF EXISTS idx_telas_devices_hwid');
-    for (const c of ['hwid_hash', 'recovered_at']) db.exec(`ALTER TABLE telas_devices DROP COLUMN ${c}`);
-    db.close();
-    s = await boot({ ...ENV, DATA_DIR: dataDir });
-    const after = new DatabaseSync(file, { timeout: 15000, readOnly: true });
-    const cols = after.prepare('PRAGMA table_info(telas_devices)').all();
-    for (const c of ['hwid_hash', 'recovered_at']) assert.ok(cols.some((x) => x.name === c && x.notnull === 0), `${c} de volta, aceitando NULL`);
-    assert.ok(after.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_telas_devices_hwid'").get(), 'o índice volta');
-    after.close();
-    assert.equal((await api(s.base)('POST', '/api/telas/recover', { hwid: HW1 })).status, 404, 'as telas de antes ficam sem vínculo até ativar de novo');
+    // DIGITAL ISP: o trecho da migração do NEXA (tirar hwid_hash e recovered_at e ver o servidor recriar) saiu: o banco do
+    // DIGITAL ISP já nasce com as colunas e não migra bancos de versões antigas do NEXA
   } finally { await s.stop(); cleanup(dataDir); }
 });
 

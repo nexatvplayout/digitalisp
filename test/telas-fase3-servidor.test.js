@@ -12,6 +12,7 @@ import http from 'node:http';
 import { createHash, randomBytes } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { boot, cleanup, api, platformLogin, newTenant, sleep } from './helpers/srv.js';
+import { canal, usuario } from './helpers/prefeitura.js'; // DIGITAL ISP: canal ao vivo (HLS) e usuário de permissão limitada
 
 const rawDb = (dataDir) => new DatabaseSync(path.join(dataDir, 'digitalisp.db'), { timeout: 15000 });
 const spDay = (ms = Date.now()) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(ms));
@@ -56,7 +57,7 @@ function fakeInmet() {
   return new Promise((resolve) => srv.listen(0, '127.0.0.1', () => resolve({ state, url: `http://127.0.0.1:${srv.address().port}`, close: () => new Promise((r) => srv.close(r)) })));
 }
 
-test('NEXA Telas fases 3 e 4: senha em tempo real, totem, cartões, clima, vídeos guardados, aprovação, modo eleitoral, EAS e tela desligada', { timeout: 420000 }, async () => {
+test('Prefeitura, fases 3 e 4: senha em tempo real, totem, cartões, clima, vídeos guardados, aprovação, modo eleitoral, EAS e tela desligada', { timeout: 420000 }, async () => {
   const inmet = await fakeInmet();
   const s = await boot({ PUBLIC_HLS_URL: 'https://hls.exemplo.test', PLATFORM_PUBLIC_URL: 'https://painel.exemplo.test', WEATHER_INMET_BASE: inmet.url, TELAS_TOTEM_PER_MIN: '6', TELAS_ACTIVATE_PER_IP: '50' });
   const streams = [];
@@ -69,8 +70,8 @@ test('NEXA Telas fases 3 e 4: senha em tempo real, totem, cartões, clima, víde
     assert.equal((await P('POST', '/api/platform/plans', { code: 'p-pref', name: 'Prefeitura', priceCents: 0, profileId: prof.data.id, limits: { channels: 1 } })).status, 201);
     const A = await newTenant(P, s.base, { slug: 'pref-a', planCode: 'p-pref', status: 'active' });
     const B = await newTenant(P, s.base, { slug: 'pref-b', planCode: 'p-pref', status: 'active' });
-    assert.equal((await A.api('POST', '/api/channels', { name: 'TV A', slug: 'pref-a-tv' })).status, 201);
-    assert.equal((await B.api('POST', '/api/channels', { name: 'TV B', slug: 'pref-b-tv' })).status, 201);
+    await canal(A.api, 'TV A'); // DIGITAL ISP: o canal ao vivo (HLS) no lugar do canal do NEXA
+    await canal(B.api, 'TV B'); // DIGITAL ISP: o canal ao vivo (HLS) no lugar do canal do NEXA
     const post = async (T, url, body, want = 201) => { const r = await T.api('POST', url, body); assert.equal(r.status, want, `${url}: ${JSON.stringify(r.data)}`); return r.data; };
     const activate = async (T, officeId, name) => {
       const k = await post(T, '/api/prefeitura/keys', { officeId, name });
@@ -344,7 +345,7 @@ test('NEXA Telas fases 3 e 4: senha em tempo real, totem, cartões, clima, víde
     await tUbs.call('GET', '/api/telas/config'); // a 1ª configuração dispara a busca em segundo plano (não espera o provedor)
     let wth = null;
     for (let i = 0; i < 40 && !wth; i++) { await sleep(250); wth = (await tUbs.call('GET', '/api/telas/config')).data.weather; }
-    assert.ok(wth, 'o clima chegou'); assert.deepEqual(Object.keys(wth).sort(), ['at', 'city', 'condition', 'icon', 'tempC']);
+    assert.ok(wth, 'o clima chegou'); assert.deepEqual(Object.keys(wth).filter((k) => !['art', 'artPort'].includes(k)).sort(), ['at', 'city', 'condition', 'icon', 'tempC']); // DIGITAL ISP: mais a foto de fundo do tempo (art, artPort)
     assert.equal(wth.city, 'Niterói'); assert.equal(wth.tempC, 29); assert.equal(wth.icon, 'partly'); assert.equal(wth.condition, 'Parcialmente nublado');
     // a previsão muda lá fora: a tela segue com o mesmo objeto e o mesmo rev (no máximo uma troca a cada 30 min)
     inmet.state.max = 35; const hits = inmet.state.hits;
@@ -355,10 +356,11 @@ test('NEXA Telas fases 3 e 4: senha em tempo real, totem, cartões, clima, víde
     assert.equal((await tB.call('GET', '/api/telas/config')).data.weather, null, 'prefeitura sem cidade: sem clima');
 
     /* ---------------------------------------------------------------- vídeos guardados: só com o SHA-256 calculado */
-    const mediaDir = path.join(s.dataDir, 'media');
+    const mediaDir = path.join(s.dataDir, 'graphics'); // DIGITAL ISP: os vídeos são as mídias das telas (tvcorp_media, arquivos em graphics/)
     const bytes = randomBytes(300_000);
     fs.writeFileSync(path.join(mediaDir, 'institucional-a.mp4'), bytes); fs.writeFileSync(path.join(mediaDir, 'vacina-a.mp4'), Buffer.from('vídeo da vacina'));
-    const ins = db.prepare("INSERT INTO media(title, filename, kind, duration, size, created_at, tenant_id, status) VALUES(?,?,?,?,?,?,?,'ready')");
+    const ins = db.prepare("INSERT INTO tvcorp_media(title, file, kind, seconds, bytes, created_at, tenant_id, status) VALUES(?,?,'video',?,?,?,?,'ok')");
+    const insRun = ins.run.bind(ins); ins.run = (title, file, _kind, seconds, size, at, tid) => insRun(title, file, seconds, size, at, tid);
     const m1 = Number(ins.run('Vídeo institucional', 'institucional-a.mp4', 'program', 30, bytes.length, Date.now(), A.id).lastInsertRowid);
     const m2 = Number(ins.run('Campanha de vacinação', 'vacina-a.mp4', 'program', 20, Buffer.byteLength('vídeo da vacina'), Date.now(), A.id).lastInsertRowid);
     const m3 = Number(ins.run('Sumido do disco', 'nao-existe.mp4', 'program', 20, 1234, Date.now(), A.id).lastInsertRowid);
@@ -373,15 +375,15 @@ test('NEXA Telas fases 3 e 4: senha em tempo real, totem, cartões, clima, víde
     let off = [];
     for (let i = 0; i < 60 && off.length < 2; i++) { await sleep(500); off = (await tUbs.call('GET', '/api/telas/config')).data.offline.items; }
     assert.deepEqual(off, [
-      { url: 'https://painel.exemplo.test/media/vacina-a.mp4', sha256: createHash('sha256').update('vídeo da vacina').digest('hex'), bytes: Buffer.byteLength('vídeo da vacina') },
-      { url: 'https://painel.exemplo.test/media/institucional-a.mp4', sha256: createHash('sha256').update(bytes).digest('hex'), bytes: bytes.length },
+      { url: 'https://painel.exemplo.test/graphics/vacina-a.mp4', sha256: createHash('sha256').update('vídeo da vacina').digest('hex'), bytes: Buffer.byteLength('vídeo da vacina') },
+      { url: 'https://painel.exemplo.test/graphics/institucional-a.mp4', sha256: createHash('sha256').update(bytes).digest('hex'), bytes: bytes.length },
     ], 'o padrão da prefeitura e depois a repartição; o vídeo sem hash (arquivo sumido) não vai');
     assert.equal((await tUpa.call('GET', '/api/telas/config')).data.offline.items.length, 1, 'a UPA só recebe o do padrão');
     assert.deepEqual((await tB.call('GET', '/api/telas/config')).data.offline.items, []);
     const libNow = (await A.api('GET', '/api/prefeitura/offline')).data.items;
     assert.equal(libNow.find((x) => x.mediaId === m3).hash, 'pending'); assert.equal(libNow.find((x) => x.mediaId === m1).hash, 'ok');
     // o arquivo trocado (outro tamanho): o hash antigo deixa de valer até o novo
-    db.prepare('UPDATE media SET size = size + 1 WHERE id = ?').run(m2);
+    db.prepare('UPDATE tvcorp_media SET bytes = bytes + 1 WHERE id = ?').run(m2);
     await sleep(2100);
     assert.ok(!(await tUbs.call('GET', '/api/telas/config')).data.offline.items.some((x) => /vacina/.test(x.url)), 'hash de outro tamanho não é mandado');
 
@@ -471,19 +473,9 @@ test('NEXA Telas fases 3 e 4: senha em tempo real, totem, cartões, clima, víde
     assert.deepEqual((await tUbs.call('GET', '/api/telas/config')).data.ticker.items, before.ticker);
     assert.ok((await tUbs.call('POST', '/api/telas/heartbeat', { state: 'playing' })).data.alerts.some((x) => x.title === 'Inauguração'));
 
-    /* ---------------------------------------------------------------- EAS: o alerta de emergência do canal nas telas */
-    assert.equal((await A.api('PUT', '/api/c/pref-a-tv/eas', { enabled: true, sources: { defesaCivil: false, inmet: false }, areas: [{ uf: 'RJ', city: 'Niterói', ibge: '3303302' }] })).status, 200);
-    const man = await A.api('POST', '/api/c/pref-a-tv/eas/manual', { event: 'Chuvas intensas', severity: 'Severe', description: 'Chuva forte nas próximas horas.', durationMin: 30 });
-    assert.equal(man.status, 201, JSON.stringify(man.data));
-    hb = (await tUbs.call('POST', '/api/telas/heartbeat', { state: 'playing' })).data;
-    const easAl = hb.alerts.find((x) => x.id >= 1_000_000_000);
-    assert.ok(easAl, JSON.stringify(hb.alerts)); assert.equal(easAl.level, 'critical'); assert.equal(easAl.title, 'Chuvas intensas'); assert.match(easAl.text, /Chuva forte/);
-    assert.deepEqual(Object.keys(easAl).sort(), ['id', 'level', 'sound', 'text', 'title', 'until']); assert.ok(easAl.until > Date.now());
-    assert.ok(!(await tB.call('POST', '/api/telas/heartbeat', { state: 'playing' })).data.alerts.some((x) => x.id >= 1_000_000_000), 'o EAS do canal de A não vai às telas de B');
-    // o teste do sistema não vai às telas; desligado no padrão da prefeitura, nenhum vai
-    assert.equal((await A.api('POST', '/api/c/pref-a-tv/eas/test', {})).status, 201);
-    assert.equal((await tUbs.call('POST', '/api/telas/heartbeat', { state: 'playing' })).data.alerts.filter((x) => x.id >= 1_000_000_000).length, 1);
-    assert.equal((await A.api('PUT', '/api/prefeitura/defaults', { eas: false })).data.eas, false);
+    /* ---------------------------------------------------------------- EAS do canal: sem equivalente no DIGITAL ISP (não há canal no ar) */
+    // a marca do padrão da prefeitura fica guardada, mas nenhum alerta de canal chega às telas
+    assert.equal((await A.api('PUT', '/api/prefeitura/defaults', { eas: true })).status, 200);
     await sleep(2100);
     assert.equal((await tUbs.call('POST', '/api/telas/heartbeat', { state: 'playing' })).data.alerts.filter((x) => x.id >= 1_000_000_000).length, 0);
 
@@ -504,10 +496,11 @@ test('NEXA Telas fases 3 e 4: senha em tempo real, totem, cartões, clima, víde
     /* ---------------------------------------------------------------- modo desligado e exclusão */
     assert.equal((await P('PATCH', `/api/platform/feature-profiles/${prof.data.id}`, { features: { prefeitura: false }, confirm: true })).status, 200);
     await sleep(300);
-    assert.equal((await tUbs.call('GET', '/api/telas/queue')).status, 403);
-    assert.equal((await U('GET', '/api/reparticao/queue')).status, 401);
+    // DIGITAL ISP: a base das telas é sempre incluída (tvcorp, core): a fila da TV e o link da repartição seguem; o Painel da
+    // Prefeitura fecha (no NEXA a TV recebia 403 e o link pedia a entrada de novo)
+    assert.equal((await tUbs.call('GET', '/api/telas/queue')).status, 200);
     assert.equal((await A.api('GET', '/api/prefeitura/approvals')).status, 403);
-    assert.equal((await P('PATCH', `/api/platform/feature-profiles/${prof.data.id}`, { features: { prefeitura: true, eas: true }, confirm: true })).status, 200);
+    assert.equal((await P('PATCH', `/api/platform/feature-profiles/${prof.data.id}`, { features: { prefeitura: true }, confirm: true })).status, 200);
     await sleep(300);
     // excluir a repartição leva as filas, as senhas, os cartões e os vídeos dela
     assert.equal((await A.api('POST', `/api/prefeitura/devices/${tUpa.deviceId}/revoke`)).status, 200);

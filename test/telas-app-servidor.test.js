@@ -7,11 +7,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { boot, cleanup, api, platformLogin, newTenant } from './helpers/srv.js';
+import { canal, usuario } from './helpers/prefeitura.js'; // DIGITAL ISP: canal ao vivo (HLS) e usuário de permissão limitada
 import { tmpDir } from './helpers/tmp.js';
 
 const sha = (b) => createHash('sha256').update(b).digest('hex');
 
-test('NEXA Telas: APK do app pelo servidor (latest.json, latest.apk, update de fábrica e o da prefeitura)', { timeout: 240000 }, async () => {
+test('Prefeitura: APK do app pelo servidor (latest.json, latest.apk, update de fábrica e o da prefeitura)', { timeout: 240000 }, async () => {
   const dir = tmpDir('nexa-telas-app');
   const apk = Buffer.concat([Buffer.from('PK\x03\x04'), Buffer.alloc(50_000, 7)]); // "APK" de mentira
   fs.writeFileSync(path.join(dir, 'NEXA-Telas.apk'), apk);
@@ -35,7 +36,7 @@ test('NEXA Telas: APK do app pelo servidor (latest.json, latest.apk, update de f
     const prof = await P('POST', '/api/platform/feature-profiles', { name: 'Prefeitura', code: 'prefeitura', features: { prefeitura: true } });
     assert.equal((await P('POST', '/api/platform/plans', { code: 'p-pref', name: 'Prefeitura', priceCents: 0, profileId: prof.data.id, limits: { channels: 1 } })).status, 201);
     const A = await newTenant(P, s.base, { slug: 'app-a', planCode: 'p-pref', status: 'active' });
-    assert.equal((await A.api('POST', '/api/channels', { name: 'TV A', slug: 'app-a-tv' })).status, 201);
+    await canal(A.api, 'TV A'); // DIGITAL ISP: o canal ao vivo (HLS) no lugar do canal do NEXA
     const office = (await A.api('POST', '/api/prefeitura/offices', { name: 'UBS Centro', type: 'ubs' })).data;
     const key = (await A.api('POST', '/api/prefeitura/keys', { officeId: office.id })).data.key;
     const act = await anon('POST', '/api/telas/activate', { key, device: { model: 'TV Box de teste' } });

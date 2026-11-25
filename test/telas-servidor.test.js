@@ -13,6 +13,7 @@ import os from 'node:os';
 import { createHash } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { boot, cleanup, api, platformLogin, newTenant } from './helpers/srv.js';
+import { canal, usuario } from './helpers/prefeitura.js'; // DIGITAL ISP: canal ao vivo (HLS) e usuário de permissão limitada
 
 const sha = (s) => createHash('sha256').update(s).digest('hex');
 const rawDb = (dataDir) => new DatabaseSync(path.join(dataDir, 'digitalisp.db'), { timeout: 15000 });
@@ -20,7 +21,7 @@ const rawDb = (dataDir) => new DatabaseSync(path.join(dataDir, 'digitalisp.db'),
 const jpeg = (n = 2000) => Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(n, 0x41), Buffer.from([0xff, 0xd9])]);
 const leaks = (v) => /token_hash|key_hash|link_hash|link_pass|"pin"|"salt"|scrypt\$/.test(JSON.stringify(v));
 
-test('NEXA Telas: modo prefeitura pelo perfil, TV box pelo contrato, grupos, alertas por alcance, isolamento e link de controle', { timeout: 300000 }, async () => {
+test('Prefeitura: modo prefeitura pelo perfil, TV box pelo contrato, grupos, alertas por alcance, isolamento e link de controle', { timeout: 300000 }, async () => {
   // sem APK do app no servidor (TELAS_APP_DIR que não existe): o update só vem do padrão da prefeitura
   const s = await boot({ TELAS_ACTIVATE_PER_IP: '14', PUBLIC_HLS_URL: 'https://hls.exemplo.test', TELAS_APP_DIR: path.join(os.tmpdir(), 'nexa-telas-sem-apk-nao-existe') });
   try {
@@ -29,28 +30,25 @@ test('NEXA Telas: modo prefeitura pelo perfil, TV box pelo contrato, grupos, ale
     const P = api(s.base, await platformLogin(s.base));
 
     /* ---------------------------------------------------------------- o modo: só ligado de propósito */
-    const adminToken = (await anon('POST', '/api/admin/login', { password: 'senha-inicial-longa' })).data.token;
-    const D = api(s.base, adminToken); // cliente padrão (plano Ilimitado: tudo ligado, o modo prefeitura também)
-    const meD = (await D('GET', '/api/me')).data;
-    assert.equal(meD.planFeatures.prefeitura, true, 'o Ilimitado vem com todas as funcionalidades, o modo prefeitura também');
-    assert.equal(meD.plan.code, 'ilimitado', 'o painel usa o código para manter o Comercial no Ilimitado');
-    assert.equal(meD.planFeatures.comercial, true);
-    assert.ok(meD.permissions.includes('prefeitura.manage'), 'Administradores recebem a permissão nova');
-    const off = await D('GET', '/api/prefeitura');
-    assert.equal(off.status, 200, JSON.stringify(off.data));
+    // DIGITAL ISP: não há conta padrão; o modo órgão público é optIn (só vale ligado de propósito no plano)
+    assert.equal((await P('POST', '/api/platform/plans', { code: 'p-sem', name: 'Sem prefeitura', priceCents: 0, features: {} })).status, 201);
+    const Z = await newTenant(P, s.base, { slug: 'sem-pref', planCode: 'p-sem', status: 'active' });
+    const meZ = (await Z.api('GET', '/api/me')).data;
+    assert.notEqual(meZ.planFeatures.prefeitura, true, 'fora do plano');
+    assert.ok(meZ.permissions.includes('prefeitura.manage'), 'Administradores recebem a permissão');
+    assert.equal((await Z.api('GET', '/api/prefeitura')).status, 403, 'sem o modo no plano, o Painel da Prefeitura recusa');
 
-    const prof = await P('POST', '/api/platform/feature-profiles', { name: 'Prefeitura', code: 'prefeitura', features: { prefeitura: true, comercial: true, eas: true } });
+    const prof = await P('POST', '/api/platform/feature-profiles', { name: 'Prefeitura', code: 'prefeitura', features: { prefeitura: true } });
     assert.equal(prof.status, 201, JSON.stringify(prof.data));
     assert.equal(prof.data.features.prefeitura, true);
     const plan = await P('POST', '/api/platform/plans', { code: 'p-pref', name: 'Prefeitura', priceCents: 0, profileId: prof.data.id, limits: { channels: 1 } });
     assert.equal(plan.status, 201, JSON.stringify(plan.data));
     const A = await newTenant(P, s.base, { slug: 'pref-a', planCode: 'p-pref', status: 'active' });
     const B = await newTenant(P, s.base, { slug: 'pref-b', planCode: 'p-pref', status: 'active' });
-    assert.equal((await A.api('POST', '/api/channels', { name: 'TV Prefeitura A', slug: 'pref-a-tv' })).status, 201);
-    assert.equal((await B.api('POST', '/api/channels', { name: 'TV Prefeitura B', slug: 'pref-b-tv' })).status, 201);
+    await canal(A.api, 'TV Prefeitura A'); // DIGITAL ISP: o canal ao vivo (HLS) no lugar do canal do NEXA
+    await canal(B.api, 'TV Prefeitura B'); // DIGITAL ISP: o canal ao vivo (HLS) no lugar do canal do NEXA
     const meA = (await A.api('GET', '/api/me')).data;
     assert.equal(meA.planFeatures.prefeitura, true);
-    assert.equal(meA.planFeatures.comercial, true, 'os dados do Comercial ficam: só o menu some no painel');
 
     // permissão: sem prefeitura.manage, 403; grupo limitado a um canal também não entra
     const first = await A.api('GET', '/api/prefeitura');
@@ -58,12 +56,11 @@ test('NEXA Telas: modo prefeitura pelo perfil, TV box pelo contrato, grupos, ale
     assert.deepEqual([first.data.regions, first.data.offices, first.data.devices, first.data.groups, first.data.keys], [[], [], [], [], []]);
     assert.equal(first.data.channels.length, 1);
     const slugA = first.data.channels[0].slug;
-    const vis = (await A.api('POST', '/api/groups', { name: 'Sem telas', permissions: ['playout.view'] })).data;
-    assert.equal((await A.api('POST', '/api/users', { username: 'semtelas.a', name: 'Sem', password: 'senha-sem-telas-123', groupIds: [vis.id] })).status, 201);
+    // DIGITAL ISP: sem a tela de usuários do NEXA, os usuários de permissão limitada nascem no banco (test/helpers/prefeitura.js)
+    await usuario(s, A.id, { username: 'semtelas.a', password: 'senha-sem-telas-123', permissions: ['tvcorp.manage'] });
     const V = api(s.base, (await anon('POST', '/api/admin/login', { tenant: 'pref-a', username: 'semtelas.a', password: 'senha-sem-telas-123' })).data.token);
     assert.equal((await V('GET', '/api/prefeitura')).status, 403);
-    const lim = (await A.api('POST', '/api/groups', { name: 'Telas de um canal', permissions: ['prefeitura.manage'], channels: [slugA] })).data;
-    assert.equal((await A.api('POST', '/api/users', { username: 'umcanal.a', name: 'Um', password: 'senha-um-canal-1234', groupIds: [lim.id] })).status, 201);
+    await usuario(s, A.id, { username: 'umcanal.a', password: 'senha-um-canal-1234', permissions: ['prefeitura.manage'], channels: [slugA] });
     const L = api(s.base, (await anon('POST', '/api/admin/login', { tenant: 'pref-a', username: 'umcanal.a', password: 'senha-um-canal-1234' })).data.token);
     assert.equal((await L('GET', '/api/prefeitura')).status, 403);
     { const r = await anon('GET', '/api/prefeitura'); assert.equal(r.status, 401, `sem sessão: recusa (${r.status} ${JSON.stringify(r.data)})`); }
@@ -432,10 +429,10 @@ test('NEXA Telas: modo prefeitura pelo perfil, TV box pelo contrato, grupos, ale
     const upd = await P('PATCH', `/api/platform/feature-profiles/${prof.data.id}`, { features: { prefeitura: false }, confirm: true });
     assert.equal(upd.status, 200, JSON.stringify(upd.data));
     assert.equal((await A.api('GET', '/api/prefeitura')).status, 403);
+    // DIGITAL ISP: a base das telas é sempre incluída no plano (tvcorp, core): sem o modo, o Painel da Prefeitura fecha, mas a
+    // TV box segue no ar com o que já tinha (no NEXA a tela recebia 403 até o modo voltar)
     const gone = await T1('GET', '/api/telas/config');
-    assert.equal(gone.status, 403, 'modo desligado não é token revogado'); assert.equal((await hb(T1)).status, 403);
-    assert.equal((await anon('POST', '/api/telas/activate', { key: kOff.key })).status, 404);
-    assert.equal((await anon('POST', '/api/reparticao/login', { token: link2.url.split('/').pop(), password: 'outra-senha-da-ubs' })).status, 401);
+    assert.equal(gone.status, 200, 'a tela segue no ar'); assert.equal((await hb(T1)).status, 200);
     assert.equal((await P('PATCH', `/api/platform/feature-profiles/${prof.data.id}`, { features: { prefeitura: true }, confirm: true })).status, 200);
     assert.equal((await T1('GET', '/api/telas/config')).status, 200, 'ligado de novo: a mesma tela volta sem nova chave');
 
@@ -445,17 +442,8 @@ test('NEXA Telas: modo prefeitura pelo perfil, TV box pelo contrato, grupos, ale
     assert.ok(limited >= 6, `o freio por IP segura as tentativas (${limited} recusadas)`);
     assert.equal((await anon('POST', '/api/telas/activate', { key: kOff.key })).status, 429, 'chave boa também espera');
 
-    /* ---------------------------------------------------------------- excluir o cliente apaga tudo, inclusive as capturas */
+    // DIGITAL ISP: não há exclusão de conta (a revenda suspende ou cancela o cliente; os dados ficam). O trecho do NEXA que
+    // excluía o cliente e conferia as tabelas da prefeitura vazias saiu (docs/PREFEITURA.md, "Sem equivalente")
     db.close();
-    const del = await P('DELETE', `/api/platform/tenants/${A.id}`, { confirm: 'pref-a' });
-    if (del.status === 200) {
-      const db2 = rawDb(s.dataDir);
-      for (const tb of ['telas_regions', 'telas_offices', 'telas_devices', 'telas_groups', 'telas_group_devices', 'telas_keys', 'telas_commands', 'telas_alerts', 'telas_alert_deliveries']) {
-        assert.equal(db2.prepare(`SELECT COUNT(*) AS n FROM ${tb} WHERE tenant_id = ?`).get(A.id).n, 0, `${tb} do cliente excluído`);
-        if (tb === 'telas_offices') assert.equal(db2.prepare('SELECT COUNT(*) AS n FROM telas_offices WHERE tenant_id = ?').get(B.id).n, 1, 'o outro cliente fica');
-      }
-      db2.close();
-      assert.ok(!fs.existsSync(file), 'a captura sai com o cliente');
-    } else assert.fail(`excluir o cliente: ${del.status} ${JSON.stringify(del.data)}`);
   } finally { await s.stop(); cleanup(s.dataDir); }
 });

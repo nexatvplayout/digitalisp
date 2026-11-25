@@ -5,6 +5,7 @@ import { $, el, api, toast, guard, state, store } from '../lib.js';
 import { ufCityPicker } from '../../shared/uf-city.js';
 import { createMap } from '../telas-mapa.js';
 import { ligarCep } from '../cep.js';
+import { municipioCard } from './prefeitura-municipio.js';
 
 const brl = (c) => (c == null ? '—' : (Number(c) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
 const toCents = (v) => { const s = String(v ?? '').trim().replace(/\./g, '').replace(',', '.'); if (!s) return null; const n = Math.round(Number(s) * 100); return Number.isFinite(n) ? n : NaN; };
@@ -126,6 +127,8 @@ function clienteForm(c, planos, done, box) {
       field('Dia do vencimento', inp('dia', c?.cobranca?.diaVencimento ?? 10, { type: 'number', min: 1, max: 28 })),
       field('Valor mensal (R$)', inp('valor', centsIn(c?.cobranca?.valorCents), { inputmode: 'decimal', placeholder: 'vazio = o preço do plano' }))),
     field('Observações', el('textarea', { name: 'notes', rows: 2, maxlength: 1000, text: c?.notes || '' }), { full: true }),
+    // prefeitura (modo órgão público no plano do cliente): o município travado, que só a revenda e a plataforma trocam
+    editando && c.plano?.prefeitura ? municipioCard(`/api/revenda/clientes/${c.id}/telas-municipio`, { idPrefix: 'rcm' }) : null,
     el('div', { class: 'rv-actions' }, el('button', { class: 'primary', type: 'submit', text: editando ? 'Salvar' : 'Cadastrar cliente' })));
   ligarCep({ cep: f.elements.zip, rua: f.elements.street, bairro: f.elements.district, numero: f.elements.number, place });
   f.addEventListener('submit', guard(async (e) => {

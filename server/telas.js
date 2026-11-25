@@ -417,7 +417,7 @@ export function createTelas({
     const tok = /^Bearer ([A-Za-z0-9_-]{32,64})$/.exec(req.get('authorization') || '')?.[1];
     const row = tok ? await db.get(`${DEVICE_SQL} WHERE d.token_hash = ?`, [sha256(tok)]) : null;
     if (!row || row.revoked_at) return res.status(401).json({ error: 'Token inválido ou revogado.', code: 'revoked' });
-    if (!(await available(Number(row.tenant_id)))) return res.status(403).json({ error: 'O NEXA Telas não está disponível para esta prefeitura.', code: 'unavailable' });
+    if (!(await available(Number(row.tenant_id)))) return res.status(403).json({ error: 'As telas não estão disponíveis para esta conta (plano suspenso ou sem o módulo).', code: 'unavailable' });
     req.dev = row; req.tenantId = Number(row.tenant_id);
     next();
   });
@@ -532,7 +532,7 @@ export function createTelas({
         [tenantId, office.id, name, sha256(token), info.model, info.android, info.appVersion, info.serial, t, hwid ? C.hwidHash(hwid) : null]);
       await db.run('UPDATE telas_keys SET used_device = ? WHERE id = ?', [id, k.id]);
       const stream = await streamOf(tenantId, num(office.channel_id), req);
-      await audit({ username: 'tela', action: 'POST /api/telas/activate', detail: `NEXA Telas: tela "${name}" (#${id}) ativada em "${office.name}"${info.model ? `, ${info.model}` : ''}`, status: 200, ip: ipOf(req), tenantId });
+      await audit({ username: 'tela', action: 'POST /api/telas/activate', detail: `Telas: tela "${name}" (#${id}) ativada em "${office.name}"${info.model ? `, ${info.model}` : ''}`, status: 200, ip: ipOf(req), tenantId });
       res.json({ deviceId: Number(id), token, channel: stream?.slug ?? null, name });
     }));
 
@@ -560,7 +560,7 @@ export function createTelas({
       senha.kick(cur.id); interna.kick(cur.id); // o tempo real aberto com o token antigo cai
       forget(tenantId);
       const stream = await streamOf(tenantId, num(office.channel_id), req);
-      await audit({ username: 'tela', action: 'POST /api/telas/recover', detail: `NEXA Telas: tela "${cur.name}" (#${cur.id}) reativada sozinha após reinstalação do app em "${office.name}"${info.model ? `, ${info.model}` : ''}`, status: 200, ip: ipOf(req), tenantId });
+      await audit({ username: 'tela', action: 'POST /api/telas/recover', detail: `Telas: tela "${cur.name}" (#${cur.id}) reativada sozinha após reinstalação do app em "${office.name}"${info.model ? `, ${info.model}` : ''}`, status: 200, ip: ipOf(req), tenantId });
       res.json({ deviceId: Number(cur.id), token, channel: stream?.slug ?? null, name: cur.name });
     }));
 
@@ -697,9 +697,9 @@ export function createTelas({
     app.get('/api/prefeitura/municipio', M, ah(async (req, res) => noStore(res).json({ municipio: municipioDto(await loadMunicipio(req.tenantId)) })));
     /**
      * Grava o município do cliente e busca o contorno. O município é TRAVADO no primeiro cadastro: o painel do cliente
-     * só grava enquanto não há nenhum; trocar ou tirar é do Superadmin (/api/platform/tenants/:id/telas-municipio).
+     * só grava enquanto não há nenhum; trocar ou tirar é da revenda ou da plataforma (server/prefeitura.js).
      */
-    const LOCKED = 'O município da prefeitura já foi definido e fica travado. Só a equipe da plataforma (Superadmin) pode trocar.';
+    const LOCKED = 'O município da prefeitura já foi definido e fica travado. Só a revenda ou a equipe da plataforma podem trocar.';
     async function setMunicipio(tenantId, b, by, { locked = false } = {}) {
       const code = b.ibge == null || b.ibge === '' ? null : Number(b.ibge);
       if (code != null && !(Number.isInteger(code) && code >= 1000000 && code <= 9999999)) throw fail(400, 'Município: código do IBGE inválido (7 dígitos).');
@@ -1602,7 +1602,7 @@ export function createTelas({
       if (tvcorp) mountPanel(redeApp(app), { ...deps, needs: (p) => deps.needs(p === 'prefeitura.manage' ? 'tvcorp.manage' : p) });
     },
     forget, prune, preview, targets, configFor, senha, conteudo, desap, offImg,
-    /** O município de um cliente, para o Superadmin trocar ou tirar (o painel do cliente só define na primeira vez). */
+    /** O município de uma conta, para a revenda ou a plataforma trocar ou tirar (o painel do cliente só define na primeira vez). */
     get municipio() { return municipioApi; },
     interna,
     stop() { senha.stop(); conteudo.stop(); desap.stop(); interna.stop(); tvcorp?.stop?.(); tvcorpDados?.stop?.(); },
