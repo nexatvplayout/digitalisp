@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">NEXA Telas</string>
-    <string name="admin_desc">Mantém a TV box travada no NEXA Telas (modo quiosque).</string>
+    <string name="app_name">DIGITAL ISP</string>
+    <string name="admin_desc">Mantém a TV box travada no DIGITAL ISP (modo quiosque).</string>
     <string name="notif_channel">Quiosque</string>
-    <string name="notif_text">NEXA Telas no ar</string>
+    <string name="notif_text">DIGITAL ISP no ar</string>
 </resources>

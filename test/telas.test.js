@@ -47,7 +47,7 @@ test('catálogo: tipos, módulos de fábrica, o que é "em breve", alcance do li
   assert.deepEqual(TT.officeAlertScopes('inventado'), ['office']);
   assert.deepEqual(TT.LAYOUTS.map((l) => l.key), ['full', 'ticker', 'side', 'lbar', 'portrait', 'queue', 'queue-table', 'queue-big', 'queue-cards', 'queue-header', 'queue-info', 'queue-mosaic', 'queue-duo', 'queue-grid', 'queue-list'], 'os layouts do contrato (§2 e §15)');
   assert.ok(TT.LAYOUT_KEYS.includes('queue'), 'queue vale (a tela só o recebe com a chamada de senha ligada na repartição)');
-  assert.deepEqual(TT.COMMAND_KEYS, ['reload', 'restart-app', 'reboot', 'screenshot']);
+  assert.deepEqual(TT.COMMAND_KEYS, ['reload', 'restart-app', 'reboot', 'screenshot', 'identify']);
   assert.deepEqual(TT.ALERT_LEVEL_KEYS, ['info', 'warn', 'critical']);
   assert.equal(TT.OFFLINE_MS, 120000);
   // situação: sem sinal por 120 s = desligada; ligada com erro ou parada = sem imagem
@@ -61,37 +61,9 @@ test('catálogo: tipos, módulos de fábrica, o que é "em breve", alcance do li
   assert.equal(TT.deviceStatus({ lastSeen: t, revokedAt: t }, t), 'revoked');
 });
 
-test('modo prefeitura no catálogo das funcionalidades: opt-in, com a rota guardada e a permissão própria', () => {
-  const f = CAT.BY_KEY.prefeitura;
-  assert.ok(f && f.optIn === true && f.legacy === false && !f.core);
-  assert.deepEqual(f.views, ['prefeitura']); assert.deepEqual(f.routes, ['* /api/prefeitura*']);
-  assert.equal(CAT.VIEW_FEATURE.prefeitura, 'prefeitura');
-  assert.equal(CAT.resolveFeatures({}).prefeitura, false); assert.equal(CAT.resolveFeatures({ prefeitura: true }).prefeitura, true);
-  assert.equal(CAT.allFeatures().prefeitura, false, 'o "tudo liberado" não liga o modo');
-  assert.equal(CAT.viewAllowed(CAT.allFeatures(), 'prefeitura'), false); assert.equal(CAT.viewAllowed(CAT.allFeaturesWith({ prefeitura: true }), 'prefeitura'), true);
-  const p = PERMISSIONS.find((x) => x.id === 'prefeitura.manage');
-  assert.ok(p && p.area === 'NEXA Telas');
-  // o menu Comercial some com o modo (os dados ficam): a regra está no painel
-  assert.match(read('public/admin/main.js'), /id === 'comercial' && state\.me\.planFeatures\?\.prefeitura && state\.me\.plan\?\.code !== 'ilimitado'\) return false/);
-});
+// (removido no DIGITAL ISP: "modo prefeitura no catálogo…" conferia o painel/banco do NEXA Broadcast; o passo 3 escreve o equivalente)
 
-test('esquema: só CREATE ... IF NOT EXISTS, todo dado com tenant_id, nos dois dialetos e nas listas da cópia', () => {
-  for (const d of ['sqlite', 'pg']) {
-    // as tabelas da TV Corporativa (docs/TV-CORPORATIVA.md §3) entram nas mesmas listas: o mesmo crivo vale para elas
-    const ddl = [telasDDL(d), tvcorpDDL(d), tvcorpDadosDDL(d)].join('\n');
-    const stmts = ddl.split(';').map((s) => s.trim()).filter(Boolean);
-    for (const s of stmts) assert.match(s, /^CREATE (TABLE|INDEX|UNIQUE INDEX) IF NOT EXISTS /, s.slice(0, 60));
-    const tables = [...ddl.matchAll(/CREATE TABLE IF NOT EXISTS (\w+) \(([^;]+)\)/g)];
-    assert.deepEqual(tables.map((m) => m[1]).sort(), [...TELAS_TABLES].sort());
-    for (const m of tables) assert.match(m[2], /\btenant_id\s+\w+ (NOT NULL|PRIMARY KEY)/, `${m[1]} sem tenant_id`); // tvcorp_settings: uma linha por cliente
-    assert.ok(!/REFERENCES|FOREIGN KEY|ALTER TABLE|DROP /i.test(ddl), 'sem chave estrangeira nem alteração de tabela antiga');
-    assert.ok(!/\b(pin|password|token|key)\s+TEXT/i.test(ddl), 'nenhum segredo em claro: só *_hash e link_pass (scrypt)');
-  }
-  assert.match(telasDDL('pg'), /DOUBLE PRECISION/); assert.match(telasDDL('sqlite'), /INTEGER PRIMARY KEY AUTOINCREMENT/);
-  for (const t of TELAS_TABLES) { assert.ok(TELAS_COPY.includes(t)); assert.ok(COPY_ORDER.includes(t), `COPY_ORDER tem ${t}`); }
-  for (const t of TELAS_IDENTITY) assert.ok(IDENTITY_TABLES.includes(t));
-  assert.ok(!TELAS_IDENTITY.includes('telas_group_devices') && !TELAS_IDENTITY.includes('telas_alert_deliveries'), 'tabelas de vínculo sem id');
-});
+// (removido no DIGITAL ISP: "esquema: só CREATE…" conferia o painel/banco do NEXA Broadcast; o passo 3 escreve o equivalente)
 
 test('chave de acesso: 8 símbolos sem ambíguos, com ou sem hífen, sem diferenciar maiúsculas; token opaco de 32 bytes', () => {
   assert.equal(C.KEY_ALPHABET.length, 32); assert.ok(!/[IO01]/.test(C.KEY_ALPHABET));
@@ -180,7 +152,7 @@ test('contrato: o JSON da configuração tem exatamente os campos do contrato e 
   assert.notEqual(C.revOf(C.contractConfig({ ...args, eff: capEff })), C.revOf(cfg), 'mudar as legendas muda o rev');
   assert.deepEqual(cfg.device, { id: 12, name: 'UBS Centro, recepção', office: 'UBS Centro', officeType: 'ubs', region: 'Centro' });
   assert.deepEqual(cfg.stream, { hls: 'https://hls.test/hls/x/master.m3u8', backup: null, volume: 100, muted: false });
-  assert.deepEqual(cfg.ticker, { items: ['A'], speed: 60 }); assert.deepEqual(cfg.side, { widgets: ['clock'], qrUrl: null, title: null });
+  assert.deepEqual(cfg.ticker, { items: ['A'], speed: 60, style: null, rich: [{ text: 'A' }] }); assert.deepEqual(cfg.side, { widgets: ['clock'], qrUrl: null, title: null });
   assert.deepEqual(Object.keys(cfg.lock), ['pinHash', 'pinSalt', 'exitSeq']); assert.equal(cfg.lock.pinHash, sha(`${cfg.lock.pinSalt}1234`));
   assert.deepEqual([cfg.offline, cfg.schedule, cfg.heartbeatSec], [{ items: [], image: null }, null, 30]);
   assert.deepEqual(C.contractConfig({ ...args, region: null, eff: C.effectiveConfig({}) }).lock, { pinHash: null, pinSalt: null, exitSeq: ['UP', 'UP', 'DOWN', 'DOWN', 'OK'] }, 'sem PIN: nulos');
@@ -332,35 +304,7 @@ test('mapa próprio: Web Mercator ida e volta, quadros que cobrem a caixa, raio 
   assert.ok(M.fitView([{ lat: -33, lng: -70 }, { lat: 60, lng: 100 }], 800, 500).zoom === M.MIN_ZOOM, 'pontos no mundo inteiro: o zoom mínimo');
 });
 
-test('painel: a tela registrada, sem biblioteca nem script de fora, sem innerHTML, o crédito do OpenStreetMap e os pinos sem o fundo', () => {
-  const html = read('public/admin/index.html'); const main = read('public/admin/main.js'); const view = read('public/admin/views/prefeitura.js'); const map = read('public/admin/telas-mapa.js'); const css = read('public/admin/prefeitura.css');
-  assert.match(html, /<a href="#prefeitura" data-view="prefeitura" hidden>/); assert.match(html, /<div class="sep" data-sec="telas">NEXA Telas<\/div>/);
-  assert.match(html, /<section class="view" id="view-prefeitura" hidden>[\s\S]{0,300}id="pfPanel"/); assert.match(html, /href="prefeitura\.css"/);
-  assert.match(main, /import prefeitura from '\.\/views\/prefeitura\.js'/); assert.match(main, /prefeitura: \{ view: 'prefeitura\.manage' \}/);
-  assert.ok(/const VIEWS = \[[^\]]*\bprefeitura\b/.test(main), 'a tela está na lista de telas do painel');
-  for (const tab of ['mapa', 'telas', 'grupos', 'reparticoes', 'regioes', 'alertas']) assert.ok(view.includes(`['${tab}', '`), `aba ${tab}`);
-  for (const [name, src] of [['prefeitura.js', view], ['telas-mapa.js', map]]) {
-    assert.ok(!/innerHTML|outerHTML|insertAdjacentHTML|document\.write|\beval\(|new Function/.test(src), `${name}: texto só por textContent`);
-    assert.ok(!/<script|createElement\(['"]script|import\(['"]https?:|from ['"]https?:/.test(src), `${name}: nenhum script de fora`);
-  }
-  // o único endereço de fora do mapa são os quadros do OpenStreetMap (imagens) e o crédito que a licença pede
-  const urls = [...map.matchAll(/https?:\/\/[^\s'"`)]+/g)].map((m) => m[0]);
-  assert.deepEqual([...new Set(urls.map((u) => new URL(u.replace(/\{[a-z]\}/g, '0')).host))].sort(), ['tile.openstreetmap.org', 'www.openstreetmap.org']);
-  assert.match(map, /© OpenStreetMap/); assert.match(map, /https:\/\/www\.openstreetmap\.org\/copyright/); assert.match(map, /rel: 'noopener noreferrer'/);
-  assert.match(map, /addEventListener\('error', \(\) => \{ img\.hidden = true; \}\)/, 'quadro que falha some; os pinos ficam sobre o fundo liso');
-  assert.match(css, /\.pf-map \{[^}]*background: #[0-9a-f]{6}/, 'o mapa tem fundo próprio sem os quadros');
-  // (a única exceção é a malha do IBGE, buscada pelo navegador quando o servidor não alcança o IBGE: test/telas-municipio.test.js)
-  assert.ok(!/https?:\/\//.test(view.replace(/placeholder: 'https:\/\/…[^']*'/g, '').replace('https://servicodados.ibge.gov.br/api/v3/malhas/municipios/', '')), 'a tela não cita endereço de fora');
-  // a captura abre com a sessão do painel (blob:), nunca com o token no endereço
-  assert.match(view, /fetch\(`\/api\/prefeitura\/devices\/\$\{d\.id\}\/screenshot`, \{ headers: \{ 'x-admin-token'/); assert.ok(!/screenshot\?.*token/.test(view));
-  // a chave e o link aparecem uma vez; o PIN vai como campo de senha
-  assert.match(view, /Ela aparece só agora, vale para UMA tela e vence em 24 horas/); assert.match(view, /O link aparece só agora/);
-  assert.match(view, /type: 'password', inputmode: 'numeric'/);
-  // a prévia antes de mandar e a confirmação
-  assert.match(view, /\/api\/prefeitura\/alerts\/preview/); assert.match(view, /confirm\(`Enviar o alerta/);
-  // a precedência explicada na tela
-  assert.match(view, /o que a própria tela define, depois os grupos dela, depois a repartição e, por fim, o padrão da prefeitura/);
-});
+// (removido no DIGITAL ISP: "painel: a tela registrada…" conferia o painel/banco do NEXA Broadcast; o passo 3 escreve o equivalente)
 
 test('página da repartição: CSP estrita sem inline, nada de fora, a sessão só na aba e o link fora do endereço das chamadas', () => {
   const html = read('public/reparticao/index.html'); const srv = read('server/telas.js');
@@ -377,7 +321,7 @@ test('página da repartição: CSP estrita sem inline, nada de fora, a sessão s
   assert.ok(!/innerHTML|outerHTML|insertAdjacentHTML|document\.write|\beval\(|\.style\b|setAttribute\('style'/.test(js), 'texto só por textContent e nenhum estilo pelo script');
   // o que a página importa: o catálogo, a prévia, os módulos dela e o mapa do painel (sem o fundo de fora: tiles: false)
   const imports = [...new Set([...js.matchAll(/from '([^']+)'/g)].map((m) => m[1]))].filter((p) => !/^\/reparticao\/rep-[a-z]+\.js$/.test(p)).sort();
-  assert.deepEqual(imports, ['../cg/qr.js', './telas-tipos.js', '/admin/telas-mapa.js', '/shared/telas-amostras.js', '/shared/telas-previa.js', '/shared/telas-salas.js', '/shared/telas-tipos.js', '/shared/triagem-catalogo.js']);
+  assert.deepEqual(imports, ['./qr.js', './telas-tipos.js', '/admin/telas-mapa.js', '/shared/telas-amostras.js', '/shared/telas-previa.js', '/shared/telas-salas.js', '/shared/telas-tipos.js', '/shared/triagem-catalogo.js']);
   assert.match(js, /createMap\(box, \{ tiles: false,/); assert.ok(!/createMap\((?![^)]*tiles: false)/.test(js), 'o mapa da repartição nunca busca o fundo de fora');
   assert.match(read('public/admin/telas-mapa.js'), /const want = useTiles \? tilesFor\(view, view\.zoom, w, h\) : \[\];/);
   assert.match(js, /sessionStorage/); assert.ok(!/localStorage(?!\.(getItem|setItem|removeItem)\(ROOM_KEY[,)])|document\.cookie/.test(js), 'a sessão fica só nesta aba (no navegador, só o número da sala escolhida)');
@@ -388,4 +332,17 @@ test('página da repartição: CSP estrita sem inline, nada de fora, a sessão s
   // servidor: nada de segredo em log; as rotas de alto volume fora do log de auditoria
   assert.ok(!/console\.(log|warn|error)\([^)]*(token|key|password|pin)/i.test(srv), 'nenhum segredo em console.*');
   assert.match(read('server/index.js'), /'\/telas\/heartbeat', '\/telas\/screenshot'\]\)/);
+});
+
+test('faixa: estilo da faixa e de cada aviso; o app antigo recebe só o texto', async () => {
+  const { cleanAviso, tickerTexts, tickerRich } = await import('../server/telas-conteudo-core.js');
+  const { cleanTickerStyle } = await import('../public/shared/faixa.js');
+  assert.equal(cleanAviso('[institucional] {c=#FF0000;b} Promoção', 200), '[institucional] {c=#ff0000;b} Promoção');
+  assert.equal(cleanAviso('{b;c=#zz} Só negrito', 200), '{b} Só negrito');
+  assert.deepEqual(tickerTexts(['{c=#ff0000;b;i} Oferta', 'Normal']), ['Oferta', 'Normal']);
+  assert.deepEqual(tickerRich(['{c=#ff0000;b;i} Oferta', 'Normal']), [{ text: 'Oferta', color: '#ff0000', bold: true, italic: true }, { text: 'Normal' }]);
+  assert.equal(tickerRich(['[institucional] {b} Aviso'], true).length, 0); // institucional retido no período eleitoral
+  const st = cleanTickerStyle({ color: '#FFFFFF', bg: 'azul', size: 200, font: 'x', sep: 'barra', label: '  AVISOS  ', bold: false });
+  assert.deepEqual(st, { color: '#ffffff', bg: '#0b1e3a', bold: false, italic: false, size: 90, font: 'sans', sep: 'barra', label: 'AVISOS', labelColor: '#ffffff', labelBg: '#1d4ed8' });
+  assert.equal(cleanTickerStyle(null), null);
 });

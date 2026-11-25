@@ -1,0 +1,328 @@
+/* NEXA Broadcast · painel TV Corporativa (views/tvcorp*.js, docs/TV-CORPORATIVA.md §6). Usa os tokens do painel
+   (tokens.css) e as peças da Prefeitura (prefeitura.css: pf-grid, pf-f, pf-table, pf-dlg, pf-btns, pf-counters…); aqui só
+   o que é novo. A prévia das TVs fica em /shared/tvcorp-previa.css. */
+.tc-tabs { flex-wrap: wrap; }
+.tc-box { display: flex; flex-direction: column; gap: 12px; }
+.tc-box > div { display: flex; flex-direction: column; gap: 12px; }
+.tc-empty { padding: 10px 0; }
+.tc-demo { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; border-color: var(--c-accent); }
+.tc-off h3 { margin-top: 0; }
+.tc-two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 1100px) { .tc-two { grid-template-columns: minmax(0, 1fr); } }
+.tc-sec { display: flex; flex-direction: column; gap: 10px; }
+.tc-sec h3 { margin: 0; font-size: var(--text-lg); }
+.tc-seg .btn.primary { pointer-events: none; }
+
+/* resumo */
+.tc-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.tc-card { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; background: var(--c-panel); border: 1px solid var(--c-line); border-radius: 8px; text-align: left; color: var(--c-fg); font: inherit; }
+button.tc-card { cursor: pointer; }
+button.tc-card:hover { border-color: var(--c-line-hover); }
+.tc-card .tc-num { font-size: 26px; font-family: var(--font-mono); line-height: 1.1; }
+.tc-card span { color: var(--c-dim); font-size: var(--text-sm); }
+.tc-card.on { border-left: 3px solid var(--c-pvw); }
+.tc-card.warn { border-left: 3px solid var(--c-warn); }
+.tc-card.off { border-left: 3px solid var(--c-live); }
+
+/* situação dos itens */
+.pf-chip.tc-ok { border-color: var(--c-pvw-tag); color: var(--c-ok); }
+.pf-chip.tc-pending { border-color: var(--c-warn); color: var(--c-warn); }
+.pf-chip.tc-rejected { border-color: var(--c-danger-line); color: var(--c-danger); }
+.pf-chip.tc-band.b-ok { color: var(--c-ok); } .pf-chip.tc-band.b-warn { color: var(--c-warn); } .pf-chip.tc-band.b-bad { color: var(--c-danger); }
+
+/* telas */
+.tc-mapbox { height: 460px; }
+.tc-shot { max-width: 100%; border-radius: 6px; }
+
+/* mídias */
+.tc-drop { display: flex; flex-direction: column; justify-content: center; gap: 6px; min-height: 120px; padding: 16px; border: 2px dashed var(--c-line-strong); border-radius: 8px; cursor: pointer; background: var(--c-sunken); }
+.tc-drop:hover, .tc-drop:focus, .tc-drop.over { border-color: var(--c-accent); outline: none; }
+.tc-tpls { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.tc-tpl { display: flex; flex-direction: column; gap: 4px; padding: 6px; background: var(--c-panel); border: 1px solid var(--c-line); border-radius: 6px; color: var(--c-fg-2); font: inherit; font-size: var(--text-xs); cursor: pointer; text-align: left; }
+.tc-tpl:hover, .tc-tpl:focus { border-color: var(--c-accent); outline: none; }
+.tc-mgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.tc-mcard { display: flex; flex-direction: column; background: var(--c-panel); border: 1px solid var(--c-line); border-radius: 8px; overflow: hidden; }
+.tc-mcard.pending { border-color: var(--c-warn); }
+.tc-thumb { aspect-ratio: 16 / 9; background: #05070b; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.tc-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.tc-thumb.port img { object-fit: contain; } /* a imagem em pé (1080×1920) aparece inteira na miniatura deitada */
+.tc-thumb .tvc-sl { width: 100%; }
+.tc-mcard-b, .tc-lcard-b { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; }
+.tc-slide-pv { max-width: 560px; }
+/* slide em pé (9:16): na miniatura 16:9 ele ocupa a altura toda; na prévia do editor, uma coluna estreita */
+.tc-thumb .tvc-sl.tvc-port { width: 31.64%; }
+.tc-slide-pv > .tvc-sl.tvc-port { max-width: 300px; margin: 0 auto; }
+
+/* templates prontos (aba Templates) */
+.tp-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0 12px; }
+.tp-bar input[type="search"] { flex: 1 1 240px; min-width: 200px; }
+.tp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.tp-card { display: flex; flex-direction: column; background: var(--c-panel); border: 1px solid var(--c-line); border-radius: 8px; overflow: hidden; }
+.tp-card .tc-thumb { cursor: pointer; }
+.tp-card-b { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; }
+.tp-card-b b { font-size: var(--text-sm); }
+.tp-more { display: flex; justify-content: center; padding: 14px 0; }
+.tp-up { max-width: 640px; }
+
+/* playlists */
+.tc-items { list-style: none; margin: 6px 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: 60vh; overflow: auto; }
+.tc-item { border: 1px solid var(--c-line); border-radius: 6px; background: var(--c-panel); }
+.tc-item.sel { border-color: var(--c-select-line); }
+.tc-item.over { border-color: var(--c-accent); }
+.tc-item.drag { opacity: 0.5; }
+.tc-item-row { display: flex; align-items: center; gap: 6px; padding: 4px 6px; flex-wrap: wrap; }
+.tc-grip { cursor: grab; color: var(--c-dim); font-family: var(--font-mono); letter-spacing: -2px; padding: 0 4px; }
+.tc-item-name { flex: 1; min-width: 160px; display: flex; flex-direction: column; align-items: flex-start; background: none; border: 0; color: var(--c-fg); font: inherit; text-align: left; cursor: pointer; padding: 2px; }
+.tc-secs { width: 64px; }
+.tc-when { padding: 6px 10px 10px; border-top: 1px solid var(--c-line-soft); }
+.tc-item-pv { max-width: 420px; aspect-ratio: 16 / 9; }
+.tc-item-pv > * { width: 100%; height: 100%; }
+
+/* layouts */
+.tc-lgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.tc-lcard { display: flex; flex-direction: column; background: var(--c-panel); border: 1px solid var(--c-line); border-radius: 8px; overflow: hidden; }
+.tc-lcard .tvc-previa { max-width: none; border: 0; border-radius: 0; }
+.tc-lcard .tvc-previa.port { max-width: 120px; align-self: center; }
+.tc-zedit { width: 100%; max-width: 560px; aspect-ratio: 16 / 9; display: block; touch-action: none; user-select: none; background: #05070b; border: 1px solid var(--c-line); border-radius: 6px; }
+.tc-zedit.port { max-width: 240px; aspect-ratio: 9 / 16; }
+.tc-zbg { fill: #0b1220; }
+.tc-zgrid { stroke: rgba(255, 255, 255, 0.06); stroke-width: 0.3; }
+.tc-zg { outline: none; }
+.tc-zr { fill: rgba(79, 143, 214, 0.25); stroke: #4f8fd6; stroke-width: 0.5; cursor: move; }
+.tc-zg.k-video .tc-zr { fill: rgba(217, 45, 32, 0.25); stroke: #ff3b30; }
+.tc-zg.k-ticker .tc-zr { fill: rgba(245, 179, 28, 0.25); stroke: #f5b31c; }
+.tc-zg.k-queue .tc-zr { fill: rgba(47, 194, 107, 0.25); stroke: #2fc26b; }
+.tc-zg.sel .tc-zr, .tc-zg:focus .tc-zr { stroke: #fff; stroke-width: 0.9; }
+.tc-zt { font: 600 4px/1 var(--font-sans); fill: #fff; pointer-events: none; }
+.tc-zt2 { font: 3.2px/1 var(--font-mono); fill: #c9cdd6; pointer-events: none; }
+.tc-zh { fill: #fff; stroke: #0b1220; stroke-width: 0.4; cursor: nwse-resize; }
+.tc-num-in { width: 64px; }
+.tc-id-in { width: 90px; }
+tr.tc-sel td { background: var(--c-panel-3); }
+
+/* grade: a semana */
+.tc-week { width: 100%; max-width: 980px; display: block; background: var(--c-panel); border: 1px solid var(--c-line); border-radius: 8px; }
+.tc-wcol { fill: var(--c-panel); } .tc-wcol.alt { fill: var(--c-panel-2); }
+.tc-wday { font: 600 10px var(--font-mono); fill: var(--c-fg-2); text-transform: uppercase; }
+.tc-whour { font: 9px var(--font-mono); fill: var(--c-dim); }
+.tc-wline { stroke: var(--c-line-soft); stroke-width: 1; }
+.tc-wblk { stroke: rgba(0, 0, 0, 0.4); stroke-width: 1; cursor: pointer; opacity: 0.9; }
+.tc-wblk:hover, .tc-wblk:focus { opacity: 1; stroke: #fff; outline: none; }
+.tc-wblk.pending { stroke-dasharray: 3 2; opacity: 0.6; }
+.tc-wtxt { font: 600 9px var(--font-sans); fill: #fff; pointer-events: none; }
+.tc-wblk.c0 { fill: #2563eb; } .tc-wblk.c1 { fill: #16a34a; } .tc-wblk.c2 { fill: #d97706; } .tc-wblk.c3 { fill: #9333ea; }
+.tc-wblk.c4 { fill: #dc2626; } .tc-wblk.c5 { fill: #0891b2; } .tc-wblk.c6 { fill: #db2777; } .tc-wblk.c7 { fill: #4d7c0f; }
+.tc-wlegend { display: flex; flex-wrap: wrap; gap: 6px; }
+.pf-chip.tc-c { border-left-width: 6px; }
+.pf-chip.tc-c.c0 { border-left-color: #2563eb; } .pf-chip.tc-c.c1 { border-left-color: #16a34a; } .pf-chip.tc-c.c2 { border-left-color: #d97706; } .pf-chip.tc-c.c3 { border-left-color: #9333ea; }
+.pf-chip.tc-c.c4 { border-left-color: #dc2626; } .pf-chip.tc-c.c5 { border-left-color: #0891b2; } .pf-chip.tc-c.c6 { border-left-color: #db2777; } .pf-chip.tc-c.c7 { border-left-color: #4d7c0f; }
+
+/* indicadores */
+.tc-chart { width: 100%; max-width: 720px; display: block; background: var(--c-panel); border-radius: 6px; }
+.tc-axis { stroke: var(--c-line-strong); }
+.tc-target { stroke: var(--c-warn); stroke-dasharray: 6 4; }
+.tc-line { fill: none; stroke: var(--c-select-line); stroke-width: 2; }
+.tc-pt { fill: var(--c-select-line); }
+
+/* barras e widgets */
+.tc-wgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.tc-wcard { display: flex; flex-direction: column; background: var(--c-panel); border: 1px solid var(--c-line); border-radius: 8px; overflow: hidden; }
+.tc-wcard > .tvc-it { aspect-ratio: 16 / 9; height: auto; }
+.tc-week-menu { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+
+/* aprovações */
+.tc-apv { max-width: 280px; display: flex; flex-direction: column; gap: 4px; }
+.tc-apv-img { max-width: 280px; border-radius: 4px; }
+
+/* celular, instalar e configurações */
+.tc-qr-big { width: 200px; height: 200px; display: block; }
+.tc-print { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.tc-steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 10px; }
+.tc-apk { display: flex; flex-direction: column; gap: 8px; }
+.tc-logo { max-width: 200px; max-height: 120px; background: repeating-conic-gradient(#2a313d 0 25%, #1a1f28 0 50%) 0 0 / 16px 16px; border-radius: 6px; padding: 6px; }
+.tc-theme-pv { max-width: 420px; }
+.tc-total td { font-weight: 700; border-top: 1px solid var(--c-line-strong); }
+
+/* impressão: só a folha do QR code (Celular) ou só o relatório (Relatórios) */
+@media print {
+  body.tc-printing > *:not(dialog), body.tc-printing dialog .pf-dlg-head, body.tc-printing dialog .pf-dlg-foot,
+  body.tc-printing dialog .pf-dlg-body > div > *:not(.tc-print) { display: none !important; }
+  body.tc-printing dialog { position: static; border: 0; box-shadow: none; }
+  body.tc-printing-report * { visibility: hidden; }
+  body.tc-printing-report .tc-report, body.tc-printing-report .tc-report * { visibility: visible; color: #000; }
+  body.tc-printing-report .tc-report { position: absolute; left: 0; top: 0; width: 100%; }
+}
+
+/* a imagem que veio com a sugestão do celular (aba Celular) */
+.tc-sug-img { display: block; max-width: 100%; max-height: 70vh; margin: 0 auto; border-radius: 8px; }
+
+/* playlists: a prévia do que vai entrar e a criação rápida (lista vazia) */
+.tc-cand-pv { margin-bottom: 6px; }
+.tc-quick { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.tc-quick:empty { display: none; }
+
+/* os quadros dos layouts: tamanho em pixels e a dica da arte */
+.tc-quadros { margin-top: 4px; color: var(--c-dim, #9fb0c8); }
+.tc-onde { border: 1px solid var(--c-line, #24324a); border-left: 3px solid var(--brand-cyan, #2ec5d3); border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; }
+.tc-onde p { margin: 4px 0 0; }
+.warn { color: #f5c55c; }
+.tp-dica { margin: 6px 0 10px; padding: 8px 12px; border-radius: 8px; background: rgba(46, 197, 211, .1); border: 1px solid rgba(46, 197, 211, .35); }
+
+/* templates PREMIUM (foto própria gerada por IA) */
+.tc-thumb.tp-prem { position: relative; }
+.tp-tag { position: absolute; top: 6px; right: 6px; z-index: 2; padding: 2px 8px; border-radius: 999px; font: 700 .68rem/1.4 system-ui, sans-serif; letter-spacing: .06em; color: #1a1300; background: linear-gradient(135deg, #ffd86b, #f5a623); box-shadow: 0 1px 4px rgba(0,0,0,.4); }
+
+/* a faixa de avisos: editor e prévia rolando (tvcorp-faixa.js) */
+.fx-pv { margin: 6px 0 14px; }
+.fx-bar { display: flex; align-items: stretch; height: 56px; border-radius: 8px; overflow: hidden; }
+.fx-label { display: flex; align-items: center; padding: 0 14px; font-size: calc(var(--fx-size) * .5px); font-style: normal; white-space: nowrap; }
+.fx-win { flex: 1; overflow: hidden; display: flex; align-items: center; }
+.fx-track { display: inline-flex; white-space: nowrap; animation: fx-rola 20s linear infinite; font-size: calc(var(--fx-size) * .56px); }
+.fx-run { padding-right: 3em; }
+.fx-vazio { opacity: .6; }
+@keyframes fx-rola { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .fx-track { animation: none; } }
+.fx-rows { display: grid; gap: 6px; margin-bottom: 8px; }
+.fx-row { display: flex; gap: 6px; align-items: center; }
+.fx-row input[type=text] { flex: 1; min-width: 0; }
+.fx-tg { min-width: 34px; }
+.fx-tg.on { background: var(--brand-blue, #1d4ed8); color: #fff; border-color: var(--brand-blue, #1d4ed8); }
+.fx-corlin { display: inline-flex; align-items: center; gap: 4px; }
+.fx-corlin input[type=color], .fx-cor input[type=color] { width: 38px; height: 30px; padding: 0; border: 1px solid var(--c-line, #24324a); border-radius: 6px; background: none; }
+.fx-cor { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.fx-sw { width: 20px; height: 20px; border-radius: 50%; border: 1px solid rgba(255,255,255,.35); cursor: pointer; padding: 0; }
+.fx-rng { display: flex; align-items: center; gap: 8px; } .fx-rng input { flex: 1; }
+.fx-b { font-weight: 800; } .fx-i { font-style: italic; }
+.fx-bar { display: block; width: 100%; height: auto; border-radius: 8px; }
+.fx-sw { display: inline-flex; width: 22px; height: 22px; border: 0; background: none; } .fx-sw svg { width: 20px; height: 20px; }
+
+/* layouts: os conjuntos de várias TVs lado a lado e a marca de quantas TVs o modelo usa */
+.tc-set-row { display: flex; gap: 4px; padding: 6px; background: #05070b; align-items: flex-end; }
+.tc-set-tv { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.tc-set-tv .tvc-previa { max-width: none; width: 100%; border-radius: 2px; }
+.tc-set-row.port .tc-set-tv .tvc-previa { max-width: 140px; }
+.tc-set { grid-column: span 2; }
+.pf-chip.tc-tvs { font-weight: 700; }
+.tc-layer { display: inline-flex; align-items: center; gap: 6px; margin-right: 6px; }
+.tc-zg.ov .tc-zr { fill: rgba(245, 179, 28, 0.18); stroke-dasharray: 1.2 0.8; }
+
+/* o vídeo na biblioteca */
+.tc-thumb { position: relative; }
+.tc-vbadge { position: absolute; left: 8px; bottom: 8px; padding: 2px 8px; border-radius: 6px; background: rgba(0,0,0,.7); color: #fff; font-size: .78rem; font-weight: 700; }
+.tc-err { color: #ff8a80; }
+
+.tc-qrf { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.tc-qrf input { flex: 1; min-width: 140px; }
+
+/* efeitos dos itens da playlist */
+.tc-fx { width: auto; padding: 2px 4px; font-size: .8rem; }
+.tc-fxbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 10px; }
+.tc-fxbar select { width: auto; }
+
+/* rádio de fundo do layout */
+.tc-radio-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.tc-radio-bar input[type=search] { flex: 1; min-width: 180px; }
+.tc-radio-bar select { width: auto; }
+.tc-radio-res { width: 100%; margin: 6px 0; }
+.tc-radio-audio { width: 100%; margin-top: 6px; }
+/* editor de layouts: a tabela das zonas rola dentro da caixa, e a prévia "Como fica na TV" cabe inteira */
+.tc-zones-wrap { max-width: 100%; overflow-x: auto; }
+/* o corpo do diálogo é uma grade: sem min-width 0 o filho cresce até a largura da tabela e corta a prévia à direita */
+.tc-dlg .pf-dlg-body > * { min-width: 0; }
+.tc-wall-form .tc-pv-box { max-width: 640px; }
+.tc-two > div { min-width: 0; }
+.tc-pv-box { max-width: 100%; overflow: hidden; }
+/* conjuntos de telas: a grade das TVs (cardápio por tela) */
+.tc-wall-grid { display: grid; gap: 4px; padding: 6px; background: #05070b; }
+.tc-wall-grid.c-1 { grid-template-columns: minmax(0, 1fr); }
+.tc-wall-grid.c-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.tc-wall-grid.c-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.tc-wall-grid.c-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.tc-wall-grid.c-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.tc-wall-grid.c-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.tc-wall-grid .tvc-previa { max-width: none; width: 100%; border-radius: 2px; }
+.tc-wall-empty { display: flex; align-items: center; justify-content: center; width: 100%; aspect-ratio: 16 / 9; border: 1px dashed #334155; border-radius: 2px; color: #64748b; font-weight: 700; font-size: 20px; }
+.tc-wall-empty.port { aspect-ratio: 9 / 16; }
+.tc-wall-form > * + * { margin-top: 10px; }
+
+/* gerenciador de QR code */
+.qr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; margin-top: 12px; }
+.qr-card { display: flex; gap: 12px; align-items: flex-start; }
+.qr-card.off { opacity: .55; }
+.qr-img { flex: 0 0 120px; }
+.qr-img .qr-svg, .qr-pv .qr-svg { width: 100%; height: auto; display: block; border-radius: 6px; }
+.qr-pv { max-width: 260px; }
+.qr-b { flex: 1; min-width: 0; display: grid; gap: 4px; }
+.qr-b code { font-size: .78rem; word-break: break-all; }
+.qr-graf { width: 100%; height: 32px; }
+
+/* a prévia grande e ao vivo */
+dialog.tc-live-dlg { width: min(96vw, 1600px); max-width: 96vw; }
+.tc-live-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin-bottom: 10px; }
+.tc-live-sel { display: grid; gap: 2px; } .tc-live-sel select { width: auto; }
+.tc-live-palco { width: 100%; background: #000; border-radius: 8px; overflow: hidden; }
+.tc-live-palco .tvc-previa { max-width: none; width: min(100%, calc(78vh * 16 / 9)); margin: 0 auto; }
+/* tela cheia: o desenho inteiro, na proporção da tela (16:9 ou 9:16), centrado no preto, sem esticar */
+.tc-live-palco:fullscreen { display: flex; align-items: center; justify-content: center; width: 100vw; height: 100vh; border-radius: 0; }
+.tc-live-palco:fullscreen .tvc-previa { width: min(100vw, calc(100vh * 16 / 9)); max-width: none; max-height: none; border: 0; border-radius: 0; flex: none; }
+.tc-live-palco.port:fullscreen .tvc-previa { width: min(100vw, calc(100vh * 9 / 16)); }
+.tc-live-palco.port .tvc-previa { width: min(100%, calc(78vh * 9 / 16)); margin: 0 auto; }
+.tc-live-video { width: 100%; height: 100%; object-fit: contain; background: #000; display: block; }
+.tc-live-video.cobrir { object-fit: cover; }
+/* editor de layout largo (quase a tela toda) e a tabela das zonas compacta: sem barra de rolagem de lado */
+dialog.pf-dlg.tc-lay-dlg { width: min(97vw, 1560px); max-width: 97vw; }
+.tc-zones-wrap .tc-num-in { width: 62px; min-width: 0; }
+.tc-zones-wrap .tc-id-in { width: 110px; min-width: 0; }
+.tc-zones-wrap td > select { width: 150px; }
+.tc-zones-wrap td { padding-left: 6px; padding-right: 6px; }
+.tc-zones-wrap .tc-qrf select { max-width: 100%; }
+/* slide em pé (9:16) na prévia do item: a caixa vira em pé também, em vez de espremer o slide numa caixa deitada */
+.tc-item-pv:has(> .tvc-port) { aspect-ratio: 9 / 16; max-width: 250px; }
+
+/* o construtor de páginas (tvcorp-pagina.js): os controles à esquerda e a prévia do tamanho da TV à direita */
+.tc-pg { display: grid; grid-template-columns: minmax(330px, 440px) minmax(0, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 1000px) { .tc-pg { grid-template-columns: minmax(0, 1fr); } }
+.tc-pg > div { min-width: 0; }
+.tc-pg-side { display: grid; gap: 8px; max-height: 76vh; overflow-y: auto; padding-right: 6px; }
+.tc-pg-main { position: sticky; top: 0; }
+.tc-pg-stage { display: grid; place-items: center; background: repeating-conic-gradient(#1f2937 0 25%, #111827 0 50%) 0 0 / 24px 24px; border-radius: 8px; padding: 8px; }
+.tc-pg-cv { display: block; width: 100%; height: auto; max-height: 70vh; aspect-ratio: 16 / 9; object-fit: contain; box-shadow: 0 4px 18px rgba(0, 0, 0, .45); cursor: move; touch-action: none; }
+.tc-pg-cv.port { width: auto; height: 70vh; max-width: 100%; aspect-ratio: 9 / 16; }
+.tc-pg-stage:fullscreen { background: #000; padding: 0; }
+.tc-pg-stage:fullscreen .tc-pg-cv { width: 100vw; height: 100vh; max-height: none; max-width: none; aspect-ratio: auto; box-shadow: none; }
+.tc-pg-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.tc-pg-item { font: inherit; font-size: var(--text-xs); padding: 4px 8px; border-radius: 6px; border: 1px solid var(--c-line); background: var(--c-panel); color: var(--c-fg-2); cursor: pointer; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tc-pg-item.on { border-color: var(--c-accent); color: var(--c-fg); box-shadow: 0 0 0 1px var(--c-accent) inset; }
+.tc-pg-props { border: 1px solid var(--c-line); border-radius: 8px; padding: 10px; }
+.tc-pg-bar { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.tc-pg-tg { min-width: 34px; }
+.tc-pg-tg.on { background: var(--c-accent); color: #fff; border-color: var(--c-accent); }
+.tc-pg-tg.b { font-weight: 800; } .tc-pg-tg.i { font-style: italic; font-family: Georgia, serif; } .tc-pg-tg.u { text-decoration: underline; }
+.tc-pg-sep { width: 1px; height: 22px; background: var(--c-line); margin: 0 4px; }
+.tc-pg-color { display: inline-flex; gap: 4px; align-items: center; font-size: var(--text-xs); }
+.tc-pg-color input[type=color] { width: 34px; height: 28px; padding: 0; }
+.tc-pg input[type=color] { min-width: 44px; height: 32px; padding: 2px; }
+.tc-pg .tc-num-in { width: 100%; min-width: 0; }
+.tc-pg-icons { display: grid; grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)); gap: 4px; }
+.tc-pg-ic { font-size: 22px; line-height: 1; padding: 6px 0; border-radius: 6px; border: 1px solid var(--c-line); background: var(--c-panel); cursor: pointer; }
+.tc-pg-ic.on { border-color: var(--c-accent); box-shadow: 0 0 0 1px var(--c-accent) inset; }
+.tc-pg-presets .btn { font-size: var(--text-xs); }
+.tc-pg .pf-grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+/* Notícias e dados: cada notícia que vai para as telas, com a foto, e o botão de tirar da programação */
+.tc-news-sec { margin-top: 18px; }
+.tc-news-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.tc-news-card { display: flex; flex-direction: column; border: 1px solid var(--line, #24324d); border-radius: 10px; overflow: hidden; background: rgba(255,255,255,0.03); }
+.tc-news-card img, .tc-news-nofoto { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; display: block; background: #0b1220; }
+.tc-news-nofoto { display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 13px; }
+.tc-news-body { display: flex; flex-direction: column; gap: 6px; padding: 10px; flex: 1; }
+.tc-news-body .btn { align-self: flex-start; margin-top: auto; }
+.tc-news-card.off { opacity: 0.45; }
+/* o fundo do layout: a lista e o seletor de qualquer cor lado a lado */
+.tc-bg-row { display: flex; gap: 6px; align-items: center; }
+.tc-bg-row select { flex: 1; min-width: 0; }
+.tc-bg-cor { width: 44px; height: 36px; padding: 2px; border-radius: 8px; flex: none; cursor: pointer; }
+.tc-bg-row input.tc-bg-cor, .pf-dlg .tc-bg-row input[type=color] { width: 44px; min-width: 44px; max-width: 44px; flex: 0 0 44px; }
+.pf-dlg .tc-bg-row select { flex: 1 1 auto; width: auto; min-width: 0; }
+/* a miniatura do layout abre grande com um clique */
+.tc-pv-click { cursor: zoom-in; border-radius: 10px; }
+.tc-pv-click:hover, .tc-pv-click:focus-visible { outline: 2px solid #38bdf8; outline-offset: 2px; }

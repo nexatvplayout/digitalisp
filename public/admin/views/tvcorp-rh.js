@@ -2,7 +2,7 @@
 // com o consentimento marcado), as admissões e o tempo de casa, e os comunicados por categoria com o "Li" e quem leu.
 // Rotas: /api/tvcorp/people[/:id] (+ /import CSV, /export, /:id/photo), /api/tvcorp/posts[/:id] (+ /:id/acks).
 import {
-  el, guard, toast, tapi, tupload, tdownload, put, f, opt, table, label, note, empty, btn, btns, chip, dialog, D, listOf,
+  el, guard, toast, tapi, tupload, tdownload, tblob, put, f, opt, table, label, note, empty, btn, btns, chip, dialog, D, listOf,
   scopePicker, scopeText, statusChip, dayText, when, isoDay,
 } from './tvcorp-base.js';
 import { itemPreview } from '../../shared/tvcorp-previa.js';
@@ -80,10 +80,20 @@ function paintPeople(box, people, again) {
   const full = Boolean(D().settings?.fullNames);
   const search = el('input', { type: 'search', placeholder: 'Buscar nome ou setor', value: V.q, 'aria-label': 'Buscar', onchange: (e) => { V.q = e.target.value; paintPeople(box, people, again); } });
   const ofc = el('select', { 'aria-label': 'Unidade', onchange: (e) => { V.office = e.target.value; paintPeople(box, people, again); } }, opt('', 'Todas as unidades', !V.office), ...D().offices.map((o) => opt(o.id, o.name, V.office === String(o.id))));
+  // a prévia como na TV, com a foto de quem autorizou (a foto vem pela sessão, nunca por endereço público)
+  const pessoasPrev = (fotos = {}) => month.map((p) => ({ name: full ? p.name : shortName(p.name), day: p.bdayDay, month: p.bdayMonth, sector: p.sector, photo: fotos[p.id] || null }));
+  const prevBox = el('div', {}, itemPreview({ kind: 'birthdays', title: 'Aniversariantes do mês', people: pessoasPrev() }, { theme: themeOf() }));
+  const comFoto = month.filter((p) => p.photoConsent && p.hasPhoto).slice(0, 8);
+  if (comFoto.length) {
+    Promise.all(comFoto.map((p) => tblob(`/api/tvcorp/people/${p.id}/photo`).then((u) => [p.id, u], () => [p.id, null]))).then((pares) => {
+      const fotos = Object.fromEntries(pares.filter(([, u]) => u));
+      if (Object.keys(fotos).length) put(prevBox, itemPreview({ kind: 'birthdays', title: 'Aniversariantes do mês', people: pessoasPrev(fotos) }, { theme: themeOf() }));
+    });
+  }
   put(box,
     el('div', { class: 'tc-two' },
       el('div', {}, label(`Aniversariantes de ${MONTHS[d.getMonth()]} (${month.length})`), month.length ? el('ul', { class: 'pf-plain' }, ...month.map((p) => el('li', { text: `${pad(p.bdayDay)}/${pad(p.bdayMonth)} · ${full ? p.name : shortName(p.name)}${p.sector ? ` · ${p.sector}` : ''}` }))) : empty('Ninguém faz aniversário este mês.')),
-      itemPreview({ kind: 'birthdays', title: 'Aniversariantes do mês', people: month.map((p) => ({ name: full ? p.name : shortName(p.name), day: p.bdayDay, month: p.bdayMonth, sector: p.sector })) }, { theme: themeOf() })),
+      prevBox),
     btns(btn('+ Pessoa', () => editPerson(null, again), 'primary'), btn('Importar planilha (CSV)', () => importCsv(again)), btn('Exportar (CSV)', guard(() => tdownload('/api/tvcorp/people/export', `pessoas-${isoDay()}.csv`))), search, ofc),
     shown.length ? table(['Nome', 'Setor', 'Unidade', 'Aniversário', 'Tempo de casa', 'Foto', ''], shown.map((p) => el('tr', { class: p.active === false ? 'pf-gone' : '' },
       el('td', {}, el('b', { text: p.name }), el('div', { class: 'dim small', text: `na tela: ${full ? p.name : shortName(p.name)}` })),

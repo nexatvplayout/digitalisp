@@ -1,7 +1,7 @@
 // Multi-cliente (SaaS): clientes (tenants), planos, limites, recursos, suspensão, ciclo de vida da assinatura e
 // resolução do cliente nas rotas públicas. Não importa auth.js (auth.js é quem importa este módulo).
 import { db, getSetting, setSetting } from './db.js';
-import { config, ENV_RESOLUTION } from './config.js';
+import { config } from './config.js';
 import { hostTenantId } from './domains.js';
 import { normalizeServers } from './ntp.js';
 import { isStoppedByOperator } from './operator-stop.js';
@@ -15,7 +15,8 @@ export const HOUR = 3600 * 1000;
 
 /** Limites de um plano (valor null = ilimitado). */
 /** installations: computadores com a edição Windows (pendentes + ativos), conferido na central ao criar a instalação. */
-export const LIMIT_KEYS = ['channels', 'users', 'storageMB', 'products', 'ingests', 'outputs', 'viewers', 'contentItems', 'installations'];
+// limites do plano da revenda (DIGITAL ISP): o principal é o número de telas; vazio = ilimitado
+export const LIMIT_KEYS = ['telas', 'clientes', 'users', 'storageMB'];
 /**
  * Funcionalidades de um plano (booleanos): as do catálogo (public/shared/funcionalidades.js), por menu do painel. As 10 de
  * antes (LEGACY_FEATURE_KEYS) continuam com o mesmo nome e o mesmo efeito; um plano antigo, que só tem elas gravadas, resolve
@@ -31,10 +32,8 @@ export const DEFAULT_TENANT_ID = 1;
 export const UNLIMITED_PLAN = 'ilimitado';
 
 const LIMIT_LABEL = {
-  channels: ['canal', 'canais'], users: ['usuário', 'usuários'], storageMB: ['MB de armazenamento', 'MB de armazenamento'],
-  products: ['produto', 'produtos'], ingests: ['entrada ao vivo', 'entradas ao vivo'], outputs: ['saída extra por canal', 'saídas extras por canal'],
-  viewers: ['espectador simultâneo', 'espectadores simultâneos'], contentItems: ['item de conteúdo', 'itens de conteúdo'],
-  installations: ['instalação Windows', 'instalações Windows'],
+  telas: ['tela', 'telas'], clientes: ['cliente final', 'clientes finais'], users: ['usuário', 'usuários'],
+  storageMB: ['MB de armazenamento', 'MB de armazenamento'],
 };
 const FEATURE_LABEL = {
   app: 'o app do espectador', shop: 'a loja do app', polls: 'as enquetes', scte: 'a sinalização SCTE-35', graphics: 'os gráficos no ar',
@@ -142,7 +141,14 @@ export async function listPlans() {
 const defaultHasAll = (tenant) => Number(tenant?.id) === DEFAULT_TENANT_ID && !config.edge?.enabled;
 const NO_PLAN = { id: null, code: null, name: 'Sem plano', description: '', priceCents: 0, currency: 'brl', interval: 'month', trialDays: 0, active: false, public: false, gatewayRefs: {}, profileId: null, profile: null };
 /** Plano do cliente com limits/features já interpretados. Cliente sem plano válido: limites 0 e nenhum dos 10 recursos de antes (o padrão id 1 cai no Ilimitado). */
+/** Gancho do DIGITAL ISP (server/contas.js): o plano do cliente final sai do plano que a revenda criou para ele. */
+let planHook = null;
+export const setPlanHook = (fn) => { planHook = typeof fn === 'function' ? fn : null; };
 export async function effectivePlan(tenant) {
+  if (planHook && tenant) { const p = await planHook(tenant, basePlan); if (p) return p; }
+  return basePlan(tenant);
+}
+async function basePlan(tenant) {
   const plan = tenant?.plan_id ? await getPlan(Number(tenant.plan_id)) : null;
   // os modos (optIn, ex.: o modo prefeitura) só valem ligados de propósito no plano, também para o cliente padrão
   if (plan) return defaultHasAll(tenant) ? { ...plan, features: CAT.allFeaturesWith(plan.features) } : plan;
@@ -164,21 +170,9 @@ export const usageContentItems = async (tid) => n((await db.get('SELECT COUNT(*)
 export const usageInstallations = async (tid) => n((await db.get("SELECT COUNT(*) AS n FROM edge_installations WHERE tenant_id = ? AND status IN ('pending','active')", [tid])).n);
 // Todas as gravações que ocupam armazenamento contam na cota, inclusive Censura e a lixeira dela. usageCensuraBytes continua
 // separado apenas para detalhar o consumo. A lixeira da biblioteca, as imagens e os LUTs também contam enquanto existirem.
-export const usageStorageBytes = async (tid) => n((await db.get('SELECT CAST(COALESCE(SUM(size), 0) AS BIGINT) AS n FROM media WHERE tenant_id = ?', [tid])).n)
-  + n((await db.get('SELECT CAST(COALESCE(SUM(size), 0) AS BIGINT) AS n FROM media_trash WHERE tenant_id = ?', [tid])).n)
-  + n((await db.get('SELECT CAST(COALESCE(SUM(size), 0) AS BIGINT) AS n FROM censura_trash WHERE tenant_id = ? AND purged_at IS NULL', [tid])).n)
-  + n((await db.get('SELECT CAST(COALESCE(SUM(bytes), 0) AS BIGINT) AS n FROM user_luts WHERE tenant_id = ?', [tid])).n)
-  // o 5.1 dos apps (server/vod51.js): o som 5.1 dos programas no VOD (sem a cópia do vídeo desde 18/10) conta no plano (pedido do usuário, 17/10:
-  // "Tem que entrar no plano do cliente, pois ele quem vai decidir se o canal terá ou não surround")
-  + n((await db.get("SELECT CAST(COALESCE(SUM(bytes), 0) AS BIGINT) AS n FROM vod51 WHERE tenant_id = ? AND status = 'ready'", [tid])).n)
-  // o bipe dos apps (server/vod-bipe.js): a cópia dos programas com bipe nos palavrões para o VOD, de quem liga a chave dos canais próprios
-  + n((await db.get("SELECT CAST(COALESCE(SUM(bytes), 0) AS BIGINT) AS n FROM vod_bipe WHERE tenant_id = ? AND status = 'ready'", [tid])).n)
-  // NEXA Nuvem fica fora da biblioteca e do playout, mas usa a mesma franquia do tenant.
-  + n((await db.get("SELECT CAST(COALESCE(SUM(size), 0) AS BIGINT) AS n FROM mam_cloud_objects WHERE tenant_id = ? AND status IN ('ready','deleting')", [tid])).n)
+// armazenamento da revenda: as mídias da TV Corporativa (tvcorp_media.bytes) e as imagens em graphics/ (logos, artes)
+export const usageStorageBytes = async (tid) => n((await db.get('SELECT CAST(COALESCE(SUM(bytes), 0) AS BIGINT) AS n FROM tvcorp_media WHERE tenant_id = ?', [tid])).n)
   + await graphicsBytes(tid);
-// Detalhe da Censura (já incluído em usageStorageBytes), incluindo a lixeira enquanto o arquivo ainda existe.
-export const usageCensuraBytes = async (tid) => n((await db.get('SELECT CAST(COALESCE(SUM(size), 0) AS BIGINT) AS n FROM media WHERE tenant_id = ? AND censura = 1', [tid])).n)
-  + n((await db.get('SELECT CAST(COALESCE(SUM(size), 0) AS BIGINT) AS n FROM censura_trash WHERE tenant_id = ? AND purged_at IS NULL', [tid])).n);
 export const usageStorageMB = async (tid) => Math.round((await usageStorageBytes(tid)) / 1048576 * 10) / 10;
 /** Saídas extras: o limite é POR CANAL, então o uso é o maior número de saídas de um canal do cliente. */
 export const usageOutputs = async (tid) => n((await db.get(
@@ -189,17 +183,16 @@ export function usageViewers(tid) {
   return ctx.registry.listFor(tid).reduce((s, e) => s + ctx.realtime.viewers(e.channel.slug), 0);
 }
 
+/** Telas cadastradas (não revogadas) e clientes finais (unidades) da revenda. */
+export const usageTelas = async (tid) => n((await db.get('SELECT COUNT(*) AS n FROM telas_devices WHERE tenant_id = ? AND revoked_at IS NULL', [tid])).n);
+export const usageClientes = async (tid) => n((await db.get('SELECT COUNT(*) AS n FROM telas_offices WHERE tenant_id = ?', [tid])).n);
+
 export async function usage(tid) {
-  const [channels, users, storageMB, products, ingests, outputs, contentItems, installations] = await Promise.all([
-    usageChannels(tid), usageUsers(tid), usageStorageMB(tid), usageProducts(tid), usageIngests(tid), usageOutputs(tid), usageContentItems(tid), usageInstallations(tid),
-  ]);
-  return { channels, users, storageMB, products, ingests, outputs, viewers: usageViewers(tid), contentItems, installations };
+  const [telas, clientes, users, storageMB] = await Promise.all([usageTelas(tid), usageClientes(tid), usageUsers(tid), usageStorageMB(tid).catch(() => 0)]);
+  return { telas, clientes, users, storageMB };
 }
 
-const USAGE_OF = {
-  channels: usageChannels, users: usageUsers, storageMB: usageStorageMB, products: usageProducts, ingests: usageIngests, outputs: usageOutputs,
-  viewers: async (tid) => usageViewers(tid), contentItems: usageContentItems, installations: usageInstallations,
-};
+const USAGE_OF = { telas: usageTelas, clientes: usageClientes, users: usageUsers, storageMB: usageStorageMB };
 
 /* ------------------------------------------------------------------ limites, recursos e suspensão */
 const planInfo = (p) => ({ code: p.code, name: p.name });
@@ -285,8 +278,6 @@ export async function getPlatformSettings() {
   return {
     ...SETTINGS_DEFAULTS, ...s, announcement: { ...SETTINGS_DEFAULTS.announcement, ...s.announcement }, maintenance: { ...SETTINGS_DEFAULTS.maintenance, ...s.maintenance },
     ntp: { enabled: ntp.enabled !== false, servers: ntp.servers?.length ? ntp.servers : [...config.ntp.servers], defaultServers: [...config.ntp.servers], custom: Boolean(ntp.servers?.length) },
-    // env: o padrão do servidor; effective: o que os canais usam agora (muda ao salvar, sem reiniciar o servidor)
-    video: { resolution: RESOLUTIONS.includes(s.video?.resolution) ? s.video.resolution : null, env: ENV_RESOLUTION, effective: config.engine.resolution },
   };
 }
 

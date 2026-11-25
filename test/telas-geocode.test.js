@@ -26,7 +26,7 @@ test('acha o endereço dentro do município, guarda a resposta e identifica o cl
   const r = await g.find('Rua Barbosa da Silva, 80', { city: RIO, bbox: BOX });
   assert.deepEqual(r, [{ name: 'Rua Barbosa da Silva, Riachuelo, Rio de Janeiro', lat: -22.899, lng: -43.2537 }]);
   assert.equal(calls.length, 1);
-  assert.match(calls[0].opts.headers['user-agent'], /^NEXA-Broadcast/); assert.doesNotMatch(calls[0].opts.headers['user-agent'], /@/);
+  assert.match(calls[0].opts.headers['user-agent'], /^DIGITAL-ISP/); assert.doesNotMatch(calls[0].opts.headers['user-agent'], /@/);
   assert.equal(new URL(calls[0].url).searchParams.get('q'), 'Rua Barbosa da Silva, 80, Rio de Janeiro, RJ, Brasil');
   await g.find('Rua Barbosa da Silva, 80', { city: RIO, bbox: BOX });
   assert.equal(calls.length, 1, 'a mesma busca não vai de novo ao serviço');

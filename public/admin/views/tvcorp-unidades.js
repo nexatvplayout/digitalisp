@@ -5,7 +5,8 @@ import {
   el, guard, toast, tapi, put, f, opt, table, label, note, empty, btn, btns, chip, dialog, D,
   active, groupsOf, counters, officeOf,
 } from './tvcorp-base.js';
-import { copyText } from '../lib.js';
+import { copyText, api } from '../lib.js';
+import { ufCityPicker } from '../../shared/uf-city.js';
 import { OFFICE_TYPES, MODULE, OFFICE_ROLES } from '../../shared/telas-tipos.js';
 import { corpTypes } from './tvcorp-catalogo.js';
 import { newKey } from './tvcorp-telas.js';
@@ -24,39 +25,86 @@ function showOnce(title, text, value, hint) {
   dialog(title, el('div', { class: 'pf-keybox' }, note(text), el('div', { class: 'pf-url', text: value }), hint ? note(hint) : null, btn('Copiar', () => copyText(value), 'small')));
 }
 
+/** Os endereços estruturados das unidades (server/enderecos.js), lidos ao abrir a aba. */
+let enderecos = {};
+let canaisHls = [];
+
 function editOffice(o, reload) {
   const name = el('input', { type: 'text', maxlength: '80', value: o?.name || '', placeholder: 'Ex.: Fábrica Campinas' });
   const type = el('select', {}, ...TYPES().map((t) => opt(t.key, t.label, (o?.type || 'filial') === t.key)));
-  const address = el('input', { type: 'text', maxlength: '200', value: o?.address || '', placeholder: 'Rua, número, bairro, cidade' });
-  const lat = el('input', { type: 'text', inputmode: 'decimal', value: o?.lat ?? '', placeholder: 'latitude' });
-  const lng = el('input', { type: 'text', inputmode: 'decimal', value: o?.lng ?? '', placeholder: 'longitude' });
+  // endereço estruturado (DIGITAL ISP): o CEP preenche a rua, o bairro, a UF e o município; o ponto no mapa sai do endereço
+  const e0 = (o && enderecos?.[o.id]) || {};
+  const cep = el('input', { type: 'text', inputmode: 'numeric', maxlength: '9', value: e0.cep ? `${e0.cep.slice(0, 5)}-${e0.cep.slice(5)}` : '', placeholder: '00000-000' });
+  const rua = el('input', { type: 'text', maxlength: '120', value: e0.rua || (!e0.cep && o?.address) || '' });
+  const numero = el('input', { type: 'text', maxlength: '20', value: e0.numero || '' });
+  const compl = el('input', { type: 'text', maxlength: '60', value: e0.complemento || '' });
+  const bairro = el('input', { type: 'text', maxlength: '80', value: e0.bairro || '' });
+  let timer = null; let seq = 0;
+  const agendar = () => { clearTimeout(timer); timer = setTimeout(() => localizar(), 700); };
+  const place = ufCityPicker({ uf: e0.uf || '', cityIbge: e0.municipioIbge ?? null, city: e0.municipio || '', idPrefix: `un${o?.id || 'n'}`, onChange: () => agendar() });
+  const lat = el('input', { type: 'text', inputmode: 'decimal', value: o?.lat ?? '', placeholder: 'calculada pelo endereço' });
+  const lng = el('input', { type: 'text', inputmode: 'decimal', value: o?.lng ?? '', placeholder: 'calculada pelo endereço' });
+  const ponto = el('p', { class: 'dim small', text: o?.lat != null ? 'Ponto guardado. Muda sozinho se o endereço mudar.' : 'O ponto no mapa é calculado sozinho quando o endereço estiver completo.' });
+  let precisao = e0.precisao || null; let manual = e0.precisao === 'manual';
+  for (const x of [lat, lng]) x.addEventListener('input', () => { manual = true; precisao = 'manual'; ponto.textContent = 'Ponto ajustado à mão (o endereço não muda mais o ponto).'; });
+  async function localizar() {
+    const p = place.value();
+    if (manual || !p.uf || !p.city) return;
+    const my = ++seq;
+    ponto.textContent = 'Calculando o ponto no mapa…';
+    try {
+      const q = new URLSearchParams({ rua: rua.value, numero: numero.value, bairro: bairro.value, municipio: p.city, uf: p.uf });
+      const r = await api(`/api/localizar?${q}`);
+      if (my !== seq) return;
+      lat.value = Number(r.lat).toFixed(6); lng.value = Number(r.lng).toFixed(6); precisao = r.precisao;
+      ponto.textContent = r.precisao === 'endereco' ? 'Ponto calculado pelo endereço.' : 'Rua não encontrada no mapa: ponto no centro do município (ajuste à mão se quiser).';
+    } catch (err) { if (my === seq) ponto.textContent = err.message; }
+  }
+  for (const x of [rua, numero, bairro]) x.addEventListener('change', agendar);
+  cep.addEventListener('change', guard(async () => {
+    const d = cep.value.replace(/\D/g, '');
+    if (d.length !== 8) return;
+    const r = await api(`/api/cep/${d}`);
+    cep.value = `${d.slice(0, 5)}-${d.slice(5)}`;
+    if (r.rua) rua.value = r.rua;
+    if (r.bairro) bairro.value = r.bairro;
+    if (r.uf) { place.ufSelect.value = r.uf; place.ufSelect.dispatchEvent(new Event('change', { bubbles: true })); }
+    await place.ready;
+    if (r.municipio) { place.cityInput.value = r.municipio; place.cityInput.dispatchEvent(new Event('input', { bubbles: true })); place.cityInput.dispatchEvent(new Event('blur')); }
+    numero.focus();
+    agendar();
+  }));
+  const address = { get value() { const p = place.value(); return [[rua.value.trim(), numero.value.trim()].filter(Boolean).join(', '), compl.value.trim(), bairro.value.trim(), p.city ? `${p.city}/${p.uf}` : '', cep.value.trim()].filter(Boolean).join(' - ').slice(0, 200); } };
+  const canal = el('select', {}, el('option', { value: '', text: 'Nenhum (a zona de vídeo passa os vídeos guardados)' }),
+    ...(canaisHls || []).filter((c) => c.ativo).map((c) => el('option', { value: c.id, text: c.name, selected: Number(o?.channelId) === c.id })));
   const respName = el('input', { type: 'text', maxlength: '120', value: o?.respName || '' });
   const respContact = el('input', { type: 'text', maxlength: '120', value: o?.respContact || '', placeholder: 'telefone ou e-mail' });
-  const results = el('div', { class: 'pf-results' });
   const mods = { ...(o?.modules || {}) };
   const modBox = el('div', { class: 'pf-checks' });
   const paintMods = () => put(modBox, ...CORP_MODULES.map(([k, l, desc]) => el('label', { class: 'pf-check', title: MODULE[k]?.desc || desc },
     el('input', { type: 'checkbox', checked: mods[k] ?? (DEFAULT_MODS[type.value] || []).includes(k), onchange: (e) => { mods[k] = e.target.checked; } }), el('span', { text: `${l}: ${desc}` }))));
   type.addEventListener('change', paintMods); paintMods();
-  const find = guard(async () => {
-    const q = address.value.trim();
-    if (q.length < 3) { toast('Escreva o endereço ou a cidade.', true); return; }
-    const r = await tapi(`/api/tvcorp/rede/geocode?q=${encodeURIComponent(q)}`);
-    put(results, (r.results || []).length ? r.results.map((x) => btn(x.name, () => { lat.value = String(x.lat); lng.value = String(x.lng); put(results); }, 'small'))
-      : el('span', { class: 'dim small', text: 'Nada encontrado com esse texto. Tente só a rua e a cidade.' }));
-  });
   const num = (v) => (String(v).trim() === '' ? null : Number(String(v).replace(',', '.')));
   dialog(o ? `Unidade · ${o.name}` : 'Nova unidade', el('div', {},
     el('div', { class: 'pf-grid' }, f('Nome', name), f('Tipo', type), f('Responsável', respName), f('Contato do responsável', respContact)),
-    el('div', { class: 'pf-addr' }, f('Endereço', address), btn('Localizar no mapa', find)),
-    results,
+    label('Endereço'),
+    el('div', { class: 'pf-grid' }, f('CEP', cep), f('Rua', rua), f('Número', numero), f('Complemento', compl), f('Bairro', bairro), place.ufField, place.cityField),
     el('div', { class: 'pf-grid two' }, f('Latitude', lat), f('Longitude', lng)),
-    note('O ponto põe a unidade no mapa da aba Telas e no clima da unidade. As filiais podem ficar em cidades diferentes.'),
+    ponto,
+    note('Digite o CEP para preencher o endereço. O ponto põe a unidade no mapa e no clima da unidade.'),
+    el('div', { class: 'pf-grid' }, f('Ao vivo (HLS) nesta unidade', canal)),
+    note('O canal toca na zona de vídeo do layout das telas desta unidade. Cadastre os canais na aba "Ao vivo (HLS)".'),
     label('Módulos da unidade (os avisos do texto rolante valem sempre)'), modBox), {
     wide: true,
     save: async () => {
-      const b = { name: name.value, type: type.value, address: address.value, lat: num(lat.value), lng: num(lng.value), respName: respName.value, respContact: respContact.value, modules: { avisos: true, ...Object.fromEntries(CORP_MODULES.map(([k]) => [k, mods[k] ?? (DEFAULT_MODS[type.value] || []).includes(k)])) } };
+      const b = { channelId: canal.value ? Number(canal.value) : null, name: name.value, type: type.value, address: address.value, lat: num(lat.value), lng: num(lng.value), respName: respName.value, respContact: respContact.value, modules: { avisos: true, ...Object.fromEntries(CORP_MODULES.map(([k]) => [k, mods[k] ?? (DEFAULT_MODS[type.value] || []).includes(k)])) } };
+      const p = place.value();
+      if (!p.uf || !p.cityIbge) throw new Error('Escolha a UF e o município da lista.');
+      if (!rua.value.trim()) throw new Error('Informe a rua.');
+      if (b.lat == null || b.lng == null) { await localizar(); b.lat = num(lat.value); b.lng = num(lng.value); }
       const r = o ? await tapi(`/api/tvcorp/rede/offices/${o.id}`, { method: 'PATCH', body: b }) : await tapi('/api/tvcorp/rede/offices', { method: 'POST', body: b });
+      const oid = o?.id ?? r?.id;
+      if (oid) await api(`/api/unidades/${oid}/endereco`, { method: 'PUT', body: { cep: cep.value, rua: rua.value, numero: numero.value, complemento: compl.value, bairro: bairro.value, uf: p.uf, municipio: p.city, municipioIbge: p.cityIbge, precisao } });
       toast('Unidade salva.');
       await reload();
       if (r?.generatedPin) setTimeout(() => showOnce(`PIN de saída · ${b.name}`, 'O PIN que destrava as TV box desta unidade no local. Ele aparece só agora: anote e passe ao responsável.', String(r.generatedPin)), 0);
@@ -147,6 +195,7 @@ function editGroup(g, reload) {
 }
 
 export default async function paintUnidades(box, ctx) {
+  [enderecos, canaisHls] = await Promise.all([api('/api/unidades/enderecos').catch(() => ({})), api('/api/hls').catch(() => [])]);
   const d = D(); const reload = ctx.reload;
   const officeRows = d.offices.map((o) => {
     const devs = active().filter((x) => x.officeId === o.id); const n = counters(devs);

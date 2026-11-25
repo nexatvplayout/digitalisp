@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
 const VIEWS = fs.readdirSync(path.join(root, 'public/admin/views')).filter((f) => /^tvcorp(-[a-z]+)?\.js$/.test(f)).map((f) => `public/admin/views/${f}`);
-const SHARED = ['public/shared/tvcorp-previa.js'];
+const SHARED = ['public/shared/tvcorp-previa.js', 'public/shared/pagina.js'];
 
 /* ------------------------------------------------------------------ DOM mínimo */
 class Text { constructor(t) { this.data = String(t); this.nodeType = 3; this.parentNode = null; } get textContent() { return this.data; } set textContent(v) { this.data = String(v); } remove() { this.parentNode?._drop(this); } }
@@ -69,6 +69,8 @@ const G = await import('../public/admin/views/tvcorp-grade.js');
 const L = await import('../public/admin/views/tvcorp-layouts.js');
 const RH = await import('../public/admin/views/tvcorp-rh.js');
 const EX = await import('../public/admin/views/tvcorp-exemplo.js');
+const PG = await import('../public/admin/views/tvcorp-pagina.js');
+const PGS = await import('../public/shared/pagina.js');
 
 const panel = new El('section'); panel.setAttribute('id', 'tcPanel');
 const sec = new El('section'); sec.setAttribute('id', 'view-tvcorp'); sec.append(panel); body.append(sec);
@@ -93,12 +95,14 @@ test('código do painel: só textContent, sem estilo pelo script, sem script nem
   // as rotas da rede saem por /api/tvcorp/rede, nunca pelas da prefeitura
   for (const f of VIEWS) assert.ok(!/\/api\/prefeitura/.test(read(f)), `${f}: não fala com /api/prefeitura`);
   // as artes de fundo existem e são só desenho (sem texto, sem imagem de fora)
-  for (const a of C.ARTS) { const svg = read(`public/tvcorp/arte/${a.key}.svg`); assert.match(svg, /^<svg /); assert.ok(!/<text|<image|<script|href=/.test(svg), a.key); }
+  for (const a of C.ARTS.filter((x) => !x.photo)) { const svg = read(`public/tvcorp/arte/${a.key}.svg`); assert.match(svg, /^<svg /); assert.ok(!/<text|<image|<script|href=/.test(svg), a.key); }
+  // as fotos próprias (geradas para o DIGITAL ISP): JPEG de verdade e leve
+  for (const a of C.ARTS.filter((x) => x.photo)) { const b = fs.readFileSync(path.join(root, `public/tvcorp/arte/${a.key}.jpg`)); assert.ok(b[0] === 0xff && b[1] === 0xd8 && b.length < 200 * 1024, a.key); }
 });
 
 test('abas: todas as da §6, pela permissão tvcorp.manage', () => {
   const ids = TABS.map((t) => t.id);
-  assert.deepEqual(ids, ['resumo', 'telas', 'unidades', 'midias', 'playlists', 'layouts', 'grade', 'dados', 'indicadores', 'rh', 'barras', 'alertas', 'aprovacoes', 'celular', 'relatorios', 'comandos', 'instalar', 'config']);
+  assert.deepEqual(ids, ['resumo', 'telas', 'unidades', 'midias', 'templates', 'qrcodes', 'aovivo', 'playlists', 'layouts', 'grade', 'dados', 'gadgets', 'indicadores', 'rh', 'barras', 'alertas', 'aprovacoes', 'celular', 'relatorios', 'comandos', 'instalar', 'config']);
   assert.equal(tabsFor(() => false).length, 0, 'sem a permissão, nenhuma aba');
   assert.equal(tabsFor((p) => p === 'tvcorp.manage').length, TABS.length);
   assert.ok(TABS.every((t) => typeof t.paint === 'function' && t.perm === 'tvcorp.manage'));
@@ -107,7 +111,7 @@ test('abas: todas as da §6, pela permissão tvcorp.manage', () => {
 
 test('catálogo: os modelos de layout passam na conferência do contrato; nome curto, dias, faixa do indicador', () => {
   for (const l of C.FACTORY_LAYOUTS) assert.equal(C.checkZones(l.zones), null, l.key);
-  assert.equal(C.FACTORY_LAYOUTS.length, 12); assert.equal(C.SLIDE_TEMPLATES.length, 12);
+  assert.equal(C.FACTORY_LAYOUTS.length, 216); assert.equal(C.FACTORY_SETS.length, 5); assert.equal(C.SLIDE_TEMPLATES.length, 17);
   assert.match(C.checkZones([{ id: 'a', kind: 'video', x: 0, y: 0, w: 50, h: 50 }, { id: 'b', kind: 'video', x: 50, y: 0, w: 50, h: 50 }]), /uma zona de vídeo/);
   assert.match(C.checkZones([{ id: 'a', kind: 'playlist', x: 60, y: 0, w: 50, h: 50 }]), /passa da borda/);
   assert.match(C.checkZones(Array.from({ length: 7 }, (_, i) => ({ id: `z${i}`, kind: 'clock', x: 0, y: 0, w: 10, h: 10 }))), /No máximo 6/);
@@ -195,6 +199,18 @@ test('cada aba abre com os dados de exemplo, sem nada escrito errado', async () 
   assert.ok(dlg && dlg.open && dlg.byClass('tc-zedit').length === 1 && dlg.byClass('tc-zr').length === 3, 'o quadro com as 3 zonas da recepção');
   assert.ok(!BAD.test(dlg.textContent));
   dlg.remove();
+  // o construtor de páginas abre com cada modelo pronto, sem nada escrito errado, e mostra os controles de formatação
+  for (const p of PGS.PAGE_PRESETS) {
+    const { dlg: d, st } = PG.pageBuilder(null, [{ id: 5, kind: 'image', title: 'Foto' }], async () => {}, { preset: p.key });
+    assert.ok(d.open && d.all((n) => n.tagName === 'CANVAS').length === 1, p.key);
+    assert.ok(!BAD.test(d.textContent), `${p.key}: ${d.textContent.match(BAD)?.[0]}`);
+    assert.equal(st.page.orient, p.page().orient);
+    d.remove();
+  }
+  const { dlg: pd } = PG.pageBuilder({ id: 9, kind: 'image', title: 'Aviso', seconds: 10, officeId: null, fields: { page: PGS.PAGE_PRESET.aviso.page() } }, [], async () => {});
+  assert.match(pd.textContent, /Página · Aviso/);
+  for (const t of ['Negrito', 'Itálico', 'Sublinhado', 'Fonte', 'Espaço entre linhas', 'Fundo do texto', 'Cor da letra']) assert.ok(pd.all((n) => n.attrs['aria-label'] === t).length, t);
+  pd.remove();
   base.setDemo(false);
 });
 

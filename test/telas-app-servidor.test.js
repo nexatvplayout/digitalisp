@@ -7,14 +7,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { boot, cleanup, api, platformLogin, newTenant } from './helpers/srv.js';
+import { canal, usuario } from './helpers/prefeitura.js'; // DIGITAL ISP: canal ao vivo (HLS) e usuário de permissão limitada
 import { tmpDir } from './helpers/tmp.js';
 
 const sha = (b) => createHash('sha256').update(b).digest('hex');
 
-test('NEXA Telas: APK do app pelo servidor (latest.json, latest.apk, update de fábrica e o da prefeitura)', { timeout: 240000 }, async () => {
+test('Prefeitura: APK do app pelo servidor (latest.json, latest.apk, update de fábrica e o da prefeitura)', { timeout: 240000 }, async () => {
   const dir = tmpDir('nexa-telas-app');
   const apk = Buffer.concat([Buffer.from('PK\x03\x04'), Buffer.alloc(50_000, 7)]); // "APK" de mentira
-  fs.writeFileSync(path.join(dir, 'NEXA-Telas.apk'), apk);
+  fs.writeFileSync(path.join(dir, 'Telas.apk'), apk);
   fs.writeFileSync(path.join(dir, 'latest.json'), JSON.stringify({ versionCode: 8, versionName: '1.2.4', sha256: sha(apk), bytes: apk.length }));
   const s = await boot({ TELAS_APP_DIR: dir });
   try {
@@ -35,7 +36,7 @@ test('NEXA Telas: APK do app pelo servidor (latest.json, latest.apk, update de f
     const prof = await P('POST', '/api/platform/feature-profiles', { name: 'Prefeitura', code: 'prefeitura', features: { prefeitura: true } });
     assert.equal((await P('POST', '/api/platform/plans', { code: 'p-pref', name: 'Prefeitura', priceCents: 0, profileId: prof.data.id, limits: { channels: 1 } })).status, 201);
     const A = await newTenant(P, s.base, { slug: 'app-a', planCode: 'p-pref', status: 'active' });
-    assert.equal((await A.api('POST', '/api/channels', { name: 'TV A', slug: 'app-a-tv' })).status, 201);
+    await canal(A.api, 'TV A'); // DIGITAL ISP: o canal ao vivo (HLS) no lugar do canal do NEXA
     const office = (await A.api('POST', '/api/prefeitura/offices', { name: 'UBS Centro', type: 'ubs' })).data;
     const key = (await A.api('POST', '/api/prefeitura/keys', { officeId: office.id })).data.key;
     const act = await anon('POST', '/api/telas/activate', { key, device: { model: 'TV Box de teste' } });
@@ -55,8 +56,8 @@ test('NEXA Telas: APK do app pelo servidor (latest.json, latest.apk, update de f
     assert.equal((await T('GET', '/api/telas/config')).data.update.versionCode, 8, 'tirou a dela: volta o do servidor');
 
     // APK trocado sem atualizar o latest.json: o SHA-256 não confere e nada é oferecido
-    fs.writeFileSync(path.join(dir, 'NEXA-Telas.apk'), Buffer.concat([apk.subarray(0, apk.length - 1), Buffer.from([9])]));
-    const later = new Date(Date.now() + 5000); fs.utimesSync(path.join(dir, 'NEXA-Telas.apk'), later, later);
+    fs.writeFileSync(path.join(dir, 'Telas.apk'), Buffer.concat([apk.subarray(0, apk.length - 1), Buffer.from([9])]));
+    const later = new Date(Date.now() + 5000); fs.utimesSync(path.join(dir, 'Telas.apk'), later, later);
     assert.equal((await anon('GET', '/telas/app/latest.json')).status, 404);
     assert.equal((await fetch(`${s.base}/telas/app/latest.apk`)).status, 404);
     assert.equal('update' in (await T('GET', '/api/telas/config')).data, false);

@@ -9,6 +9,8 @@ import paintResumo from './tvcorp-resumo.js';
 import paintTelas from './tvcorp-telas.js';
 import paintUnidades from './tvcorp-unidades.js';
 import paintMidias from './tvcorp-midias.js';
+import paintTemplates from './tvcorp-templates.js';
+import paintAoVivo, { leaveAoVivo } from './tvcorp-aovivo.js';
 import paintPlaylists from './tvcorp-playlists.js';
 import paintLayouts from './tvcorp-layouts.js';
 import paintGrade from './tvcorp-grade.js';
@@ -16,12 +18,14 @@ import paintDados from './tvcorp-dados.js';
 import paintIndicadores from './tvcorp-indicadores.js';
 import paintRh from './tvcorp-rh.js';
 import paintBarras from './tvcorp-barras.js';
+import paintGadgets from './tvcorp-gadgets.js';
 import { paintAlertas, paintAprovacoes } from './tvcorp-rede.js';
 import paintCelular from './tvcorp-celular.js';
 import paintRelatorios from './tvcorp-relatorios.js';
 import paintComandos from './tvcorp-comandos.js';
 import paintInstalar from './tvcorp-instalar.js';
 import paintConfig from './tvcorp-config.js';
+import paintQrcodes from './tvcorp-qrcodes.js';
 
 /** As abas, na ordem do menu. perm: a permissão que a aba pede (hoje todas: tvcorp.manage); live: redesenha com a volta de 10 s. */
 export const TABS = [
@@ -29,10 +33,14 @@ export const TABS = [
   { id: 'telas', label: 'Telas', perm: 'tvcorp.manage', paint: paintTelas, live: true },
   { id: 'unidades', label: 'Unidades e grupos', perm: 'tvcorp.manage', paint: paintUnidades },
   { id: 'midias', label: 'Mídias', perm: 'tvcorp.manage', paint: paintMidias },
+  { id: 'templates', label: 'Templates', perm: 'tvcorp.manage', paint: paintTemplates },
+  { id: 'qrcodes', label: 'QR Codes', perm: 'tvcorp.manage', paint: paintQrcodes },
+  { id: 'aovivo', label: 'Ao vivo (HLS)', perm: 'tvcorp.manage', paint: paintAoVivo },
   { id: 'playlists', label: 'Playlists', perm: 'tvcorp.manage', paint: paintPlaylists },
   { id: 'layouts', label: 'Layouts', perm: 'tvcorp.manage', paint: paintLayouts },
   { id: 'grade', label: 'Grade', perm: 'tvcorp.manage', paint: paintGrade },
   { id: 'dados', label: 'Notícias e dados', perm: 'tvcorp.manage', paint: paintDados },
+  { id: 'gadgets', label: 'Gadgets', perm: 'tvcorp.manage', paint: paintGadgets },
   { id: 'indicadores', label: 'Indicadores', perm: 'tvcorp.manage', paint: paintIndicadores },
   { id: 'rh', label: 'RH', perm: 'tvcorp.manage', paint: paintRh },
   { id: 'barras', label: 'Barras e blocos', perm: 'tvcorp.manage', paint: paintBarras },
@@ -109,6 +117,8 @@ async function paint() {
     class: `cg-tab${P.tab === t.id ? ' on' : ''}`, role: 'tab', type: 'button', 'aria-selected': String(P.tab === t.id), text: t.label, onclick: () => { location.hash = `#tvcorp/${t.id}`; },
   })));
   const box = el('div', { class: 'pf-box tc-box', id: 'tcBox' });
+  // as abas ficam no menu lateral do painel (main.js); aqui só o conteúdo da aba
+  bar.hidden = true;
   put(root, T.demo ? demoBanner() : null, bar, box);
   const seq = ++P.seq;
   put(box, note('Carregando…'));
@@ -150,5 +160,5 @@ export default {
     clearInterval(P.timer); P.timer = setInterval(tick, POLL_MS);
   },
   async sub(s) { await show(s); },
-  leave() { closeDialogs(); dropBlobs(); clearInterval(P.timer); P.timer = null; },
+  leave() { leaveAoVivo(); closeDialogs(); dropBlobs(); clearInterval(P.timer); P.timer = null; },
 };

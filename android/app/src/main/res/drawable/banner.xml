@@ -1,10 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Faixa da tela inicial do Android TV (320 x 180 dp). -->
+<!-- Faixa da tela inicial do Android TV (320 x 180 dp): o logo horizontal DIGITAL ISP (marca/svg/logo-horizontal-fundo-escuro.svg). -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="320dp" android:height="180dp" android:viewportWidth="320" android:viewportHeight="180">
-    <path android:fillColor="#0B1E3A" android:pathData="M0,0h320v180h-320z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M100,40h120a6,6 0 0 1 6,6v72a6,6 0 0 1 -6,6h-120a6,6 0 0 1 -6,-6v-72a6,6 0 0 1 6,-6z" />
-    <path android:fillColor="#0B1E3A" android:pathData="M102,48h116v68h-116z" />
-    <path android:fillColor="#2F80ED" android:pathData="M148,62l32,20l-32,20z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M130,134h60v6h-60z" />
+    android:width="320dp" android:height="180dp" android:viewportWidth="1600" android:viewportHeight="900">
+    <path android:fillColor="#0A2150" android:pathData="M0,0H1600V900H0Z" />
+    <group android:translateX="94" android:translateY="294" android:scaleX="0.92" android:scaleY="0.92">
+        <group android:scaleX="0.53125" android:scaleY="0.53125">
+            <path android:fillColor="#16336F" android:pathData="M120,0H520A120,120 0 0 1 640,120V520A120,120 0 0 1 520,640H120A120,120 0 0 1 0,520V120A120,120 0 0 1 120,0Z" />
+            <path android:fillColor="#0D80FF" android:strokeColor="#0D80FF" android:strokeWidth="16" android:strokeLineJoin="round" android:pathData="M57,150L443,62L443,405L57,550Z" />
+            <path android:fillColor="#16336F" android:strokeColor="#16336F" android:strokeWidth="50" android:strokeLineJoin="round" android:pathData="M168,244L506,156L506,447L168,574Z" />
+            <path android:fillColor="#14C4CC" android:strokeColor="#14C4CC" android:strokeWidth="16" android:strokeLineJoin="round" android:pathData="M168,244L506,156L506,447L168,574Z" />
+            <path android:fillColor="#16336F" android:strokeColor="#16336F" android:strokeWidth="50" android:strokeLineJoin="round" android:pathData="M285,322L568,242L568,472L285,578Z" />
+            <path android:fillColor="#FFFFFF" android:strokeColor="#FFFFFF" android:strokeWidth="16" android:strokeLineJoin="round" android:pathData="M285,322L568,242L568,472L285,578Z" />
+        </group>
+        <group android:translateX="404" android:translateY="50">
+            <path android:fillColor="#FFFFFF" android:pathData="M0,0 H72 Q100,0 100,28 V212 Q100,240 72,240 H0 Z M40,34 V206 H52 Q60,206 60,198 V42 Q60,34 52,34 Z" />
+            <group android:translateX="132"><path android:fillColor="#FFFFFF" android:pathData="M0,0 H40 V240 H0 Z" /></group>
+            <group android:translateX="204"><path android:fillColor="#FFFFFF" android:pathData="M28,0 H72 Q100,0 100,28 V84 H60 V42 Q60,34 52,34 H48 Q40,34 40,42 V198 Q40,206 48,206 H52 Q60,206 60,198 V150 H52 V116 H100 V240 H68 L64,226 Q56,240 38,240 H28 Q0,240 0,212 V28 Q0,0 28,0 Z" /></group>
+            <group android:translateX="336"><path android:fillColor="#FFFFFF" android:pathData="M0,0 H40 V240 H0 Z" /></group>
+            <group android:translateX="408"><path android:fillColor="#FFFFFF" android:pathData="M0,0 H104 V34 H72 V240 H32 V34 H0 Z" /></group>
+            <group android:translateX="532"><path android:fillColor="#FFFFFF" android:pathData="M22,0 H94 L116,240 H78 L74,198 H42 L38,240 H0 Z M45,166 H71 L62,52 H54 Z" /></group>
+            <group android:translateX="674"><path android:fillColor="#FFFFFF" android:pathData="M0,0 H40 V206 H86 V240 H0 Z" /></group>
+            <group android:translateX="828"><path android:fillColor="#FFFFFF" android:pathData="M0,0 H40 V240 H0 Z" /></group>
+            <group android:translateX="900"><path android:fillColor="#FFFFFF" android:pathData="M28,0 H72 Q100,0 100,28 V84 H60 V42 Q60,34 52,34 H48 Q40,34 40,42 V80 Q40,88 46,94 L90,134 Q100,144 100,158 V212 Q100,240 72,240 H28 Q0,240 0,212 V156 H40 V198 Q40,206 48,206 H52 Q60,206 60,198 V164 Q60,156 54,150 L10,108 Q0,98 0,84 V28 Q0,0 28,0 Z" /></group>
+            <group android:translateX="1032"><path android:fillColor="#FFFFFF" android:pathData="M0,0 H72 Q100,0 100,28 V114 Q100,142 72,142 H40 V240 H0 Z M40,34 V108 H52 Q60,108 60,100 V42 Q60,34 52,34 Z" /></group>
+        </group>
+    </group>
 </vector>

@@ -3,7 +3,7 @@
 // os nomes no formato que as abas usam (campos do editor de slide, itens da playlist) e as funções pequenas do painel.
 // Sem DOM e sem dependências além dos catálogos: o teste importa direto.
 import {
-  TVC_LIMITS, TVC_ZONES, TVC_ZONE, TVC_LAYOUT_MODELS, TVC_SLIDE_MODELS, TVC_POST_CATEGORIES, TVC_WIDGETS, TVC_REF_KIND, TVC_SCOPES,
+  TVC_LIMITS, TVC_ZONES, TVC_ZONE, TVC_LAYOUT_MODELS, layoutMainOf, TVC_LAYOUT_SETS, TVC_LAYOUT_SEGMENTS, TVC_SLIDE_MODELS, TVC_POST_CATEGORIES, TVC_WIDGETS, TVC_REF_KIND, TVC_SCOPES,
   TVC_ARTS, TVC_ZONE_ID_RE, isTvcOfficeType,
 } from '../../shared/tvcorp-tipos.js';
 import { DATES, DEFAULT_DATE_KEYS } from '../../shared/tvcorp-datas.js';
@@ -46,7 +46,10 @@ export const LIMITS = Object.freeze({
 });
 
 /** Os modelos de layout de fábrica (§4.2), os do catálogo comum. */
-export const FACTORY_LAYOUTS = TVC_LAYOUT_MODELS.map((m) => ({ key: m.key, label: m.label, desc: m.desc, orientation: m.orientation, background: m.background, zones: m.zones.map(({ hint, ...z }) => ({ ...z })) }));
+export const FACTORY_LAYOUTS = TVC_LAYOUT_MODELS.map((m) => ({ key: m.key, label: m.label, desc: m.desc, orientation: m.orientation, background: m.background, segment: m.segment || 'geral', set: m.set || null, main: layoutMainOf(m), special: Boolean(m.special), zones: m.zones.map(({ hint, ...z }) => ({ ...z })) }));
+/** Os conjuntos de várias TVs (menu board): as telas, na ordem da esquerda para a direita. */
+export const FACTORY_SETS = TVC_LAYOUT_SETS.map((x) => ({ ...x, screens: [...x.screens] }));
+export const LAYOUT_SEGMENTS = TVC_LAYOUT_SEGMENTS.map((x) => ({ ...x }));
 export const FACTORY_LAYOUT = Object.fromEntries(FACTORY_LAYOUTS.map((l) => [l.key, l]));
 
 /** O tipo do campo do catálogo comum -> o campo do editor: text | textarea | url | image | date | datetime | choice. */
@@ -67,6 +70,11 @@ const SAMPLES = {
   qr: { title: 'Responda a pesquisa', text: 'Aponte a câmera do celular.', qr: 'https://exemplo.com.br/pesquisa' },
   'imagem-com-legenda': { title: 'Nossa equipe na feira do setor' },
   'data-comemorativa': { title: 'Dia do Trabalhador', date: dayAhead(5), text: 'Obrigado a todos que fazem a empresa acontecer.' },
+  oferta: { title: 'Pão francês', price: 'R$ 16,90', oldPrice: 'R$ 19,90', unit: 'o kg', tag: 'OFERTA', text: 'Enquanto durar o estoque.' },
+  precos: { title: 'Tabela de preços', text: 'Café expresso | R$ 6,50\nCappuccino | R$ 11,90\nPão na chapa | R$ 7,90\nBolo de fubá (fatia) | R$ 9,90', note: 'Preços válidos nesta loja.' },
+  combo: { title: 'Combo da casa', text: 'X-salada\nBatata frita (porção)\nSuco natural', price: 'R$ 44,90', oldPrice: 'R$ 52,70', tag: 'ECONOMIZE R$ 7,80' },
+  horario: { title: 'Horário de funcionamento', text: 'Segunda a sexta | 8h às 18h\nSábado | 8h às 13h\nDomingo e feriados | Fechado', note: 'Nos feriados, o horário pode mudar.' },
+  redes: { title: 'Siga a gente nas redes', handle: '@suaempresa', text: 'Novidades e bastidores todos os dias.', qr: 'https://exemplo.com.br/redes' },
 };
 /**
  * Os modelos de slide do catálogo comum, com os campos no formato do editor (kind, max, options). A cor de destaque e a
@@ -81,8 +89,8 @@ export const SLIDE_TEMPLATES = TVC_SLIDE_MODELS.map((m) => ({
 }));
 export const SLIDE_TEMPLATE = Object.fromEntries(SLIDE_TEMPLATES.map((t) => [t.key, t]));
 
-/** A biblioteca de artes de fundo (public/tvcorp/arte/<key>.svg, desenhadas no projeto, sem marca de terceiros). */
-export const ARTS = TVC_ARTS.map((a) => ({ key: a.key, label: a.label }));
+/** A biblioteca de artes de fundo (public/tvcorp/arte/<key>.svg, desenhadas no projeto, e as fotos próprias <key>.jpg; sem marca de terceiros). */
+export const ARTS = TVC_ARTS.map((a) => ({ key: a.key, label: a.label, photo: Boolean(a.photo) }));
 
 /** Categorias dos comunicados (tvcorp_posts.category). */
 export const POST_CATEGORIES = TVC_POST_CATEGORIES.map((c) => ({ key: c.key, label: c.label }));
@@ -155,7 +163,7 @@ export function checkZones(zones) {
   }
   for (let i = 0; i < zones.length; i++) for (let k = i + 1; k < zones.length; k++) {
     const a = zones[i]; const b = zones[k];
-    if (a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h) return `As zonas "${a.id}" e "${b.id}" estão uma por cima da outra.`;
+    if (Boolean(a.overlay) === Boolean(b.overlay) && !a.shape && !b.shape && a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h) return `As zonas "${a.id}" e "${b.id}" estão uma por cima da outra (marque "Por cima" na que fica sobre a outra).`;
   }
   return null;
 }

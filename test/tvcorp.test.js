@@ -10,8 +10,8 @@ import * as K from '../server/tvcorp-core.js';
 const err = (fn, status = 400, re = null) => assert.throws(fn, (e) => e.status === status && (!re || re.test(e.message)));
 
 test('catálogo: modelos de fábrica válidos, chaves sem repetir, ids dos itens vão e voltam', () => {
-  assert.equal(T.TVC_LAYOUT_MODELS.length, 12);
-  assert.equal(T.TVC_SLIDE_MODELS.length, 12);
+  assert.equal(T.TVC_LAYOUT_MODELS.length, 216, '65 de uma TV, 14 telas de 5 conjuntos, 112 por família (14 segmentos × 8) e 25 de formatos especiais');
+  assert.equal(T.TVC_SLIDE_MODELS.length, 17);
   for (const m of T.TVC_LAYOUT_MODELS) {
     const l = K.cleanLayout({ factoryKey: m.key });
     assert.equal(l.zones.length, m.zones.length, m.key);

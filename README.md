@@ -16,3 +16,13 @@ um canal do NEXA Broadcast (ou de qualquer outro endereço HLS).
 | `docs/origem-nexa/` | Documentação de origem e a lista exata dos arquivos copiados |
 
 Antes de mexer, leia `PASSAGEM.md`.
+
+## Rodar no computador
+
+```
+npm install
+npm run dev
+```
+
+Abre em http://localhost:3000/admin/ com SQLite e arquivos locais em `./data`. Para produção, veja `.env.exemplo`.
+Testes: `npm test` (unidade) e `npm run test:servidor` (sobe o servidor; em adaptação, veja `PASSAGEM.md`).

@@ -4,8 +4,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { boot, cleanup, api, platformLogin, newTenant, sleep } from './helpers/srv.js';
+import { canal, usuario } from './helpers/prefeitura.js'; // DIGITAL ISP: canal ao vivo (HLS) e usuário de permissão limitada
 
-test('NEXA Telas §15: layouts de senha novos, tema, duas filas e byService', { timeout: 240000 }, async () => {
+test('Prefeitura §15: layouts de senha novos, tema, duas filas e byService', { timeout: 240000 }, async () => {
   const s = await boot({ PUBLIC_HLS_URL: 'https://hls.exemplo.test', PLATFORM_PUBLIC_URL: 'https://painel.exemplo.test', TELAS_ACTIVATE_PER_IP: '50' });
   try {
     const anon = api(s.base);
@@ -15,7 +16,7 @@ test('NEXA Telas §15: layouts de senha novos, tema, duas filas e byService', { 
     assert.equal(prof.status, 201, JSON.stringify(prof.data));
     assert.equal((await P('POST', '/api/platform/plans', { code: 'p-pref', name: 'Prefeitura', priceCents: 0, profileId: prof.data.id, limits: { channels: 1 } })).status, 201);
     const A = await newTenant(P, s.base, { slug: 'pref-l', planCode: 'p-pref', status: 'active' });
-    assert.equal((await A.api('POST', '/api/channels', { name: 'TV', slug: 'pref-l-tv' })).status, 201);
+    await canal(A.api, 'TV'); // DIGITAL ISP: o canal ao vivo (HLS) no lugar do canal do NEXA
     const post = async (url, body) => { const r = await A.api('POST', url, body); assert.equal(r.status, 201, `${url}: ${JSON.stringify(r.data)}`); return r.data; };
     const activate = async (officeId, name) => {
       const k = await post('/api/prefeitura/keys', { officeId, name });

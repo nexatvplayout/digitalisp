@@ -128,7 +128,7 @@ export function createTelas({
   streamOf, channelsOf, geocode, geocodeAddress = null, audit = async () => {}, ipOf = (req) => req.ip, publicUrl, now = () => Date.now(), timers = true,
   // fases 3 e 4: weatherOf(ibge) (server/weather.js), easAiring(tenantId) (o EAS no ar, só leitura), mediaUrl(arquivo, req) e
   // openMedia({ filename }) (os vídeos guardados), hold() (o freio das tarefas de fundo) e notify(tenantId, evento) (o aviso por e-mail)
-  weatherOf = null, easAiring = () => [], mediaUrl = () => null, openMedia = null, hold = () => null, notify = null,
+  weatherOf = null, weatherArt = null, easAiring = () => [], mediaUrl = () => null, openMedia = null, hold = () => null, notify = null,
   // appStore: o APK do app das telas (server/telas-app.js); nos testes, uma pasta de mentira
   appStore = createAppStore(),
   // as fotos dos casos de pessoa desaparecida (server/telas-desaparecidos.js): { dir, ffmpeg, checkImage, put, remove, url, read, list }
@@ -417,7 +417,7 @@ export function createTelas({
     const tok = /^Bearer ([A-Za-z0-9_-]{32,64})$/.exec(req.get('authorization') || '')?.[1];
     const row = tok ? await db.get(`${DEVICE_SQL} WHERE d.token_hash = ?`, [sha256(tok)]) : null;
     if (!row || row.revoked_at) return res.status(401).json({ error: 'Token inválido ou revogado.', code: 'revoked' });
-    if (!(await available(Number(row.tenant_id)))) return res.status(403).json({ error: 'O NEXA Telas não está disponível para esta prefeitura.', code: 'unavailable' });
+    if (!(await available(Number(row.tenant_id)))) return res.status(403).json({ error: 'As telas não estão disponíveis para esta conta (plano suspenso ou sem o módulo).', code: 'unavailable' });
     req.dev = row; req.tenantId = Number(row.tenant_id);
     next();
   });
@@ -440,6 +440,25 @@ export function createTelas({
     return cfg.pin;
   }
   /** A configuração do contrato para esta tela, com o rev. */
+  /**
+   * DIGITAL ISP: sem a cidade nas Configurações, o clima da tela vem da fonte Clima (Notícias e dados) da unidade dela (ou a
+   * que vale para todas as unidades). Sem fonte ou sem previsão ainda: null (a zona de clima espera a próxima busca).
+   */
+  /** O clima com a foto do tempo (art deitada, artPort em pé), quando o servidor tem as fotos. */
+  const withWeatherArt = (w, req) => { if (!w || !weatherArt) return w; const a = weatherArt(w.icon, req); return a ? { ...w, ...a } : w; };
+  async function weatherOfFeed(tenantId, officeId) {
+    if (!weatherOf) return null;
+    const list = await cached(`wxf:${tenantId}`, () => db.all("SELECT config FROM tvcorp_feeds WHERE tenant_id = ? AND kind = 'weather' AND enabled = 1 ORDER BY id", [tenantId]).catch(() => []));
+    const cfgs = list.map((r) => j(r.config, {}) || {}).filter((c) => /^\d{7}$/.test(String(c.ibge || '')));
+    const c = cfgs.find((x) => officeId != null && (x.offices || []).map(Number).includes(officeId)) || cfgs.find((x) => !(x.offices || []).length) || null;
+    if (!c) return null;
+    // logo depois de o servidor reiniciar (publicação) o clima guardado está vazio: espera a 1ª busca (até 4 s) em vez de
+    // mandar a configuração sem clima (a TV apagaria a zona de clima até a próxima mudança)
+    const key = String(c.ibge);
+    const v = conteudo.weather.get(key);
+    if (v) return v;
+    return Promise.race([conteudo.weather.settle(key), new Promise((r) => setTimeout(() => r(null), 4000))]).catch(() => null);
+  }
   async function configFor(dev, req, groups = null) {
     const tenantId = Number(dev.tenant_id);
     const g = groups || await deviceGroups(dev);
@@ -466,11 +485,16 @@ export function createTelas({
       .catch((err) => { console.warn('[telas] tv corporativa:', err.message); return null; }) : null;
     const cfg = C.contractConfig({
       eff, device: dev, office: { name: dev.o_name, type: dev.o_type }, region: dev.r_name ? { name: dev.r_name } : null,
-      stream: await streamOf(tenantId, num(dev.o_channel), req),
+      stream: await streamOf(tenantId, num(dev.o_channel), req, Number(dev.id)), // DIGITAL ISP: a tela pode ter o canal dela
       // a atualização: a da prefeitura, se ela definiu; senão o APK servido por este servidor (§23 do docs/TELAS.md)
       update: def.update || appStore.update(publicUrl(req)),
-      weather: conteudo.weatherFor(def), cards, queue, offline, offlineImage, electoral, internal, signage,
+      weather: withWeatherArt(conteudo.weatherFor(def) || await weatherOfFeed(tenantId, num(dev.office_id)), req), cards, queue, offline, offlineImage, electoral, internal, signage,
     });
+    // DIGITAL ISP: as manchetes das fontes de notícias escolhidas entram na faixa, depois dos avisos (o app antigo lê items)
+    if (eff.tickerNews?.feeds?.length && tvcorpDados?.headlines) {
+      const news = await tvcorpDados.headlines(tenantId, eff.tickerNews.feeds, eff.tickerNews.max).catch(() => []);
+      if (news.length) cfg.ticker = { ...cfg.ticker, items: [...cfg.ticker.items, ...news.map((x) => x.text)], rich: [...(cfg.ticker.rich || []), ...news] };
+    }
     return { rev: C.revOf(cfg), ...cfg };
   }
 
@@ -508,7 +532,7 @@ export function createTelas({
         [tenantId, office.id, name, sha256(token), info.model, info.android, info.appVersion, info.serial, t, hwid ? C.hwidHash(hwid) : null]);
       await db.run('UPDATE telas_keys SET used_device = ? WHERE id = ?', [id, k.id]);
       const stream = await streamOf(tenantId, num(office.channel_id), req);
-      await audit({ username: 'tela', action: 'POST /api/telas/activate', detail: `NEXA Telas: tela "${name}" (#${id}) ativada em "${office.name}"${info.model ? `, ${info.model}` : ''}`, status: 200, ip: ipOf(req), tenantId });
+      await audit({ username: 'tela', action: 'POST /api/telas/activate', detail: `Telas: tela "${name}" (#${id}) ativada em "${office.name}"${info.model ? `, ${info.model}` : ''}`, status: 200, ip: ipOf(req), tenantId });
       res.json({ deviceId: Number(id), token, channel: stream?.slug ?? null, name });
     }));
 
@@ -536,7 +560,7 @@ export function createTelas({
       senha.kick(cur.id); interna.kick(cur.id); // o tempo real aberto com o token antigo cai
       forget(tenantId);
       const stream = await streamOf(tenantId, num(office.channel_id), req);
-      await audit({ username: 'tela', action: 'POST /api/telas/recover', detail: `NEXA Telas: tela "${cur.name}" (#${cur.id}) reativada sozinha após reinstalação do app em "${office.name}"${info.model ? `, ${info.model}` : ''}`, status: 200, ip: ipOf(req), tenantId });
+      await audit({ username: 'tela', action: 'POST /api/telas/recover', detail: `Telas: tela "${cur.name}" (#${cur.id}) reativada sozinha após reinstalação do app em "${office.name}"${info.model ? `, ${info.model}` : ''}`, status: 200, ip: ipOf(req), tenantId });
       res.json({ deviceId: Number(cur.id), token, channel: stream?.slug ?? null, name: cur.name });
     }));
 
@@ -673,9 +697,9 @@ export function createTelas({
     app.get('/api/prefeitura/municipio', M, ah(async (req, res) => noStore(res).json({ municipio: municipioDto(await loadMunicipio(req.tenantId)) })));
     /**
      * Grava o município do cliente e busca o contorno. O município é TRAVADO no primeiro cadastro: o painel do cliente
-     * só grava enquanto não há nenhum; trocar ou tirar é do Superadmin (/api/platform/tenants/:id/telas-municipio).
+     * só grava enquanto não há nenhum; trocar ou tirar é da revenda ou da plataforma (server/prefeitura.js).
      */
-    const LOCKED = 'O município da prefeitura já foi definido e fica travado. Só a equipe da plataforma (Superadmin) pode trocar.';
+    const LOCKED = 'O município da prefeitura já foi definido e fica travado. Só a revenda ou a equipe da plataforma podem trocar.';
     async function setMunicipio(tenantId, b, by, { locked = false } = {}) {
       const code = b.ibge == null || b.ibge === '' ? null : Number(b.ibge);
       if (code != null && !(Number.isInteger(code) && code >= 1000000 && code <= 9999999)) throw fail(400, 'Município: código do IBGE inválido (7 dígitos).');
@@ -1578,7 +1602,7 @@ export function createTelas({
       if (tvcorp) mountPanel(redeApp(app), { ...deps, needs: (p) => deps.needs(p === 'prefeitura.manage' ? 'tvcorp.manage' : p) });
     },
     forget, prune, preview, targets, configFor, senha, conteudo, desap, offImg,
-    /** O município de um cliente, para o Superadmin trocar ou tirar (o painel do cliente só define na primeira vez). */
+    /** O município de uma conta, para a revenda ou a plataforma trocar ou tirar (o painel do cliente só define na primeira vez). */
     get municipio() { return municipioApi; },
     interna,
     stop() { senha.stop(); conteudo.stop(); desap.stop(); interna.stop(); tvcorp?.stop?.(); tvcorpDados?.stop?.(); },
