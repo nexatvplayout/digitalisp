@@ -617,7 +617,7 @@
     fetch('/api/site/planos', { headers: { Accept: 'application/json' } }).then(function (r) { if (!r.ok) throw new Error(); return r.json(); }).then(function (d) {
       var planos = (d && d.plans) || [];
       if (!planos.length) { semPlanos('Os planos estão sendo montados. Fale com a gente pelo WhatsApp e receba a proposta.'); return; }
-      var maior = planos.length > 2 ? 1 : -1; // o segundo da ordem do superadmin fica em destaque
+      var maior = -1; // sem destaque inventado: todos os planos iguais
       lista.replaceChildren.apply(lista, planos.map(function (p, i) {
         var c = mk('article', 'cartao plano' + (i === maior ? ' plano-destaque' : ''));
         if (i === maior) c.appendChild(mk('span', 'plano-selo', 'Mais escolhido'));

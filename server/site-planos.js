@@ -27,8 +27,11 @@ export const sitePlan = (p) => ({
   modules: CAT.FEATURE_KEYS.filter((k) => p.features?.[k]).map((k) => CAT.featureLabel(k)),
 });
 
-/** Os planos do site, na ordem do superadmin (ordem e preço). */
+/** Os planos do site, do menor para o maior. */
 export async function sitePlans() {
   const hidden = await hiddenCodes();
-  return (await T.listPlans()).filter((p) => p.code !== T.UNLIMITED_PLAN && !hidden.has(p.code)).map(sitePlan);
+  // do menor para o maior: pelo número de telas (ilimitado por último) e, no empate, pelo preço
+  const telas = (p) => (p.limits.telas == null ? Infinity : p.limits.telas);
+  return (await T.listPlans()).filter((p) => p.code !== T.UNLIMITED_PLAN && !hidden.has(p.code)).map(sitePlan)
+    .sort((x, y) => telas(x) - telas(y) || x.priceCents - y.priceCents);
 }
