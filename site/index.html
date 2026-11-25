@@ -27,7 +27,7 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="manifest" href="site.webmanifest">
-<link rel="stylesheet" href="estilo.css">
+<link rel="stylesheet" href="estilo.css?v=20261125c">
 </head>
 <body>
 <a class="pular" href="#conteudo">Pular para o conteúdo</a>
@@ -523,6 +523,7 @@
       <button class="carrossel-seta carrossel-prox" type="button" aria-label="Próximos planos" hidden>›</button>
     </div>
     <div class="carrossel-pontos" id="pontos-planos" aria-hidden="true"></div>
+    <div class="planos-comum" id="planos-comum" hidden></div>
     <p class="planos-nota">Valores mensais para a revenda (o provedor). Fale com a gente para montar o plano da sua operação.</p>
   </div>
 </section>
@@ -618,6 +619,14 @@
       var planos = (d && d.plans) || [];
       if (!planos.length) { semPlanos('Os planos estão sendo montados. Fale com a gente pelo WhatsApp e receba a proposta.'); return; }
       var maior = -1; // sem destaque inventado: todos os planos iguais
+      var comum = (planos[0].modules || []).filter(function (m) { return planos.every(function (p) { return (p.modules || []).indexOf(m) >= 0; }); });
+      var boxComum = document.getElementById('planos-comum');
+      if (comum.length && boxComum) {
+        var lc = mk('ul', 'planos-comum-lista');
+        comum.forEach(function (m) { lc.appendChild(mk('li', '', m)); });
+        boxComum.replaceChildren(mk('h3', '', 'Todos os planos incluem'), lc);
+        boxComum.hidden = false;
+      }
       lista.replaceChildren.apply(lista, planos.map(function (p, i) {
         var c = mk('article', 'cartao plano' + (i === maior ? ' plano-destaque' : ''));
         if (i === maior) c.appendChild(mk('span', 'plano-selo', 'Mais escolhido'));
@@ -626,14 +635,14 @@
         if (p.priceCents > 0) { preco.appendChild(mk('b', '', reais(p.priceCents))); preco.appendChild(mk('span', '', p.interval === 'year' ? ' por ano' : ' por mês')); }
         else preco.appendChild(mk('b', '', 'Sob consulta'));
         c.appendChild(preco);
-        if (p.description) c.appendChild(mk('p', 'plano-desc', p.description));
         var ul = mk('ul', 'plano-itens');
         Object.keys(LIMITES).forEach(function (k) {
           var n = p.limits ? p.limits[k] : null, w = LIMITES[k];
           ul.appendChild(mk('li', k === 'telas' ? 'plano-telas' : '', n == null ? (k === 'telas' ? 'Telas ilimitadas' : w[1].charAt(0).toUpperCase() + w[1].slice(1) + ' ilimitados') : 'Até ' + n.toLocaleString('pt-BR') + ' ' + (n === 1 ? w[0] : w[1])));
         });
         if (p.trialDays > 0) ul.appendChild(mk('li', '', p.trialDays + ' dias de teste'));
-        (p.modules || []).forEach(function (m) { ul.appendChild(mk('li', '', m)); });
+        if (p.priceCents > 0 && p.limits && p.limits.telas) ul.appendChild(mk('li', 'plano-porTela', 'Cada tela sai a ' + reais(Math.round(p.priceCents / p.limits.telas))));
+        (p.modules || []).forEach(function (m) { if (comum.indexOf(m) < 0) ul.appendChild(mk('li', '', m)); });
         c.appendChild(ul);
         var a = mk('a', 'botao plano-botao' + (i === maior ? '' : ' plano-botao-sec'), 'Quero este plano');
         a.href = 'https://wa.me/' + WHATSAPP + '?text=' + encodeURIComponent('Olá! Quero saber mais sobre o plano ' + p.name + ' do DIGITAL ISP.');
