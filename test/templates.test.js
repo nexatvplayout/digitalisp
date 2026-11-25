@@ -136,7 +136,7 @@ test('busca e filtros: sem acento, por segmento, peça e formato', () => {
   const r = C.filterTemplates(ALL, { q: 'pao frances', orient: 'land' });
   assert.ok(r.length && r.every((t) => t.orient === 'land' && /pão francês/i.test(JSON.stringify(t.fields))));
   assert.equal(C.filterTemplates(ALL, { segment: 'padaria', piece: 'oferta', orient: 'port' }).length, 5);
-  assert.equal(C.filterTemplates(ALL, { group: 'corporativo' }).length, 640, '600 dos temas + 40 de uso interno com foto (20 × 2 formatos)');
+  assert.equal(C.filterTemplates(ALL, { group: 'corporativo' }).length, 672, '600 dos temas + 40 de uso interno com foto (20 × 2 formatos) + 32 premium (indústria e escritório: 16 × 2)');
   assert.equal(C.money(1079), 'R$ 1.079,00'); assert.equal(C.money(0.99), 'R$ 0,99'); assert.equal(C.money(18900), 'R$ 18.900,00');
   assert.equal(C.nextDate({ rule: 'pascoa' }, new Date(2026, 0, 1).getTime()), '2026-04-05');
   assert.equal(C.nextDate({ rule: 'maes' }, new Date(2026, 0, 1).getTime()), '2026-05-10');
@@ -174,4 +174,15 @@ test('a prévia desenha cada template com o modelo, o formato e o texto, sem "un
       if (t.fields.qr) assert.equal(n.all((x) => x.attrs.class === 'tvc-sl-qrc').length, 1, `${t.id}: QR code`);
     }
   } finally { globalThis.document = prev; }
+});
+
+test('PREMIUM: 200 prontos com foto própria, 8 por nicho em 25 nichos, nos dois formatos, com o filtro por nicho', () => {
+  const P = ALL.filter((t) => /^premium-/.test(t.segment));
+  assert.equal(P.length, 400, '200 × 2 formatos');
+  assert.ok(P.every((t) => t.premium && /^foto-pm-/.test(t.fields.art)));
+  assert.equal(new Set(P.map((t) => t.fields.art)).size, 200, 'uma foto por modelo');
+  assert.equal(C.PREMIUM_NICHES.length, 25);
+  for (const n of C.PREMIUM_NICHES) assert.equal(C.filterTemplates(ALL, { niche: n.key }).length, 16, n.key);
+  for (const k of ['supermercado', 'padaria', 'farmacia', 'restaurante', 'pizzaria', 'clinica', 'academia', 'oficina', 'igreja', 'condominio', 'publico', 'provedor']) assert.ok(C.PREMIUM_NICHES.some((n) => n.key === `premium-${k}`), k);
+  assert.ok(C.filterTemplates(ALL, { q: 'premium padaria' }).length >= 16, 'a busca acha por "premium"');
 });

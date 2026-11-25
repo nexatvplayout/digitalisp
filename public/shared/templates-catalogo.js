@@ -7,6 +7,8 @@
 //   templateCatalog()                 todos (memorizado), na ordem: grupo, segmento, peça, variação, formato
 //   filterTemplates(list, { q, group, segment, piece, orient })
 import { GROUPS, SEGMENTS, CORP_SEGMENTS, CORP, HORARIOS, DATAS, INTERNOS, PROVEDOR_FOTOS, PROMO_FOTOS } from './templates-dados.js';
+import { PREMIUM_SEGMENTS, PREMIUM_NICHES } from './templates-premium.js';
+export { PREMIUM_NICHES };
 
 export { GROUPS };
 /** As peças (o filtro "peça" do painel). */
@@ -18,7 +20,7 @@ export const PIECES = [
   ['vaga', 'Vagas'], ['reconhecimento', 'Reconhecimento'], ['aniversariantes', 'Aniversariantes'], ['beneficio', 'Benefícios'], ['visitante', 'Visitantes'],
 ].map(([key, label]) => ({ key, label }));
 export const PIECE = Object.fromEntries(PIECES.map((p) => [p.key, p]));
-export const ALL_SEGMENTS = [...SEGMENTS, ...CORP_SEGMENTS, INTERNOS, PROVEDOR_FOTOS, PROMO_FOTOS];
+export const ALL_SEGMENTS = [...SEGMENTS, ...CORP_SEGMENTS, INTERNOS, PROVEDOR_FOTOS, PROMO_FOTOS, ...PREMIUM_SEGMENTS];
 export const SEGMENT = Object.fromEntries(ALL_SEGMENTS.map((s) => [s.key, s]));
 const LOJA_PIECES = ['oferta', 'preco', 'combo', 'cardapio', 'promocao', 'boas-vindas', 'horario', 'datas', 'aviso', 'institucional', 'qr', 'redes'];
 const INST_PIECES = ['servicos', 'agenda', 'evento', 'dica', 'campanha', 'boas-vindas', 'horario', 'datas', 'aviso', 'institucional', 'qr', 'redes'];
@@ -313,8 +315,8 @@ export const isPremium = (t) => /^foto-/.test(String(t?.fields?.art || ''));
 export const templateCatalog = () => (memo ||= buildCatalog().map((t) => (isPremium(t) ? { ...t, premium: true, search: `${t.search} premium foto` } : t)));
 
 /** Filtra pela busca (sem acento, todas as palavras), grupo, segmento, peça e formato. */
-export function filterTemplates(list, { q = '', group = '', segment = '', piece = '', orient = '', premium = '' } = {}) {
+export function filterTemplates(list, { q = '', group = '', segment = '', piece = '', orient = '', premium = '', niche = '' } = {}) {
   const words = strip(q).split(/\s+/).filter(Boolean);
-  return list.filter((t) => (!group || t.group === group) && (!segment || t.segment === segment) && (!piece || t.piece === piece) && (!orient || t.orient === orient) && (!premium || (premium === 'sim') === Boolean(t.premium))
+  return list.filter((t) => (!group || t.group === group) && (!segment || t.segment === segment) && (!niche || t.segment === niche) && (!piece || t.piece === piece) && (!orient || t.orient === orient) && (!premium || (premium === 'sim') === Boolean(t.premium))
     && words.every((w) => t.search.includes(w)));
 }

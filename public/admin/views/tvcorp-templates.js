@@ -6,7 +6,7 @@
 import { state } from '../lib.js';
 import { el, guard, tapi, put, opt, note, btn, empty, listOf, T } from './tvcorp-base.js';
 import { slidePreview } from '../../shared/tvcorp-previa.js';
-import { templateCatalog, filterTemplates, GROUPS, ALL_SEGMENTS, PIECES } from '../../shared/templates-catalogo.js';
+import { templateCatalog, filterTemplates, GROUPS, ALL_SEGMENTS, PIECES, PREMIUM_NICHES } from '../../shared/templates-catalogo.js';
 import { BY_KEY } from '../../shared/funcionalidades.js';
 import { slideEditor, themeOf } from './tvcorp-midias.js';
 import { todosOsQuadros, dicaArte, FORMATO_TXT } from './tvcorp-quadros.js';
@@ -14,7 +14,7 @@ import { D } from './tvcorp-base.js';
 
 const PAGE = 24;
 /** Os filtros ficam entre uma visita e outra à aba (na mesma sessão). */
-const V = { q: '', group: '', segment: '', piece: '', orient: '', quadro: '', premium: '', shown: PAGE };
+const V = { q: '', group: '', segment: '', piece: '', orient: '', quadro: '', premium: '', niche: '', shown: PAGE };
 /** Vindo de uma playlist: os templates no formato do quadro dela. */
 export function templatesPara(orient, q = null) { V.orient = orient || ''; V.quadro = q && q.layout?.id != null ? `l${q.layout.id}:${q.zone.id}` : ''; V.shown = PAGE; }
 
@@ -67,6 +67,9 @@ export default async function paintTemplates(box, ctx) {
   quadro.addEventListener('change', () => { V.quadro = quadro.value; const q = quadros.find((x) => x.key === V.quadro); V.orient = q && q.formato !== 'quad' ? q.formato : ''; orient.value = V.orient; paintDica(); apply(); });
   const premium = el('select', { 'aria-label': 'Premium' }, opt('', 'Premium e comuns', !V.premium), opt('sim', 'Só PREMIUM (com foto)', V.premium === 'sim'), opt('nao', 'Só comuns', V.premium === 'nao'));
   premium.addEventListener('change', () => { V.premium = premium.value; apply(); });
+  // os templates PREMIUM por nicho (8 por nicho, com foto própria): escolher um nicho mostra só os premium dele
+  const niche = el('select', { 'aria-label': 'Nicho premium' }, opt('', 'Todos os nichos premium', !V.niche), ...PREMIUM_NICHES.map((n) => opt(n.key, n.label, V.niche === n.key)));
+  niche.addEventListener('change', () => { V.niche = niche.value; apply(); });
   const fillSegments = () => put(segment, opt('', 'Todos os segmentos', !V.segment), ...segOptions().map((s) => opt(s.key, s.label, V.segment === s.key)));
   fillSegments();
   const count = el('span', { class: 'dim small', role: 'status' });
@@ -91,10 +94,10 @@ export default async function paintTemplates(box, ctx) {
   piece.addEventListener('change', () => { V.piece = piece.value; apply(); });
   orient.addEventListener('change', () => { V.orient = orient.value; apply(); });
   paintDica();
-  const clear = btn('Limpar filtros', () => { Object.assign(V, { q: '', group: '', segment: '', piece: '', orient: '', quadro: '', premium: '' }); premium.value = ''; q.value = ''; group.value = ''; piece.value = ''; orient.value = ''; quadro.value = ''; paintDica(); fillSegments(); apply(); }, 'small');
+  const clear = btn('Limpar filtros', () => { Object.assign(V, { q: '', group: '', segment: '', piece: '', orient: '', quadro: '', premium: '', niche: '' }); premium.value = ''; niche.value = ''; q.value = ''; group.value = ''; piece.value = ''; orient.value = ''; quadro.value = ''; paintDica(); fillSegments(); apply(); }, 'small');
   put(box,
     note('Modelos prontos por segmento, em português, para deitado (16:9) e em pé (9:16). Escolha um, troque os textos, os preços e as cores e salve: ele vai para a biblioteca (Mídias) e entra nas playlists como qualquer slide.'),
-    el('div', { class: 'tp-bar' }, q, quadro, premium, group, segment, piece, orient, clear),
+    el('div', { class: 'tp-bar' }, q, quadro, premium, niche, group, segment, piece, orient, clear),
     dica,
     count, grid, more);
   apply();
