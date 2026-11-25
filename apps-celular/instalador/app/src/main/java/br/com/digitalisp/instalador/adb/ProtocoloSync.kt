@@ -46,10 +46,11 @@ object ProtocoloSync {
         destino: String,
         porEscrita: Int,
         mtimeSegundos: Int,
+        modo: Int = 420,
         progresso: (Long) -> Unit,
     ) {
         val bloco = minOf(MAX_DADOS, porEscrita - 8).also { require(it > 0) { "porEscrita pequeno demais" } }
-        saida.write(send(destino))
+        saida.write(send(destino, modo))
         val buf = ByteArray(bloco)
         var enviado = 0L
         while (true) {

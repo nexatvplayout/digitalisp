@@ -9,6 +9,7 @@ enum class Plataforma { ANDROID, SAMSUNG, LG }
  * @property portaAdb porta do ADB por TCP puro (normalmente 5555).
  * @property portaTls porta anunciada em `_adb-tls-connect._tcp` (depuração por Wi-Fi do Android 11+).
  * @property portaPareamento porta anunciada em `_adb-tls-pairing._tcp` (só enquanto a TV mostra o código).
+ * @property portaDev Samsung 26101 (sdb) ou LG 9922 (SSH) aberta: o modo desenvolvedor da TV está ligado.
  */
 data class TvEncontrada(
     val host: String,
@@ -17,9 +18,10 @@ data class TvEncontrada(
     val portaAdb: Int? = null,
     val portaTls: Int? = null,
     val portaPareamento: Int? = null,
+    val portaDev: Int? = null,
 ) {
-    /** O instalador sabe instalar nesta versão. */
-    val instalavel: Boolean get() = plataforma == Plataforma.ANDROID
+    /** Android, Samsung e LG instalam pelo celular. */
+    val instalavel: Boolean get() = true
 
     /** Porta para conectar o ADB: a da depuração por Wi-Fi tem prioridade, depois a 5555. */
     val portaConexao: Int? get() = portaTls ?: portaAdb
@@ -39,7 +41,8 @@ data class TvEncontrada(
             append(host)
             if (!nome.isNullOrBlank()) append(" · ").append(nome)
             when {
-                plataforma != Plataforma.ANDROID -> append(" · instalação pelo celular ainda não disponível")
+                plataforma != Plataforma.ANDROID && portaDev != null -> append(" · modo desenvolvedor ligado")
+                plataforma != Plataforma.ANDROID -> append(" · ligue o modo desenvolvedor na TV")
                 portaConexao != null -> append(" · pronta para instalar")
                 portaPareamento != null -> append(" · precisa do código de pareamento")
             }
@@ -57,6 +60,7 @@ data class TvEncontrada(
             portaAdb = outra.portaAdb ?: portaAdb,
             portaTls = outra.portaTls ?: portaTls,
             portaPareamento = outra.portaPareamento ?: portaPareamento,
+            portaDev = outra.portaDev ?: portaDev,
         )
     }
 }

@@ -1,126 +1,127 @@
 # Pesquisa: instalar o app de tela pelo celular, fora da loja
 
-DIGITAL ISP — Instalador (22/11/2026). O que é viável já, o que fica para depois e por quê.
+DIGITAL ISP — Instalador. Primeira versão em 22/11/2026 (só Android); Samsung e LG em 25/11/2026 (versão 0.2.0).
 
 ## Resumo
 
-| Aparelho | Como instala pelo celular | Situação |
+| Aparelho | Como o celular instala | Situação |
 |---|---|---|
-| TV box Android (Android 5 a 10, a maioria das "boxes" comuns) | ADB por TCP na porta 5555 + aceite da chave na TV | **Feito nesta versão** |
-| TV box / Google TV Android 11+ | "Depuração por Wi-Fi": pareamento por código de 6 dígitos (TLS) e conexão na porta que a TV anuncia | **Feito nesta versão** |
-| Samsung (Tizen) de casa | Modo desenvolvedor + `sdb` (porta 26101) + pacote `.wgt` assinado com certificado Samsung ligado ao aparelho | **Depois** — dá para fazer, mas depende de certificado do dono |
-| Samsung profissional (monitores de sinalização, SSSP/Tizen Signage) | "URL Launcher" do próprio monitor baixa o `.wgt` de um endereço | **Depois, e é o caminho melhor** — não precisa do celular para instalar |
-| LG (webOS) de casa | App "Developer Mode" na TV + SSH (porta 9922) com a chave mostrada na TV; sessão de desenvolvedor expira | **Depois** — viável, mas a expiração não serve para tela 24 h |
-| LG profissional (webOS Signage / Pro:Centric) | Instalação de IPK por servidor ou pendrive, sem expirar | **Depois** — caminho certo para LG |
+| TV box Android (Android 5 a 10) | ADB por TCP na porta 5555 + aceite da chave na TV | **Pronto** |
+| TV box / Google TV Android 11+ | "Depuração por Wi-Fi": pareamento por código (TLS + SPAKE2) | **Pronto** |
+| Samsung (Tizen) | Modo desenvolvedor com o **IP do celular** como "Host PC IP"; sdb na porta 26101; `.wgt` assinado | **Pronto**; cada TV nova precisa estar no certificado Samsung (DUID) — **depende do dono** |
+| LG (webOS) | App "Developer Mode" da TV; chave do Key Server (porta 9991) aberta com a frase-senha; SSH 9922; luna-send | **Pronto**; precisa da conta de desenvolvedor LG em cada TV, e a sessão **vence** |
+| Samsung / LG profissionais (SSSP, webOS Signage) | URL Launcher / servidor do monitor | Depois (outro formato) |
 
-Nesta versão o instalador **já reconhece** Samsung e LG na rede (portas típicas) e mostra ao técnico que essas
-marcas ainda não instalam pelo celular, em vez de deixá-las de fora sem explicação.
+O app de tela vem sempre do **servidor DIGITAL ISP** (https://www.digitalisp.com.br), conferido pelo SHA-256:
+`/telas/app/latest.json` (Android) e `/telas/tv/latest.json` (Samsung `.wgt` e LG `.ipk`, `server/telas-tv.js`).
 
 ## 1. TV box Android
 
-### 1.1 ADB por TCP (porta 5555) — a maioria das TV boxes
+### 1.1 ADB por TCP (porta 5555)
 
-- O `adbd` da TV aceita conexões TCP quando a depuração por rede está ligada. Nas TV boxes comuns (AOSP, Android 7 a 10)
-  isso costuma estar em **Configurações → Opções do desenvolvedor → Depuração USB / Depuração ADB pela rede**, e em
-  muitas já vem ligado de fábrica (`service.adb.tcp.port=5555`).
-- Para liberar as Opções do desenvolvedor: **Configurações → Sobre → clicar 7 vezes em "Compilação"**.
-- Na primeira conexão, o `adbd` pede a chave RSA do celular e a TV mostra **"Permitir depuração?"**. O técnico marca
-  **"Sempre permitir deste computador"** e confirma com o controle remoto. Depois disso a mesma chave entra direto.
-- Protocolo: o ADB normal (`CNXN`, `AUTH`, `OPEN`, `WRTE`, `OKAY`, `CLSE`). Não há criptografia no TCP puro: só use em
-  rede de confiança (a rede do cliente, durante a instalação). O LEIAME manda desligar a depuração no fim.
+- Ligado em **Opções do desenvolvedor → Depuração USB / Depuração ADB pela rede** (nas TV boxes comuns costuma vir
+  ligado de fábrica). Opções do desenvolvedor: **Configurações → Sobre → 7 cliques em "Compilação"**.
+- Na primeira conexão a TV pergunta **"Permitir depuração?"**: "Sempre permitir" + "Permitir". Depois a chave do
+  celular entra direto.
+- Sem criptografia no TCP puro: o LEIAME manda desligar a depuração no fim.
 
-### 1.2 Depuração por Wi-Fi do Android 11+ (pareamento por código)
+### 1.2 Android 11+: pareamento por código
 
-- Em **Opções do desenvolvedor → Depuração por Wi-Fi → Parear dispositivo com código**, a TV mostra um código de 6
-  dígitos, um IP e uma porta de pareamento (temporária).
-- A TV anuncia pela rede, por mDNS:
-  - `_adb-tls-pairing._tcp` — porta de pareamento (só enquanto a janela "Parear" estiver aberta);
-  - `_adb-tls-connect._tcp` — porta da conexão (muda a cada vez que a depuração por Wi-Fi é ligada).
-- Pareamento: TLS 1.3 + **SPAKE2** com o código; troca-se a chave pública. Depois, a conexão na porta de
-  `_adb-tls-connect` é ADB com `STLS` (TLS por cima), sem novo aviso na TV.
-- Algumas TVs Android 11+ continuam aceitando a 5555 se a "Depuração ADB pela rede" antiga estiver ligada; o
-  instalador tenta as duas coisas.
+- **Depuração por Wi-Fi → Parear dispositivo com código** mostra código de 6 dígitos, IP e porta temporária.
+- mDNS: `_adb-tls-pairing._tcp` (porta do pareamento) e `_adb-tls-connect._tcp` (porta da conexão).
+- Pareamento TLS 1.3 + SPAKE2; depois ADB com `STLS`.
 
 ### 1.3 Instalar e abrir
 
-- Enviar o APK: serviço `sync:` (`SEND /data/local/tmp/arquivo.apk,0644` → blocos `DATA` de até 64 KiB → `DONE`), e
-  depois `shell:pm install -r -g /data/local/tmp/arquivo.apk`. Funciona em todas as versões; `cmd package install -S`
-  (sem arquivo temporário) só existe a partir do Android 7, por isso não é o caminho principal.
-- `-r` reinstala por cima (atualização) mantendo os dados; `-g` já concede as permissões de execução.
-- Abrir no fim: `monkey -p <pacote> -c android.intent.category.LEANBACK_LAUNCHER 1`, e se a TV não tiver ícone de TV,
-  `-c android.intent.category.LAUNCHER`. O nome do pacote é lido do próprio APK baixado.
-- Erros comuns do `pm install` e o que significam estão traduzidos em `InstallOutput.kt` (assinatura diferente,
-  versão mais antiga, espaço insuficiente, etc.).
+`sync:` para `/data/local/tmp`, `pm install -r -g` (sem `-g` nas TVs antigas), `monkey` com `LEANBACK_LAUNCHER` e
+depois `LAUNCHER`. Erros do `pm` traduzidos em `adb/SaidaComandos.kt`.
 
-### 1.4 Bibliotecas ADB em Kotlin/Java
+### 1.4 Bibliotecas
 
-| Biblioteca | Licença | TCP 5555 | Pareamento Android 11+ | Observação |
-|---|---|---|---|---|
-| **libadb-android** (MuntashirAkon) 3.1.1 | **GPL-3.0-or-later OU Apache-2.0** (escolhemos **Apache-2.0**) | sim | **sim** (TLS + SPAKE2) | Feita para Android; usada no App Manager. JitPack. **Escolhida.** |
-| └ spake2-java (mesmo autor) 2.2.1 | **LGPL-3.0** | — | usada no pareamento | Entra como biblioteca separada no APK. Ver nota abaixo. |
-| └ Conscrypt (Google) 2.5.3 | Apache-2.0 | — | TLS 1.3 com `exportKeyingMaterial` | Maven Central. |
-| └ Bouncy Castle 1.81 | MIT (licença Bouncy Castle) | — | — | Gera o certificado da chave do celular. |
-| dadb (mobile.dev) 2.0.0 | Apache-2.0 | sim | **não** | Boa e simples, Maven Central; mas sem pareamento não atende Android 11+. |
-| AdbLib (cgutman) | BSD-3 | sim | não | Antiga, sem manutenção. |
-| Escrever o protocolo à mão | — | fácil | difícil (SPAKE2 compatível com BoringSSL) | Não compensa refazer o SPAKE2. |
+| Biblioteca | Licença | Uso |
+|---|---|---|
+| libadb-android 3.1.1 | GPL-3.0-or-later **ou Apache-2.0** (usamos Apache-2.0) | ADB e pareamento |
+| spake2-java 2.2.1 | **LGPL-3.0** | SPAKE2 do pareamento (`libspake2.so` separada, sem alteração) |
+| Conscrypt 2.5.3 | Apache-2.0 | TLS 1.3 |
+| Bouncy Castle 1.81 | MIT | certificado da chave ADB |
+| JSch 2.27.0 (mwiede) | BSD | SSH/SFTP da LG |
+| Apache MINA SSHD 2.20 | Apache-2.0 | **só nos testes** (TV LG de mentira) |
 
-**Nota sobre a LGPL do spake2-java:** a LGPL permite usar a biblioteca num app fechado desde que ela fique como
-biblioteca separável, a licença e o código-fonte dela fiquem disponíveis, e quem quiser possa trocá-la. No APK ela é
-uma biblioteca nativa separada (`lib/*/libspake2.so`) mais as classes Java dela, sem alteração; o R8 está desligado. O
-app tem uma tela "Licenças" que cita cada biblioteca. **Confirmar com o jurídico do dono antes de distribuir.**
-Se o dono preferir zero LGPL, a alternativa é tirar o pareamento (só TCP 5555, com dadb) — perde-se o Android 11+.
-
-**Isolamento:** o app só fala com a biblioteca por uma interface própria (`AdbGateway`). Trocar de biblioteca é trocar
-um arquivo (`LibAdbGateway.kt`).
-
-### 1.5 Descoberta na rede
-
-- **mDNS** (Android `NsdManager`): `_adb-tls-connect._tcp`, `_adb-tls-pairing._tcp` e `_adb._tcp`. Pega nome,
-  IP e porta sem o técnico digitar nada.
-- **Varredura da sub-rede**: tenta abrir TCP em cada IP da rede do Wi-Fi (até 254 endereços; redes maiores são
-  limitadas à /24 em volta do celular), com 64 tentativas em paralelo e 400 ms de espera. Portas:
-  - `5555` → TV box com ADB;
-  - `8001`/`8002` → Samsung Tizen (API da TV), `26101` → Samsung com modo desenvolvedor;
-  - `3000`/`3001` → LG webOS (SSAP), `9922` → LG com modo desenvolvedor.
-- **IP manual**: sempre possível (rede com isolamento de clientes bloqueia mDNS e varredura).
-- Limitações: Wi-Fi de visitantes com "isolamento de clientes" impede tudo — o celular precisa estar na **mesma rede**
-  da TV, sem isolamento.
+A LGPL do spake2-java aceita app fechado com a biblioteca separável; **confirmar com o jurídico do dono**. Sem ela,
+perde-se só o Android 11+ por código.
 
 ## 2. Samsung (Tizen)
 
-- **TV de casa (Smart TV comum):** o app é um `.wgt` (web app). Para instalar fora da loja:
-  1. Na TV, em **Apps**, digitar `12345` no controle → ligar **Developer mode** e informar o **IP do computador**
-     (aqui: o IP do celular). Reiniciar a TV.
-  2. Conectar com `sdb` (protocolo derivado do ADB) na porta **26101**.
-  3. O `.wgt` tem de estar assinado com o **certificado Samsung** (autor + distribuidor) gerado no Tizen Studio com a
-     conta Samsung do dono, e o certificado de distribuidor lista os **DUIDs** das TVs permitidas (ou nível "partner").
-  4. Instalar: enviar o `.wgt` e rodar `vd_appinstall` / `0 vd_appinstall <id> <arquivo>` pelo shell do `sdb`.
-- **Viável pelo celular?** Tecnicamente sim (o `sdb` é parecido com o ADB, dá para portar), mas: o certificado amarra
-  as TVs pelo DUID (cada TV nova = novo certificado ou certificado de parceiro), o modo desenvolvedor aponta para um
-  IP fixo, e não há biblioteca pronta. **Fica para depois**, junto com o app Samsung (sessão apps-tv).
-- **Monitor profissional Samsung (SSSP / Tizen Signage):** tem **URL Launcher** — o monitor baixa e roda o `.wgt` de
-  um endereço do servidor, com atualização automática, sem certificado da loja. **É o caminho recomendado** para
-  sinalização em Samsung: o instalador pode, no futuro, só mostrar o passo a passo e o endereço a digitar.
+### 2.1 Como o Tizen Studio instala (e o celular faz igual)
+
+Conferido em 25/11/2026 com o `sdb.exe` do Tizen Studio e a Samsung **UN58TU7020GXZD (Tizen 5.5)** da recepção, por um
+proxy que gravou o tráfego, e com o próprio cliente Kotlin do instalador contra a mesma TV (`SamsungRealTest`):
+
+1. **sdb = protocolo do ADB** (cabeçalho de 24 bytes, CNXN/OPEN/OKAY/WRTE/CLSE), **sem chave**: `CNXN` versão
+   `0x00100000`, 256 KiB, `"host::"`; a TV responde `"device::UN58TU7020GXZD::0"`. Quem não é o "Host PC IP" não passa
+   do CNXN — por isso o **celular tem de ser o Host PC** (o IP dele digitado no modo desenvolvedor da TV).
+2. `capability:` → `sdk_toolpath:/home/owner/share/tmp/sdk_tools`, `platform_version:5.5`, `secure_protocol:enabled`.
+3. O shell é **restrito**: só comandos `0 ...` respondem (`echo` não). `0 getduid` → o DUID (`RLCHYSD5UYU62` na
+   recepção).
+4. `sync:` só grava em `<sdk_toolpath>/tmp/` (fora dela: `FAIL You cannot push files to this path.`); o modo enviado é
+   `33261`.
+5. Instalar: `0 vd_appinstall <appId> <caminho>` (classe `SecureCmdVer1_0` do tizen-new-cli). Saída:
+   `app_id[X] install start` … `install completed`, ou `download failed[N]` / `install failed[N, M]`. Com id de teste e
+   arquivo inexistente a TV respondeu `download failed[16]` (o app instalado não foi tocado).
+6. Abrir: `0 execute <appId>`.
+
+### 2.2 O que depende do dono
+
+- O `.wgt` é assinado com o **certificado Samsung** do dono (autor + distribuidor). O certificado de distribuidor
+  de desenvolvedor só vale nas TVs cujo **DUID** está nele. Uma TV nova: o instalador mostra o DUID e explica; o dono
+  inclui o DUID no certificado (Tizen Studio → Certificate Manager), gera e assina o pacote de novo
+  (`apps-tv/scripts/empacotar.js tizen --perfil=...`) e publica (`node scripts/telas-tv-publicar.mjs`).
+- Para não depender do DUID de cada TV: certificado de nível **partner** (pedido à Samsung) ou a linha profissional
+  (SSSP/URL Launcher).
+- O "Host PC IP" é um só por TV: se o celular trocar de IP (DHCP), troca na TV também. A Samsung não vence a sessão.
+- Abrir sozinho ao ligar: "Executar automaticamente o último aplicativo" (mostrado no fim da instalação).
 
 ## 3. LG (webOS)
 
-- **TV de casa:** instalar o app **Developer Mode** da loja LG na TV e entrar com uma **conta de desenvolvedor LG**
-  (do dono ou da revenda). A TV abre SSH na porta **9922** e mostra uma **frase-chave** para baixar a chave privada.
-  O `ares-install` envia o `.ipk` por SFTP e instala.
-- **A sessão de desenvolvedor expira** (por volta de 50 horas na última referência; o app tem botão de prorrogar, e
-  há `ares-extend-dev`). Quando expira, **os apps instalados por esse modo somem ou deixam de abrir**. Para tela
-  24 h isso é inaceitável sem um "renovador".
-- **Viável pelo celular?** Sim tecnicamente (SSH/SFTP por JSch ou Apache MINA SSHD, ambas licenças permissivas), mas
-  o problema é a expiração, não o celular. **Fica para depois**; teste com uma LG real para medir o prazo.
-- **LG profissional (webOS Signage, Pro:Centric):** instala IPK por servidor/pendrive sem expirar. **Caminho
-  recomendado** para LG em sinalização.
+### 3.1 Como o ares-install faz (e o celular faz igual)
 
-## 4. O que fica para depois
+Do código do webOS TV CLI (github.com/webos-tools/cli, Apache-2.0: `lib/install.js`, `lib/base/novacom.js`,
+`lib/base/luna.js`, `files/conf/command-service.json`):
 
-1. Samsung por `sdb` (depende do certificado do dono) e LG por SSH (depende da conta de desenvolvedor e da expiração).
-2. Passo a passo de URL Launcher (Samsung profissional) e Pro:Centric/SI (LG profissional) dentro do instalador.
-3. Endereço real do APK (`SERVIDOR_A_DEFINIR`) e verificação do SHA-256 do APK publicado pelo servidor.
-4. Login do técnico da revenda no instalador (vincular a tela à revenda já na instalação).
-5. QR code na tela de cadastro da TV para abrir o instalador já com o código.
-6. Desligar a depuração na TV pelo próprio instalador no fim (`settings put global adb_enabled 0` desliga a conexão
-   em uso; precisa testar em cada marca antes de ligar como padrão).
+1. Key Server do app Developer Mode: `GET http://TV:9991/webos_rsa` → chave privada **cifrada** com a frase-senha
+   (Passphrase) que a TV mostra.
+2. SSH na porta **9922**, usuário **prisoner**, com essa chave (aceitamos `ssh-rsa` antigo, como as TVs pedem).
+3. `/usr/bin/test -d /media/developer/temp || /bin/mkdir -p /media/developer/temp`, envio por SFTP (ou `cat >`) e
+   conferência do tamanho.
+4. `/usr/bin/luna-send-pub -i luna://com.webos.appInstallService/dev/install
+   '{"id":"com.ares.defaultName","ipkUrl":"/media/developer/temp/<ipk>","subscribe":true}'`; lê `details.state` até
+   `installed` (ou `FAILED` com `details.reason`). Depois `rm -f`.
+5. Abrir: `luna-send-pub -n 1 luna://com.webos.applicationManager/launch '{"id":"br.com.digitalisp.telas"}'`.
+6. **Renovar a sessão** (o botão "Extend"): token em `/var/luna/preferences/devmode_enabled`, depois
+   `https://developer.lge.com/secure/ResetDevModeSession.dev?sessionToken=…` e `CheckDevModeSession.dev` (tempo que
+   falta). É o que o webOS Dev Manager da comunidade faz; **a confirmar numa LG real**. Se falhar, o instalador só avisa.
+
+A chave e a frase ficam guardadas no celular (pasta privada do app) por TV: na próxima visita entra sem perguntar e
+renova a sessão.
+
+### 3.2 O que depende do dono
+
+- **Conta de desenvolvedor LG** (gratuita) para entrar no app Developer Mode de cada TV.
+- **A sessão vence** (cerca de 50 h na referência antiga; hoje o app mostra o tempo, a confirmar). Vencida, a TV apaga
+  o app. O instalador renova a cada visita; para muitas TVs, a saída é a linha profissional da LG.
+
+## 4. Testado sem aparelho
+
+- 91 testes da JVM: descoberta, máquina de estados, orquestração das três marcas, protocolo sync, download conferido.
+- **Samsung**: uma "TV" sdb de mentira que responde como a da recepção (CNXN, capability, shell restrito, sync só em
+  `sdk_tools/tmp`, `vd_appinstall`, `execute`), mais o `SamsungRealTest` contra a TV de verdade (só leitura).
+- **LG**: uma "TV" com servidor SSH/SFTP de verdade (Apache MINA) + Key Server com chave cifrada pela frase.
+- Não testado em aparelho: Android real, LG real, e a instalação completa numa Samsung (a da recepção não foi
+  reinstalada de propósito: desinstalar apaga o cadastro da tela).
+
+## 5. Depois
+
+1. Linha profissional: URL Launcher (Samsung SSSP) e Pro:Centric/SI (LG).
+2. Login do técnico (vincular a tela à revenda já na instalação).
+3. QR code na tela de cadastro da TV para abrir o instalador.
+4. Desligar a depuração da TV box pelo próprio instalador no fim.

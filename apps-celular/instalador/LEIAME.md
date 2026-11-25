@@ -1,30 +1,28 @@
 # DIGITAL ISP — Instalador pelo celular
 
-App Android do **técnico da revenda** (não é o app white-label da TV). Acha na mesma rede Wi-Fi a TV box Android e
-instala nela o app de tela, por fora da loja, pela depuração de rede (ADB). Samsung e LG são reconhecidas na rede, mas
-ainda não instalam pelo celular — ver [PESQUISA.md](PESQUISA.md).
+App Android do **técnico da revenda** (não é o app white-label da TV). Acha na mesma rede Wi-Fi a **TV box Android**,
+a **TV Samsung** ou a **TV LG** e instala nela o app de tela, por fora da loja, baixando a versão atual do servidor
+DIGITAL ISP. Como e por quê: [PESQUISA.md](PESQUISA.md).
 
-- Pacote: `br.com.digitalisp.instalador` · versão 0.1.0 · Android 7.0+ no celular.
-- Pacote do app de tela esperado: lido do próprio APK; se não der, `br.com.digitalisp.telas` (`Config.kt`).
+- Pacote `br.com.digitalisp.instalador` · versão **0.2.0** (versionCode 2) · Android 8.0+ no celular.
+- Baixar: **https://www.digitalisp.com.br/instalador** (o APK; `server/telas-tv.js`).
 
 ## O que o app faz
 
-1. **Procurar TVs na rede**: mDNS (`_adb-tls-connect`, `_adb-tls-pairing`, `_adb`) e varredura da sub-rede
-   (portas 5555; Samsung 8001/8002/26101; LG 3000/3001/9922). Ou **Digitar o IP da TV**.
-2. **Conectar**: na 5555 (ou na porta da "Depuração por Wi-Fi"). Se demorar, a tela manda olhar a TV e aceitar
-   "Permitir depuração?".
-3. **Parear** (Android 11+): pede o código de 6 dígitos que a TV mostra; a porta vem do mDNS ou é digitada.
-4. **Baixar** o APK do endereço configurado (`https://SERVIDOR_A_DEFINIR/app/telas.apk`) ou usar um **APK escolhido
-   no celular**.
-5. **Enviar** para `/data/local/tmp`, **instalar** com `pm install -r -g`, apagar o temporário e **abrir** o app.
+1. **Procurar TVs na rede**: mDNS do ADB e varredura da sub-rede (5555; Samsung 8001/8002/26101; LG 3000/3001/9922),
+   ou **Digitar o IP da TV** escolhendo a marca.
+2. **Conectar**, conforme a marca:
+   - Android: 5555 ou a porta da "Depuração por Wi-Fi"; aceite "Permitir depuração?" ou o código de 6 dígitos.
+   - Samsung: sdb na 26101. Se a TV não aceitar, a tela mostra o **IP do celular** para pôr no "Host PC IP".
+   - LG: pede a **Passphrase** do app Developer Mode, baixa a chave do Key Server e entra por SSH (9922).
+3. **Baixar** do servidor (`/telas/app/latest.*` ou `/telas/tv/latest.*`), conferindo tamanho e SHA-256.
+4. **Enviar, instalar e abrir** (`pm install`; `0 vd_appinstall`; `luna-send` appInstallService) e mostrar o recado
+   final (Samsung: DUID e "abrir o último app ao ligar"; LG: sessão renovada e quanto falta).
 
-Código: `rede/` (descoberta), `adb/` (ADB e protocolo sync), `instalacao/` (máquina de estados e orquestrador),
-`ui/` (tela). A biblioteca ADB só aparece em `adb/LibAdbGateway.kt`.
+Código: `rede/` (descoberta), `adb/`, `samsung/` (sdb), `lg/` (SSH/luna), `pacotes/` (servidor), `instalacao/`
+(máquina de estados, orquestrador e as sessões de cada marca), `ui/`.
 
-## Compilar e testar (Windows, PowerShell)
-
-O JDK e o SDK ficam em `C:\Projetos\nexa-ferramentas`. O `local.properties` (fora do git) aponta o SDK:
-`sdk.dir=C:/Projetos/nexa-ferramentas/android-sdk`.
+## Compilar, testar e publicar (Windows, PowerShell)
 
 ```powershell
 $env:JAVA_HOME = "C:\Projetos\nexa-ferramentas\jdk-21.0.13+9"
@@ -35,66 +33,49 @@ cd C:\Projetos\digital-isp\apps-celular\instalador; .\gradlew.bat --no-daemon :a
 ```
 
 ```powershell
-cd C:\Projetos\digital-isp\apps-celular\instalador; .\gradlew.bat --no-daemon :app:assembleRelease
+cd C:\Projetos\digital-isp\apps-celular\instalador; .\gradlew.bat --no-daemon :app:lintRelease :app:assembleRelease "-Pinstalador.assinarComDebug=true"
 ```
 
-Sem chave, sai `app/build/outputs/apk/release/app-release-unsigned.apk` (não instala em celular sem assinar).
+```powershell
+cd C:\Projetos\digital-isp; node scripts/instalador-publicar.mjs; node scripts/telas-tv-publicar.mjs
+```
 
-## Assinar (o dono faz, uma vez)
+Depois: commit, push do `main` e `sh scripts/publicar.sh`. O `telas-tv-publicar` pega a pasta `tv-*` mais nova de
+`C:\Projetos\digital-isp-pacotes` (o `.wgt` já assinado e o `.ipk`). O `local.properties` (fora do git) aponta o SDK:
+`sdk.dir=C:/Projetos/nexa-ferramentas/android-sdk`.
 
-A chave e as senhas são do dono e **nunca** vão para o repositório nem para o chat.
+Teste contra a Samsung da recepção (só leitura; o PC precisa ser o Host PC da TV):
 
-1. Criar a pasta `C:\Projetos\digital-isp-chaves` (fora do repositório) e a chave — o `keytool` pede as senhas na
-   hora; guarde a chave e as senhas num lugar seguro, com cópia:
+```powershell
+$env:SAMSUNG_REAL = "192.168.100.107"; .\gradlew.bat --no-daemon :app:testReleaseUnitTest --tests "*SamsungRealTest*"
+```
 
-   ```powershell
-   & "C:\Projetos\nexa-ferramentas\jdk-21.0.13+9\bin\keytool.exe" -genkeypair -v -keystore C:\Projetos\digital-isp-chaves\instalador.jks -alias instalador -keyalg RSA -keysize 4096 -validity 10000
-   ```
+## Assinatura
 
-2. Criar `apps-celular/instalador/keystore.properties` (já está no `.gitignore`):
+Hoje o release sai assinado com a **chave de depuração deste PC** (`-Pinstalador.assinarComDebug=true`), como o app
+da TV. Para a chave própria (o dono faz, uma vez; nenhuma senha passa por aqui):
 
-   ```
-   storeFile=C:/Projetos/digital-isp-chaves/instalador.jks
-   storePassword=...
-   keyAlias=instalador
-   keyPassword=...
-   ```
+```powershell
+& "C:\Projetos\nexa-ferramentas\jdk-21.0.13+9\bin\keytool.exe" -genkeypair -v -keystore C:\Projetos\digital-isp-chaves\instalador.jks -alias instalador -keyalg RSA -keysize 4096 -validity 10000
+```
 
-3. Rodar o `assembleRelease` de novo: sai `app-release.apk`, assinado.
+e `apps-celular/instalador/keystore.properties` (já no `.gitignore`) com `storeFile`, `storePassword`, `keyAlias`,
+`keyPassword`. Trocar de chave obriga o técnico a desinstalar o instalador antigo uma vez.
 
-Use **sempre a mesma chave**: o Android só atualiza o instalador por cima se a assinatura for igual.
-(O app de tela tem chave própria, na pasta `android/`.)
+## Teste com aparelhos reais
 
-## Teste com uma TV box real
-
-Precisa: uma TV box Android, um celular Android, os dois no **mesmo Wi-Fi** (sem "isolamento de clientes"), o APK
-de release do app de tela no celular (ou o endereço https dele).
-
-1. Instalar o instalador no celular (APK assinado; ou, só para teste, um `assembleDebug`).
-2. Na TV box: **Configurações → Sobre → 7 cliques em "Compilação"** → **Opções do desenvolvedor** → ligar
-   **Depuração USB** e, se houver, **Depuração ADB pela rede** / **ADB por rede**.
-   Android 11+: ligar **Depuração por Wi-Fi** e abrir **Parear dispositivo com código**.
-3. No celular: **Escolher um APK do celular** (o APK do app de tela) — enquanto o servidor não existe.
-4. **Procurar TVs na rede** → tocar na TV box ("pronta para instalar" ou "precisa do código").
-5. Se aparecer **"Olhe a TV"**: no controle, marcar **Sempre permitir** e **Permitir**.
-   Se pedir **código**: digitar os 6 números (e a porta, se não vier preenchida).
-6. Conferir: barra de envio, "Instalando", e o app de tela abrindo sozinho na TV.
-7. Repetir com o app já instalado (deve atualizar por cima) e com um APK de outra assinatura (deve explicar
-   "Desinstale o app antigo").
-8. No fim, desligar a depuração na TV.
-
-O que observar e anotar no teste (ainda não foi testado em aparelho real — não há TV box aqui):
-- marca/modelo/Android da TV; se a 5555 vem ligada de fábrica; se a varredura achou; se o mDNS achou;
-- tempo de envio de um APK de ~15 MB;
-- se o `monkey` abriu o app (TVs sem ícone de TV abrem pelo ícone comum);
-- Samsung/LG na rede: se aparecem como "TV Samsung"/"TV LG".
+- **TV box Android**: Opções do desenvolvedor → Depuração USB / ADB pela rede (Android 11+: Depuração por Wi-Fi).
+  Procurar → tocar → aceitar na TV → deve abrir o app.
+- **Samsung**: Apps → 1 2 3 4 5 → Developer mode ligado → Host PC IP = IP do celular (o app mostra) → desligar da
+  tomada 30 s. Procurar → tocar. TV fora do certificado: aparece o DUID (botão "Copiar o DUID").
+- **LG**: Content Store → Developer Mode → entrar com a conta de desenvolvedor → Dev Mode Status ligado (reinicia) →
+  Key Server ligado. Procurar → tocar → digitar a Passphrase.
+- Anotar: modelo, versão do sistema, tempo de envio, se abriu sozinho; na LG, se a renovação da sessão funcionou (o
+  recado final diz quanto falta).
 
 ## O que depende do dono
 
-1. **Endereço do APK** do app de tela no servidor (substituir `SERVIDOR_A_DEFINIR` em `Config.kt`; dá para trocar
-   também na tela "Endereço do app"). Só `https://`.
-2. **Chave de assinatura** do instalador (comando acima).
-3. **Pacote definitivo do app de tela** (hoje o esperado é `br.com.digitalisp.telas`; o instalador lê do APK).
-4. **Licenças**: o pareamento usa o `spake2-java` (LGPL-3.0) — confirmar se está ok distribuir (ver PESQUISA.md).
-5. **Samsung e LG**: conta/certificado de desenvolvedor Samsung e conta de desenvolvedor LG, para a próxima fase.
-6. **Distribuição** do instalador aos técnicos (fora da loja, ou Play Store como app interno).
+1. **Samsung**: incluir o DUID de cada TV nova no certificado Samsung, assinar o `.wgt` de novo e publicar
+   (`node scripts/telas-tv-publicar.mjs`). Ou pedir à Samsung o certificado de nível partner.
+2. **LG**: a conta de desenvolvedor LG para o app Developer Mode de cada TV; a sessão vence (o instalador renova).
+3. **Chave própria** do instalador (acima) e o **jurídico** sobre a LGPL do spake2-java (PESQUISA.md).

@@ -31,12 +31,15 @@ object PortasConhecidas {
     val SAMSUNG = listOf(8001, 8002, 26101)
     val LG = listOf(3000, 3001, 9922)
     val TODAS = listOf(ADB) + SAMSUNG + LG
+    /** Portas do modo desenvolvedor: Samsung sdb e LG SSH. */
+    const val SAMSUNG_DEV = 26101
+    const val LG_DEV = 9922
 
     /** O que o conjunto de portas abertas de um IP diz sobre ele; null = não parece TV. */
     fun classificar(host: String, abertas: Set<Int>): TvEncontrada? = when {
         ADB in abertas -> TvEncontrada(host, Plataforma.ANDROID, portaAdb = ADB)
-        abertas.any { it in SAMSUNG } -> TvEncontrada(host, Plataforma.SAMSUNG)
-        abertas.any { it in LG } -> TvEncontrada(host, Plataforma.LG)
+        abertas.any { it in SAMSUNG } -> TvEncontrada(host, Plataforma.SAMSUNG, portaDev = SAMSUNG_DEV.takeIf { it in abertas })
+        abertas.any { it in LG } -> TvEncontrada(host, Plataforma.LG, portaDev = LG_DEV.takeIf { it in abertas })
         else -> null
     }
 }

@@ -69,8 +69,23 @@ class MaquinaInstalacaoTest {
         assertEquals(Estado.Concluido(box, "a.b", false), e)
     }
 
-    @Test fun samsungELgNaoSaoSuportados() {
-        assertEquals(Estado.NaoSuportado(samsung), rodar(Evento.Escolher(samsung)))
+    @Test fun samsungSemHostPcPedeOIpDoCelularEDepoisTentaDeNovo() {
+        var e = rodar(Evento.Escolher(samsung))
+        assertEquals(Estado.Conectando(samsung), e)
+        e = rodar(Evento.PrecisaHostPc("não aceitou"), inicio = e)
+        assertEquals(Estado.PedindoHostPc(samsung, "não aceitou"), e)
+        assertEquals(Estado.Conectando(samsung), rodar(Evento.TentarConectar, inicio = e))
+    }
+
+    @Test fun lgPedeAFraseEDepoisConecta() {
+        val lg = TvEncontrada("192.168.0.70", Plataforma.LG, portaDev = 9922)
+        var e = rodar(Evento.Escolher(lg), Evento.PrecisaFrase(null))
+        assertEquals(Estado.PedindoFrase(lg, null), e)
+        e = rodar(Evento.Erro("frase errada"), inicio = e)
+        assertEquals(Estado.PedindoFrase(lg, "frase errada"), e)
+        e = rodar(Evento.TentarConectar, Evento.Conectou, Evento.Baixou(1), Evento.Enviou, Evento.Instalou("br.com.digitalisp.telas"),
+            Evento.Abriu(true, "sessão renovada"), inicio = e)
+        assertEquals(Estado.Concluido(lg, "br.com.digitalisp.telas", true, "sessão renovada"), e)
     }
 
     @Test fun eventoForaDeHoraEIgnorado() {

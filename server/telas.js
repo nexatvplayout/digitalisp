@@ -37,6 +37,7 @@ import { hashPassword, verifyPassword, DUMMY_HASH } from './authcore.js';
 import { createLimiter, ipKey } from './ratelimit.js';
 import * as C from './telas-core.js';
 import { createAppStore } from './telas-app.js'; // o APK do app das telas servido pelo servidor (o update de fábrica)
+import { createTvStore, createInstaladorStore } from './telas-tv.js'; // os pacotes Samsung/LG e o APK do instalador pelo celular
 import { createSenha } from './telas-senha.js'; // chamada de senha (contrato §7.2)
 import { createConteudo, settingsOf, cleanSettings } from './telas-conteudo.js'; // cartões, clima, vídeos guardados, aprovação, modo eleitoral, EAS e tela desligada
 import { electoralOn, withheld, cleanClass, DEFAULT_CLASS, cleanAlertTexts, alertTextsOf, cleanAlertKind, headerFor } from './telas-conteudo-core.js';
@@ -131,6 +132,8 @@ export function createTelas({
   weatherOf = null, weatherArt = null, easAiring = () => [], mediaUrl = () => null, openMedia = null, hold = () => null, notify = null,
   // appStore: o APK do app das telas (server/telas-app.js); nos testes, uma pasta de mentira
   appStore = createAppStore(),
+  // tvStore / instaladorStore: o que o instalador pelo celular baixa (server/telas-tv.js); nos testes, pastas de mentira
+  tvStore = createTvStore(), instaladorStore = createInstaladorStore(),
   // as fotos dos casos de pessoa desaparecida (server/telas-desaparecidos.js): { dir, ffmpeg, checkImage, put, remove, url, read, list }
   photos = { dir: path.join(config.dataDir, 'telas', 'desaparecidos'), ffmpeg: config.ffmpeg, put: async () => {}, remove: async () => {}, url: () => null, read: (name) => fs.promises.readFile(path.join(config.dataDir, 'telas', 'desaparecidos', name)) },
   // a imagem de reserva sem conexão (server/telas-imagem-offline.js): o mesmo formato de photos (prefixo "telasimg-")
@@ -506,6 +509,8 @@ export function createTelas({
 
   function mountDevice(app) {
     appStore.mount(app, { publicUrl });
+    tvStore.mount(app, { publicUrl });
+    instaladorStore.mount(app, { publicUrl });
     const BAD_KEY = 'Chave de acesso inexistente, já usada ou vencida.';
     app.post('/api/telas/activate', ah(async (req, res) => {
       noStore(res);

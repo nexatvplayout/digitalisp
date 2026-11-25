@@ -116,10 +116,13 @@ class CatalogoTest {
         assertEquals(listOf("192.168.0.9", "192.168.0.100", "192.168.0.2", "192.168.0.5"), c.lista().map { it.host })
     }
 
-    @Test fun samsungELgNaoSaoInstalaveis() {
-        assertFalse(TvEncontrada("1.1.1.1", Plataforma.SAMSUNG).instalavel)
-        assertFalse(TvEncontrada("1.1.1.1", Plataforma.LG).instalavel)
-        assertTrue(TvEncontrada("1.1.1.1", Plataforma.ANDROID, portaAdb = 5555).instalavel)
+    @Test fun samsungELgMostramSeOModoDesenvolvedorEstaLigado() {
+        assertTrue(TvEncontrada("1.1.1.1", Plataforma.SAMSUNG, portaDev = 26101).detalhe.contains("modo desenvolvedor ligado"))
+        assertTrue(TvEncontrada("1.1.1.1", Plataforma.LG).detalhe.contains("ligue o modo desenvolvedor"))
+        val c = Catalogo()
+        c.adicionar(TvEncontrada("1.1.1.1", Plataforma.LG))
+        c.adicionar(TvEncontrada("1.1.1.1", Plataforma.LG, portaDev = 9922))
+        assertEquals(9922, c.obter("1.1.1.1")!!.portaDev)
     }
 }
 
@@ -127,7 +130,7 @@ class VarreduraTest {
     @Test fun classificaPelasPortasAbertas() = runBlocking {
         val abertas = mapOf(
             "10.0.0.2" to setOf(5555),
-            "10.0.0.3" to setOf(8001, 8002),
+            "10.0.0.3" to setOf(8001, 8002, 26101),
             "10.0.0.4" to setOf(3000),
             "10.0.0.5" to setOf(80), // roteador: não é TV
         )
@@ -141,7 +144,9 @@ class VarreduraTest {
         assertEquals(Plataforma.ANDROID, porHost["10.0.0.2"]!!.plataforma)
         assertEquals(5555, porHost["10.0.0.2"]!!.portaAdb)
         assertEquals(Plataforma.SAMSUNG, porHost["10.0.0.3"]!!.plataforma)
+        assertEquals(26101, porHost["10.0.0.3"]!!.portaDev)
         assertEquals(Plataforma.LG, porHost["10.0.0.4"]!!.plataforma)
+        assertNull("LG sem a 9922: modo desenvolvedor desligado", porHost["10.0.0.4"]!!.portaDev)
         // a 5555 aberta encerra o teste daquele IP
         assertEquals(listOf(5555), testadas.filter { it.first == "10.0.0.2" }.map { it.second })
         // IP sem nada testa todas as portas conhecidas

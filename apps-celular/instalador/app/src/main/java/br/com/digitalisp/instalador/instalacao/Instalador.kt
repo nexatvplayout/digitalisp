@@ -1,10 +1,7 @@
 package br.com.digitalisp.instalador.instalacao
 
-import br.com.digitalisp.instalador.Config
-import br.com.digitalisp.instalador.adb.AdbGateway
-import br.com.digitalisp.instalador.adb.ResultadoConexao
-import br.com.digitalisp.instalador.adb.ResultadoPm
-import br.com.digitalisp.instalador.adb.SaidaComandos
+import br.com.digitalisp.instalador.pacotes.Pacote
+import br.com.digitalisp.instalador.rede.Plataforma
 import br.com.digitalisp.instalador.rede.TvEncontrada
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -17,17 +14,20 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 
+/** O pacote do app de tela já no celular, conferido. */
+data class PacoteLocal(val pacote: Pacote, val arquivo: File)
+
 /**
- * Conduz a instalação: conectar (e parear, se preciso) → baixar → enviar → instalar → abrir.
- * Todo passo vira um [Evento] na [MaquinaInstalacao]; a tela só observa [estado].
+ * Conduz a instalação em qualquer marca: conectar (com pareamento, Host PC ou frase-senha, conforme a marca) →
+ * baixar do servidor DIGITAL ISP → enviar → instalar → abrir. Todo passo vira um [Evento] na [MaquinaInstalacao];
+ * a tela só observa [estado].
  *
- * @param lerPacote lê o nome do pacote do APK (no Android, pelo PackageManager); null = usa o padrão do Config.
- * @param portaTlsAtual consulta a porta `_adb-tls-connect` mais recente do host (o mDNS pode achar depois do pareamento).
+ * @param baixar busca no servidor a versão atual do app de tela da plataforma e devolve o arquivo conferido.
+ * @param portaTlsAtual a porta `_adb-tls-connect` mais recente do host (o mDNS pode achar depois do pareamento).
  */
 class Instalador(
-    private val adb: AdbGateway,
-    private val fonte: () -> FonteApk,
-    private val lerPacote: (File) -> String?,
+    private val conectores: Conectores,
+    private val baixar: (Plataforma, (Long, Long) -> Unit) -> PacoteLocal,
     private val portaTlsAtual: (String) -> Int? = { null },
     private val io: CoroutineDispatcher = Dispatchers.IO,
     private val esperaAceiteMs: Long = 2_500,
@@ -47,17 +47,35 @@ class Instalador(
         }
     }
 
-    /** Começa a instalação na TV escolhida. Se ela precisa de pareamento, para em [Estado.PedindoCodigo]. */
+    /** Começa a instalação na TV escolhida. Pode parar pedindo código (Android 11+), Host PC (Samsung) ou frase (LG). */
     suspend fun instalar(tv: TvEncontrada) {
         if (MaquinaInstalacao.ocupado(_estado.value)) return
         enviar(Evento.Escolher(tv))
         val e = _estado.value
-        if (e is Estado.Conectando) conectarEInstalar(e.tv)
+        if (e is Estado.Conectando) conectarEInstalar(e.tv, null)
+    }
+
+    /** Samsung: o técnico pôs o IP do celular no Host PC e reiniciou a TV. */
+    suspend fun tentarDeNovoHostPc() {
+        val e = _estado.value as? Estado.PedindoHostPc ?: return
+        enviar(Evento.TentarConectar)
+        conectarEInstalar(e.tv, null)
+    }
+
+    /** LG: o técnico digitou a frase-senha que o app Developer Mode mostra. */
+    suspend fun informarFrase(frase: String) {
+        val e = _estado.value as? Estado.PedindoFrase ?: return
+        if (frase.isBlank()) {
+            enviar(Evento.Erro("Digite a frase-senha (Passphrase) que aparece no app Developer Mode da TV."))
+            return
+        }
+        enviar(Evento.TentarConectar)
+        conectarEInstalar(e.tv, frase)
     }
 
     /**
-     * O técnico digitou o código. [portaPareamento] e [portaConexao] vêm da tela da TV quando o mDNS não achou
-     * (rede que bloqueia multicast).
+     * Android 11+: o técnico digitou o código. [portaPareamento] e [portaConexao] vêm da tela da TV quando o mDNS não
+     * achou (rede que bloqueia multicast).
      */
     suspend fun informarCodigo(codigoDigitado: String, portaPareamento: Int?, portaConexao: Int?) {
         val e = _estado.value as? Estado.PedindoCodigo ?: return
@@ -73,7 +91,7 @@ class Instalador(
         }
         enviar(Evento.CodigoInformado)
         try {
-            withContext(io) { adb.parear(e.tv.host, pPar, codigo) }
+            withContext(io) { conectores.parearAndroid(e.tv.host, pPar, codigo) }
         } catch (ce: CancellationException) {
             throw ce
         } catch (t: Throwable) {
@@ -92,75 +110,70 @@ class Instalador(
             enviar(Evento.Erro("Pareou, mas não achei a porta da conexão. Na TV, em \"Depuração por Wi-Fi\", veja o IP:porta e digite a porta."))
             return
         }
-        conectarEInstalar(tv)
+        conectarEInstalar(tv, null)
     }
 
-    private suspend fun conectarEInstalar(tv: TvEncontrada) {
-        val porta = tv.portaConexao ?: 5555
-        val resultado = coroutineScope {
-            val aviso = launch { delay(esperaAceiteMs); enviar(Evento.DemorouAceite) }
-            try {
-                withContext(io) { adb.conectar(tv.host, porta, tempoConexaoMs) }
-            } catch (ce: CancellationException) {
-                throw ce
-            } catch (t: Throwable) {
-                ResultadoConexao.Falhou("Falha na conexão: ${t.message ?: t.javaClass.simpleName}")
-            } finally {
-                aviso.cancel()
-            }
-        }
-        when (resultado) {
-            ResultadoConexao.Conectado -> {
-                enviar(Evento.Conectou)
-                try {
-                    baixarEnviarInstalarAbrir()
-                } finally {
-                    withContext(io) { adb.desconectar() }
+    private suspend fun conectar(tv: TvEncontrada, frase: String?): Conexao = coroutineScope {
+        // só o Android mostra o aviso "Permitir depuração?" na TV
+        val aviso = if (tv.plataforma == Plataforma.ANDROID) launch { delay(esperaAceiteMs); enviar(Evento.DemorouAceite) } else null
+        try {
+            withContext(io) {
+                when (tv.plataforma) {
+                    Plataforma.ANDROID -> conectores.android(tv, tv.portaConexao ?: 5555, tempoConexaoMs)
+                    Plataforma.SAMSUNG -> conectores.samsung(tv)
+                    Plataforma.LG -> conectores.lg(tv, frase)
                 }
             }
-            ResultadoConexao.PrecisaParear -> enviar(Evento.PrecisaParear)
-            ResultadoConexao.NaoAutorizado -> enviar(Evento.NaoAutorizou)
-            is ResultadoConexao.Falhou -> enviar(Evento.Erro(resultado.motivo))
+        } catch (ce: CancellationException) {
+            throw ce
+        } catch (t: Throwable) {
+            Conexao.Falhou("Falha na conexão: ${t.message ?: t.javaClass.simpleName}")
+        } finally {
+            aviso?.cancel()
         }
     }
 
-    private suspend fun baixarEnviarInstalarAbrir() {
+    private suspend fun conectarEInstalar(tv: TvEncontrada, frase: String?) {
+        when (val r = conectar(tv, frase)) {
+            is Conexao.Ok -> {
+                enviar(Evento.Conectou)
+                try {
+                    baixarEnviarInstalarAbrir(tv, r.sessao)
+                } finally {
+                    withContext(io) { runCatching { r.sessao.fechar() } }
+                }
+            }
+            Conexao.PrecisaParear -> enviar(Evento.PrecisaParear)
+            Conexao.NaoAutorizado -> enviar(Evento.NaoAutorizou)
+            is Conexao.PrecisaHostPc -> enviar(Evento.PrecisaHostPc(r.aviso))
+            is Conexao.PrecisaFrase -> enviar(Evento.PrecisaFrase(r.aviso))
+            is Conexao.Falhou -> enviar(Evento.Erro(r.motivo))
+        }
+    }
+
+    private suspend fun baixarEnviarInstalarAbrir(tv: TvEncontrada, sessao: SessaoTv) {
         try {
-            // 1. baixar
-            val apk = withContext(io) { fonte().obter { feito, total -> enviar(Evento.Progresso(feito, total)) } }
-            val tamanho = apk.length()
+            // 1. baixar do servidor DIGITAL ISP (conferido pelo SHA-256)
+            val local = withContext(io) { baixar(tv.plataforma) { feito, total -> enviar(Evento.Progresso(feito, total)) } }
+            val tamanho = local.arquivo.length()
             enviar(Evento.Baixou(tamanho))
 
             // 2. enviar para a TV
-            withContext(io) {
-                apk.inputStream().use { adb.enviar(it, tamanho, Config.DESTINO_NA_TV) { f -> enviar(Evento.Progresso(f, tamanho)) } }
-            }
+            val destino = sessao.destino(local.pacote)
+            withContext(io) { sessao.enviar(local.arquivo, destino) { f -> enviar(Evento.Progresso(f, tamanho)) } }
             enviar(Evento.Enviou)
 
-            // 3. instalar (com -g; TV antiga sem -g repete sem)
-            val pm = withContext(io) {
-                var r = SaidaComandos.lerPmInstall(adb.shell(SaidaComandos.comandoInstalar(Config.DESTINO_NA_TV, true)))
-                if (r is ResultadoPm.OpcaoDesconhecida) {
-                    r = SaidaComandos.lerPmInstall(adb.shell(SaidaComandos.comandoInstalar(Config.DESTINO_NA_TV, false)))
-                }
-                runCatching { adb.shell("rm -f \"${Config.DESTINO_NA_TV}\"") }
-                r
+            // 3. instalar
+            val appId = when (val r = withContext(io) { sessao.instalar(destino, local.pacote, local.arquivo) }) {
+                is Instalacao.Ok -> r.appId
+                is Instalacao.Falha -> { enviar(Evento.Erro(r.mensagem)); return }
             }
-            when (pm) {
-                ResultadoPm.Sucesso -> Unit
-                ResultadoPm.OpcaoDesconhecida -> { enviar(Evento.Erro("A TV não aceitou o comando de instalação.")); return }
-                is ResultadoPm.Falha -> { enviar(Evento.Erro(pm.explicacao)); return }
-            }
-            val pacote = runCatching { lerPacote(apk) }.getOrNull() ?: Config.PACOTE_APP_TELA_PADRAO
-            enviar(Evento.Instalou(pacote))
+            enviar(Evento.Instalou(appId))
 
-            // 4. abrir
-            val abriu = withContext(io) {
-                SaidaComandos.comandosAbrir(pacote).any { cmd ->
-                    runCatching { SaidaComandos.abriuComMonkey(adb.shell(cmd)) }.getOrDefault(false)
-                }
-            }
-            enviar(Evento.Abriu(abriu))
+            // 4. abrir e o recado final
+            val abriu = withContext(io) { runCatching { sessao.abrir(appId) }.getOrDefault(false) }
+            val obs = withContext(io) { runCatching { sessao.observacao() }.getOrNull() }
+            enviar(Evento.Abriu(abriu, obs))
         } catch (ce: CancellationException) {
             throw ce
         } catch (t: Throwable) {
