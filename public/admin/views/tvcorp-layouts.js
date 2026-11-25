@@ -8,6 +8,7 @@ import { widgetItem } from './tvcorp-playlists.js';
 import { FACTORY_LAYOUTS, FACTORY_LAYOUT, FACTORY_SETS, LAYOUT_SEGMENTS, ZONE_KINDS, ZONE_KIND, zoneLabel, LIMITS, checkZones, widgetLabel } from './tvcorp-catalogo.js';
 import { themeOf } from './tvcorp-midias.js';
 import { radioPicker } from './tvcorp-radio.js';
+import { abrirPreviaViva } from './tvcorp-previa-viva.js';
 import { wifiQr, vcardQr, qrKind, qrLabel } from '../../shared/qr-conteudo.js';
 import { quadroPx, formatoDe, FORMATO_TXT, dicaArte, quadrosDoLayout } from './tvcorp-quadros.js';
 import { ZONE_SHAPES, EDGE_COLORS } from '../../shared/tvcorp-formas.js';
@@ -21,6 +22,8 @@ const BACKGROUNDS = [['#0b1220', 'Escuro'], ['#eef2f7', 'Claro'], ['#000000', 'P
 const SAMPLE_TICKER = ['Bem-vindo! Use o crachá em todas as áreas', 'Refeitório aberto das 11h às 14h'];
 /** Os gadgets do cliente (contador, dias sem acidente, relógio mundial: aba Barras e blocos), lidos ao abrir a aba. */
 let WIDGETS = [];
+let QRS = [];
+let PLAYLISTS = []; // as playlists da empresa (a playlist padrão de cada zona, escolhida no layout) // os QR codes do menu QR Codes (link curto /q/…, que conta as leituras)
 /** Há cidade para o clima? (a cidade das telas em Configurações, ou uma fonte de clima em Notícias e dados) */
 let HAS_CITY = true;
 /** O que a zona mostra na prévia: o gadget escolhido nela (o mesmo desenho da TV). */
@@ -102,17 +105,28 @@ export function zoneCanvas(st, onChange) {
 }
 
 /** O editor do layout (novo, a partir de um modelo de fábrica, ou um que já existe). */
-export function layoutEditor(lay, reload, factoryKey = null, copyOf = null) {
+export function layoutEditor(lay, reload, factoryKey = null, copyOf = null, { aoVivo = false } = {}) {
   const base = lay || copyOf || FACTORY_LAYOUT[factoryKey] || FACTORY_LAYOUT['video-lateral-barra'];
   const st = {
     name: lay?.name || (copyOf ? `${copyOf.name} (cópia)` : factoryKey ? base.label : ''), orientation: base.orientation || 'land', background: (lay || copyOf || (factoryKey ? base : null))?.background || '#0b1220',
     zones: (base.zones || []).map((z) => ({ ...z })), sel: 0, factoryKey: (lay || copyOf)?.factoryKey || factoryKey || null,
   };
+  // zona de gadget do modelo pronto: já escolhe o gadget do cliente do mesmo tipo (relógio, avaliações…), se houver um
+  for (const z of st.zones) if (z.kind === 'widget' && z.widget == null && z.sample) { const w = WIDGETS.find((x) => x.kind === z.sample); if (w) z.widget = w.id; }
+  // o modelo de playlist com o vídeo ao vivo (HLS) no lugar da playlist principal (a zona main, ou a maior playlist)
+  if (aoVivo && !st.zones.some((z) => z.kind === 'video')) {
+    const pls = st.zones.filter((z) => z.kind === 'playlist');
+    const main = pls.find((z) => z.id === 'main') || pls.sort((a, b) => b.w * b.h - a.w * a.h)[0];
+    if (main) { main.kind = 'video'; delete main.hint; delete main.overlay; st.name = `${st.name} (vídeo ao vivo)`; }
+  }
   const name = el('input', { type: 'text', maxlength: String(LIMITS.name), value: st.name, placeholder: 'Ex.: Recepção da matriz' });
   const orient = el('select', {}, opt('land', 'Deitada (16:9)', st.orientation === 'land'), opt('port', 'Em pé (9:16, totem)', st.orientation === 'port'));
   // a cor do modelo pronto que não está na lista (verde-água, roxo...) entra como "Cor do modelo"
   const bgList = BACKGROUNDS.some(([v]) => v === st.background) ? BACKGROUNDS : [...BACKGROUNDS, [st.background, 'Cor do modelo']];
-  const bg = el('select', {}, ...bgList.map(([v, t]) => opt(v, t, st.background === v)));
+  // qualquer cor: "Outra cor…" abre o seletor de cor (a cor escolhida fica guardada como #rrggbb)
+  const bg = el('select', {}, ...bgList.map(([v, t]) => opt(v, t, st.background === v)), opt('outra', 'Outra cor…', false));
+  const cor = el('input', { type: 'color', value: /^#[0-9a-f]{6}$/i.test(st.background) ? st.background : '#0b1220', 'aria-label': 'Cor de fundo do layout', class: 'tc-bg-cor' });
+  cor.addEventListener('input', () => { st.background = cor.value.toLowerCase(); if (bg.value !== 'outra') { bg.value = 'outra'; } paintPv(); });
   const rowsBox = el('div', { class: 'tc-zones-wrap' }); const pv = el('div', { class: 'tc-pv-box' }); const err = el('p', { class: 'pf-err small', 'aria-live': 'polite' });
   const canvas = zoneCanvas(st, (why) => { if (why === 'select') paintRows(); else { paintRows(); paintPv(); } });
   // a rádio de fundo (só em layout sem a zona de vídeo do canal); refresh() a cada mudança das zonas
@@ -122,7 +136,11 @@ export function layoutEditor(lay, reload, factoryKey = null, copyOf = null) {
     put(pv, layoutPreview({ orientation: st.orientation, zones: st.zones, name: st.name, background: st.background }, previewOpts(st)));
     // o clima sem cidade sai vazio na tela: avisa aqui, onde a zona é escolhida
     const semCidade = !HAS_CITY && st.zones.some((z) => z.kind === 'weather' || z.sample === 'weather' || WIDGETS.find((w) => w.id === Number(z.widget))?.kind === 'weather');
-    err.textContent = checkZones(st.zones) || (semCidade ? 'Atenção: nenhuma cidade para o clima. Sem ela, a zona de clima fica vazia na tela. Escolha a cidade em Configurações ou cadastre uma fonte de clima em Notícias e dados.' : '');
+    // o que deixaria a tela com um buraco: gadget sem escolher e o QR de exemplo
+    const semGadget = st.zones.filter((z) => z.kind === 'widget' && z.widget == null).map((z) => z.id);
+    const qrExemplo = st.zones.filter((z) => z.kind === 'qr' && /exemplo.com.br/.test(String(z.qr || ''))).map((z) => z.id);
+    const avisos = [semGadget.length ? `Escolha o gadget da zona ${semGadget.join(', ')} (na tabela abaixo; crie em Barras e blocos se ainda não tiver): sem ele, essa parte fica vazia na TV.` : '', qrExemplo.length ? `Troque o endereço de exemplo do QR code da zona ${qrExemplo.join(', ')} pelo seu (ou monte um Wi-Fi/contato).` : ''];
+    err.textContent = checkZones(st.zones) || [...avisos, semCidade ? 'Atenção: nenhuma cidade para o clima. Sem ela, a zona de clima fica vazia na tela. Escolha a cidade em Configurações ou cadastre uma fonte de clima em Notícias e dados.' : ''].filter(Boolean).join(' ');
   };
   function paintRows() {
     const num = (z, k) => el('input', { type: 'number', min: '0', max: '100', step: '1', value: String(z[k]), class: 'tc-num-in', 'aria-label': `${k} da zona ${z.id}`,
@@ -149,7 +167,11 @@ export function layoutEditor(lay, reload, factoryKey = null, copyOf = null) {
     const qrField = (z) => {
       const special = qrKind(z.qr) === 'wifi' || qrKind(z.qr) === 'vcard';
       const inp = el('input', { type: 'url', maxlength: '600', value: special ? '' : z.qr || '', placeholder: special ? qrLabel(z.qr) : PARAM.qr[0], 'aria-label': `QR da zona ${z.id}`, onchange: (ev) => { z.qr = ev.target.value.trim(); paintPv(); } });
-      return el('div', { class: 'tc-qrf' }, inp, special ? el('span', { class: 'small', text: qrLabel(z.qr) }) : null, btn('Wi-Fi', qrMaker(z, 'wifi'), 'small'), btn('Contato', qrMaker(z, 'vcard'), 'small'));
+      // o QR feito no menu QR Codes: a zona usa o link curto dele (muda o destino lá sem mexer no layout e conta as leituras)
+      const meus = QRS.filter((q) => q.ativo || q.link === z.qr);
+      const pick = meus.length ? el('select', { 'aria-label': `QR code do menu QR Codes para a zona ${z.id}`, onchange: (ev) => { if (!ev.target.value) return; z.qr = ev.target.value; paintRows(); paintPv(); } },
+        opt('', meus.some((q) => q.link === z.qr) ? 'QR do menu QR Codes' : 'Usar um QR do menu QR Codes…', false), ...meus.map((q) => opt(q.link, `${q.nome} (${q.codigo})`, q.link === z.qr))) : null;
+      return el('div', { class: 'tc-qrf' }, pick, inp, special ? el('span', { class: 'small', text: qrLabel(z.qr) }) : null, btn('Wi-Fi', qrMaker(z, 'wifi'), 'small'), btn('Contato', qrMaker(z, 'vcard'), 'small'));
     };
     // o gadget da zona (contador, dias sem acidente, relógio mundial): escolhido aqui, vai à tela sem precisar de playlist
     const widgetPick = (z) => {
@@ -160,7 +182,7 @@ export function layoutEditor(lay, reload, factoryKey = null, copyOf = null) {
       return s;
     };
     // por cima da imagem: a zona fica sobre as outras, com o fundo translúcido
-    const layer = (z) => (z.kind === 'video' ? null : el('span', { class: 'tc-layer' },
+    const layer = (z) => (z.kind === 'video' || z.kind === 'hdmi' ? null : el('span', { class: 'tc-layer' },
       el('label', { class: 'pf-check' }, el('input', { type: 'checkbox', checked: Boolean(z.overlay), 'aria-label': `Zona ${z.id} por cima`, onchange: (e) => { if (e.target.checked) { z.overlay = true; z.opacity ??= 60; } else { delete z.overlay; delete z.opacity; } canvas.paint(); paintRows(); paintPv(); } }), el('span', { text: 'Por cima' })),
       z.overlay ? el('select', { 'aria-label': `Fundo da zona ${z.id}`, onchange: (e) => { z.opacity = Number(e.target.value); paintPv(); } }, ...[0, 20, 40, 60, 80, 100].map((v) => opt(v, v ? `fundo ${v}%` : 'sem fundo', (z.opacity ?? 60) === v))) : null));
     // o formato da zona (recorte) e o filete na borda do recorte
@@ -171,7 +193,12 @@ export function layoutEditor(lay, reload, factoryKey = null, copyOf = null) {
         opt('', 'sem filete', !z.edge), ...EDGE_COLORS.map(([c, t]) => opt(c, `filete ${t.toLowerCase()}`, z.edge?.color === c))) : null,
       z.edge ? el('select', { 'aria-label': `Espessura do filete da zona ${z.id}`, onchange: (e) => { z.edge = { ...z.edge, width: Number(e.target.value) }; paintPv(); } },
         ...[[0.5, 'fino'], [1, 'médio'], [2, 'grosso']].map(([v, t]) => opt(v, t, Number(z.edge.width) === v))) : null);
-    const params = (z) => [shapePick(z), layer(z), ...(ZONE_KIND[z.kind]?.params || []).map((k) => (k === 'widget' ? widgetPick(z) : k === 'qr' ? qrField(z) : el('input', { type: k === 'qr' ? 'url' : 'text', maxlength: String(PARAM[k][1]), value: z[k] || '', placeholder: PARAM[k][0], 'aria-label': `${PARAM[k][0]} da zona ${z.id}`, onchange: (e) => { z[k] = e.target.value.trim(); paintPv(); } })))];
+    // a zona que recebe playlist: escolhe aqui qual toca (a grade e a programação da tela ainda podem trocar)
+    const plPick = (z) => (ZONE_KIND[z.kind]?.playlist ? el('select', { 'aria-label': `Playlist da zona ${z.id}`, onchange: (e) => { z.playlist = e.target.value ? Number(e.target.value) : null; paintPv(); } },
+      opt('', z.kind === 'news' ? 'Notícias automáticas (todas as fontes)' : 'Playlist: a da grade', z.playlist == null), ...PLAYLISTS.map((p) => opt(p.id, `Playlist: ${p.name}`, Number(z.playlist) === Number(p.id)))) : null);
+    // o vídeo ao vivo: proporcional (padrão, com faixas pretas se a zona tiver outro formato) ou preenchendo a zona (corta as bordas)
+    const fitPick = (z) => (z.kind === 'video' ? el('label', { class: 'pf-check' }, el('input', { type: 'checkbox', checked: z.fit === 'cover', 'aria-label': `Vídeo da zona ${z.id} preenchendo a zona`, onchange: (e) => { if (e.target.checked) z.fit = 'cover'; else delete z.fit; paintPv(); } }), el('span', { text: 'Preencher a zona (corta as bordas)' })) : null);
+    const params = (z) => [fitPick(z), plPick(z), shapePick(z), layer(z), ...(ZONE_KIND[z.kind]?.params || []).map((k) => (k === 'widget' ? widgetPick(z) : k === 'qr' ? qrField(z) : el('input', { type: k === 'qr' ? 'url' : 'text', maxlength: String(PARAM[k][1]), value: z[k] || '', placeholder: PARAM[k][0], 'aria-label': `${PARAM[k][0]} da zona ${z.id}`, onchange: (e) => { z[k] = e.target.value.trim(); paintPv(); } })))];
     const tam = (z) => { const px = quadroPx(st, z); return el('td', { class: 'small', title: z.kind === 'playlist' ? dicaArte({ px }) : '' }, el('b', { text: `${px.w}×${px.h}` }), el('div', { class: 'dim', text: FORMATO_TXT[formatoDe(px)] })); };
     const dicas = st.zones.filter((z) => z.kind === 'playlist').map((z) => note(`Quadro "${z.id}": ${dicaArte({ px: quadroPx(st, z) })}`, 'small'));
     put(rowsBox, table(['Zona', 'O que mostra', 'Esquerda %', 'Alto %', 'Largura %', 'Altura %', 'Na TV (px)', 'Conteúdo fixo', ''], st.zones.map((z, i) => el('tr', { class: st.sel === i ? 'tc-sel' : '' },
@@ -188,14 +215,14 @@ export function layoutEditor(lay, reload, factoryKey = null, copyOf = null) {
     }, 'small')), ...dicas);
   }
   orient.addEventListener('change', () => { st.orientation = orient.value; canvas.paint(); paintPv(); paintRows(); });
-  bg.addEventListener('change', () => { st.background = bg.value; paintPv(); });
+  bg.addEventListener('change', () => { if (bg.value === 'outra') { cor.click?.(); st.background = cor.value.toLowerCase(); } else { st.background = bg.value; cor.value = bg.value; } paintPv(); });
   name.addEventListener('input', () => { st.name = name.value; });
   paintRows(); paintPv();
-  dialog(lay ? `Layout · ${lay.name}` : 'Novo layout', el('div', {},
-    el('div', { class: 'pf-grid' }, f('Nome', name), el('div', { class: 'pf-grid two' }, f('Tela', orient), f('Fundo', bg))),
+  const { dlg: dlgLay } = dialog(lay ? `Layout · ${lay.name}` : 'Novo layout', el('div', {},
+    el('div', { class: 'pf-grid' }, f('Nome', name), el('div', { class: 'pf-grid two' }, f('Tela', orient), f('Fundo', el('div', { class: 'tc-bg-row' }, bg, cor)))),
     el('div', { class: 'tc-two' },
       el('div', {}, label('Arraste para ajustar'), canvas.node, note('Arraste a zona para mover; arraste o quadradinho do canto para mudar o tamanho. Com a zona escolhida, as setas movem 1% (com Shift, mudam o tamanho).')),
-      el('div', {}, label('Como fica na TV'), pv, err)),
+      el('div', {}, label('Como fica na TV'), pv, btns(btn('▶ Prévia grande ao vivo', () => abrirPreviaViva({ id: lay?.id, orientation: st.orientation, zones: st.zones, background: st.background, name: st.name }), 'small primary')), err)),
     label('Zonas'), rowsBox,
     label('Rádio de fundo'), radio.node,
     note('Vídeo do canal: no máximo uma zona, e é sempre o mesmo vídeo de hoje, só que no retângulo da zona. Playlist: a sequência que a grade escolher para a zona. Texto rolante: os avisos e as fontes da aba Barras e blocos.')), {
@@ -210,24 +237,31 @@ export function layoutEditor(lay, reload, factoryKey = null, copyOf = null) {
       await reload();
     },
   });
+  dlgLay.classList.add('tc-lay-dlg'); // o editor usa quase a tela toda: a tabela das zonas cabe sem rolar de lado
 }
 
+/** A miniatura do layout que abre grande, ao vivo, com um clique (sem abrir o editor). */
+const grande = (l, node) => el('div', { class: 'tc-pv-click', role: 'button', tabindex: '0', title: 'Clique para ver grande, ao vivo', 'aria-label': `Ver o layout ${l.name || l.label || ''} grande, ao vivo`,
+  onclick: () => abrirPreviaViva(l, { titulo: `Prévia ao vivo · ${l.name || l.label || ''}` }),
+  onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrirPreviaViva(l, { titulo: `Prévia ao vivo · ${l.name || l.label || ''}` }); } } }, node);
 const quadrosTxt = (l) => quadrosDoLayout(l).map((q) => `${q.zone.id}: ${q.px.w}×${q.px.h} (${FORMATO_TXT[q.formato]})`).join(' · ');
 export default async function paintLayouts(box, ctx) {
   const d = D(); const reload = ctx.reload;
   WIDGETS = listOf(await tapi('/api/tvcorp/widgets').catch(() => null), 'widgets');
+  QRS = listOf(await tapi('/api/qrcodes').catch(() => null), 'qrcodes');
+  PLAYLISTS = listOf(await tapi('/api/tvcorp/playlists').catch(() => null), 'playlists');
   const feeds = listOf(await tapi('/api/tvcorp/feeds').catch(() => null), 'feeds');
   const def = d.defaults || {};
   HAS_CITY = Boolean(def.cidade || def.extra?.cidade || def.config?.cidade || feeds.some((x) => x.kind === 'weather'));
   const usedBy = (id) => d.schedules.filter((s) => s.layoutId === id).map((s) => s.name);
   const mine = d.layouts.map((l) => el('div', { class: 'tc-lcard' },
-    layoutPreview(l, { ...previewOpts(l), labels: false }),
+    grande(l, layoutPreview(l, { ...previewOpts(l), labels: false })),
     el('div', { class: 'tc-lcard-b' },
       el('b', { text: l.name }),
       el('div', { class: 'dim small', text: `${l.orientation === 'port' ? 'Em pé' : 'Deitada'} · ${(l.zones || []).length} zona(s)${l.updatedAt ? ` · ${when(l.updatedAt)}` : ''}` }),
       quadrosTxt(l) ? el('div', { class: 'small tc-quadros', text: `Quadros das playlists: ${quadrosTxt(l)}` }) : null,
       el('div', {}, ...(usedBy(l.id).length ? usedBy(l.id).map((n) => chip(n)) : [el('span', { class: 'dim small', text: 'em nenhuma grade' })])),
-      btns(btn('Editar', () => layoutEditor(l, reload), 'small'), btn('Duplicar', () => layoutEditor(null, reload, null, l), 'small'),
+      btns(btn('▶ Ao vivo', () => abrirPreviaViva(l), 'small'), btn('Editar', () => layoutEditor(l, reload), 'small'), btn('Duplicar', () => layoutEditor(null, reload, null, l), 'small'),
         btn('Apagar', guard(async () => { if (usedBy(l.id).length) { toast(`Este layout está em ${usedBy(l.id).length} grade(s). Troque o layout delas antes de apagar.`, true); return; } if (!confirm(`Apagar o layout "${l.name}"?`)) return; await tapi(`/api/tvcorp/layouts/${l.id}`, { method: 'DELETE' }); await reload(); }), 'small danger')))));
   const factoryBox = factoryView(reload);
   const walls = D().walls || listOf(await tapi('/api/tvcorp/walls').catch(() => null), 'walls');
@@ -250,7 +284,7 @@ function factoryView(reload) {
   const sel = (k, first, options) => el('select', { 'aria-label': first, onchange: (e) => { FV[k] = e.target.value; paint(); } }, opt('', first, !FV[k]), ...options.map(([v, t]) => opt(v, t, FV[k] === v)));
   const bar = el('div', { class: 'pf-bar' }, sel('segment', 'Todos os segmentos', LAYOUT_SEGMENTS.map((x) => [x.key, x.label])), sel('orient', 'Deitado e em pé', [['land', 'Deitado'], ['port', 'Em pé']]),
     sel('tvs', 'Uma ou várias TVs', [['1', 'Uma TV'], ['n', 'Várias TVs (conjunto)']]),
-    sel('main', 'Principal: qualquer', [['playlist', 'Principal: playlist'], ['video', 'Principal: vídeo ao vivo']]),
+    sel('main', 'Principal: qualquer', [['playlist', 'Principal: playlist'], ['video', 'Principal: vídeo ao vivo'], ['hdmi', 'Principal: entrada HDMI']]),
     sel('shape', 'Formato: todos', [['special', 'Formatos especiais'], ['rect', 'Só retângulos']]));
   const count = el('span', { class: 'dim small' });
   const grid = el('div', { class: 'tc-lgrid' });
@@ -259,7 +293,7 @@ function factoryView(reload) {
     const ok = (x) => (!FV.segment || x.segment === FV.segment) && (!FV.orient || x.orientation === FV.orient);
     const singles = FV.tvs === 'n' ? [] : FACTORY_LAYOUTS.filter((l) => !l.set && ok(l) && (!FV.main || l.main === FV.main) && (!FV.shape || (FV.shape === 'special') === l.special));
     // os conjuntos de várias TVs são de playlist (cardápio): somem quando o filtro pede o vídeo ao vivo
-    const sets = FV.tvs === '1' || FV.main === 'video' || FV.shape === 'special' ? [] : FACTORY_SETS.filter(ok);
+    const sets = FV.tvs === '1' || FV.main === 'video' || FV.main === 'hdmi' || FV.shape === 'special' ? [] : FACTORY_SETS.filter(ok);
     count.textContent = `${singles.length + sets.length} modelo(s)`;
     put(grid,
       ...sets.map((x) => el('div', { class: 'tc-lcard tc-set' },
@@ -267,10 +301,12 @@ function factoryView(reload) {
         el('div', { class: 'tc-lcard-b' }, el('div', {}, chip(`${x.screens.length} TVs`, 'tc-tvs'), ' ', chip(segLabel(x.segment))), el('b', { text: x.label }), el('div', { class: 'dim small', text: x.desc }),
           btns(btn('Usar este conjunto', () => setDialog(x, reload), 'small primary'))))),
       ...singles.map((l) => el('div', { class: 'tc-lcard' },
-        layoutPreview(l, { ...previewOpts(l), labels: false }),
-        el('div', { class: 'tc-lcard-b' }, el('div', {}, chip('1 TV', 'tc-tvs'), ' ', chip(segLabel(l.segment)), ' ', l.main === 'video' ? chip('Vídeo ao vivo') : l.main === 'playlist' ? chip('Playlist') : null, l.special ? ' ' : null, l.special ? chip('Formato especial') : null), el('b', { text: l.label }), el('div', { class: 'dim small', text: l.desc }),
+        grande(l, layoutPreview(l, { ...previewOpts(l), labels: false })),
+        el('div', { class: 'tc-lcard-b' }, el('div', {}, chip('1 TV', 'tc-tvs'), ' ', chip(segLabel(l.segment)), ' ', l.main === 'video' ? chip('Vídeo ao vivo') : l.main === 'hdmi' ? chip('Entrada HDMI · TV Samsung') : l.main === 'playlist' ? chip('Playlist') : null, l.special ? ' ' : null, l.special ? chip('Formato especial') : null), el('b', { text: l.label }), el('div', { class: 'dim small', text: l.desc }),
           quadrosTxt(l) ? el('div', { class: 'small tc-quadros', text: `Quadros das playlists: ${quadrosTxt(l)}` }) : null,
-          btns(btn('Usar este modelo', () => layoutEditor(null, reload, l.key), 'small primary'))))));
+          btns(btn('Usar este modelo', () => layoutEditor(null, reload, l.key), 'small primary'), btn('▶ Ao vivo', () => abrirPreviaViva({ ...l, name: l.label }), 'small'),
+            // o mesmo modelo com o canal ao vivo no lugar da playlist principal
+            l.main === 'playlist' && !l.zones.some((z) => z.kind === 'video') ? btn('Usar com vídeo ao vivo', () => layoutEditor(null, reload, l.key, null, { aoVivo: true }), 'small') : null)))));
     if (!sets.length && !singles.length) put(grid, empty('Nenhum modelo com esses filtros.'));
   };
   put(box, bar, count, grid);

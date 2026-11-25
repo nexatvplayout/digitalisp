@@ -142,22 +142,25 @@ function editWidget(w, reload, kindKey = 'countdown', preset = {}) {
   });
 }
 
-export default async function paintBarras(box, ctx) {
+/** DIGITAL ISP: a aba Gadgets (menu próprio): só os blocos informativos, sem as barras. */
+export const paintGadgets = (box, ctx) => paintBarras(box, ctx, 'gadgets');
+export default async function paintBarras(box, ctx, only = null) {
   const d = D();
   const wr = await tapi('/api/tvcorp/widgets');
   const widgets = listOf(wr, 'widgets'); ZONES = wr?.zones || []; learnZones(ZONES);
   [FEEDS, KPIS] = await Promise.all([['/api/tvcorp/feeds', 'feeds'], ['/api/tvcorp/kpis', 'kpis']].map(([p, k]) => tapi(p).then((r) => listOf(r, k)).catch(() => [])));
-  const again = () => paintBarras(box, ctx);
+  const again = () => paintBarras(box, ctx, only);
   // os relógios e os contadores andam também aqui (um por segundo, enquanto a aba está aberta)
   clearInterval(paintBarras.tick); paintBarras.tick = setInterval(() => { if (!box.isConnected) { clearInterval(paintBarras.tick); return; } tickWidgets(box); }, 1000);
   const cfg = d.defaults?.config || {};
   /* barra lateral (os layouts de sempre) */
   const wid = new Set(cfg.widgets || []);
   const saveSide = guard(async () => { await tapi('/api/tvcorp/rede/defaults', { method: 'PUT', body: { config: { widgets: [...wid] } } }); toast('Barra lateral salva.'); await ctx.reload(); });
+  const so = only === 'gadgets';
   put(box,
     /* barra inferior: os avisos com estilo e a faixa (tvcorp-faixa.js) */
-    faixaCard(cfg, () => ctx.reload()),
-    el('div', { class: 'card tc-sec' },
+    so ? null : faixaCard(cfg, () => ctx.reload()),
+    so ? null : el('div', { class: 'card tc-sec' },
       el('h3', { text: 'Barra lateral' }),
       note('Nos layouts por zonas, a lateral é uma zona: escolha o que ela mostra na aba Layouts (playlist, relógio, clima, QR code, notícias, cotações, contador…). Aqui ficam os blocos da lateral dos formatos de sempre (quando nenhuma grade vale).'),
       // com grade, esta lateral não aparece: dizer onde pôr o relógio e o clima (o dono marcou aqui e nada saiu na TV)
@@ -168,7 +171,7 @@ export default async function paintBarras(box, ctx) {
       el('div', { class: 'pf-checks row' }, ...WIDGETS.map((w) => el('label', { class: 'pf-check' }, el('input', { type: 'checkbox', checked: wid.has(w.key), onchange: (e) => { if (e.target.checked) wid.add(w.key); else wid.delete(w.key); } }), el('span', { text: w.label })))),
       btns(btn('Salvar a barra lateral', saveSide))),
     el('div', { class: 'card tc-sec' },
-      el('h3', { text: 'Blocos informativos (widgets)' }),
+      el('h3', { text: so ? 'Gadgets' : 'Blocos informativos (widgets)' }),
       note('Os gadgets da tela: contador para eventos e promoções, relógio (digital ou analógico), clima com previsão, agenda e salas, painel de indicadores, avaliações de clientes, como chegar, página da internet, dias sem acidente, relógio mundial e cardápio da semana. Entram numa playlist (item "Gadget") ou direto numa zona do layout (zona "Gadget").'),
       btns(...WIDGET_KINDS.map((k) => btn(`+ ${k.label}`, () => editWidget(null, again, k.key), 'small')), btn('+ Dias desde (um marco)', () => editWidget(null, again, 'safety', { mode: 'since' }), 'small')),
       widgets.length ? el('div', { class: 'tc-wgrid' }, ...widgets.map((w) => el('div', { class: 'tc-wcard' },

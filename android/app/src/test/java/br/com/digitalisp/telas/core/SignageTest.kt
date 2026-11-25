@@ -112,7 +112,7 @@ class SignageTest {
 
     @Test fun tetoDeZonasEItens() {
         val z = JSONArray()
-        for (i in 0 until 9) z.put(JSONObject().put("id", "z$i").put("x", i * 10).put("y", 0).put("w", 10).put("h", 10).put("kind", "playlist"))
+        for (i in 0 until 20) z.put(JSONObject().put("id", "z$i").put("x", (i % 10) * 10).put("y", (i / 10) * 10).put("w", 10).put("h", 10).put("kind", "playlist"))
         val items = JSONArray()
         for (i in 0 until 80) items.put(JSONObject().put("id", "t$i").put("kind", "text").put("text", "oi $i"))
         val s = Signage.parse(JSONObject().put("blocks", JSONArray().put(JSONObject().put("id", "b").put("layout", JSONObject().put("zones", z)).put("zones", JSONObject().put("z0", items).put("nao-existe", items)))))!!

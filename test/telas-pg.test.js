@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { tmpDir } from './helpers/tmp.js'; // pastas nexa-* apagadas no fim, mesmo com o teste falhando
 import { boot, cleanup, api, platformLogin, newTenant } from './helpers/srv.js';
+import { canal, usuario } from './helpers/prefeitura.js'; // DIGITAL ISP: canal ao vivo (HLS) e usuário de permissão limitada
 
 process.env.DATA_DIR = tmpDir('nexa-telaspg');
 const { createPg } = await import('../server/db/pg.js');
@@ -15,7 +16,7 @@ const { startPg } = await import('./helpers/pg.js');
 const { TELAS_TABLES } = await import('../server/db/schema-telas.js');
 const sha = (s) => createHash('sha256').update(s).digest('hex');
 
-test('Postgres: tabelas do NEXA Telas no banco novo e no de antes (idempotente); ativar, grupos, alertas, entregas, link e exclusão', { timeout: 300000 }, async (t) => {
+test('Postgres: tabelas da prefeitura no banco novo e no de antes (idempotente); ativar, grupos, alertas, entregas, link e exclusão', { timeout: 300000 }, async (t) => {
   let pgs;
   try { pgs = await startPg(); } catch (err) { t.skip(`Postgres embutido indisponível: ${err.message}`); return; }
   let db = null; let s = null;
@@ -34,11 +35,11 @@ test('Postgres: tabelas do NEXA Telas no banco novo e no de antes (idempotente);
     assert.ok(pk.some((c) => c.tb === 'telas_group_devices' && /PRIMARY KEY \(group_id, device_id\)/.test(c.d)), JSON.stringify(pk));
     assert.ok(pk.some((c) => c.tb === 'telas_alert_deliveries' && /PRIMARY KEY \(alert_id, device_id\)/.test(c.d)), JSON.stringify(pk));
     // 2) volta ao banco de antes (sem as tabelas) e sobe duas vezes: elas voltam, sem erro; o resto fica
-    await db.exec(TELAS_TABLES.map((tb) => `DROP TABLE IF EXISTS ${tb}`).join('; '));
+    await db.exec(TELAS_TABLES.map((tb) => `DROP TABLE IF EXISTS ${tb} CASCADE`).join('; ')); // DIGITAL ISP: CASCADE (isp_noticia_oculta aponta para tvcorp_feeds)
     await db.close(); db = null;
     for (let i = 0; i < 2; i++) { const d = await createPg(pgs.url, { max: 2 }); await d.close(); }
     db = await createPg(pgs.url, { max: 2 });
-    for (const tb of [...TELAS_TABLES, 'channels', 'feature_profiles']) assert.ok((await db.get(`SELECT to_regclass('${tb}') AS r`)).r, `tabela ${tb}`);
+    for (const tb of [...TELAS_TABLES, 'feature_profiles']) assert.ok((await db.get(`SELECT to_regclass('${tb}') AS r`)).r, `tabela ${tb}`);
 
     // 3) o servidor de verdade sobre o Postgres
     s = await boot({ DATABASE_URL: pgs.url, PUBLIC_HLS_URL: 'https://hls.exemplo.test' });
@@ -49,7 +50,7 @@ test('Postgres: tabelas do NEXA Telas no banco novo e no de antes (idempotente);
     assert.equal(prof.status, 201, JSON.stringify(prof.data));
     assert.equal((await P('POST', '/api/platform/plans', { code: 'p-pref', name: 'Prefeitura', priceCents: 0, profileId: prof.data.id, limits: { channels: 1 } })).status, 201);
     const A = await newTenant(P, s.base, { slug: 'pg-pref', planCode: 'p-pref', status: 'active' });
-    assert.equal((await A.api('POST', '/api/channels', { name: 'TV Prefeitura', slug: 'pg-pref-tv' })).status, 201);
+    await canal(A.api, 'TV Prefeitura'); // DIGITAL ISP: o canal ao vivo (HLS) no lugar do canal do NEXA
     const post = async (url, body) => { const r = await A.api('POST', url, body); assert.equal(r.status, 201, `${url}: ${JSON.stringify(r.data)}`); return r.data; };
     const region = await post('/api/prefeitura/regions', { name: 'Centro', color: '#2266cc' });
     const escola = await post('/api/prefeitura/offices', { name: 'Escola Centro', type: 'escola', lat: -22.9068, lng: -43.1729, regionId: region.id });
@@ -63,7 +64,7 @@ test('Postgres: tabelas do NEXA Telas no banco novo e no de antes (idempotente);
       return a.data;
     };
     const d1 = await act(escola.id, 'Escola Centro, sala'); const d2 = await act(upa.id, '');
-    assert.equal(d1.channel, 'pg-pref-tv');
+    assert.match(d1.channel, /^hls-\d+$/, 'o canal ao vivo da prefeitura');
     assert.equal((await db.get('SELECT token_hash FROM telas_devices WHERE id = ?', [d1.deviceId])).token_hash, sha(d1.token));
     const T1 = dev(d1.token); const T2 = dev(d2.token);
     // grupos: manual e automático; precedência dos avisos
@@ -159,13 +160,9 @@ test('Postgres: tabelas do NEXA Telas no banco novo e no de antes (idempotente);
     assert.deepEqual((await A.api('GET', '/api/prefeitura/offline')).data.items, []);
     assert.equal((await A.api('GET', '/api/prefeitura/availability')).status, 200);
     assert.deepEqual(Object.keys((await A.api('GET', '/api/prefeitura/badge')).data).sort(), ['approvals', 'off']);
-    // revogar e excluir o cliente: tudo sai
+    // revogar: o token deixa de valer (o DIGITAL ISP não exclui contas: o trecho do NEXA que excluía o cliente saiu)
     assert.equal((await A.api('POST', `/api/prefeitura/devices/${d2.deviceId}/revoke`)).status, 200);
     assert.equal((await T2('GET', '/api/telas/config')).status, 401);
-    const del = await P('DELETE', `/api/platform/tenants/${A.id}`, { confirm: 'pg-pref' });
-    assert.equal(del.status, 200, JSON.stringify(del.data));
-    for (const tb of TELAS_TABLES) assert.equal(Number((await db.get(`SELECT COUNT(*) AS n FROM ${tb} WHERE tenant_id = ?`, [A.id])).n), 0, `${tb} do cliente excluído`);
-    assert.equal((await T1('GET', '/api/telas/config')).status, 401);
   } finally {
     if (s) { await s.stop(); cleanup(s.dataDir); }
     if (db) await db.close().catch(() => {});

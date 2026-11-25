@@ -8,6 +8,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { boot, cleanup, api, platformLogin, newTenant, sleep } from './helpers/srv.js';
+import { canal, usuario, auditoria } from './helpers/prefeitura.js'; // DIGITAL ISP: canal ao vivo (HLS) e usuário de permissão limitada
 
 const ENV = { TELAS_LINK_LOGIN_PER_IP: '500', TELAS_ACTIVATE_PER_IP: '50', TELAS_SALA_PER_MIN: '400', PUBLIC_HLS_URL: 'https://hls.exemplo.test', PLATFORM_PUBLIC_URL: 'https://painel.exemplo.test' };
 
@@ -19,7 +20,7 @@ async function roteiro(s) {
   assert.equal((await P('POST', '/api/platform/plans', { code: 'p-pref', name: 'Prefeitura', priceCents: 0, profileId: prof.data.id, limits: { channels: 1 } })).status, 201);
   const A = await newTenant(P, s.base, { slug: 'upa-a', planCode: 'p-pref', status: 'active' });
   const B = await newTenant(P, s.base, { slug: 'upa-b', planCode: 'p-pref', status: 'active' });
-  assert.equal((await A.api('POST', '/api/channels', { name: 'TV A', slug: 'upa-a-tv' })).status, 201);
+  await canal(A.api, 'TV A'); // DIGITAL ISP: o canal ao vivo (HLS) no lugar do canal do NEXA
   const post = async (X, url, body, want = 201) => { const r = await X('POST', url, body); assert.equal(r.status, want, `${url}: ${JSON.stringify(r.data)}`); return r.data; };
   const PA = (m, u, b) => A.api(m, u, b);
   const upa = await post(PA, '/api/prefeitura/offices', { name: 'UPA Centro', type: 'upa' });
@@ -269,7 +270,7 @@ async function roteiro(s) {
   if (gen.status === 200) await At('POST', `${Q}/tickets/${gen.data.ticket.id}/finish`);
   const exc = await post(G, `${Q}/call`, { roomId: room.rv.id, ticketId: v1.id }, 200);
   assert.deepEqual([exc.exception, exc.stage, exc.ticket.code], [true, 'Reavaliação', v1.code], 'o gestor chama por exceção');
-  assert.ok(JSON.stringify((await A.api('GET', '/api/audit?limit=300')).data).includes(`senha ${v1.code} da etapa \\"Reavaliação\\" (chamada pelo profissional da sala) chamada por exceção`), 'a exceção vai ao log');
+  assert.ok(JSON.stringify(await auditoria(s, A.id)).includes(`senha ${v1.code} da etapa \\"Reavaliação\\" (chamada pelo profissional da sala) chamada por exceção`), 'a exceção vai ao log');
   assert.equal((await G('POST', `${Q}/tickets/${v1.id}/requeue`)).status, 200);
   // a página da sala chama, confirma a chegada, chama de novo e finaliza; a sala volta a Disponível
   const Sv = bearer((await post(G, `${Q}/rooms/${room.rv.id}/link`, {})).url.split('/').at(-2));

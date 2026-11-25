@@ -11,6 +11,7 @@ import * as T from './tenancy.js';
 import { PLATFORM_PERMISSIONS, checkPasswordPolicy, USERNAME_RE } from './authcore.js';
 import { clientIp } from './clientip.js';
 import { mountFeatureProfiles, storedFeatures } from './funcionalidades.js';
+import { hiddenCodes, setSiteVisible } from './site-planos.js'; // "Mostrar no site" de cada plano
 import { mountRevendas, saveExtras, loadExtras, extrasDto } from './revendas.js';
 
 const { fail } = T;
@@ -208,6 +209,18 @@ export function mountPlataforma(app) {
     res.json(access.issueImpersonation(req.user, t.id));
   }));
 
+  // a revenda esqueceu a senha: gera uma nova para o administrador dela (mostrada uma vez; troca no primeiro acesso)
+  r.post('/tenants/:id/senha', A('platform.tenants'), ah(async (req, res) => {
+    const t = await tenantOr404(idParam(req));
+    const u = (await access.tenantAdmins(t.id))[0];
+    if (!u) throw fail(404, 'A revenda não tem administrador.');
+    const password = randomPassword();
+    await access.resetPassword(u.id, password, { mustChange: true }, t.id);
+    if (!u.active) await db.run('UPDATE users SET active = 1 WHERE id = ?', [u.id]);
+    aud(res, t.id, `gerou nova senha para a revenda ${t.slug}`);
+    res.json({ login: u.username, senha: password });
+  }));
+
   /* ------------------------------------------------------------------ perfis de funcionalidades e planos das revendas */
   // Herdados do NEXA (c51d2469). O plano por número de telas, os planos dos clientes finais e a cobrança vêm no passo 3.
   mountFeatureProfiles(r, { A, ah, aud });
@@ -245,7 +258,10 @@ export function mountPlataforma(app) {
     return out;
   };
 
-  r.get('/plans', A('platform.view'), ah(async (_req, res) => res.json(await T.listPlans())));
+  r.get('/plans', A('platform.view'), ah(async (_req, res) => {
+    const hidden = await hiddenCodes();
+    res.json((await T.listPlans()).map((p) => ({ ...p, siteVisible: p.code !== T.UNLIMITED_PLAN && !hidden.has(p.code) })));
+  }));
   r.post('/plans', A('platform.plans'), ah(async (req, res) => {
     const f = planInput(req.body || {});
     const profileId = await profileOf(req.body || {});
@@ -265,6 +281,7 @@ export function mountPlataforma(app) {
     const profileId = await profileOf(b);
     if (profileId !== undefined) f.profile_id = profileId;
     if (f.code && f.code !== cur.code && await db.get('SELECT id FROM plans WHERE code = ?', [f.code])) throw fail(409, 'Já existe um plano com esse código.');
+    if (b.siteVisible !== undefined && cur.code !== T.UNLIMITED_PLAN) await setSiteVisible(f.code || cur.code, Boolean(b.siteVisible));
     const keys = Object.keys(f);
     if (keys.length) await db.run(`UPDATE plans SET ${keys.map((k) => `${k} = ?`).join(', ')} WHERE id = ?`, [...keys.map((k) => f[k]), cur.id]);
     T.invalidateTenants();

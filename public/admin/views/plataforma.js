@@ -5,6 +5,7 @@ import { ufCityPicker } from '../../shared/uf-city.js';
 import * as CAT from '../../shared/funcionalidades.js';
 import { createMap } from '../telas-mapa.js';
 import { ligarCep } from '../cep.js';
+import { municipioCard } from './prefeitura-municipio.js';
 
 const brl = (c) => (c == null ? '—' : (Number(c) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
 const toCents = (v) => { const s = String(v ?? '').trim().replace(/\./g, '').replace(',', '.'); if (!s) return null; const n = Math.round(Number(s) * 100); return Number.isFinite(n) ? n : NaN; };
@@ -86,7 +87,16 @@ function revendaForm(t, plans, done) {
       field('Dia do vencimento', inp('dia', t?.cobranca?.diaVencimento ?? 10, { type: 'number', min: 1, max: 28 })),
       field('Valor mensal (R$)', inp('valor', centsToInput(t?.cobranca?.valorCents), { inputmode: 'decimal', placeholder: 'vazio = o preço do plano' }))),
     field('Observações', el('textarea', { name: 'notes', rows: 2, maxlength: 1000, text: t?.notes || '' }), { full: true }),
-    el('div', { class: 'rv-actions' }, el('button', { class: 'primary', type: 'submit', text: editing ? 'Salvar' : 'Cadastrar revenda' })),
+    // prefeitura (modo órgão público no plano da revenda): o município travado das telas da própria revenda
+    editing && plans.find((p) => p.code === t.planCode)?.features?.prefeitura ? municipioCard(`/api/platform/tenants/${t.id}/telas-municipio`, { idPrefix: 'rvm' }) : null,
+    el('div', { class: 'rv-actions' }, el('button', { class: 'primary', type: 'submit', text: editing ? 'Salvar' : 'Cadastrar revenda' }),
+      editing ? el('button', { type: 'button', text: 'Nova senha de acesso', onclick: guard(async () => {
+        if (!confirm('Gerar uma senha nova para o administrador desta revenda? A senha atual deixa de valer.')) return;
+        const r = await api(`/api/platform/tenants/${t.id}/senha`, { method: 'POST', body: {} });
+        f.querySelector('.rv-out').replaceChildren(el('div', { class: 'card' }, el('h3', { text: 'Nova senha da revenda' }),
+          el('p', {}, 'Entrada: ', el('b', { text: `${location.origin}/admin/` }), ' com o e-mail ', el('b', { text: r.login }), '.'),
+          el('p', { class: 'hint', text: 'Senha nova (mostrada só agora; a revenda troca no primeiro acesso):' }), el('p', { class: 'rv-secret', text: r.senha })));
+      }) }) : null),
     el('div', { class: 'rv-out' }));
   ligarCep({ cep: f.elements.zip, rua: f.elements.street, bairro: f.elements.district, numero: f.elements.number, place });
   f.addEventListener('submit', guard(async (e) => {
@@ -136,7 +146,8 @@ export async function paintPlanos(root) {
     const f = el('form', { class: 'card pl-card' },
       el('div', { class: 'pl-head' },
         el('div', {}, el('h3', { text: p.name }), el('span', { class: 'dim mono small', text: p.code })),
-        el('label', { class: 'pl-active' }, el('input', { type: 'checkbox', name: 'active', checked: p.active, disabled: fixed }), ' Ativo (pode ser vendido)')),
+        el('div', { class: 'pl-flags' }, el('label', { class: 'pl-active' }, el('input', { type: 'checkbox', name: 'active', checked: p.active, disabled: fixed }), ' Ativo (pode ser vendido)'),
+          el('label', { class: 'pl-active' }, el('input', { type: 'checkbox', name: 'siteVisible', checked: Boolean(p.siteVisible), disabled: fixed }), ' Mostrar no site'))),
       el('div', { class: 'rv-grid2' },
         field('Nome', inp('name', p.name, { maxlength: 60 })),
         field('Preço mensal (R$)', inp('price', centsToInput(p.priceCents), { inputmode: 'decimal' })),
@@ -156,6 +167,7 @@ export async function paintPlanos(root) {
       const body = { name: v.name, description: v.description, priceCents: price ?? 0 };
       if (!fixed) {
         body.active = f.active.checked;
+        body.siteVisible = f.siteVisible.checked;
         body.limits = Object.fromEntries(LIMITS.map(([k]) => [k, v[`l_${k}`] === '' || v[`l_${k}`] == null ? null : Number(v[`l_${k}`])]));
         body.features = Object.fromEntries(CAT.FEATURE_KEYS.map((k) => [k, Boolean(f[`m_${k}`]?.checked)]));
         body.profileId = null; // os módulos ficam no próprio plano

@@ -12,6 +12,7 @@ import { db } from './db.js';
 import * as access from './auth.js';
 import { needs, signedIn, needsPlatform } from './auth.js';
 import * as tenancy from './tenancy.js';
+import { createPlanGate } from './funcionalidades.js';
 import { storage, readInput, isUrl } from './storage.js';
 import { clientIp } from './clientip.js';
 import { clock } from './ntp.js';
@@ -22,8 +23,10 @@ import { bindContas, assertNovaTela } from './contas.js';
 import { mountRevenda } from './revenda.js';
 import { mountIntegracoes } from './integracoes.js';
 import { mountDominios, entradaDoDominio } from './dominios.js';
+import { mountQrcodes } from './qrcodes.js';
 import { hostTenantId } from './domains.js';
 import { mountRadios, loadRadios, audioOf } from './radios.js';
+import { mountMunicipio } from './prefeitura.js';
 import { mountHls, carregarHls, channelsOf as hlsChannels, streamOf as hlsStream } from './hls.js';
 import { createTvcorp } from './tvcorp.js';
 import { TVC_ART } from '../public/shared/tvcorp-tipos.js';
@@ -32,7 +35,10 @@ import { createTelas } from './telas.js';
 import { createGeocoder } from './telas-geocode.js';
 import { geocode } from './web/fontes.js';
 import { getJson as netGetJson } from './web/net.js';
+import { createNewsImages } from './noticias-img.js'; // a cópia da foto de cada notícia (uma por vez na tela)
+import { prepareMediaImage } from './tvcorp-midia.js'; // a foto da notícia em WebP vira JPEG
 import { forecast as weatherForecast } from './weather.js'; // o clima das telas (Open-Meteo/INMET, com cache e cota)
+import { sitePlans } from './site-planos.js'; // os planos ativos e públicos no site (GET /api/site/planos)
 
 const bootedAt = Date.now();
 const ah = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -67,6 +73,9 @@ app.use('/api/telas', (req, res, next) => {
   next();
 });
 app.use((_req, res, next) => { res.set('X-Content-Type-Options', 'nosniff'); next(); });
+// guardas do catálogo de funcionalidades (public/shared/funcionalidades.js, routes): 403 feature_unavailable para a conta cujo
+// plano não tem o módulo (hoje: o Painel da Prefeitura, /api/prefeitura*). A permissão do usuário segue no needs() de cada rota
+app.use(createPlanGate({ channelTenant: () => null, peekTenantId: access.peekTenantId, resolveTenant: tenancy.resolveTenant }));
 // pedido lento (mais de 400 ms) vai para o log: "[lento] GET /api/tvcorp 1234 ms" (o sinal de vida das telas fica de fora)
 app.use((req, res, next) => {
   const t0 = process.hrtime.bigint();
@@ -82,6 +91,11 @@ if (config.platform.canonicalHost) {
   app.use((req, res, next) => (req.hostname === canon.replace(/^www\./, '') ? res.redirect(301, `https://${canon}${req.originalUrl}`) : next()));
 }
 
+// a versão no ar (scripts/publicar.sh grava VERSAO a cada publicação): o rodapé do menu do painel mostra
+const pkgVersion = (() => { try { return JSON.parse(fs.readFileSync(path.join(config.root, 'package.json'), 'utf8')).version || '0.1.0'; } catch { return '0.1.0'; } })();
+const VERSAO = (() => { try { const [n, commit, em] = fs.readFileSync(path.join(config.root, 'VERSAO'), 'utf8').trim().split('|'); return { numero: `${pkgVersion.split('.').slice(0, 2).join('.')}.${n}`, commit, em }; } catch { return { numero: `${pkgVersion} (local)`, commit: null, em: new Date(bootedAt).toISOString() }; } })();
+app.get('/api/versao', (_req, res) => res.set('Cache-Control', 'no-cache').json(VERSAO));
+app.get('/api/site/planos', ah(async (_req, res) => res.set('Cache-Control', 'public, max-age=60').json({ plans: await sitePlans() })));
 app.get('/healthz', (_req, res) => res.json({ ok: true, uptime: Math.round((Date.now() - bootedAt) / 1000) }));
 app.get('/readyz', ah(async (_req, res) => { await db.get('SELECT 1 AS ok'); res.json({ ok: true }); }));
 
@@ -143,7 +157,21 @@ app.post('/api/me/logout', ah(async (req, res) => {
 
 mountPlataforma(app);
 mountIntegracoes(app, { needsPlatform });
-mountDominios(app, { needs, needsPlatform }); // domínio próprio da revenda e do cliente (server/dominios.js) // superadmin: de onde vêm clima, cotações, notícias, CEP, mapa e rádios (server/integracoes.js)
+mountDominios(app, { needs, needsPlatform });
+// gerenciador de QR code (server/qrcodes.js): o QR dinâmico /q/<código>, a página do celular e as leituras
+mountQrcodes(app, {
+  needs, publicUrl: (req) => publicOrigin(req), ipOf: clientIp, // publicOrigin vem mais abaixo: a seta adia a leitura
+  tvcorpFile: async (tid, mid, { poster }, _req, res) => {
+    const m = await db.get('SELECT kind, file, fields FROM tvcorp_media WHERE id = ? AND tenant_id = ?', [mid, tid]);
+    let name = m?.file; if (poster) { try { name = JSON.parse(m?.fields || '{}').poster; } catch { name = null; } }
+    if (!name) return res.status(404).end();
+    const src = await readInput('graphics', name).catch(() => null);
+    if (!src) return res.status(404).end();
+    if (isUrl(src)) return res.redirect(302, src);
+    return res.set('Cache-Control', 'public, max-age=3600').sendFile(src, { dotfiles: 'allow' });
+  },
+});
+app.use('/qpagina', express.static(pub('q'), { setHeaders: (res) => res.setHeader('Cache-Control', 'no-cache') })); // domínio próprio da revenda e do cliente (server/dominios.js) // superadmin: de onde vêm clima, cotações, notícias, CEP, mapa e rádios (server/integracoes.js)
 mountGuia(app, { needs, signedIn, needsPlatform, ah }); // configuração guiada (server/guia.js)
 mountRevenda(app, { needs, signedIn });
 mountHls(app, { needs, ah, onChange: (tid) => telas?.forget(tid) }); // canais ao vivo (HLS) (server/hls.js)
@@ -171,7 +199,11 @@ const graphicsFiles = (...prefixes) => ({
   list: async () => (await Promise.all(prefixes.map((p) => storage.list('graphics', p)))).flat().map((f) => ({ name: f.name, mtime: f.mtimeMs })),
 });
 
+const newsImages = createNewsImages({ dir: path.join(config.dataDir, 'telas', 'noticias'), toJpeg: (buf) => prepareMediaImage(buf, { ffmpeg: config.ffmpeg, orientation: 'land', fit: 'cover' }).then((o) => o.buf) });
+setInterval(() => { newsImages.prune().catch(() => {}); }, 3600_000).unref();
 const tvcorpDados = createTvcorpDados({
+  forget: (tenantId) => telas?.forget(tenantId), // tirar uma notícia da programação muda o que as telas recebem
+  newsImages, newsImageUrl: (file) => `${config.platform.publicUrl || ''}/tvcorp/noticia/${file}`, // sem o endereço público: relativo (tvcorp.js completa pelo pedido)
   db, audit: access.audit, ipOf: clientIp, publicUrl: publicOrigin, available: tvcorpOn,
   weatherOf: (ibge) => weatherForecast(ibge),
   files: { dir: path.join(config.dataDir, 'telas', 'tvcorp') },
@@ -197,10 +229,39 @@ function artFileOf(key, req) {
   const s = artSums.get(key);
   return s ? { url: `${req ? publicOrigin(req) : config.platform.publicUrl || ''}/tvcorp/arte/${key}.jpg`, ...s } : null;
 }
+/**
+ * DIGITAL ISP: a foto de fundo do clima (GPT Image, public/tvcorp/arte/clima-<tempo>-<land|port>.jpg) no formato de arquivo do
+ * contrato: { art (deitada), artPort (em pé) }; a TV usa a da forma da zona, em cover, com um véu escuro por cima.
+ */
+const CLIMA_CONDS = ['clear', 'partly', 'cloudy', 'fog', 'rain', 'storm'];
+// de noite (18h às 5h59, hora de Brasília) a foto noturna do mesmo tempo (clima-<tempo>-noite-<forma>.jpg), se existir
+const noiteAgora = () => { const h = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Sao_Paulo', hour: '2-digit', hour12: false }).format(new Date())) % 24; return h >= 18 || h < 6; };
+function climaArtOf(cond, req) {
+  if (!CLIMA_CONDS.includes(cond)) return null;
+  const noite = noiteAgora();
+  const one = (o) => (noite && arte(`clima-${cond}-noite-${o}`)) || arte(`clima-${cond}-${o}`);
+  const arte = (key) => {
+    if (!artSums.has(key)) {
+      try { const buf = fs.readFileSync(pub(`tvcorp/arte/${key}.jpg`)); artSums.set(key, { sha256: createHash('sha256').update(buf).digest('hex'), bytes: buf.length }); } catch { artSums.set(key, null); }
+    }
+    const s = artSums.get(key); const base = req ? publicOrigin(req) : config.platform.publicUrl || '';
+    return s && /^https:\/\//.test(base) ? { url: `${base}/tvcorp/arte/${key}.jpg`, ...s } : null;
+  };
+  const art = one('land'); const artPort = one('port');
+  return art || artPort ? { ...(art ? { art } : {}), ...(artPort ? { artPort } : {}) } : null;
+}
 let telas = null;
 const tvcorp = createTvcorp({
   db, storage: graphicsFiles('tvcmedia-', 'tvclogo-'), ffmpeg: config.ffmpeg, artFile: artFileOf,
   audioOf, // a rádio de fundo do layout (server/radios.js)
+  weatherArt: climaArtOf, // a foto de fundo do item de clima
+  originOf: (req) => publicOrigin(req), // o endereço do site no pedido (completa a foto da notícia)
+  // a zona de gadget vazia: o gadget do cliente do mesmo tipo; senão relógio, clima, ou o primeiro que houver
+  widgetFallback: async (tenantId, sample) => {
+    const rows = await db.all('SELECT id, kind FROM tvcorp_widgets WHERE tenant_id = ? ORDER BY id', [tenantId]);
+    const pick = (k) => rows.find((r) => r.kind === k)?.id;
+    return pick(sample) ?? pick('clock') ?? pick('weather') ?? rows[0]?.id ?? null;
+  },
   storageCheck: async (tenantId, bytes) => tenancy.assertStorage(tenantId, await tenancy.usageStorageBytes(tenantId), bytes),
   dataFor: tvcorpDados.dataFor, labelFor: tvcorpLabel,
   refExists: async (tenantId, kind, id) => Boolean(await tvcorpLabel(tenantId, kind, id)),
@@ -210,15 +271,20 @@ const tvcorp = createTvcorp({
   audit: access.audit, ipOf: clientIp,
 });
 telas = createTelas({
+  weatherArt: climaArtOf, // a foto de fundo de cada tempo (config.weather.art/artPort)
   tvcorp, tvcorpDados,
   // o ao vivo da zona de vídeo: o canal HLS que a unidade escolheu (NEXA Broadcast, IPTV do provedor, câmera…)
-  streamOf: (tenantId, channelId, req, deviceId) => hlsStream(tenantId, channelId, req, deviceId),
+  // prefeitura (modo órgão público): a repartição sem canal escolhido toca o primeiro canal ao vivo da conta, como o canal da
+  // prefeitura no NEXA; a TV Corporativa sem canal segue sem vídeo ao vivo
+  streamOf: async (tenantId, channelId, req, deviceId) => hlsStream(tenantId, channelId, req, deviceId)
+    ?? (await tenancy.hasFeature(tenantId, 'prefeitura').catch(() => false) ? hlsStream(tenantId, hlsChannels(tenantId)[0]?.id ?? null, req) : null),
   channelsOf: (tenantId) => hlsChannels(tenantId),
   geocode, geocodeAddress: telasGeocoder.find, audit: access.audit, ipOf: clientIp, publicUrl: publicOrigin,
   weatherOf: (ibge) => weatherForecast(ibge),
-  mediaUrl: (filename, req) => { const u = storage.url('media', filename); return !u ? null : isUrl(u) ? u : `${publicOrigin(req)}${u}`; },
+  // os vídeos guardados da prefeitura são as mídias das telas (tvcorp_media, arquivos tvcmedia-* em graphics/)
+  mediaUrl: (filename, req) => { const u = storage.url('graphics', filename); return !u ? null : isUrl(u) ? u : `${publicOrigin(req)}${u}`; },
   openMedia: async (m) => {
-    const src = await readInput('media', m.filename);
+    const src = await readInput('graphics', m.filename);
     if (!isUrl(src)) return fs.createReadStream(src);
     const r = await fetch(src);
     if (!r.ok || !r.body) throw new Error(`armazenamento respondeu ${r.status}`);
@@ -232,6 +298,7 @@ app.post(['/api/tvcorp/rede/keys', '/api/prefeitura/keys'], needs('tvcorp.manage
 telas.mount(app, { needs });
 mountEnderecos(app, { needs, signedIn, ah, geocodeAddress: telasGeocoder.find }); // CEP, ponto no mapa e endereço da unidade (server/enderecos.js)
 tvcorp.mount(app, { needs });
+mountMunicipio(app, { telas, needs, needsPlatform, ah }); // o município da prefeitura: só a plataforma e a revenda dela trocam ou tiram (server/prefeitura.js)
 const tvcorpApiKey = ah(async (req, res, next) => {
   const tok = /^Bearer ([A-Za-z0-9_-]{32,64})$/.exec(req.get('authorization') || '')?.[1];
   const k = tok ? await db.get('SELECT office_id, tenant_id FROM telas_api_keys WHERE token_hash = ?', [createHash('sha256').update(tok).digest('hex')]) : null;
@@ -243,6 +310,14 @@ const tvcorpApiKey = ah(async (req, res, next) => {
   return next();
 });
 tvcorpDados.mount(app, { needs, apiKey: tvcorpApiKey });
+// a foto da notícia (pelo hash; pública como as artes: é a foto que a fonte já publicou)
+app.get('/tvcorp/noticia/:name', ah(async (req, res) => {
+  const name = String(req.params.name || '');
+  const buf = await newsImages.read(name);
+  if (!buf) return res.status(404).end();
+  const type = name.endsWith('.png') ? 'image/png' : name.endsWith('.webp') ? 'image/webp' : 'image/jpeg';
+  res.set({ 'Content-Type': type, 'Cache-Control': 'public, max-age=86400, immutable', 'X-Content-Type-Options': 'nosniff' }).send(buf);
+}));
 app.get('/tvcorp/foto/:name', ah(async (req, res) => {
   const name = String(req.params.name || '');
   const row = TVC_FILE_RE.test(name) && name.startsWith('tvcpessoa-') ? await db.get('SELECT tenant_id FROM tvcorp_people WHERE photo = ? AND photo_consent = 1', [name]) : null;
@@ -257,9 +332,14 @@ app.get('/graphics/:name', ah(async (req, res) => {
   if (!/^[a-z0-9][a-z0-9._-]{0,120}$/i.test(name) || name.includes('..')) return res.status(404).end();
   const src = await readInput('graphics', name).catch(() => null);
   if (!src) return res.status(404).end();
+  // a foto de um caso de pessoa desaparecida (server/telas-desaparecidos.js): sem cache em lugar nenhum, para sumir de fato
+  // quando o caso é encerrado
+  const noStore = name.startsWith('desap-');
+  if (noStore) res.set('Cache-Control', 'no-store');
   if (isUrl(src)) return res.redirect(302, src);
   if (!fs.existsSync(src)) return res.status(404).end();
-  res.set('Cache-Control', 'public, max-age=86400').sendFile(src, { dotfiles: 'allow' });
+  if (!noStore) res.set('Cache-Control', 'public, max-age=86400');
+  res.sendFile(src, { dotfiles: 'allow', ...(noStore ? { cacheControl: false } : {}) });
 }));
 app.get('/vendor/hls.mjs', (_req, res) => res.set('Cache-Control', 'public, max-age=86400').type('application/javascript').sendFile(path.join(config.root, 'node_modules', 'hls.js', 'dist', 'hls.min.mjs'))); // prévia do HLS no painel
 app.use('/marca', express.static(path.join(config.root, 'marca'), { maxAge: '1h' }));
@@ -333,6 +413,8 @@ app.use((err, req, res, _next) => {
   if (res.headersSent) return;
   const body = { error: status >= 500 && config.production ? 'Erro interno.' : err.message || 'Erro.' };
   if (err.code && typeof err.code === 'string') body.code = err.code;
+  // o que a rota mandou junto com o erro (fail(status, msg, extra) do módulo das telas: o código, a fila cheia, o limite…)
+  if (status < 500 && err.extra && typeof err.extra === 'object') Object.assign(body, err.extra, { error: body.error });
   res.status(status).json(body);
 });
 

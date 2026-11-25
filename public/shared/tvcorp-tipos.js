@@ -67,6 +67,8 @@ export const TVC_ZONES = Object.freeze([
   { key: 'worldclock', label: 'Relógio mundial', desc: 'A hora em outras cidades.', params: ['title', 'widget'] },
   { key: 'queue', label: 'Chamada de senha', desc: 'A senha chamada e as últimas chamadas (quando a unidade tem a chamada de senha).' },
   // DIGITAL ISP: qualquer gadget direto na zona (relógio, clima, agenda, indicadores, avaliações, como chegar, página)
+  // DIGITAL ISP: a imagem de uma entrada HDMI da TV (decodificador, câmera, computador); a entrada é escolhida no menu do app da TV
+  { key: 'hdmi', label: 'Entrada HDMI da TV', desc: 'A imagem de uma entrada HDMI da TV (decodificador, câmera, computador). A entrada (HDMI 1, 2, 3…) é escolhida no menu do app da TV Samsung. No máximo uma por layout, sem o vídeo do canal.' },
   { key: 'widget', label: 'Gadget', desc: 'Um gadget escolhido na aba Barras e blocos: relógio, clima, agenda, indicadores, avaliações, como chegar, página e outros.', params: ['widget'] },
 ]);
 export const TVC_ZONE = Object.freeze(Object.fromEntries(TVC_ZONES.map((z) => [z.key, z])));
@@ -125,6 +127,8 @@ export function parseItemRef(ref) {
   if (s === 'w:posts') return { refKind: 'posts', refId: 0 };
   if (s === 'n:all') return { refKind: 'news', refId: 0 };
   if (s === 'q:all') return { refKind: 'quotes', refId: 0 };
+  const one = /^n([1-9][0-9]{0,15})-([1-9][0-9]?)$/.exec(s); // uma notícia da fonte (DIGITAL ISP: uma por vez, com a foto)
+  if (one) return { refKind: 'news', refId: Number(one[1]) };
   const m = /^([mpkwcnq])([1-9][0-9]{0,15})$/.exec(s);
   if (!m) return null;
   const kind = { m: 'media', p: 'post', k: 'kpi', w: 'widget', c: 'card', n: 'news', q: 'quotes' }[m[1]];
@@ -276,7 +280,7 @@ function familyLayouts() {
 export function layoutMainOf(m) {
   const zs = m?.zones || [];
   const z = zs.find((x) => x.id === 'main') || [...zs].sort((a, b) => b.w * b.h - a.w * a.h)[0];
-  return z?.kind === 'video' ? 'video' : z?.kind === 'playlist' ? 'playlist' : 'other';
+  return z?.kind === 'video' ? 'video' : z?.kind === 'hdmi' ? 'hdmi' : z?.kind === 'playlist' ? 'playlist' : 'other';
 }
 /**
  * Os layouts prontos. Cada zona em % da tela (inteiros 0 a 100). hint: o conteúdo sugerido para a playlist da zona (o
@@ -395,6 +399,21 @@ export const TVC_LAYOUT_MODELS = Object.freeze([
     zones: [Z('main', 'playlist', 0, 0, 65, 86, { hint: 'media' }), Z('clock', 'clock', 65, 0, 35, 26), Z('weather', 'weather', 65, 26, 35, 24), Z('news', 'news', 65, 50, 35, 36), Z('bar', 'ticker', 0, 86, 100, 14)] },
   { key: 'elevador-deitado-cheio', segment: 'elevador', label: 'Elevador deitado em tela cheia', desc: 'Um anúncio em tela cheia com a hora no canto e os avisos embaixo.', orientation: 'land', background: '#0b1220',
     zones: [Z('main', 'playlist', 0, 0, 80, 86, { hint: 'media' }), Z('clock', 'widget', 80, 0, 20, 86, { sample: 'clock' }), Z('bar', 'ticker', 0, 86, 100, 14)] },
+  // elevador: os modelos das telas de elevador de prédio comercial e condomínio (anúncio em cima, manchete, avisos e o rodapé com hora e clima)
+  { key: 'elevador-deitado-manchete', segment: 'elevador', label: 'Elevador deitado com manchete', desc: 'A foto grande, a manchete embaixo com a logomarca e o rodapé com a hora, o clima e os avisos.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'playlist', 0, 0, 100, 66, { hint: 'media' }), Z('news', 'news', 0, 66, 86, 24), Z('logo', 'logo', 86, 66, 14, 24), Z('clock', 'clock', 0, 90, 16, 10), Z('weather', 'weather', 16, 90, 24, 10), Z('bar', 'ticker', 40, 90, 60, 10)] },
+  { key: 'elevador-deitado-anuncio-avisos', segment: 'elevador', label: 'Elevador deitado com anúncio e avisos', desc: 'O anúncio à esquerda, os comunicados do prédio à direita e o rodapé com a hora, o clima e os avisos.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'playlist', 0, 0, 62, 90, { hint: 'media' }), Z('avisos', 'playlist', 62, 0, 38, 90), Z('clock', 'clock', 0, 90, 16, 10), Z('weather', 'weather', 16, 90, 24, 10), Z('bar', 'ticker', 40, 90, 60, 10)] },
+  { key: 'elevador-em-pe-anuncio-avisos', segment: 'elevador', label: 'Elevador em pé com anúncio, manchete e avisos', desc: 'Em pé: o anúncio em cima, a manchete do dia, os comunicados do condomínio e o rodapé com a hora e o clima.', orientation: 'port', background: '#0b1220',
+    zones: [Z('main', 'playlist', 0, 0, 100, 42, { hint: 'media' }), Z('news', 'news', 0, 42, 100, 12), Z('avisos', 'playlist', 0, 54, 100, 38), Z('clock', 'clock', 0, 92, 22, 8), Z('weather', 'weather', 22, 92, 28, 8), Z('bar', 'ticker', 50, 92, 50, 8)] },
+  { key: 'elevador-em-pe-sindico', segment: 'elevador', label: 'Elevador em pé com aviso do síndico', desc: 'Em pé, fundo claro: notícias e anúncios em cima, a faixa "Aviso do síndico" e o comunicado em letra grande.', orientation: 'port', background: '#eef2f7',
+    zones: [Z('main', 'playlist', 0, 0, 100, 40, { hint: 'media' }), Z('title', 'text', 0, 40, 100, 7, { title: 'Aviso do síndico', text: 'Residencial' }), Z('avisos', 'playlist', 0, 47, 100, 45), Z('clock', 'clock', 0, 92, 20, 8), Z('weather', 'weather', 20, 92, 30, 8), Z('bar', 'ticker', 50, 92, 50, 8)] },
+  { key: 'elevador-em-pe-marca', segment: 'elevador', label: 'Elevador em pé com a marca do prédio', desc: 'Em pé, fundo claro: a logomarca e a foto lado a lado, o nome do prédio e os comunicados com foto.', orientation: 'port', background: '#eef2f7',
+    zones: [Z('logo', 'logo', 0, 0, 38, 36), Z('main', 'playlist', 38, 0, 62, 36, { hint: 'media' }), Z('title', 'text', 0, 36, 100, 7, { title: 'Edifício Residencial' }), Z('avisos', 'playlist', 0, 43, 100, 49), Z('clock', 'clock', 0, 92, 25, 8), Z('bar', 'ticker', 25, 92, 75, 8)] },
+  { key: 'elevador-em-pe-duas-partes', segment: 'elevador', label: 'Elevador em pé dividido em dois', desc: 'Em pé: o anúncio em cima e o comunicado embaixo, do mesmo tamanho, com o rodapé da hora e do clima.', orientation: 'port', background: '#0b1220',
+    zones: [Z('main', 'playlist', 0, 0, 100, 46, { hint: 'media' }), Z('avisos', 'playlist', 0, 46, 100, 46), Z('clock', 'clock', 0, 92, 22, 8), Z('weather', 'weather', 22, 92, 28, 8), Z('bar', 'ticker', 50, 92, 50, 8)] },
+  { key: 'elevador-em-pe-recados-qr', segment: 'elevador', label: 'Elevador em pé com recados e QR code', desc: 'Em pé: o anúncio com um QR code no canto, a chamada dos recados digitais e os comunicados do condomínio.', orientation: 'port', background: '#0b1220',
+    zones: [Z('main', 'playlist', 0, 0, 100, 40, { hint: 'media' }), Z('title', 'text', 0, 40, 100, 14, { title: 'Recados do condomínio agora são digitais', text: 'Fique por dentro dos avisos do prédio.' }), Z('avisos', 'playlist', 0, 54, 100, 38), Z('clock', 'clock', 0, 92, 30, 8), Z('bar', 'ticker', 30, 92, 70, 8), Z('qr', 'qr', 74, 22, 22, 16, { qr: 'https://exemplo.com.br', title: 'Saiba mais', overlay: true, opacity: 80 })] },
   // ---------------------------------------------------------------- telas de um conjunto (menu board de várias TVs; ver TVC_LAYOUT_SETS)
   { key: 'menu2d-1', segment: 'alimentacao', set: 'menu-2-deitadas', label: 'Cardápio (TV 1 de 2)', desc: 'O cardápio com preço.', orientation: 'land', background: '#0b1220',
     zones: [Z('title', 'text', 0, 0, 100, 12, { title: 'Cardápio' }), Z('main', 'playlist', 0, 12, 100, 88, { hint: 'media' })] },
@@ -491,6 +510,22 @@ export const TVC_LAYOUT_MODELS = Object.freeze([
     zones: [Z('main', 'video', 0, 0, 100, 88), Z('world', 'worldclock', 3, 5, 34, 14, { title: 'Horário pelo mundo', overlay: true, opacity: 60, shape: 'pilula' }), Z('weather', 'weather', 75, 5, 22, 14, { overlay: true, opacity: 60, shape: 'pilula' }), Z('bar', 'ticker', 0, 88, 100, 12)] },
   { key: 'fx-aovivo-em-pe-onda', special: true, segment: 'evento', label: 'Evento em pé com vídeo em onda', desc: 'Em pé: o canal ao vivo com a borda em onda, o contador, a programação e o texto rolante.', orientation: 'port', background: '#312e81',
     zones: [Z('main', 'video', 0, 0, 100, 36, { shape: 'onda-base', edge: { color: '#f5b31c', width: 0.6 } }), Z('countdown', 'countdown', 4, 38, 92, 22, { shape: 'cantos' }), Z('qr', 'qr', 4, 62, 92, 26, { qr: 'https://exemplo.com.br', title: 'Programação completa', shape: 'cantos' }), Z('bar', 'ticker', 0, 90, 100, 10)] },
+  // ---------------------------------------------------------------- DIGITAL ISP: a entrada HDMI da TV no lugar do ao vivo (app Samsung)
+  { key: 'hdmi-tela-cheia', label: 'HDMI em tela cheia', desc: 'Só a entrada HDMI da TV, escolhida no menu do app Samsung.', orientation: 'land', background: '#000000', zones: [Z('main', 'hdmi', 0, 0, 100, 100)] },
+  { key: 'hdmi-lateral', label: 'HDMI + lateral', desc: 'A entrada HDMI da TV e uma coluna de conteúdo à direita.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'hdmi', 0, 0, 75, 100), Z('right', 'playlist', 75, 0, 25, 100)] },
+  { key: 'hdmi-lateral-barra', label: 'HDMI + lateral + barra', desc: 'Em L: a entrada HDMI, a coluna de conteúdo e o texto rolante embaixo.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'hdmi', 0, 0, 75, 88), Z('right', 'playlist', 75, 0, 25, 88), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'hdmi-barra', label: 'HDMI + barra', desc: 'A entrada HDMI e o texto rolante embaixo.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'hdmi', 0, 0, 100, 88), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'hdmi-dois-quadros', label: 'HDMI + dois quadros', desc: 'A entrada HDMI grande e duas playlists à direita.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'hdmi', 0, 0, 66, 100), Z('top', 'playlist', 66, 0, 34, 50), Z('bottom', 'playlist', 66, 50, 34, 50)] },
+  { key: 'hdmi-gadgets', label: 'HDMI + relógio, clima e notícias', desc: 'A entrada HDMI, o relógio, o clima, as notícias e o texto rolante.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'hdmi', 0, 0, 72, 88), Z('clock', 'clock', 72, 0, 28, 22), Z('weather', 'weather', 72, 22, 28, 22), Z('news', 'news', 72, 44, 28, 44), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'hdmi-recepcao', segment: 'recepcao', label: 'Recepção com HDMI', desc: 'A entrada HDMI, a chamada de senha e o texto rolante.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'hdmi', 0, 0, 70, 88), Z('queue', 'queue', 70, 0, 30, 88), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'hdmi-em-pe', segment: 'loja', label: 'HDMI em pé', desc: 'Em pé: a entrada HDMI em cima, a playlist embaixo e o texto rolante.', orientation: 'port', background: '#0b1220',
+    zones: [Z('main', 'hdmi', 0, 0, 100, 45), Z('content', 'playlist', 0, 45, 100, 45), Z('bar', 'ticker', 0, 90, 100, 10)] },
   // DIGITAL ISP: os gerados por família (formas × segmento), 4 com a playlist e 4 com o vídeo ao vivo por segmento
   ...familyLayouts(),
 ].map((m) => Object.freeze({ segment: 'geral', ...m, zones: Object.freeze(m.zones) })));

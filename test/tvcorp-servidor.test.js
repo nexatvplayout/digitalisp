@@ -179,6 +179,13 @@ async function roteiro(db, label) {
     const old = await ok('POST', '/api/tvcorp/media', { body: { template: 'qr', fields: { title: 'Pesquisa', qr: 'https://pesquisa.exemplo.test' } } }, 201);
     const patched = await ok('PATCH', `/api/tvcorp/media/${slide.id}`, { body: { title: 'Férias de fim de ano', fields: { title: 'Férias coletivas', text: 'De 22/12 a 05/01.', image: img.id, variant: 'light', art: 'foto-natal', palette: 'verde' } } });
     assert.equal(patched.title, 'Férias de fim de ano'); assert.equal(patched.fields.variant, 'light');
+    // o construtor de páginas: a imagem guarda o desenho (fields.page) limpo; a legenda não apaga o desenho; fora do formato: 400
+    const pg = await ok('PATCH', `/api/tvcorp/media/${port.id}`, { body: { page: { orient: 'port', bg: { type: 'gradient', color: '#112233' }, blocks: [{ type: 'title', text: 'Aviso', bold: true }, { type: 'nada' }] } } });
+    assert.equal(pg.fields.page.orient, 'port'); assert.equal(pg.fields.page.blocks.length, 1); assert.equal(pg.fields.page.bg.color, '#112233');
+    const cap = await ok('PATCH', `/api/tvcorp/media/${port.id}`, { body: { caption: 'Legenda' } });
+    assert.equal(cap.fields.caption, 'Legenda'); assert.equal(cap.fields.page.blocks[0].text, 'Aviso');
+    assert.equal((await call('PATCH', `/api/tvcorp/media/${port.id}`, { body: { page: 'texto' } })).status, 400);
+    assert.equal((await ok('PATCH', `/api/tvcorp/media/${port.id}`, { body: { page: null } })).fields.page, undefined);
     // isolamento das mídias
     for (const [m, u] of [['GET', `/api/tvcorp/media/${img.id}`], ['GET', `/api/tvcorp/media/${img.id}/file`], ['PATCH', `/api/tvcorp/media/${img.id}`], ['DELETE', `/api/tvcorp/media/${img.id}`]]) {
       assert.equal((await call(m, u, { tenant: 2, body: m === 'PATCH' ? { title: 'roubo' } : undefined })).status, 404, `${m} ${u} de outro cliente`);
@@ -243,7 +250,7 @@ async function roteiro(db, label) {
     assert.deepEqual(right[1].fields.artFile, { url: 'https://cdn.exemplo.test/arte/foto-natal.jpg', sha256: 'a'.repeat(64), bytes: 1000, photo: true, tone: 'dark' }, 'a foto de fundo vai como arquivo para o app');
     assert.equal(right[1].fields.art, 'foto-natal'); assert.equal(right[1].fields.palette, 'verde');
     assert.equal(right[2].kind, 'birthdays'); assert.equal(right[2].people[0].name, 'Ana S.');
-    assert.deepEqual(right[3].fields, { title: 'Turnos da semana', text: '1º turno: 6h às 14h\n2º turno: 14h às 22h', lines: ['1º turno: 6h às 14h', '2º turno: 14h às 22h'] });
+    assert.deepEqual(right[3].fields, { title: 'Turnos da semana', text: '1º turno: 6h às 14h\n2º turno: 14h às 22h', lines: ['1º turno: 6h às 14h', '2º turno: 14h às 22h'], orient: 'port' }, 'a coluna da direita é mais alta que larga: o slide vai em pé');
     assert.equal(right[4].from, 660); assert.equal(right[4].to, 840);
     assert.deepEqual(right[5].image, right[0].url ? { url: right[0].url, sha256: right[0].sha256, bytes: right[0].bytes } : null, 'o mediaId do comunicado vira o arquivo');
     assert.equal('mediaId' in right[5], false); assert.equal('image' in right[6], false, 'mídia que não existe: sem imagem');

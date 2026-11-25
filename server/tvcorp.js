@@ -9,7 +9,7 @@
      GET    /api/tvcorp/summary                 o Resumo
      PUT    /api/tvcorp/settings                tema, fuso, aprovação, grade padrão, categorias, datas comemorativas
      GET|PUT|DELETE /api/tvcorp/settings/logo   a logomarca (PUT com a imagem crua no corpo)
-     GET|POST /api/tvcorp/media, POST /api/tvcorp/media/image (imagem crua), GET|PATCH|DELETE /api/tvcorp/media/:id,
+     GET|POST /api/tvcorp/media, POST /api/tvcorp/media/image (imagem crua), GET|PATCH|DELETE /api/tvcorp/media/:id (imagem: PATCH { page } guarda o desenho do construtor de páginas),
        PUT /api/tvcorp/media/:id/image (troca a imagem), GET /api/tvcorp/media/:id/file
      GET|POST /api/tvcorp/playlists, GET|PATCH|DELETE /api/tvcorp/playlists/:id, PUT /api/tvcorp/playlists/:id/items
      GET|POST /api/tvcorp/layouts, GET|PATCH|DELETE /api/tvcorp/layouts/:id
@@ -35,6 +35,7 @@ import { deviceStatus } from '../public/shared/telas-tipos.js';
 import * as K from './tvcorp-core.js';
 import { prepareMediaImage, prepareLogo } from './tvcorp-midia.js';
 import { VIDEO, convertVideo, receiveUpload, enqueue } from './tvcorp-video.js';
+import { cleanPage } from '../public/shared/pagina.js';
 
 const { fail, line, idOf, parseJson: j } = K;
 const ah = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -72,6 +73,9 @@ export function createTvcorp({
   forget = () => {}, audit = async () => {}, ipOf = (req) => req.ip, now = () => Date.now(), timers = true, artFile = null,
   audioOf = null, // (tenantId, layoutId) -> o bloco layout.audio (a rádio de fundo) ou null
   storageCheck = null, // (tenantId, bytes): o 402 do armazenamento do plano antes de aceitar um vídeo
+  weatherArt = null, // (cond, req) -> { art, artPort }: a foto de fundo do item de clima
+  originOf = null, // (req) -> https://site: completa os endereços relativos dos itens (a foto da notícia)
+  widgetFallback = null, // (tenantId, sample) -> id de um gadget do cliente: a zona de gadget sem gadget escolhido não fica vazia na TV
 }) {
   if (!db) throw new Error('createTvcorp: falta o banco');
   const noStore = (res) => res.set('Cache-Control', 'no-store');
@@ -333,6 +337,7 @@ export function createTvcorp({
       const x = { ...x0 };
       // comunicado com imagem da biblioteca: o pacote B manda o id (mediaId); a tela recebe o arquivo { url, sha256, bytes }
       if (x.mediaId != null) { const f = imageFile(data.media, x.mediaId, req); delete x.mediaId; if (f) x.image = f; }
+      if (typeof x.image?.url === 'string' && x.image.url.startsWith('/')) { const o = originOf && req ? originOf(req) : null; if (o) x.image = { ...x.image, url: `${o}${x.image.url}` }; else delete x.image; }
       const own = x.id != null && parseItemRef(x.id) ? String(x.id) : null;
       return { ...x, id: own || ref, seconds: Number.isInteger(x.seconds) && x.seconds >= L.secondsMin && x.seconds <= L.secondsMax ? x.seconds : it.seconds, ...when };
     });
@@ -347,9 +352,10 @@ export function createTvcorp({
     };
     // a rádio de fundo (layout sem vídeo do canal): o app toca o stream no volume da tela; o app antigo ignora
     const audio = audioOf ? audioOf(tenantId, lay.id) : null;
-    if (audio && !layout.zones.some((z) => z.kind === 'video')) layout.audio = audio;
+    if (audio && !layout.zones.some((z) => z.kind === 'video' || z.kind === 'hdmi')) layout.audio = audio;
     const zones = {};
-    const zp = K.zonePlaylistsFor(lay.zones, s.zonePlaylists);
+    // a playlist escolhida no layout é o padrão da zona; a da grade (ou da programação da tela) vence
+    const zp = { ...Object.fromEntries(lay.zones.filter((z) => z.playlist != null).map((z) => [z.id, z.playlist])), ...K.zonePlaylistsFor(lay.zones, s.zonePlaylists) };
     const today = K.localParts(now(), tzOf(data.settings)).day;
     for (const [zone, pid] of Object.entries(zp)) {
       const pl = data.playlists.get(Number(pid));
@@ -367,9 +373,40 @@ export function createTvcorp({
     }
     // o gadget escolhido direto na zona do layout (contador, dias sem acidente, relógio mundial): sem playlist
     for (const z of lay.zones) {
-      if (z.widget == null || zones[z.id]?.length) continue;
-      const items = await itemsOf(tenantId, officeId, { refKind: 'widget', refId: Number(z.widget), seconds: L.secondsMax, params: {} }, data, req, at);
-      if (items.length) zones[z.id] = items;
+      if (zones[z.id]?.length) continue;
+      // zona de gadget sem gadget escolhido (ou com um que sumiu): vai o gadget do cliente do mesmo tipo, ou outro que ele tenha
+      const ids = [];
+      if (z.widget != null) ids.push(Number(z.widget));
+      if (z.kind === 'widget' && widgetFallback) {
+        const alt = await Promise.resolve(widgetFallback(tenantId, z.sample || null)).catch(() => null);
+        if (alt != null && !ids.includes(Number(alt))) ids.push(Number(alt));
+      }
+      for (const wid of ids) {
+        const items = await itemsOf(tenantId, officeId, { refKind: 'widget', refId: wid, seconds: L.secondsMax, params: {} }, data, req, at);
+        if (items.length) { zones[z.id] = items; break; }
+      }
+    }
+    // DIGITAL ISP: a zona do tipo Notícias mostra só notícias. Da playlist dela ficam as notícias; sem nenhuma (ou sem
+    // playlist), entram sozinhas as notícias de todas as fontes de notícias ligadas da empresa, uma por vez com a foto
+    for (const z of lay.zones.filter((x) => x.kind === 'news')) {
+      const own = (zones[z.id] || []).filter((x) => x.kind === 'news');
+      if (own.length) { zones[z.id] = own; continue; }
+      const feeds = await db.all("SELECT id FROM tvcorp_feeds WHERE tenant_id = ? AND kind = 'rss' AND enabled = 1 ORDER BY id", [tenantId]).catch(() => []);
+      const out = [];
+      for (const f of feeds) out.push(...await itemsOf(tenantId, officeId, { refKind: 'news', refId: Number(f.id), seconds: 12, params: {} }, data, req, at));
+      if (out.length) zones[z.id] = out.slice(0, L.itemsPerZone); else delete zones[z.id];
+    }
+    // DIGITAL ISP: todo slide tem as duas versões (deitado e em pé): a zona escolhe. Zona mais alta que larga (na tela de
+    // verdade, 1920×1080 ou 1080×1920) recebe o slide em pé; as outras, deitado. Os anúncios das playlists se ajustam sozinhos.
+    const [TW, TH] = lay.orientation === 'port' ? [1080, 1920] : [1920, 1080];
+    for (const z of lay.zones) {
+      const list = zones[z.id]; if (!list?.length) continue;
+      const orient = (TH * z.h) / 100 > (TW * z.w) / 100 ? 'port' : 'land';
+      zones[z.id] = list.map((it) => {
+        if (it.kind === 'slide' && it.fields && it.fields.orient !== orient) return { ...it, fields: { ...it.fields, orient } };
+        if (it.kind === 'weather' && weatherArt && !it.art) { const a = weatherArt(it.cond, req); return a ? { ...it, ...a } : it; }
+        return it;
+      });
     }
     return {
       id: `s${s.id}`, layout,
@@ -741,7 +778,16 @@ export function createTvcorp({
         fields = JSON.stringify(out.fields);
       }
       if (cur.kind === 'video' && b.sound !== undefined) fields = JSON.stringify({ ...j(cur.fields, {}), sound: Boolean(b.sound) });
-      if (cur.kind === 'image' && b.caption !== undefined) { const c = line(b.caption, L.title); fields = JSON.stringify(c ? { caption: c } : {}); }
+      if (cur.kind === 'image' && (b.caption !== undefined || b.page !== undefined)) {
+        // a legenda e o desenho da página do construtor (fields.page: só para abrir e editar de novo; a TV recebe o JPEG)
+        const fx = { ...j(cur.fields, {}) };
+        if (b.caption !== undefined) { const c = line(b.caption, L.title); if (c) fx.caption = c; else delete fx.caption; }
+        if (b.page !== undefined) {
+          if (b.page === null) delete fx.page;
+          else { const pg = cleanPage(b.page); if (!pg) throw fail(400, 'O desenho da página veio fora do formato.'); fx.page = pg; }
+        }
+        fields = JSON.stringify(fx);
+      }
       await db.run('UPDATE tvcorp_media SET title = ?, seconds = ?, office_id = ?, fields = ?, template = ?, updated_at = ? WHERE id = ? AND tenant_id = ?',
         [title, seconds, officeId, fields, template, now(), cur.id, req.tenantId]);
       changed(req.tenantId);
@@ -955,7 +1001,9 @@ export function createTvcorp({
       let zones = null;
       if (r.current && o && isTvcOfficeType(o.type)) {
         const b = await blockOf(req.tenantId, at.officeId, r.current, r.data, req, { fallback: r.fallback?.id === r.current.id, seed: at.deviceId, at });
-        if (b) zones = Object.fromEntries(Object.entries(b.zones).map(([z, items]) => [z, items.map((it) => ({ id: it.id, kind: it.kind, seconds: it.seconds, title: it.fields?.title || it.title || it.name || null }))]));
+        // full=1: os itens inteiros, como a TV recebe (a prévia "Ver a tela agora" monta com eles)
+        const full = req.query.full === '1';
+        if (b) zones = Object.fromEntries(Object.entries(b.zones).map(([z, items]) => [z, items.map((it) => (full ? it : { id: it.id, kind: it.kind, seconds: it.seconds, title: it.fields?.title || it.title || it.name || null }))]));
       }
       const lp = lastPlays.get(`${req.tenantId}:${d.id}`);
       const names = lp ? await namesFor(req.tenantId, lp.list.map((p) => { const x = parseItemRef(p.ref); return { ref_kind: x.refKind, ref_id: x.refId }; })) : new Map();
@@ -966,6 +1014,26 @@ export function createTvcorp({
         lastPlays: lp ? { at: lp.at, items: lp.list.map((p) => { const x = parseItemRef(p.ref); return { ...p, name: names.get(`${x.refKind}:${x.refId}`) || p.ref }; }) } : null,
         lastBeat: lastBeat.get(`${req.tenantId}:${d.id}`) ?? num(d.last_seen),
       });
+    }));
+
+    /* ---- a prévia ao vivo de um layout: os itens que a TV recebe, montados pelo mesmo blockOf (sem escolher nada no painel).
+       layoutId (salvo) ou layout (o do editor, ainda não salvo); zonePlaylists (a grade sendo editada) ou a grade que usa o
+       layout; sem grade, as playlists escolhidas no próprio layout. */
+    app.post(`${B}/layouts/ao-vivo`, M, ah(async (req, res) => {
+      const b = req.body || {};
+      const data = await load(req.tenantId);
+      let layoutId = b.layoutId != null && b.layoutId !== '' ? Number(b.layoutId) : null;
+      let layouts = data.layouts;
+      if (b.layout && typeof b.layout === 'object') {
+        const l = K.cleanLayout({ name: 'Prévia', ...b.layout, factoryKey: undefined });
+        // o do editor (pode ter mudança ainda não salva) no lugar do salvo: a mesma rádio e a mesma grade
+        if (!layoutId || !layouts.has(layoutId)) layoutId = -1;
+        layouts = new Map(data.layouts).set(layoutId, { id: layoutId, name: l.name, orientation: l.orientation, zones: l.zones, background: l.background });
+      } else if (!layoutId || !layouts.has(layoutId)) throw fail(404, 'Layout não encontrado.');
+      const grade = b.zonePlaylists ? null : data.schedules.find((s) => Number(s.layoutId) === Number(b.layoutId ?? -2)) || null;
+      const s = { id: 0, name: 'Prévia', days: [], timeFrom: 0, timeTo: 1440, dateFrom: null, dateTo: null, priority: 0, layoutId, zonePlaylists: b.zonePlaylists && typeof b.zonePlaylists === 'object' ? b.zonePlaylists : (grade?.zonePlaylists || {}) };
+      const blk = await blockOf(req.tenantId, null, s, { ...data, layouts }, req, { seed: 'previa' });
+      noStore(res).json({ zones: blk?.zones || {}, audio: blk?.layout?.audio || null, grade: grade ? { id: grade.id, name: grade.name } : null });
     }));
 
     /* ---- histórico dos comandos */

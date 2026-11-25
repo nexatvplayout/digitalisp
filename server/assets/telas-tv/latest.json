@@ -1,0 +1,16 @@
+{
+  "tizen": {
+    "version": "1.0.28",
+    "appId": "DgIspTela1.Telas",
+    "file": "DigitalISP-1.0.28.wgt",
+    "sha256": "9f22730c5869ae65fa231835295bf6a60a7d5f52c2f556e67475c64439be16ad",
+    "bytes": 11166783
+  },
+  "webos": {
+    "version": "1.0.28",
+    "appId": "br.com.digitalisp.telas",
+    "file": "br.com.digitalisp.telas_1.0.28_all.ipk",
+    "sha256": "988d5596db28e3637713ff3cb53d7835658ff039e3705a40c72255144ae32669",
+    "bytes": 11133208
+  }
+}

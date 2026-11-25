@@ -5,7 +5,7 @@
    A busca é presa à caixa do município da prefeitura; sem resultado, tenta sem a caixa; sem resultado ainda, cai no
    geocodificador antigo (acha a cidade ou o bairro para a pessoa arrastar o marcador). */
 const NOMINATIM = 'https://nominatim.openstreetmap.org/search';
-const AGENT = 'NEXA-Broadcast (painel: localizar endereco de reparticao)';
+const AGENT = 'DIGITAL-ISP (painel: localizar endereco de reparticao)';
 
 const norm = (s) => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 

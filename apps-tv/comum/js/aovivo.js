@@ -1,0 +1,251 @@
+/*
+ * O vídeo ao vivo (HLS) da zona de vídeo, separado do resto da tela:
+ *   - Tizen (Samsung): AVPlay (webapis.avplay), o player da própria TV, recomendado pela Samsung para HLS ao vivo.
+ *     O vídeo é desenhado num plano de hardware atrás da página, na posição de um <object type="application/avplayer">.
+ *   - webOS e navegador: <video> nativo.
+ * O player vive numa camada própria (#aovivo), fora das zonas: o redesenho da grade, uma configuração nova ou a
+ * playlist de outra zona não recriam o vídeo. Mesmo endereço = só reposiciona.
+ * O vigia (TelasNucleo.vigiaAoVivo) decide: recarregar o ao vivo ou ir para a reserva (os vídeos guardados).
+ */
+(function (raiz) {
+  'use strict';
+  var N = raiz.TelasNucleo;
+
+  function temAvplay() {
+    try { return !!(raiz.webapis && raiz.webapis.avplay && typeof raiz.webapis.avplay.open === 'function'); } catch (e) { return false; }
+  }
+
+  function temHlsNativo() {
+    var v = document.createElement('video');
+    return !!(v.canPlayType('application/vnd.apple.mpegurl') || v.canPlayType('application/x-mpegURL'));
+  }
+
+  // ------------------------------------------------------------------ motor AVPlay (Tizen)
+
+  function motorAvplay(camada, log) {
+    var av = raiz.webapis.avplay, obj = null, enchendo = false, aberto = false, calado = false, aspecto = 16 / 9, ultimo = null;
+    function retangulo(r) {
+      // AVPlay usa a resolução base de 1920×1080, qualquer que seja a da página
+      var bw = 1920, bh = 1080;
+      var q = [r.x * bw / 100, r.y * bh / 100, r.w * bw / 100, r.h * bh / 100];
+      if (r.cobrir && q[2] > 0 && q[3] > 0) q = N.retanguloCobrir(q, aspecto, bw, bh);
+      return [Math.round(q[0]), Math.round(q[1]), Math.round(q[2]), Math.round(q[3])];
+    }
+    /** O tamanho do vídeo do stream (para o "cover" sair na proporção certa); sem a informação, 16:9. */
+    function lerAspecto() {
+      try {
+        var info = av.getCurrentStreamInfo() || [];
+        for (var i = 0; i < info.length; i++) {
+          if (info[i].type !== 'VIDEO') continue;
+          var ex = JSON.parse(info[i].extra_info || '{}');
+          var w = Number(ex.Width), h = Number(ex.Height);
+          if (w > 0 && h > 0) { aspecto = w / h; return true; }
+        }
+      } catch (e) { /* modelo antigo */ }
+      return false;
+    }
+    return {
+      nome: 'avplay',
+      abrir: function (url, r, aoErro) {
+        if (!obj) {
+          obj = document.createElement('object');
+          obj.type = 'application/avplayer';
+          obj.className = 'aovivo-el';
+          camada.appendChild(obj);
+        }
+        this.posicionar(r);
+        try { av.stop(); } catch (e) { /* nada aberto */ }
+        try { av.close(); } catch (e) { /* nada aberto */ }
+        enchendo = true;
+        try {
+          av.open(url);
+          aberto = true;
+          var q = retangulo(r);
+          av.setDisplayRect(q[0], q[1], q[2], q[3]);
+          try { av.setDisplayMethod('PLAYER_DISPLAY_MODE_LETTER_BOX'); } catch (e) { /* modelo antigo */ }
+          // buffer curto na partida e na volta: o ao vivo começa antes e volta mais rápido de um soluço da rede
+          try { av.setBufferingParam('PLAYER_BUFFER_FOR_PLAY', 'PLAYER_BUFFER_SIZE_IN_SECOND', 4); } catch (e) { /* opcional */ }
+          try { av.setBufferingParam('PLAYER_BUFFER_FOR_RESUME', 'PLAYER_BUFFER_SIZE_IN_SECOND', 6); } catch (e) { /* opcional */ }
+          av.setListener({
+            onbufferingstart: function () { enchendo = true; },
+            onbufferingcomplete: function () { enchendo = false; },
+            onstreamcompleted: function () { aoErro('o ao vivo terminou'); },
+            onerror: function (t) { aoErro('AVPlay: ' + t); },
+            onevent: function () {},
+            oncurrentplaytime: function () {}
+          });
+          ultimo = r;
+          av.prepareAsync(function () {
+            // o "cover" na proporção do vídeo de verdade (o retângulo de exibição vai além da zona; o <object> da zona é o
+            // buraco na página por onde ele aparece, e o resto fica por baixo do HTML)
+            if (r.cobrir && lerAspecto()) { var q2 = retangulo(r); try { av.setDisplayRect(q2[0], q2[1], q2[2], q2[3]); } catch (e) { /* nada */ } }
+            // durante um alerta o ao vivo fica parado (o AVPlay não tem mudo próprio; o mudo do sistema calaria o bipe)
+            if (calado) return;
+            try { av.play(); } catch (e) { aoErro('AVPlay play: ' + e.message); }
+          }, function (e) { aoErro('AVPlay prepare: ' + ((e && e.name) || e)); });
+        } catch (e) {
+          aoErro('AVPlay open: ' + e.message);
+        }
+      },
+      posicionar: function (r) {
+        ultimo = r;
+        if (obj) { obj.style.left = r.x + '%'; obj.style.top = r.y + '%'; obj.style.width = r.w + '%'; obj.style.height = r.h + '%'; obj.hidden = false; }
+        if (aberto) { var q = retangulo(r); try { av.setDisplayRect(q[0], q[1], q[2], q[3]); } catch (e) { /* nada */ } }
+      },
+      amostra: function () {
+        var t = 0;
+        try { t = av.getCurrentTime() / 1000; } catch (e) { t = 0; }
+        var est = '';
+        try { est = av.getState(); } catch (e) { est = ''; }
+        return { tempo: t, bufferizando: enchendo || est === 'READY' || est === 'IDLE' };
+      },
+      fechar: function () {
+        try { av.stop(); } catch (e) { /* nada */ }
+        try { av.close(); } catch (e) { /* nada */ }
+        aberto = false;
+        if (obj) obj.hidden = true;
+      },
+      calar: function (sim) {
+        calado = !!sim;
+        if (!aberto) return;
+        try { if (calado) av.pause(); else av.play(); } catch (e) { /* nada */ }
+      },
+      // a TV escondeu o app (outro app na frente) e voltou
+      suspender: function () { try { av.suspend(); } catch (e) { /* nada */ } },
+      retomar: function () { try { av.restore(); } catch (e) { /* nada */ } }
+    };
+  }
+
+  // ------------------------------------------------------------------ motor <video> (webOS e navegador)
+
+  function motorVideo(camada, op) {
+    var v = null, calado = false;
+    return {
+      nome: 'video',
+      abrir: function (url, r, aoErro) {
+        if (!v) {
+          v = document.createElement('video');
+          v.className = 'aovivo-el';
+          v.setAttribute('playsinline', '');
+          v.autoplay = true;
+          camada.appendChild(v);
+        }
+        v.muted = calado || op.mudo();
+        v.volume = Math.max(0, Math.min(1, op.volume() / 100));
+        v.onerror = function () { aoErro('vídeo: erro ' + (v.error ? v.error.code : '?')); };
+        v.onended = function () { aoErro('o ao vivo terminou'); };
+        this.posicionar(r);
+        v.src = url;
+        var p = v.play();
+        if (p && p.catch) p.catch(function () { v.muted = true; v.play().catch(function () {}); });
+      },
+      posicionar: function (r) {
+        if (!v) return;
+        v.style.left = r.x + '%'; v.style.top = r.y + '%'; v.style.width = r.w + '%'; v.style.height = r.h + '%';
+        v.style.webkitClipPath = r.recorte || ''; v.style.clipPath = r.recorte || '';
+        // zona de layout: o vídeo preenche a zona (cover), sem faixas pretas
+        v.style.objectFit = r.cobrir ? 'cover' : 'contain';
+        v.hidden = false;
+      },
+      amostra: function () {
+        if (!v) return { tempo: 0, bufferizando: true };
+        return { tempo: v.currentTime || 0, bufferizando: v.readyState < 3 || v.seeking };
+      },
+      fechar: function () {
+        if (!v) return;
+        v.onerror = null; v.onended = null;
+        try { v.pause(); v.removeAttribute('src'); v.load(); } catch (e) { /* nada */ }
+        v.hidden = true;
+      },
+      calar: function (sim) { calado = !!sim; if (v) v.muted = calado || op.mudo(); },
+      suspender: function () {}, retomar: function () {}
+    };
+  }
+
+  // ------------------------------------------------------------------ controlador
+
+  /**
+   * @param camada  elemento #aovivo (acima do conteúdo, abaixo das camadas de cadastro e alerta)
+   * @param op      { mudo() → bool, volume() → 0..100, agora() → ms, aoErro(msg) }
+   */
+  function criar(camada, op) {
+    var padrao = temAvplay() ? motorAvplay(camada) : motorVideo(camada, op), comoVideo = null;
+    var motor = padrao;
+    var url = null, ret = null, vigia = null, timer = null, aoReserva = null, ativo = false, calado = false;
+
+    /**
+     * O retângulo passa da tela (videowall: esta TV mostra só um pedaço do vídeo do conjunto). O AVPlay só desenha dentro
+     * da tela (setDisplayRect), sem recortar: aí vai o <video>, que a página recorta, quando a TV toca HLS nele.
+     */
+    function motorPara(r) {
+      // (o recorte não retangular, zone.shape, não troca o motor: a tela cobre o que fica fora do formato com uma máscara)
+      var fora = r && (r.x < 0 || r.y < 0 || r.x + r.w > 100.01 || r.y + r.h > 100.01);
+      if (fora && padrao.nome === 'avplay' && temHlsNativo()) return comoVideo || (comoVideo = motorVideo(camada, op));
+      return padrao;
+    }
+
+    function falha(msg) {
+      if (!ativo) return;
+      op.aoErro(msg);
+      decidir(N.vigiaFalhou(vigia, op.agora()).acao);
+    }
+
+    function decidir(acao) {
+      if (acao === 'recarregar') { motor.abrir(url, ret, falha); }
+      else if (acao === 'reserva') {
+        parar();
+        if (aoReserva) aoReserva();
+      }
+    }
+
+    /** Toca `u` no retângulo `r` (% da tela). Já tocando o mesmo endereço: só reposiciona. */
+    function tocar(u, r, quandoReserva) {
+      aoReserva = quandoReserva;
+      if (ativo && u === url && motorPara(r) === motor) { ret = r; motor.posicionar(r); return; }
+      parar();
+      motor = motorPara(r);
+      url = u; ret = r; ativo = true;
+      vigia = N.vigiaNovo(op.agora());
+      motor.calar(calado);
+      motor.abrir(u, r, falha);
+      timer = setInterval(function () {
+        if (calado) { vigia = N.vigiaNovo(op.agora()); return; } // parado de propósito (alerta): o vigia não conta
+        var a = motor.amostra();
+        a.agora = op.agora();
+        decidir(N.vigiaAoVivo(vigia, a).acao);
+      }, 5000);
+    }
+
+    function parar() {
+      if (timer) { clearInterval(timer); timer = null; }
+      if (ativo) motor.fechar();
+      ativo = false;
+    }
+
+    document.addEventListener('visibilitychange', function () {
+      if (!ativo) return;
+      if (document.hidden) motor.suspender(); else motor.retomar();
+    });
+
+    return {
+      motor: motor.nome,
+      // HLS precisa do AVPlay ou do HLS nativo do <video>; um vídeo comum (mp4) toca em qualquer um
+      suporta: function (u) { return padrao.nome === 'avplay' || temHlsNativo() || !/\.m3u8(\?|$)/i.test(String(u || '')); },
+      tocar: tocar,
+      /** Alerta na tela: o ao vivo fica sem som (o AVPlay, parado); depois volta. */
+      calar: function (sim) {
+        sim = !!sim;
+        if (sim === calado) return;
+        calado = sim;
+        padrao.calar(sim);
+        if (motor !== padrao) motor.calar(sim);
+        if (!sim) vigia = N.vigiaNovo(op.agora());
+      },
+      parar: parar,
+      ativo: function () { return ativo; },
+      url: function () { return ativo ? url : null; }
+    };
+  }
+
+  raiz.TelasAoVivo = { criar: criar };
+})(typeof self !== 'undefined' ? self : this);

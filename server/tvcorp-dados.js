@@ -49,7 +49,7 @@ export const TVC_HEADERS = Object.freeze({
 });
 /** Tipos de unidade corporativa (§5.1). O coordenador pode trocar pelo `corp: true` do catálogo (isCorpOffice). */
 export const CORP_OFFICE_TYPES = Object.freeze(['matriz', 'filial', 'fabrica', 'loja', 'cd', 'refeitorio', 'recepcao', 'ambulatorio', 'treinamento', 'corp-outro']);
-export const DADOS_LIMITS = Object.freeze({ widgets: 100, mobile: 50, feedTestsPerMin: 10, fetchPerTenantHour: 240, concurrent: 3, photoBytes: 15 * 1024 * 1024, suggestImageBytes: 5 * 1024 * 1024, suggestKeepDays: 180, imageWindowMs: 10 * 60_000 });
+export const DADOS_LIMITS = Object.freeze({ widgets: 100, mobile: 50, feedTestsPerMin: 30, fetchPerTenantHour: 240, concurrent: 3, photoBytes: 15 * 1024 * 1024, suggestImageBytes: 5 * 1024 * 1024, suggestKeepDays: 180, imageWindowMs: 10 * 60_000 });
 export const FILE_RE = /^tvc(pessoa|sug)-[0-9a-f-]{36}\.jpg$/;
 
 /* ------------------------------------------------------------------ widgets (contador, dias sem acidente, relógio mundial, cardápio) */
@@ -211,12 +211,18 @@ export function createTvcorpDados({
   db, audit = async () => {}, ipOf = (req) => req.ip, publicUrl = () => '', available = async () => true,
   weatherOf = null, trafficOf = null, fetcher = undefined, parseFeed = undefined, settingsOf = null,
   isCorpOffice = (o) => CORP_OFFICE_TYPES.includes(o?.type), files = {}, photoUrl = null, webCheck = checkEmbeddable,
+  newsImages = null, // server/noticias-img.js: a cópia da foto de cada manchete
+  newsImageUrl = null, // (arquivo) -> endereço público https da cópia (/tvcorp/noticia/<arquivo>)
+  forget = () => {}, // (tenantId): a programação das telas mudou (server/telas.js refaz)
   now = () => Date.now(), tz = 'America/Sao_Paulo', timers = true, tickMs = 60_000, pageDir = TVC_PAGE_DIR, log = (m) => console.warn(m),
 }) {
   if (!db) throw new Error('createTvcorpDados: falta o db.');
   /** A página aceita ser aberta dentro de outra? (o site conferido ao salvar o gadget; falha = não se sabe) */
   const checkWeb = (url) => Promise.resolve().then(() => webCheck(url)).catch(() => null);
   const fileDir = files.dir || null;
+  // a chave de uma notícia (para tirar da programação): o link, ou o título quando não há link
+  const newsKey = (i) => createHash('sha256').update(String(i?.link || i?.title || '')).digest('hex').slice(0, 20);
+  const hiddenNews = async (feedId) => new Set((await db.all('SELECT chave FROM isp_noticia_oculta WHERE feed_id = ?', [feedId]).catch(() => [])).map((r) => r.chave));
   const prepareImage = files.prepare || (async (buf) => {
     const [{ preparePhoto }, { config }] = await Promise.all([import('./telas-desaparecidos.js'), import('./config.js')]);
     return preparePhoto(buf, { ffmpeg: config.ffmpeg });
@@ -287,6 +293,7 @@ export function createTvcorpDados({
       await db.run('UPDATE tvcorp_feeds SET tried_at = ? WHERE id = ?', [t, row.id]);
       try {
         const cache = await F.fetchFeed(row, fetchDeps());
+        if (row.kind === 'rss' && newsImages && Array.isArray(cache?.items)) cache.items = await newsImages.enrich(cache.items).catch(() => cache.items);
         await db.run('UPDATE tvcorp_feeds SET cache = ?, fetched_at = ?, last_error = NULL WHERE id = ?', [JSON.stringify(cache), now(), row.id]);
         return { ok: true, cache };
       } catch (e) {
@@ -490,6 +497,31 @@ export function createTvcorpDados({
       const cur = await own('tvcorp_feeds', req.params.id, req.tenantId, 'Fonte');
       await db.run('DELETE FROM tvcorp_feeds WHERE id = ? AND tenant_id = ?', [cur.id, req.tenantId]);
       res.locals.audit = `tvcorp: fonte "${cur.name}" apagada (#${cur.id})`;
+      res.json({ ok: true });
+    }));
+    /* ----- as notícias de uma fonte, uma a uma (com a foto), e tirar/devolver uma da programação */
+    app.get(`${P}/feeds/:id/noticias`, M, ah(async (req, res) => {
+      const cur = await own('tvcorp_feeds', req.params.id, req.tenantId, 'Fonte');
+      if (cur.kind !== 'rss') throw fail(400, 'Só fontes de notícias.');
+      const c = j(cur.cache, null) || {};
+      const hidden = await hiddenNews(cur.id);
+      res.set('Cache-Control', 'no-store').json({
+        source: SOURCE_SAFE(c.source || ''), at: c.at || null,
+        items: (c.items || []).slice(0, 15).map((i) => ({ key: newsKey(i), title: i.title, at: i.at ?? null, link: i.link || null, image: i.img?.file ? `/tvcorp/noticia/${i.img.file}` : null, hidden: hidden.has(newsKey(i)), semFoto: !i.img?.file, antiga: Boolean(i.at && now() - i.at > 7 * 86400_000) })),
+      });
+    }));
+    app.post(`${P}/feeds/:id/noticias/:key/ocultar`, M, ah(async (req, res) => {
+      const cur = await own('tvcorp_feeds', req.params.id, req.tenantId, 'Fonte');
+      const key = String(req.params.key || ''); if (!/^[0-9a-f]{20}$/.test(key)) throw fail(400, 'Notícia inválida.');
+      if (!(await db.get('SELECT 1 AS x FROM isp_noticia_oculta WHERE feed_id = ? AND chave = ?', [cur.id, key]))) await db.run('INSERT INTO isp_noticia_oculta(feed_id, tenant_id, chave, criado_em) VALUES(?,?,?,?)', [cur.id, req.tenantId, key, now()]);
+      try { forget(req.tenantId); } catch { /* telas.js refaz depois */ }
+      res.locals.audit = `tvcorp: notícia tirada da programação (fonte #${cur.id})`;
+      res.json({ ok: true });
+    }));
+    app.delete(`${P}/feeds/:id/noticias/:key/ocultar`, M, ah(async (req, res) => {
+      const cur = await own('tvcorp_feeds', req.params.id, req.tenantId, 'Fonte');
+      await db.run('DELETE FROM isp_noticia_oculta WHERE feed_id = ? AND chave = ?', [cur.id, String(req.params.key || '')]);
+      try { forget(req.tenantId); } catch { /* telas.js refaz depois */ }
       res.json({ ok: true });
     }));
     app.post(`${P}/feeds/:id/test`, M, ah(async (req, res) => {
@@ -1045,6 +1077,23 @@ export function createTvcorpDados({
         const c = fresh(f);
         if (!c || !c.items?.length) return null;
         if (kind === 'quotes') return { id: `q${id}`, kind: 'quotes', source: SOURCE_SAFE(c.source), note: c.note || 'Valores de referência', at: c.at, items: c.items.map((i) => ({ label: i.code, name: i.name, value: i.sell ?? i.buy, change: i.change ?? null, prefix: 'R$ ', decimals: i.code === 'JPY' ? 4 : i.code === 'BTC' ? 0 : 2, at: i.at ?? null })) };
+        // DIGITAL ISP: cada notícia sozinha na tela (a foto em tela cheia e a faixa com a manchete), uma por item; params.mode
+        // 'lista' mantém a lista de manchetes de antes. O app antigo mostra a manchete única como uma lista de uma linha.
+        if (kind === 'news' && j(ref?.params, {})?.mode !== 'lista') {
+          const fileOf = (i) => {
+            if (!newsImageUrl || !i.img || !/^[0-9a-f]{64}$/.test(i.img.sha256 || '')) return null;
+            const url = newsImageUrl(i.img.file);
+            return /^(?:https:\/\/|\/tvcorp\/noticia\/)/.test(url || '') ? { url, sha256: i.img.sha256, bytes: Number(i.img.bytes) } : null;
+          };
+          const off = await hiddenNews(f.id);
+          // só notícia com foto vai para a tela (pedido do dono); a numeração segue a posição na fonte
+          return c.items.slice(0, 15).map((i, k) => [i, k]).filter(([i]) => !off.has(newsKey(i)) && (!newsImages || fileOf(i)) && !(i.at && now() - i.at > 7 * 86400_000)).map(([i, k]) => {
+            const img = fileOf(i);
+            const each = Number(j(f.config, {})?.secondsEach) || 12;
+            return { id: `n${id}-${k + 1}`, kind: 'news', title: f.name, source: SOURCE_SAFE(c.source), at: c.at, single: true, seconds: Math.min(120, Math.max(5, each)), ...(img ? { image: img } : {}),
+              items: [{ title: i.title, source: SOURCE_SAFE(c.source), at: i.at ?? null, ...(i.link ? { qr: i.link } : {}) }] };
+          });
+        }
         return { id: `${kind === 'news' ? 'n' : 't'}${id}`, kind: 'news', title: kind === 'traffic' ? 'Trânsito' : f.name, source: SOURCE_SAFE(c.source), at: c.at, items: c.items.slice(0, max(8, 15)).map((i) => ({ title: i.title, source: SOURCE_SAFE(c.source), at: i.at ?? null, ...(i.link ? { qr: i.link } : {}) })) };
       }
       case 'weather': {

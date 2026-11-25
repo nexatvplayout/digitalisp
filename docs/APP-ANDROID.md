@@ -17,11 +17,11 @@ existia no outro produto do dono (a versão 1.3.1) e foi adaptado em 22/11/2026.
 
 | | |
 |---|---|
-| Mantido | abre sozinho ao ligar, quiosque (níveis 0 a 2), vigia que reinicia o vídeo travado, atualização automática pelo campo `update` do `/config`, vídeos guardados e funcionamento sem internet, imagem sem internet (`offline.image`), chamada de senha com voz (opcional), alertas, TV Corporativa (zonas), modo avulso, recuperação depois de reinstalar |
+| Mantido | pessoas desaparecidas (`missing`, do modo órgão público; tiradas em 22/11 e devolvidas na 0.3.3), abre sozinho ao ligar, quiosque (níveis 0 a 2), vigia que reinicia o vídeo travado, atualização automática pelo campo `update` do `/config`, vídeos guardados e funcionamento sem internet, imagem sem internet (`offline.image`), chamada de senha com voz (opcional), alertas, TV Corporativa (zonas), modo avulso, recuperação depois de reinstalar |
 | Novo | a marca da revenda (abertura, cadastro, imagem sem internet), guardada no aparelho; servidor padrão configurável no build |
-| Retirado | pessoas desaparecidas (`missing`), os ícones e as categorias de alerta de Defesa Civil e segurança pública (`category`), os textos e endereços do produto de origem |
+| Retirado | os textos e endereços do produto de origem |
 
-Os alertas continuam (aviso geral, com `header` e `test`); um `category` que o servidor mande é ignorado. A tela interna
+Os alertas continuam com `header`, `test` e `category` (o ícone da categoria da Defesa Civil, devolvido na 0.3.3). A tela interna
 com códigos de emergência (`internal`) continua no app, sem mudança.
 
 ## Compilar
@@ -71,5 +71,5 @@ keyPassword=<a senha>
 
 | Marcador | Onde | O que fazer quando o domínio for decidido |
 |---|---|---|
-| `SERVIDOR_A_DEFINIR` | `android/app/build.gradle.kts` (`telas.servidorPadrao`), lido como `BuildConfig.SERVIDOR_PADRAO` | compilar com `-Ptelas.servidorPadrao=https://<api de produção>` ou pôr `telas.servidorPadrao=https://…` em `android/gradle.properties`. Enquanto for o marcador, a tela de cadastro vem com o campo do servidor vazio (quem instala digita) e a recuperação depois de reinstalar só pergunta ao servidor já gravado no aparelho. |
+| Servidor padrão | `android/gradle.properties`: `telas.servidorPadrao=https://www.digitalisp.com.br` (definido em 23/11/2026), lido como `BuildConfig.SERVIDOR_PADRAO` | a tela de cadastro já vem com ele e esconde o campo do servidor (botão "Avançado: usar outro servidor"); a recuperação depois de reinstalar pergunta a ele. Sem a linha, volta o marcador `SERVIDOR_A_DEFINIR` (quem instala digita o endereço). |
 | Endereço de atualização | não fica no app | vem do servidor no campo `update` do `/config` (`url`, `sha256`, `versionCode`). O servidor precisa servir o APK de release assinado com a chave do dono. |

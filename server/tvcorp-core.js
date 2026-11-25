@@ -121,6 +121,8 @@ export function cleanZone(z, i = 0) {
   if (w < L.zoneMinPct || h < L.zoneMinPct) throw fail(400, `${what}: largura e altura de pelo menos ${L.zoneMinPct}% da tela.`);
   if (x + w > 100 || y + h > 100) throw fail(400, `${what}: passa da borda da tela.`);
   const out = { id, kind, x, y, w, h };
+  // DIGITAL ISP: o vídeo ao vivo fica proporcional (com faixas pretas) por padrão; fit 'cover' preenche a zona cortando as bordas
+  if (kind === 'video' && z.fit === 'cover') out.fit = 'cover';
   const params = TVC_ZONE[kind].params || [];
   if (params.includes('title')) { const t = line(z.title, L.label); if (t) out.title = t; }
   if (params.includes('text')) { const t = line(z.text, L.zoneText); if (t) out.text = t; }
@@ -128,9 +130,14 @@ export function cleanZone(z, i = 0) {
   if (kind === 'qr' && !out.qr) throw fail(400, `${what}: diga o endereço do QR code.`);
   // o gadget (contador, dias sem acidente, relógio mundial) escolhido direto no layout: o id do bloco do cliente
   if (params.includes('widget') && z.widget != null && z.widget !== '') out.widget = idOf(z.widget, `${what}, gadget`);
+  // DIGITAL ISP: a playlist padrão da zona, escolhida no próprio layout (a grade ou a programação da tela vencem)
+  if (TVC_ZONE[kind]?.playlist && z.playlist != null && z.playlist !== '') out.playlist = idOf(z.playlist, `${what}, playlist`);
+  // o tipo de gadget que o modelo pede (avaliações, relógio…): sem gadget escolhido, a TV recebe um do cliente desse tipo
+  if (params.includes('widget') && typeof z.sample === 'string' && /^[a-z][a-z-]{1,19}$/.test(z.sample)) out.sample = z.sample;
   // DIGITAL ISP: a zona por cima das outras (widget sobre a imagem), com o fundo translúcido (opacity, 0 a 100 %)
   if (z.overlay === true) {
     if (kind === 'video') throw fail(400, `${what}: o vídeo não pode ficar por cima das outras zonas.`);
+    if (kind === 'hdmi') throw fail(400, `${what}: a entrada HDMI não pode ficar por cima das outras zonas.`);
     out.overlay = true;
     const op = z.opacity == null || z.opacity === '' ? 60 : Math.round(Number(z.opacity));
     if (!Number.isFinite(op) || op < 0 || op > 100) throw fail(400, `${what}: a opacidade do fundo vai de 0 a 100.`);
@@ -158,6 +165,9 @@ export function cleanZones(list) {
   const zones = list.map(cleanZone);
   if (new Set(zones.map((z) => z.id)).size !== zones.length) throw fail(400, 'Duas zonas com o mesmo nome curto.');
   if (zones.filter((z) => z.kind === 'video').length > L.videoZones) throw fail(400, 'No máximo uma zona de vídeo por layout.');
+  // DIGITAL ISP: a entrada HDMI ocupa a janela de vídeo da TV: uma por layout, e não junto com o vídeo do canal
+  if (zones.filter((z) => z.kind === 'hdmi').length > 1) throw fail(400, 'No máximo uma zona de entrada HDMI por layout.');
+  if (zones.some((z) => z.kind === 'hdmi') && zones.some((z) => z.kind === 'video')) throw fail(400, 'A entrada HDMI e o vídeo do canal não ficam no mesmo layout.');
   // a de cima pode ficar sobre a de baixo; duas da mesma camada, não
   for (let i = 0; i < zones.length; i++) for (let k = i + 1; k < zones.length; k++) {
     // a zona com formato (recorte) pode entrar na vizinha: o recorte é quem decide o que aparece

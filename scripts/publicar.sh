@@ -7,6 +7,9 @@ GIT_SSH_COMMAND=ssh git push -q digitalisp-servidor:/opt/digitalisp/repo.git mai
 ssh digitalisp-servidor '
   set -e
   cd /opt/digitalisp && git --git-dir=repo.git --work-tree=app checkout -q -f main
+  # a versão que o painel mostra no rodapé do menu: número de publicações, commit e a hora em que foi ao ar
+  printf "%s|%s|%s
+" "$(git --git-dir=repo.git rev-list --count main)" "$(git --git-dir=repo.git log -1 --format=%h main)" "$(date -Iseconds)" > app/VERSAO
   cd app && npm ci --omit=dev --no-audit --no-fund >/dev/null 2>&1
   export XDG_RUNTIME_DIR=/run/user/$(id -u)
   systemctl --user restart digitalisp

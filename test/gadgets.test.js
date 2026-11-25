@@ -18,6 +18,8 @@ test('os tipos novos existem no catálogo, no contrato e na zona "Gadget" do lay
     assert.ok(T.TVC_ITEM_KINDS.includes(k), `contrato: ${k}`);
   }
   assert.deepEqual(K.cleanZone({ id: 'g', kind: 'widget', x: 0, y: 0, w: 30, h: 30, widget: 9 }), { id: 'g', kind: 'widget', x: 0, y: 0, w: 30, h: 30, widget: 9 });
+  assert.equal(K.cleanZone({ id: 'g', kind: 'widget', x: 0, y: 0, w: 30, h: 30, sample: 'reviews' }).sample, 'reviews', 'o tipo pedido pelo modelo fica (a TV recebe um gadget desse tipo)');
+  assert.equal('sample' in K.cleanZone({ id: 'g', kind: 'widget', x: 0, y: 0, w: 30, h: 30, sample: '<x>' }), false);
 });
 
 test('validação: cada gadget guarda só o que serve e recusa o que não presta', () => {

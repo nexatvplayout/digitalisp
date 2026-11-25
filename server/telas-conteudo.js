@@ -155,10 +155,15 @@ export function createConteudo({
 
   /* ---------------------------------------------------------------- vídeos guardados */
   const OFFLINE_SCOPES = ['default', 'group', 'office'];
+  /**
+   * DIGITAL ISP: a biblioteca de vídeos é a das mídias das telas (tvcorp_media, os vídeos que o cliente sobe em Mídias; os
+   * arquivos em graphics/). No NEXA era a tabela media do canal. A subconsulta devolve as mesmas colunas que o módulo usa.
+   */
+  const MEDIA_SRC = "(SELECT id, tenant_id, title, file AS filename, COALESCE(bytes, 0) AS size, seconds AS duration, 'program' AS kind, CASE WHEN status = 'ok' THEN 'ready' ELSE status END AS status, 0 AS censura FROM tvcorp_media WHERE kind = 'video' AND file IS NOT NULL)";
   const MEDIA_OK = "m.status = 'ready' AND m.kind <> 'live' AND m.size > 0 AND m.censura = 0";
   const hashState = (r) => (r.h_sha && r.h_file === r.m_file && Number(r.h_bytes) === Number(r.m_size) ? 'ok' : r.h_file === r.m_file && Number(r.h_tries) >= HASH_TRIES ? 'error' : 'pending');
   const offlineRows = (tenantId) => cached(`off:${tenantId}`, () => db.all(`SELECT f.*, m.title AS m_title, m.filename AS m_file, m.size AS m_size, h.sha256 AS h_sha, h.filename AS h_file, h.bytes AS h_bytes, h.tries AS h_tries, h.error AS h_error
-    FROM telas_offline f JOIN media m ON m.id = f.media_id AND m.tenant_id = f.tenant_id AND ${MEDIA_OK}
+    FROM telas_offline f JOIN ${MEDIA_SRC} m ON m.id = f.media_id AND m.tenant_id = f.tenant_id AND ${MEDIA_OK}
     LEFT JOIN telas_media_hashes h ON h.media_id = f.media_id AND h.tenant_id = f.tenant_id
     WHERE f.tenant_id = ? ORDER BY f.sort, f.id`, [tenantId]));
   /** offline.items de uma tela: o padrão da prefeitura, depois os grupos dela (na ordem) e a repartição. */
@@ -194,7 +199,7 @@ export function createConteudo({
     try {
       for (; done < max;) {
         if (hold()) break;
-        const m = await db.get(`SELECT DISTINCT m.id, m.tenant_id, m.filename, m.size FROM telas_offline f JOIN media m ON m.id = f.media_id AND m.tenant_id = f.tenant_id AND ${MEDIA_OK}
+        const m = await db.get(`SELECT DISTINCT m.id, m.tenant_id, m.filename, m.size FROM telas_offline f JOIN ${MEDIA_SRC} m ON m.id = f.media_id AND m.tenant_id = f.tenant_id AND ${MEDIA_OK}
           LEFT JOIN telas_media_hashes h ON h.media_id = m.id
           WHERE h.media_id IS NULL OR h.filename <> m.filename OR h.bytes <> m.size OR (h.sha256 IS NULL AND h.tries < ? AND COALESCE(h.updated_at, 0) < ?) LIMIT 1`, [HASH_TRIES, now() - 10 * 60_000]);
         if (!m) break;
@@ -263,10 +268,10 @@ export function createConteudo({
         if (!primed && t - cur.at > n.afterMin * 60_000 + 150_000) continue;
         if (!live.has(tenantId)) live.set(tenantId, await available(tenantId).catch(() => false));
         if (!n.offline || !live.get(tenantId)) continue;
-        Promise.resolve(notify(tenantId, { at: t, level: 'critico', kind: 'alarm_start', point: `tela-${id}`, alarm: 'desligada', pointLabel: 'NEXA Telas', message: `Tela "${d.name}"${d.o_name ? ` (${d.o_name})` : ''} desligada há ${K.agoText(t - cur.at)}` })).catch(() => {});
+        Promise.resolve(notify(tenantId, { at: t, level: 'critico', kind: 'alarm_start', point: `tela-${id}`, alarm: 'desligada', pointLabel: 'Telas', message: `Tela "${d.name}"${d.o_name ? ` (${d.o_name})` : ''} desligada há ${K.agoText(t - cur.at)}` })).catch(() => {});
       } else if (told.delete(id) && cur.status === 'on') {
         const n = await setting(tenantId);
-        if (n.offline) Promise.resolve(notify(tenantId, { at: t, level: 'ok', kind: 'alarm_end', was: 'critico', point: `tela-${id}`, alarm: 'desligada', pointLabel: 'NEXA Telas', message: `Tela "${d.name}"${d.o_name ? ` (${d.o_name})` : ''} voltou ao ar` })).catch(() => {});
+        if (n.offline) Promise.resolve(notify(tenantId, { at: t, level: 'ok', kind: 'alarm_end', was: 'critico', point: `tela-${id}`, alarm: 'desligada', pointLabel: 'Telas', message: `Tela "${d.name}"${d.o_name ? ` (${d.o_name})` : ''} voltou ao ar` })).catch(() => {});
       }
     }
     primed = true;
@@ -414,7 +419,7 @@ export function createConteudo({
     app.get('/api/prefeitura/offline', M, ah(async (req, res) => {
       const [rows, media, images] = await Promise.all([
         offlineRows(req.tenantId),
-        db.all(`SELECT m.id, m.title, m.size, m.duration FROM media m WHERE m.tenant_id = ? AND ${MEDIA_OK} ORDER BY m.title LIMIT 1000`, [req.tenantId]),
+        db.all(`SELECT m.id, m.title, m.size, m.duration FROM ${MEDIA_SRC} m WHERE m.tenant_id = ? AND ${MEDIA_OK} ORDER BY m.title LIMIT 1000`, [req.tenantId]),
         listImages(req.tenantId), // a imagem sem internet de cada nível (server/telas-imagem-offline.js)
       ]);
       res.set('Cache-Control', 'no-store').json({
@@ -432,7 +437,7 @@ export function createConteudo({
       if (ids.length !== items.length) throw fail(400, 'Vídeo repetido na lista.');
       if (ids.length) {
         // só vídeo pronto DESTE cliente (mídia de outro cliente = inexistente)
-        const ok = await db.all(`SELECT m.id FROM media m WHERE m.tenant_id = ? AND ${MEDIA_OK} AND m.id IN (${marks(ids)})`, [req.tenantId, ...ids]);
+        const ok = await db.all(`SELECT m.id FROM ${MEDIA_SRC} m WHERE m.tenant_id = ? AND ${MEDIA_OK} AND m.id IN (${marks(ids)})`, [req.tenantId, ...ids]);
         if (ok.length !== ids.length) throw fail(400, 'Vídeo inexistente na biblioteca (ou ainda não está pronto).');
       }
       const t = now();
@@ -459,7 +464,7 @@ export function createConteudo({
     await db.run("DELETE FROM telas_approvals WHERE status <> 'pending' AND requested_at < ?", [t - 365 * 86400_000]);
     // hash de vídeo que saiu de todas as listas (ou da biblioteca)
     await db.run('DELETE FROM telas_media_hashes WHERE media_id NOT IN (SELECT media_id FROM telas_offline)');
-    await db.run('DELETE FROM telas_offline WHERE media_id NOT IN (SELECT id FROM media)');
+    await db.run(`DELETE FROM telas_offline WHERE media_id NOT IN (SELECT id FROM ${MEDIA_SRC} x)`);
   }
   async function dropOffice(x, tenantId, officeId) {
     await x.run('DELETE FROM telas_cards WHERE office_id = ? AND tenant_id = ?', [officeId, tenantId]);

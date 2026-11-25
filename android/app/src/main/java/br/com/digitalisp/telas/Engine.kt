@@ -25,6 +25,8 @@ import br.com.digitalisp.telas.core.QueueCache
 import br.com.digitalisp.telas.core.TrustedClock
 import br.com.digitalisp.telas.core.LockCfg
 import br.com.digitalisp.telas.core.EmergencyCode
+import br.com.digitalisp.telas.core.Missing
+import br.com.digitalisp.telas.core.MissingCase
 import br.com.digitalisp.telas.core.Internal
 import br.com.digitalisp.telas.core.NetErrors
 import br.com.digitalisp.telas.core.OfflineItem
@@ -70,11 +72,14 @@ object Engine {
         fun reloadPlayer()
         fun captureScreen(done: (ByteArray?) -> Unit)
         fun onQueueChanged(announce: QueueCall?)
+        fun onMissingChanged()
         fun onCodesChanged()
         /** TV Corporativa: um arquivo novo ficou pronto no aparelho (imagem, logomarca, foto). */
         fun onSignageFiles() {}
         /** A marca da revenda mudou (nome, cores ou a logo ficou pronta no aparelho). */
         fun onBrandChanged() {}
+        /** Comando `identify`: mostrar por 10 s o nome da tela e a posição no conjunto. */
+        fun identify() {}
     }
 
     private const val CLOCK_FLOOR = 1_735_689_600_000L // 2025-01-01: antes disso o relógio do aparelho não é confiável
@@ -106,6 +111,13 @@ object Engine {
     @Volatile var codes: List<EmergencyCode> = emptyList()
         private set
 
+
+    /** Pessoas desaparecidas em vigor para este aparelho (contrato §8). */
+    @Volatile var missing: List<MissingCase> = emptyList()
+        private set
+    private val photoBusy = AtomicBoolean(false)
+    @Volatile private var photoAgain = false
+    private val photoRetryAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
 
     // ---- diagnóstico do sinal de vida e do relógio ----
     /** Hora (relógio do aparelho) da última tentativa de sinal de vida e o que deu. */
@@ -169,6 +181,7 @@ object Engine {
         config = store.loadConfig()
         alerts = store.alerts
         recent = store.recentAlert
+        missing = store.missing
         brand = Brands.fromStore(store.brandJson)
         clockAnchor = store.clockAnchor
         bootCount = try {
@@ -180,6 +193,7 @@ object Engine {
         ensureRunning()
         syncOffline()
         syncFallbackImage()
+        syncMissingPhotos()
         syncBrandLogo()
         loadPlays()
         syncSignage()
@@ -217,7 +231,7 @@ object Engine {
     fun clockOk(): Boolean = trustedNow() != null
 
     /**
-     * A hora para os vencimentos (alertas, clima): a certa; sem ela, o mínimo que a hora pode ser (a última
+     * A hora para os vencimentos (alertas, desaparecidos, clima): a certa; sem ela, o mínimo que a hora pode ser (a última
      * boa + o tempo desde que o aparelho ligou); sem nada, 0. Assim o que estava na tela continua até a hora voltar, e só
      * some o que com certeza já venceu.
      */
@@ -332,6 +346,7 @@ object Engine {
         config = store.loadConfig()
         alerts = emptyList()
         store.alerts = emptyList()
+        setMissing(emptyList())
         setCodes(emptyList())
         toUi { it.onConfigChanged() }
     }
@@ -462,6 +477,8 @@ object Engine {
         val body = api.config(if (force) null else config?.rev) ?: return
         val parsed = ConfigParser.parse(body)
         setBrand(Brands.update(body))
+        // o último clima bom fica guardado (até 6 h) para a tela não perder a zona de clima numa configuração sem ele
+        if (parsed.weather != null) try { store.weatherJson = JSONObject(body).optJSONObject("weather")?.toString() } catch (_: Exception) { }
         store.configJson = body
         if (parsed.device.name.isNotEmpty()) store.deviceName = parsed.device.name
         config = parsed
@@ -589,6 +606,7 @@ object Engine {
         store.wipeToken()
         alerts = emptyList()
         store.alerts = emptyList()
+        setMissing(emptyList())
         setCodes(emptyList())
         noteError("Aparelho desativado no painel (401).")
         QueueLink.sync()
@@ -632,9 +650,12 @@ object Engine {
             toUi { it.onAlertsChanged() }
         }
 
+        // pessoas desaparecidas: campo ausente = recurso desligado (servidor antigo)
+        setMissing(Missing.parse(res.optJSONArray("missing")))
         // códigos de emergência (§17.2): só a tela interna recebe a chave; sem ela, nada
         val codeList = if (res.has("codes")) Internal.codes(res.optJSONArray("codes")) else emptyList()
         main.post { setCodes(codeList) }
+        syncMissingPhotos()
 
         val rev = ConfigParser.str(res, "rev")
         if (rev != null && rev != config?.rev) fetchConfig(api, force = true)
@@ -692,6 +713,10 @@ object Engine {
                         done(api, id, false, "Envio da captura recusado (${e.code}): ${e.message}")
                     }
                 }
+            }
+            "identify" -> {
+                toUi { it.identify() }
+                done(api, id, true, "Identificação na tela por 10 s.")
             }
             else -> done(api, id, false, "Comando desconhecido nesta versão do app: ${type.take(40)}")
         }
@@ -822,15 +847,28 @@ object Engine {
     }
 
     /** Transporte de verdade para o [OfflineFetch]: HttpURLConnection, com Range para continuar. */
+    /** O último motivo de um arquivo não ter baixado (HTTP 403 em host…), para o diagnóstico e o sinal de vida. */
+    @Volatile private var lastFetchError: String? = null
+
+    private fun host(url: String): String = try { URL(url).host } catch (_: Exception) { "?" }
+
+    /** Arquivos da grade (TV Corporativa): quantos dos pedidos estão prontos e o último erro de download. */
+    @Volatile var signageNote = ""
+        private set
+
     private val httpTransport = OfflineTransport { url, from ->
         val conn = URL(url).openConnection() as HttpURLConnection
         conn.connectTimeout = 15_000
         conn.readTimeout = 30_000
         conn.instanceFollowRedirects = true
         if (from > 0) conn.setRequestProperty("Range", "bytes=$from-")
-        val code = conn.responseCode
+        val code = try { conn.responseCode } catch (e: IOException) {
+            lastFetchError = "${e.javaClass.simpleName} em ${host(url)}"
+            throw e
+        }
         if (code != 200 && code != 206) {
             conn.disconnect()
+            lastFetchError = "HTTP $code em ${host(url)}"
             throw IOException("HTTP $code")
         }
         OfflineResponse(code, conn.inputStream)
@@ -857,6 +895,71 @@ object Engine {
         toUi { it.onCodesChanged() }
     }
 
+    // ---- pessoas desaparecidas: lista e fotos ----
+    private fun setMissing(fresh: List<MissingCase>) {
+        if (fresh == missing) return
+        missing = fresh
+        store.missing = fresh
+        toUi { it.onMissingChanged() }
+    }
+
+    private fun missingDir(): File = File(app.filesDir, "missing").apply { mkdirs() }
+
+    /** A foto do caso, só se já foi baixada e conferida (sha256 e tamanho). Sem ela, a tela desenha a silhueta. */
+    fun missingPhotoFile(c: MissingCase): File? {
+        val p = c.photo ?: return null
+        return File(missingDir(), p.fileName).takeIf { it.isFile && it.length() == p.bytes }
+    }
+
+    fun missingPhotoCount(): Int = missing.mapNotNull { missingPhotoFile(it)?.name }.distinct().size
+
+    /**
+     * Baixa (uma vez por foto) as fotos que faltam, confere o sha256 e o tamanho, e apaga as de quem saiu da lista.
+     * Foto que não confere é apagada e só é tentada de novo depois de 30 min; falha de rede, depois de 2 min.
+     */
+    fun syncMissingPhotos() {
+        if (!ready.get()) return
+        if (!photoBusy.compareAndSet(false, true)) {
+            photoAgain = true
+            return
+        }
+        Thread({
+            try {
+                do {
+                    photoAgain = false
+                    val dir = missingDir()
+                    val existing = (dir.listFiles() ?: emptyArray()).filter { it.isFile }.associate { it.name to it.length() }
+                    val plan = Missing.photoPlan(missing, existing)
+                    for (name in plan.delete) File(dir, name).delete()
+                    var got = false
+                    for (p in plan.download) {
+                        val now = SystemClock.elapsedRealtime()
+                        if (now < (photoRetryAt[p.sha256] ?: 0L) || net() == "none") continue
+                        when (OfflineFetch.fetchAs(p.fileName, p.asItem(), dir, httpTransport)) {
+                            OfflineFetch.Result.OK -> {
+                                photoRetryAt.remove(p.sha256)
+                                got = true
+                            }
+                            OfflineFetch.Result.BAD_HASH -> {
+                                photoRetryAt[p.sha256] = now + 30 * 60_000L
+                                noteError("Foto de pessoa desaparecida não confere (sha256 ou tamanho); o caso aparece sem foto.")
+                            }
+                            else -> photoRetryAt[p.sha256] = now + 2 * 60_000L
+                        }
+                    }
+                    if (got || plan.delete.isNotEmpty()) toUi { it.onMissingChanged() }
+                } while (photoAgain)
+            } catch (_: Exception) {
+            } finally {
+                photoBusy.set(false)
+            }
+        }, "telas-fotos").apply {
+            isDaemon = true
+            priority = Thread.MIN_PRIORITY
+            start()
+        }
+    }
+
     /** Apaga tudo e volta à escolha do modo. */
     fun resetAll() {
         store.wipeAll()
@@ -866,8 +969,10 @@ object Engine {
         InternalLink.sync()
         alerts = emptyList()
         recent = null
+        missing = emptyList()
         codes = emptyList()
         offlineDir().listFiles()?.forEach { it.delete() }
+        missingDir().listFiles()?.forEach { it.delete() }
         fallbackDir().listFiles()?.forEach { it.delete() }
         fallbackShown = null
         brand = null
@@ -1034,6 +1139,13 @@ object Engine {
         }
     }
 
+    /** O clima que vale: o da configuração ou, sem ele, o último bom guardado (até 6 h). */
+    fun weather(): br.com.digitalisp.telas.core.WeatherCfg? {
+        config?.weather?.let { return it }
+        val saved = try { store.weatherJson?.let { ConfigParser.weather(JSONObject(it)) } } catch (_: Exception) { null } ?: return null
+        return saved.takeIf { it.at > 0L && it.fresh(now()) }
+    }
+
     /** O dia (no fuso do modo) para a conta de exibição. */
     fun playsDay(): String = Signage.dayOf(now(), config?.signage?.tz ?: Signage.DEFAULT_TZ)
 
@@ -1053,7 +1165,8 @@ object Engine {
                     signageAgain = false
                     val cfg = config ?: break
                     if (!managed) break
-                    val wanted = cfg.signage?.files().orEmpty()
+                    val wx = weather()
+                    val wanted = cfg.signage?.files().orEmpty() + listOfNotNull(wx?.art, wx?.artPort)
                     val dir = signageDir()
                     if (cfg.signage == null) {
                         // modo desligado (ou servidor sem ele): nada guardado
@@ -1070,12 +1183,18 @@ object Engine {
                                     signageRetryAt[f.sha256] = SystemClock.elapsedRealtime() + 30 * 60_000L
                                     noteError("Imagem da TV Corporativa não confere (sha256 ou tamanho); o item fica de fora.")
                                 }
-                                else -> signageRetryAt[f.sha256] = SystemClock.elapsedRealtime() + 2 * 60_000L
+                                else -> {
+                                    signageRetryAt[f.sha256] = SystemClock.elapsedRealtime() + 2 * 60_000L
+                                    // vai no sinal de vida (lastError): o painel vê por que a imagem não aparece
+                                    noteError("Arquivo da grade não baixou (${lastFetchError ?: "sem conexão"}); tento de novo em 2 min.")
+                                }
                             }
                             if (r == OfflineFetch.Result.OK) toUi { it.onSignageFiles() }
                         },
                         cancelled = { signageAgain },
                     )
+                    val ready = wanted.count { signageFile(it) != null }
+                    signageNote = "$ready de ${wanted.size} arquivo(s) prontos" + (if (ready < wanted.size) lastFetchError?.let { " · último erro: $it" }.orEmpty() else "")
                 } while (signageAgain)
             } catch (_: Exception) {
             } finally {

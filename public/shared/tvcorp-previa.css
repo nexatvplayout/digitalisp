@@ -33,6 +33,8 @@
 /* zonas que não são playlist */
 .tvc-z-video { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2cqh; background: linear-gradient(135deg, #1e293b, #0b1220); color: #e2e8f0; font-size: min(7cqh, 4.5cqw); }
 .tvc-live { background: #d92d20; color: #fff; font-weight: 700; padding: 0.3em 0.7em; border-radius: 0.3em; font-size: 0.8em; letter-spacing: 0.08em; }
+.tvc-hdmi { background: #0d80ff; }
+.tvc-z-hdmi { background: linear-gradient(135deg, #0a2150, #06173a); }
 .tvc-z-empty { display: flex; align-items: center; justify-content: center; background: var(--tbg); color: var(--tdim); font-size: min(9cqh, 7cqw); border: 1px dashed rgba(148, 163, 184, 0.4); }
 .tvc-z-ticker { display: flex; align-items: center; gap: 2cqw; background: var(--tc); color: #fff; padding: 0 2cqw; font-size: 38cqh; white-space: nowrap; }
 .tvc-z-ticker b { background: rgba(0, 0, 0, 0.25); padding: 0 1cqw; }
@@ -91,7 +93,9 @@
 .tvc-it-img { width: 100%; height: 100%; object-fit: cover; }
 .tvc-it-empty { align-items: center; color: var(--tdim); }
 .tvc-it-image { position: relative; justify-content: flex-end; }
-.tvc-it-image .tvc-it-img { position: absolute; inset: 0; }
+.tvc-it-image .tvc-it-img { position: absolute; inset: 0; object-fit: contain; }
+/* atrás da imagem inteira: a mesma foto desfocada cobrindo o quadro (sem faixas pretas e sem cortar a foto) */
+.tvc-it-image .tvc-it-fill { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: blur(2.5cqw) brightness(0.55); transform: scale(1.15); }
 
 /* artes de fundo da biblioteca (public/tvcorp/arte/, desenhadas no projeto) */
 .tvc-sl.tvc-art { background-size: cover; background-position: center; }
@@ -364,3 +368,46 @@
 .tvc-wall-n { font: 700 22px/1 "IBM Plex Sans", Arial, sans-serif; fill: rgba(255, 255, 255, 0.55); stroke: rgba(0, 0, 0, 0.6); stroke-width: 0.8px; paint-order: stroke; text-anchor: middle; dominant-baseline: middle; pointer-events: none; }
 /* formatos especiais: o filete na borda do recorte */
 .tvc-edge { fill: none; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+.tvc-it-image { overflow: hidden; }
+/* o slide que não cabe no quadro: o conteúdo diminui em degraus (fitSlide em tvcorp-previa.js) */
+.tvc-sl.tvc-fit-1 > * { zoom: 0.9; }
+.tvc-sl.tvc-fit-2 > * { zoom: 0.8; }
+.tvc-sl.tvc-fit-3 > * { zoom: 0.7; }
+.tvc-sl.tvc-fit-4 > * { zoom: 0.62; }
+.tvc-sl.tvc-fit-5 > * { zoom: 0.55; }
+.tvc-sl.tvc-fit-6 > * { zoom: 0.48; }
+.tvc-sl.tvc-art > .tvc-sl-img, .tvc-sl > .tvc-sl-img { zoom: 1; }
+/* DIGITAL ISP: a notícia sozinha: a foto cobre o quadro e a faixa escura embaixo traz a fonte, a manchete e a hora */
+.tvc-it-newsone { position: relative; padding: 0; overflow: hidden; justify-content: flex-end; background: #0b1220; }
+.tvc-news-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.tvc-news-band { position: relative; display: flex; flex-direction: column; gap: 0.8cqw; padding: 2.4cqw 4cqw 2.6cqw; background: linear-gradient(to top, rgba(5, 8, 15, 0.94), rgba(5, 8, 15, 0.82)); border-left: 1.4cqw solid #ef4444; color: #fff; }
+.tvc-news-kicker { font-size: 2.6cqw; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #cbd5e1; }
+.tvc-news-head { font-size: 4.4cqw; font-weight: 600; line-height: 1.22; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.tvc-news-src { font-size: 2.4cqw; color: #94a3b8; }
+.tvc-news-semfoto { background: linear-gradient(135deg, #1e293b, #0b1220); }
+.tvc-port .tvc-news-head, .tvc-z-port .tvc-news-head { font-size: 6cqw; }
+/* o desenho do tempo (weatherIcon): grande na zona de clima, pequeno em cada dia da previsão */
+.tvc-wx-ico { width: min(34cqh, 30cqw); height: min(34cqh, 30cqw); flex: none; }
+.tvc-it-wx .tvc-wx-ico { width: 14cqw; height: 14cqw; }
+.tvc-wx-ico-s { width: 5cqw; height: 5cqw; flex: none; vertical-align: middle; }
+/* o gadget de clima com o fundo de cada tempo: céu azul (sol), azul com nuvens, cinza (nublado), névoa, chuva e tempestade */
+.tvc-z-weather.tvc-wx-clear, .tvc-it-wx.tvc-wx-clear { background: linear-gradient(160deg, #38bdf8 0%, #0ea5e9 45%, #f59e0b 130%); color: #fff; }
+.tvc-z-weather.tvc-wx-partly, .tvc-it-wx.tvc-wx-partly { background: linear-gradient(160deg, #60a5fa 0%, #3b82f6 55%, #94a3b8 120%); color: #fff; }
+.tvc-z-weather.tvc-wx-cloudy, .tvc-it-wx.tvc-wx-cloudy { background: linear-gradient(160deg, #94a3b8 0%, #64748b 60%, #475569 100%); color: #fff; }
+.tvc-z-weather.tvc-wx-fog, .tvc-it-wx.tvc-wx-fog { background: linear-gradient(180deg, #cbd5e1 0%, #94a3b8 100%); color: #0f172a; }
+.tvc-z-weather.tvc-wx-rain, .tvc-it-wx.tvc-wx-rain { background: linear-gradient(170deg, #475569 0%, #1e3a8a 70%, #0f172a 100%); color: #fff; }
+.tvc-z-weather.tvc-wx-storm, .tvc-it-wx.tvc-wx-storm { background: linear-gradient(170deg, #1e1b4b 0%, #312e81 55%, #0f172a 100%); color: #fff; }
+.tvc-z-weather[class*="tvc-wx-"] span, .tvc-it-wx[class*="tvc-wx-"] .tvc-it-credit { color: inherit; opacity: 0.85; }
+.tvc-z-weather.tvc-wx-clear, .tvc-it-wx.tvc-wx-clear { background: linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.35)), url("/tvcorp/arte/clima-clear-land.jpg") center / cover no-repeat; color: #fff; }
+.tvc-z-weather.tvc-wx-partly, .tvc-it-wx.tvc-wx-partly { background: linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.35)), url("/tvcorp/arte/clima-partly-land.jpg") center / cover no-repeat; color: #fff; }
+.tvc-z-weather.tvc-wx-cloudy, .tvc-it-wx.tvc-wx-cloudy { background: linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.35)), url("/tvcorp/arte/clima-cloudy-land.jpg") center / cover no-repeat; color: #fff; }
+.tvc-z-weather.tvc-wx-fog, .tvc-it-wx.tvc-wx-fog { background: linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.35)), url("/tvcorp/arte/clima-fog-land.jpg") center / cover no-repeat; color: #fff; }
+.tvc-z-weather.tvc-wx-rain, .tvc-it-wx.tvc-wx-rain { background: linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.35)), url("/tvcorp/arte/clima-rain-land.jpg") center / cover no-repeat; color: #fff; }
+.tvc-z-weather.tvc-wx-storm, .tvc-it-wx.tvc-wx-storm { background: linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.35)), url("/tvcorp/arte/clima-storm-land.jpg") center / cover no-repeat; color: #fff; }
+.tvc-previa.port .tvc-z-weather[class*="tvc-wx-"] { background-size: cover; }
+.tvc-z-weather.tvc-wx-clear.tvc-wx-noite, .tvc-it-wx.tvc-wx-clear.tvc-wx-noite { background-image: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url("/tvcorp/arte/clima-clear-noite-land.jpg"); }
+.tvc-z-weather.tvc-wx-partly.tvc-wx-noite, .tvc-it-wx.tvc-wx-partly.tvc-wx-noite { background-image: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url("/tvcorp/arte/clima-partly-noite-land.jpg"); }
+.tvc-z-weather.tvc-wx-cloudy.tvc-wx-noite, .tvc-it-wx.tvc-wx-cloudy.tvc-wx-noite { background-image: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url("/tvcorp/arte/clima-cloudy-noite-land.jpg"); }
+.tvc-z-weather.tvc-wx-fog.tvc-wx-noite, .tvc-it-wx.tvc-wx-fog.tvc-wx-noite { background-image: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url("/tvcorp/arte/clima-fog-noite-land.jpg"); }
+.tvc-z-weather.tvc-wx-rain.tvc-wx-noite, .tvc-it-wx.tvc-wx-rain.tvc-wx-noite { background-image: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url("/tvcorp/arte/clima-rain-noite-land.jpg"); }
+.tvc-z-weather.tvc-wx-storm.tvc-wx-noite, .tvc-it-wx.tvc-wx-storm.tvc-wx-noite { background-image: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url("/tvcorp/arte/clima-storm-noite-land.jpg"); }

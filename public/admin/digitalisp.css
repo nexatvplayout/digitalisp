@@ -87,6 +87,7 @@ button.primary:hover { background: var(--c-accent-hover); }
 .pl-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
 .pl-head h3 { margin: 0; }
 .pl-active { display: inline-flex; gap: 6px; align-items: center; font-weight: 600; }
+.pl-flags { display: flex; gap: 16px; flex-wrap: wrap; }
 .pl-mtitle { margin: 4px 0 0; }
 .pl-mods { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
 .pl-sec { border: 1px solid var(--c-line-soft); border-radius: 10px; padding: 8px 10px; display: grid; gap: 6px; align-content: start; }
@@ -178,3 +179,8 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
 .dm-help { margin-top: 12px; } .dm-help li { margin: 4px 0; }
 .dm-tbl code { word-break: break-all; font-size: .8rem; }
 .dm-grid { grid-template-columns: 1fr; }
+
+/* a versão no rodapé do menu */
+.versao { margin: 8px 0 0; font-size: .72rem; }
+
+.pl-novo { margin: 4px 0 16px; }

@@ -10,6 +10,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
 import { boot, cleanup, api, platformLogin, newTenant } from './helpers/srv.js';
+import { canal, usuario, auditoria } from './helpers/prefeitura.js'; // DIGITAL ISP: canal ao vivo (HLS) e usuário de permissão limitada
 
 const ENV = { TELAS_LINK_LOGIN_PER_IP: '500', TELAS_ACTIVATE_PER_IP: '50', PUBLIC_HLS_URL: 'https://hls.exemplo.test', PLATFORM_PUBLIC_URL: 'https://painel.exemplo.test', STORAGE_DRIVER: 'local' };
 /** PNG de verdade (um desenho, não a foto de alguém) com um bloco de texto escondido, como o EXIF de um celular. */
@@ -31,8 +32,8 @@ async function roteiro(s) {
   assert.equal((await P('POST', '/api/platform/plans', { code: 'p-pref', name: 'Prefeitura', priceCents: 0, profileId: prof.data.id, limits: { channels: 1 } })).status, 201);
   const A = await newTenant(P, s.base, { slug: 'des-a', planCode: 'p-pref', status: 'active' });
   const B = await newTenant(P, s.base, { slug: 'des-b', planCode: 'p-pref', status: 'active' });
-  assert.equal((await A.api('POST', '/api/channels', { name: 'TV A', slug: 'des-a-tv' })).status, 201);
-  assert.equal((await B.api('POST', '/api/channels', { name: 'TV B', slug: 'des-b-tv' })).status, 201);
+  await canal(A.api, 'TV A'); // DIGITAL ISP: o canal ao vivo (HLS) no lugar do canal do NEXA
+  await canal(B.api, 'TV B'); // DIGITAL ISP: o canal ao vivo (HLS) no lugar do canal do NEXA
   const post = async (T, url, body, want = 201) => { const r = await T.api('POST', url, body); assert.equal(r.status, want, `${url}: ${JSON.stringify(r.data)}`); return r.data; };
   const centro = await post(A, '/api/prefeitura/regions', { name: 'Centro' }); const norte = await post(A, '/api/prefeitura/regions', { name: 'Norte' });
   const dc = await post(A, '/api/prefeitura/offices', { name: 'Defesa Civil', type: 'defesa-civil' });
@@ -195,7 +196,7 @@ async function roteiro(s) {
   assert.deepEqual([venc.closeReason, venc.closedBy], ['vencido', 'sistema']);
 
   /* ---------------------------------------------------------------- auditoria: só o nome e o número do registro */
-  const audit = JSON.stringify((await A.api('GET', '/api/audit?limit=500')).data);
+  const audit = JSON.stringify(await auditoria(s, A.id));
   for (const want of [/pessoa desaparecida \\"Ana Teste\\" \(registro BO 123\/2026\) no ar: 1 tela\(s\), com foto pelo link de controle/, /caso de pessoa desaparecida \\"Ana Teste\\" \(registro BO 123\/2026\) encerrado \(pessoa localizada\); a foto foi apagada/, /QR code de contato dos casos de pessoa desaparecida definido \(tel\) no padrão da prefeitura/]) assert.match(audit, want);
   assert.ok(!/Mãe de teste|Blusa amarela|Praça de teste|5521999990000/.test(audit), 'nada do conteúdo sensível além do nome e do registro');
 

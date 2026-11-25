@@ -1,0 +1,872 @@
+/*
+ * Desenha a programação: as zonas do bloco (em % da tela) e o que passa em cada uma. Tudo o que aparece vem do
+ * conteúdo do cliente; o app não escreve o nome dele em lugar nenhum (white-label).
+ *
+ * Arquivos sempre do aparelho (blob: do IndexedDB): a tela nunca depende da rede para mostrar o que já tem.
+ * Só o ao vivo (stream.hls) usa a rede; sem ela, a zona de vídeo passa os vídeos guardados (offline.items).
+ */
+(function (raiz) {
+  'use strict';
+  var N = raiz.TelasNucleo;
+
+  function el(tag, cls, txt) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (txt) e.textContent = txt;
+    return e;
+  }
+
+  function hhmm(ms, tz) {
+    var l = N.horaLocal(ms, tz);
+    var h = Math.floor(l.minuto / 60), m = l.minuto % 60;
+    return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
+  }
+
+  /**
+   * @param raizEl  o elemento da área de conteúdo
+   * @param ctx     { url(sha) → Promise<blob url>, agora() → ms, aoExibir(ref, seg), online() → bool, mudo, volume }
+   */
+  function criar(raizEl, ctx) {
+    var atual = null, timers = [], videos = [];
+
+    function limpar() {
+      timers.forEach(function (t) { clearTimeout(t); clearInterval(t); });
+      timers = [];
+      videos.forEach(function (v) { try { v.pause(); v.removeAttribute('src'); v.load(); } catch (e) { /* nada */ } });
+      videos = [];
+      raizEl.innerHTML = '';
+    }
+
+    var calado = false;
+    /** Alerta na tela: os vídeos da playlist ficam mudos (cada um volta ao seu mudo depois). */
+    function calar(sim) {
+      calado = !!sim;
+      videos.forEach(function (v) { v.muted = calado || !!v._mudo; });
+    }
+
+    function novoVideo() {
+      var v = el('video', 'midia');
+      v.muted = !!ctx.mudo || ctx.volume === 0;
+      v.volume = Math.max(0, Math.min(1, (ctx.volume === undefined ? 100 : ctx.volume) / 100));
+      v._mudo = v.muted;
+      if (calado) v.muted = true;
+      v.setAttribute('playsinline', '');
+      v.autoplay = true;
+      videos.push(v);
+      return v;
+    }
+
+    /** Quanto o item fica: o que falta na troca sincronizada (pos.remaining) ou os segundos dele. */
+    function duracao(it, pos) {
+      return pos ? Math.max(300, pos.remaining) : it.seconds * 1000;
+    }
+
+    // ---- playlist: um item por vez, cada um os seus segundos (vídeo: até acabar). No conjunto de telas sincronizado
+    // (signage.wall.sync), o item e o tempo vêm do relógio confiável: todas as TVs mostram o mesmo índice juntas
+    function playlist(caixa, itens, prog) {
+      var i = -1, inicio = 0, vistoAgora = null;
+      var cj = prog.conjunto && prog.conjunto.sync ? prog.conjunto : null;
+      function proximo() {
+        if (vistoAgora) ctx.aoExibir(vistoAgora, (ctx.agora() - inicio) / 1000);
+        var agora = ctx.agora();
+        var l = N.horaLocal(agora, prog.tz);
+        var validos = itens.filter(function (it) { return N.itemVale(it, l); });
+        if (!validos.length) { caixa.innerHTML = ''; vistoAgora = null; timers.push(setTimeout(proximo, 30000)); return; }
+        var pos = cj ? N.posicaoSincronizada(validos.map(function (it) { return it.seconds * 1000; }), cj.epoch, agora) : null;
+        i = pos ? pos.index : (i + 1) % validos.length;
+        var it = validos[i];
+        inicio = agora;
+        vistoAgora = it.id;
+        desenharItem(caixa, it, prog, proximo, pos);
+      }
+      proximo();
+    }
+
+    // ---- o desenho da prévia do painel (TelasPrevia, gerado de public/shared/tvcorp-previa.js)
+
+    /** As medidas da zona para o CSS da prévia: --cqw/--cqh (1% da largura/altura) e os min() (--mI). */
+    function medidas(caixa) {
+      var r = caixa.getBoundingClientRect();
+      var w = r.width / 100, h = r.height / 100;
+      caixa.style.setProperty('--cqw', w + 'px');
+      caixa.style.setProperty('--cqwp', w + 'px');
+      caixa.style.setProperty('--cqh', h + 'px');
+      // o clima ocupando a zona: tamanhos pela altura, com teto pela largura (previa-tv.css)
+      var H = r.height, W = r.width, mn = function (a, b) { return Math.max(1, Math.min(a, b)) + 'px'; };
+      var deitado = W > 1.6 * H;
+      Array.prototype.forEach.call(caixa.querySelectorAll('.tvc-it-wx'), function (e) {
+        e.classList.toggle('tvc-wx-deitado', deitado);
+        e.classList.toggle('tvc-wx-empe', H > W); // zona mais alta que larga: a foto em pé
+        aplicarFotoClima(e, H > W);
+        // dia/noite muda sem redesenhar: confere a cada 5 min (só repinta se a foto mudar)
+        if (!e._wxVigia) { e._wxVigia = true; enquantoNaTela(e, function () { aplicarFotoClima(e, e.offsetHeight > e.offsetWidth); }, 300000); }
+        // sem a previsão dos dias: ícone ~34 %, temperatura ~26 %, texto ~9 % da altura; com ela, um pouco menores para
+        // caber tudo (cidade, agora e os dias)
+        var dias = !deitado && e.querySelector('.tvc-wx-days');
+        var k = dias ? { i: 0.27, t: 0.2, x: 0.07, c: 0.05, d: 0.035, s: 0.06 } : { i: 0.34, t: 0.26, x: 0.09, c: 0.065, d: 0.045, s: 0.08 };
+        e.style.setProperty('--wx-ico', mn(k.i * H, (deitado ? 0.3 : 0.6) * W));
+        e.style.setProperty('--wx-t', mn(k.t * H, (deitado ? 0.22 : 0.38) * W));
+        e.style.setProperty('--wx-x', mn(k.x * H, 0.09 * W));
+        e.style.setProperty('--wx-c', mn(k.c * H, 0.075 * W));
+        e.style.setProperty('--wx-d', mn(k.d * H, 0.05 * W));
+        e.style.setProperty('--wx-s', mn(k.s * H, 0.09 * W));
+      });
+      (raiz.TelasPrevia.MINS || []).forEach(function (m, i) {
+        var a = m[0] * (m[1] === 'w' ? w : h), b = m[2] * (m[3] === 'w' ? w : h);
+        caixa.style.setProperty('--m' + i, Math.min(a, b) + 'px');
+      });
+      // slide e item são containers no painel: lá dentro 1cqw é 1% da largura do conteúdo deles (sem o padding)
+      var sel = raiz.TelasPrevia.CONTEINERES;
+      if (!sel) return;
+      Array.prototype.forEach.call(caixa.querySelectorAll(sel), function (e) {
+        var cs = getComputedStyle(e);
+        var cw = e.clientWidth - parseFloat(cs.paddingLeft || 0) - parseFloat(cs.paddingRight || 0);
+        e.style.setProperty('--cqw', Math.max(0, cw) / 100 + 'px');
+      });
+    }
+
+    function tema(prog) { return { color: prog.tema && prog.tema.color, mode: prog.tema && prog.tema.mode }; }
+
+    function copia(o) { return JSON.parse(JSON.stringify(o || {})); }
+
+    /** Os endereços locais (blob:) dos arquivos do item; arquivo que não está no aparelho fica de fora. */
+    function locais(it) {
+      var mapa = {};
+      return Promise.all(it.files.map(function (f) {
+        return ctx.url(f.sha256).then(function (u) { if (u) mapa[f.sha256] = u; }, function () {});
+      })).then(function () { return mapa; });
+    }
+
+    function shaDe(v) { return v && typeof v === 'object' && v.sha256 ? String(v.sha256).toLowerCase() : null; }
+
+    /** O item do servidor no formato que a prévia lê, com as imagens trocadas pelas cópias do aparelho. */
+    function paraPrevia(it, mapa) {
+      var o = copia(it.raw);
+      if (o.kind === 'image') { o.url = mapa[it.file.sha256] || ''; if (!o.url) return null; }
+      if (o.kind === 'slide' && o.fields) {
+        Object.keys(o.fields).forEach(function (k) {
+          var sh = shaDe(o.fields[k]);
+          if (!sh) return;
+          // a foto de fundo vem da classe tvc-art-* (arte/ do pacote): o artFile não é a imagem do slide. A arte que não
+          // está no pacote vai por ele, baixada e guardada (aplicada depois do desenho, em fundoReserva)
+          if (k === 'artFile') {
+            var noPacote = (raiz.TelasPrevia.ARTES || []).indexOf(String(o.fields.art || '')) >= 0;
+            if (!noPacote && mapa[sh]) o._fundo = { url: mapa[sh], claro: o.fields[k].tone === 'light' };
+            delete o.fields[k];
+            return;
+          }
+          if (mapa[sh] && !o.image) o.image = mapa[sh];
+          delete o.fields[k]; // o objeto do arquivo não é texto: não vai para o desenho
+        });
+      }
+      if (o.kind === 'news' && o.image && typeof o.image === 'object') {
+        var sn = shaDe(o.image);
+        o.image = sn && mapa[sn] ? mapa[sn] : null;
+      }
+      if (o.kind === 'post') {
+        var sp = shaDe(o.image) || shaDe(o.media);
+        o.image = sp && mapa[sp] ? mapa[sp] : null;
+      }
+      if (o.kind === 'birthdays' && Array.isArray(o.people)) {
+        o.people = o.people.map(function (p) {
+          var q = copia(p), sh = shaDe(p.photo);
+          if (sh && mapa[sh]) q.photo = mapa[sh]; else delete q.photo;
+          return q;
+        });
+      }
+      // conta no aparelho, pela data: segue certo sem rede (o número pronto do servidor envelhece)
+      if (o.kind === 'safety' && o.since) delete o.days;
+      return o;
+    }
+
+    /** Aniversariantes sem foto: as iniciais que o servidor manda (as da prévia saem erradas: ver LEIAME). */
+    function iniciais(n, o) {
+      if (o.kind !== 'birthdays' || !Array.isArray(o.people)) return;
+      var ini = n.querySelectorAll('.tvc-av-ini');
+      var sem = o.people.slice(0, 8).filter(function (p) { return !p.photo; });
+      for (var i = 0; i < ini.length && i < sem.length; i++) {
+        var t = sem[i].initials || String(sem[i].name || '').split(/\s+/).filter(Boolean).slice(0, 2).map(function (x) { return x[0]; }).join('');
+        ini[i].textContent = String(t).toUpperCase().slice(0, 2);
+      }
+    }
+
+    function dataLonga(ms, tz) {
+      try { return new Date(ms).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: tz }); } catch (e) { return ''; }
+    }
+
+    /** Repete fn a cada `ms` enquanto o nó estiver na tela: o item que saiu da playlist para sozinho, sem acumular. */
+    function enquantoNaTela(no, fn, ms) {
+      var t = setInterval(function () {
+        if (!document.documentElement.contains(no)) { clearInterval(t); return; }
+        fn();
+      }, ms);
+      timers.push(t);
+    }
+
+    /**
+     * A foto do tempo atrás do ícone e da temperatura. Uma regra só, para a foto não ficar trocando: ela muda quando muda o
+     * tempo, a forma da zona (em pé ou deitada) ou dia/noite (18h às 5h59, pela hora da tela, quando houver a noturna).
+     * A foto do pacote (arte/clima-<tempo>[-noite]-<forma>.jpg) é pintada na hora, junto com o desenho; só sem ela no
+     * pacote vale a cópia baixada do servidor (weather.art / artPort). Aplicada em medidas(), com a caixa na tela.
+     */
+    function fotoClima(n, item, prog) {
+      if (!n || !item) return;
+      n._wx = { cond: item.cond, art: item.art || null, artPort: item.artPort || null, tz: prog && prog.tz };
+    }
+    function aplicarFotoClima(n, emPe) {
+      var d = n._wx;
+      if (!d) return;
+      var noite = N.ehNoite(ctx.agora(), d.tz);
+      var nome = N.nomeFotoClima(d.cond, emPe, noite, raiz.TelasPrevia.ARTES || []);
+      var chave = nome || ((emPe ? (d.artPort || d.art) : (d.art || d.artPort)) || {}).sha256 || '';
+      if (n._wxChave === chave) return; // a mesma foto: não repinta
+      n._wxChave = chave;
+      if (nome) { pintarFundo(n, 'arte/' + nome + '.jpg'); return; }
+      var sh = chave ? String(chave).toLowerCase() : null;
+      if (sh) pintarFoto(n, sh);
+    }
+    function pintarFundo(n, u) {
+      n.style.backgroundImage = 'linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.35)), url("' + u + '")';
+      n.style.backgroundSize = 'cover';
+      n.style.backgroundPosition = 'center';
+    }
+    function pintarFoto(n, sh, vez) {
+      ctx.url(sh).then(function (u) {
+        // ainda baixando (a foto é opcional e chega depois da troca): tenta de novo a cada 20 s enquanto a caixa estiver na
+        // tela; até lá, o fundo do CSS (o degradê do tempo)
+        if (!u) { if ((vez || 0) < 30) timers.push(setTimeout(function () { if (document.documentElement.contains(n)) pintarFoto(n, sh, (vez || 0) + 1); }, 20000)); return; }
+        if (n._wxChave === sh) pintarFundo(n, u);
+      }, function () {});
+    }
+
+    /** Os tipos que a prévia desenha só como zona (relógio, clima, QR, logomarca): as mesmas classes dela. */
+    function zonaPrevia(kind, o, prog) {
+      var th = raiz.TelasPrevia.themeClass(tema(prog));
+      if (kind === 'clock') {
+        var c = el('div', 'tvc-z-clock ' + th), b = el('b'), sp = el('span');
+        var f = function () { b.textContent = hhmm(ctx.agora(), prog.tz); sp.textContent = dataLonga(ctx.agora(), prog.tz); };
+        f(); enquantoNaTela(c, f, 5000);
+        c.appendChild(b); c.appendChild(sp);
+        return c;
+      }
+      if (kind === 'weather') {
+        // o clima do item (gadget) ou o da tela, no formato do item: o desenho da prévia (o ícone de cada tempo, o fundo
+        // em degradê por tempo, a temperatura, o texto e a previsão com ícones pequenos)
+        var wi = N.climaParaItem(o && (o.tempC !== undefined || o.now !== undefined || o.min !== undefined) ? o : prog.clima);
+        if (!wi) return null;
+        if (raiz.TelasPrevia.weatherIcon) { var nw = raiz.TelasPrevia.itemPreview(wi, { theme: tema(prog) }); fotoClima(nw, wi, prog); return nw; }
+        var w = wi;
+        if (typeof w.tempC !== 'number') return null;
+        var cw = el('div', 'tvc-z-weather ' + th);
+        cw.appendChild(el('b', null, Math.round(w.tempC) + '°'));
+        cw.appendChild(el('span', null, [w.city, w.text || w.condition].filter(Boolean).join(' · ')));
+        if (typeof w.min === 'number' && typeof w.max === 'number') cw.appendChild(el('span', null, 'mín ' + Math.round(w.min) + '° · máx ' + Math.round(w.max) + '°'));
+        return cw;
+      }
+      if (kind === 'qr') {
+        var dado = o && (o.qr || o.url);
+        if (!dado) return null;
+        var cq = el('div', 'tvc-z-qr ' + th);
+        // o texto como veio (https, Wi-Fi "WIFI:T:WPA;S:…;P:…;;" ou vCard): grande demais para o QR → sem o desenho
+        var svgQr = raiz.TelasPrevia.qrSvg(String(dado), 'tvc-z-qrc');
+        if (!svgQr) return null;
+        cq.appendChild(svgQr);
+        cq.appendChild(el('span', null, (o && (o.title || o.label)) || 'Aponte a câmera'));
+        return cq;
+      }
+      if (kind === 'logo') {
+        var cl = el('div', 'tvc-z-logo ' + th);
+        logo(cl, prog);
+        return cl;
+      }
+      return null;
+    }
+
+    /**
+     * Imagem com fit 'contain' (o servidor manda em toda imagem): a imagem inteira, sem cortar, e atrás dela a mesma foto
+     * desfocada e escurecida cobrindo o quadro (como a prévia do painel), em vez de faixas pretas. O desfoque é um canvas
+     * pequeno (32 px) ampliado: leve no Tizen 5.5, sem filter: blur. Se a prévia já trouxer o fundo (tvc-it-fill), fica o dela.
+     */
+    function imagemInteira(n, it) {
+      if (!n || !(it.contain || (it.raw && it.raw.fit === 'contain'))) return;
+      var img = n.querySelector('img.tvc-it-img');
+      if (!img || n.querySelector('.tvc-it-fill')) return;
+      img.style.objectFit = 'contain';
+      var fundo = el('canvas', 'tela-fundo-foto');
+      fundo.width = 32; fundo.height = 32;
+      img.parentNode.insertBefore(fundo, img);
+      var pintar = function () {
+        try {
+          var c2 = fundo.getContext('2d');
+          var w = img.naturalWidth || 1, h = img.naturalHeight || 1;
+          // cover no canvas pequeno: o centro da foto preenchendo o quadro
+          var s = Math.max(32 / w, 32 / h);
+          c2.drawImage(img, (32 - w * s) / 2, (32 - h * s) / 2, w * s, h * s);
+          // escurece no próprio canvas (o mesmo que brightness 0.55, sem filtro de CSS)
+          c2.fillStyle = 'rgba(0,0,0,0.45)';
+          c2.fillRect(0, 0, 32, 32);
+        } catch (e) { fundo.style.display = 'none'; }
+      };
+      if (img.complete && img.naturalWidth) pintar(); else img.addEventListener('load', pintar);
+    }
+
+    /** A foto de fundo que não veio no pacote (artFile baixado): o mesmo véu escuro das fotos da biblioteca. */
+    function fundoReserva(n, o) {
+      if (!o._fundo || !n) return;
+      var sl = n.classList.contains('tvc-sl') ? n : n.querySelector('.tvc-sl');
+      if (!sl) return;
+      var veu = o._fundo.claro ? 'linear-gradient(90deg, rgba(255,255,255,0.82) 0%, rgba(255,255,255,0.6) 100%)'
+        : 'linear-gradient(90deg, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.6) 100%)';
+      sl.style.backgroundImage = veu + ', url("' + o._fundo.url + '")';
+      sl.style.backgroundSize = 'cover';
+      sl.style.backgroundPosition = '72% 50%';
+      sl.classList.add('tvc-art', 'tvc-photo', o._fundo.claro ? 'tvc-art-light' : 'tvc-art-dark');
+    }
+
+    function TelasN(v) { return v !== null && v !== undefined && v !== '' && isFinite(Number(v)); }
+
+    /**
+     * Página da internet (item web): um quadro com o endereço por cima da prévia (que mostra o endereço) e recarga a cada
+     * refreshMin minutos. Sem rede, ou se o quadro não carregar em 30 s, fica a prévia. O navegador não deixa o app saber
+     * se o site recusou o quadro (X-Frame-Options/CSP): nesse caso a TV mostra a página de recusa do próprio navegador.
+     */
+    function paginaWeb(z, it) {
+      var r = it.raw || {};
+      z.setAttribute('data-web', it.id + ' ' + r.url);
+      if (ctx.online && !ctx.online()) return;
+      var f = el('iframe', 'tvc-web');
+      f.setAttribute('scrolling', 'no');
+      f.setAttribute('frameborder', '0');
+      var carregou = false;
+      f.onload = function () { carregou = true; };
+      f.src = r.url;
+      z.appendChild(f);
+      timers.push(setTimeout(function () { if (!carregou && f.parentNode) f.parentNode.removeChild(f); }, 30000));
+      var min = Number(r.refreshMin);
+      if (min > 0) enquantoNaTela(f, function () { if (!ctx.online || ctx.online()) f.src = r.url; }, Math.max(1, min) * 60000);
+    }
+
+    function desenharPrevia(caixa, it, prog, depois, pos) {
+      locais(it).then(function (mapa) {
+        var n = null;
+        try {
+          var r = it.raw || {};
+          // relógio e clima com dados (os gadgets): o desenho de item da prévia; sem dados, o desenho de zona com o
+          // relógio do app e o clima da tela. QR e logomarca: só o de zona
+          var comoZona = it.kind === 'qr' || it.kind === 'logo' ||
+            (it.kind === 'weather' && !(TelasN(r.tempC) || TelasN(r.min) || TelasN(r.max) || (r.days && r.days.length))) ||
+            (it.kind === 'clock' && !raiz.TelasPrevia.tickWidgets);
+          if (comoZona) n = zonaPrevia(it.kind, it.raw, prog);
+          else if (it.kind === 'web' && caixa.firstChild && caixa.firstChild.getAttribute && caixa.firstChild.getAttribute('data-web') === it.id + ' ' + r.url) {
+            // a mesma página já aberta (playlist de um item só): não recarrega a cada volta
+            timers.push(setTimeout(depois, duracao(it, pos)));
+            return;
+          } else {
+            var o = paraPrevia(it, mapa);
+            if (o && o.kind === 'clock') {
+              if (!o.tz) o.tz = prog.tz;
+              // `seconds` do item é a duração na playlist (o servidor sobrescreve o "mostrar segundos" do gadget com ela);
+              // showSeconds, quando vier, decide
+              if (o.showSeconds !== undefined) o.seconds = o.showSeconds === true;
+            }
+            if (o) { n = raiz.TelasPrevia.itemPreview(o, { theme: tema(prog) }); iniciais(n, o); fundoReserva(n, o); imagemInteira(n, it); if (o.kind === 'weather') fotoClima(n, N.climaParaItem(o), prog); }
+          }
+        } catch (e) {
+          if (ctx.aoErro) ctx.aoErro('desenho do item ' + it.id + ': ' + e.message);
+          n = null;
+        }
+        if (!n) return depois(); // sem o que mostrar (arquivo faltando, dado vazio): o próximo
+        var z = el('div', 'tvc-z' + (caixa._ov || ''));
+        z.appendChild(n);
+        if (it.kind === 'web') paginaWeb(z, it);
+        trocar(caixa, z);
+        efeitos(z, it, duracao(it, pos));
+        medidas(caixa);
+        // relógios e contadores: andam a cada segundo, pelo relógio confiável do app
+        var tick = raiz.TelasPrevia.tickWidgets || raiz.TelasPrevia.tickCountdowns;
+        if (tick && (n.classList.contains('tvc-it-count') || n.classList.contains('tvc-tick') || n.querySelector('.tvc-it-count, .tvc-tick'))) {
+          var tique = function () { tick(n, ctx.agora()); };
+          tique(); enquantoNaTela(n, tique, 1000);
+        }
+        timers.push(setTimeout(depois, duracao(it, pos)));
+      });
+    }
+
+    function desenharItem(caixa, it, prog, depois, pos) {
+      // tudo que não é vídeo vai pelo desenho do painel; sem ele (prévia não gerada), o desenho simples abaixo
+      if (it.kind !== 'video' && raiz.TelasPrevia) return desenharPrevia(caixa, it, prog, depois, pos);
+      var conteudo = el('div', 'item item-' + it.kind);
+      var avancar = function () { timers.push(setTimeout(depois, duracao(it, pos))); };
+      if (it.kind === 'image' || ((it.kind === 'slide' || it.kind === 'post') && it.file && !it.title && !it.text)) {
+        ctx.url(it.file.sha256).then(function (u) {
+          if (!u) return depois();
+          var img = el('img', 'midia' + (it.contain ? ' contain' : ''));
+          img.src = u;
+          conteudo.appendChild(img);
+          if (it.label) conteudo.appendChild(el('div', 'legenda', it.label));
+          trocar(caixa, conteudo);
+          efeitos(conteudo, it, duracao(it, pos));
+          avancar();
+        });
+        return;
+      }
+      if (it.kind === 'video') {
+        ctx.url(it.file.sha256).then(function (u) {
+          if (!u) return depois();
+          var v = novoVideo();
+          // vídeo próprio do cliente: sound false → mudo; true → o som da tela (mudo/volume dela) continua valendo
+          if (it.raw && it.raw.sound === false) v.muted = true;
+          // vídeo com som: a rádio de fundo fica abafada enquanto ele toca
+          var comSom = !v.muted && ctx.radio;
+          v._mudo = v.muted;
+          if (calado) v.muted = true;
+          if (comSom) ctx.radio.abafar(true);
+          if (it.contain || (it.raw && it.raw.fit === 'contain')) v.className += ' contain';
+          var fim = false;
+          var seguir = function () { if (!fim) { fim = true; if (comSom) ctx.radio.abafar(false); depois(); } };
+          v.onended = seguir;
+          v.onerror = seguir;
+          v.src = u;
+          conteudo.appendChild(v);
+          trocar(caixa, conteudo);
+          efeitos(conteudo, it, duracao(it, pos));
+          tocar(v);
+          if (pos) {
+            // troca sincronizada: começa onde as outras TVs estão (offset) e sai junto com elas (remaining)
+            v.onloadedmetadata = function () { try { if (isFinite(v.duration) && pos.offset / 1000 < v.duration) v.currentTime = pos.offset / 1000; } catch (e) { /* nada */ } };
+            v.onended = function () { v.pause(); };
+            timers.push(setTimeout(seguir, duracao(it, pos)));
+            return;
+          }
+          // vídeo travado não prende a playlist: no máximo a duração mais 10 s, ou 10 min sem duração
+          timers.push(setTimeout(seguir, 600000));
+          v.onloadedmetadata = function () { if (isFinite(v.duration)) timers.push(setTimeout(seguir, (v.duration + 10) * 1000)); };
+        });
+        return;
+      }
+      if (it.kind === 'slide' || it.kind === 'post' || it.kind === 'text') {
+        var cartao = el('div', 'cartao');
+        if (it.label) cartao.appendChild(el('div', 'rotulo', it.label));
+        if (it.title) cartao.appendChild(el('div', 'titulo', it.title));
+        if (it.text) cartao.appendChild(el('div', 'texto', it.text));
+        conteudo.appendChild(cartao);
+        if (it.file) {
+          ctx.url(it.file.sha256).then(function (u) {
+            if (u) { var img = el('img', 'midia fundo-cartao'); img.src = u; conteudo.insertBefore(img, cartao); }
+          });
+        }
+      } else if (it.kind === 'news') {
+        var c = el('div', 'cartao');
+        if (it.label) c.appendChild(el('div', 'rotulo', it.label));
+        it.news.slice(0, 5).forEach(function (n) { c.appendChild(el('div', 'manchete', n)); });
+        conteudo.appendChild(c);
+      } else if (it.kind === 'birthdays') {
+        var b = el('div', 'cartao');
+        b.appendChild(el('div', 'titulo', it.title || 'Aniversariantes'));
+        it.people.slice(0, 8).forEach(function (p) {
+          b.appendChild(el('div', 'texto', p.name + ' · ' + (p.day < 10 ? '0' : '') + p.day + '/' + (p.month < 10 ? '0' : '') + p.month));
+        });
+        conteudo.appendChild(b);
+      } else if (it.kind === 'countdown') {
+        var cd = el('div', 'cartao');
+        cd.appendChild(el('div', 'titulo', it.title));
+        var n = el('div', 'numero');
+        cd.appendChild(n);
+        var f = function () {
+          var s = Math.max(0, Math.round((it.target - ctx.agora()) / 1000));
+          var d = Math.floor(s / 86400);
+          n.textContent = d > 0 ? d + (d === 1 ? ' dia' : ' dias') : hhmmss(s);
+        };
+        f(); timers.push(setInterval(f, 1000));
+        conteudo.appendChild(cd);
+      } else if (it.kind === 'clock') {
+        relogio(conteudo, prog);
+      } else if (it.kind === 'logo') {
+        logo(conteudo, prog);
+      } else {
+        // tipo que este app ainda não desenha: pula sem mostrar nada
+        return depois();
+      }
+      trocar(caixa, conteudo);
+      avancar();
+    }
+
+    function hhmmss(s) {
+      var h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, x = s % 60;
+      return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m + ':' + (x < 10 ? '0' : '') + x;
+    }
+
+    /**
+     * Os efeitos do item (TV Corporativa): a entrada (transition 'fade' | 'slide' | 'zoom'; sem ela, corte seco) e o zoom
+     * lento nas fotos enquanto o item está na tela (kenburns), em CSS (as TVs de 2018–2020 animam transform e opacity).
+     */
+    function efeitos(novo, it, ms) {
+      var r = (it && it.raw) || {};
+      if (['fade', 'slide', 'zoom'].indexOf(r.transition) >= 0) novo.classList.add('tr-' + r.transition);
+      if (r.kenburns === true) {
+        var fotos = novo.querySelectorAll('img.midia, img.tvc-it-img, img.tvc-sl-img');
+        for (var i = 0; i < fotos.length; i++) {
+          fotos[i].classList.add('kenburns');
+          fotos[i].style.animationDuration = Math.max(3, Math.round((ms || it.seconds * 1000) / 1000)) + 's';
+        }
+      }
+    }
+
+    function trocar(caixa, novo) {
+      // vídeos que saem da tela param (libera o decodificador: TV costuma ter um ou dois)
+      Array.prototype.forEach.call(caixa.querySelectorAll('video'), function (v) {
+        try { v.pause(); v.removeAttribute('src'); v.load(); } catch (e) { /* nada */ }
+        var k = videos.indexOf(v); if (k >= 0) videos.splice(k, 1);
+      });
+      caixa.innerHTML = '';
+      caixa.appendChild(novo);
+    }
+
+    function tocar(v) {
+      var p = v.play();
+      if (p && p.catch) p.catch(function () { v.muted = true; v.play().catch(function () {}); });
+    }
+
+    function relogio(caixa, prog) {
+      var r = el('div', 'relogio');
+      var f = function () { r.textContent = hhmm(ctx.agora(), prog.tz); };
+      f(); timers.push(setInterval(f, 5000));
+      caixa.appendChild(r);
+    }
+
+    function logo(caixa, prog) {
+      var m = prog.marca;
+      if (m.logo) ctx.url(m.logo.sha256).then(function (u) { if (u) { var i = el('img', 'midia contain'); i.src = u; caixa.appendChild(i); } });
+      else if (m.logoUrl && ctx.online()) { var i = el('img', 'midia contain'); i.src = m.logoUrl; caixa.appendChild(i); }
+    }
+
+    /**
+     * A faixa de avisos rolando. `avisos`: [{ texto, cor?, negrito?, italico? }]. Com o estilo da faixa (prog.faixaEstilo,
+     * limpo pelo mesmo código do painel, public/shared/faixa.js, quando a prévia está no pacote): o fundo, a cor, a fonte,
+     * o tamanho (% da altura da faixa), o separador e a etiqueta. Sem estilo, a faixa de sempre.
+     */
+    // o começo de cada faixa (pelo texto dela): redesenhar a tela (rev nova, troca de bloco) não faz o texto voltar ao
+    // começo; a posição continua de onde estava
+    var inicioFaixa = {};
+
+    function faixa(caixa, avisos, prog) {
+      if (!avisos.length) return;
+      var P = raiz.TelasPrevia;
+      var est = prog.faixaEstilo && P && P.cleanTickerStyle ? P.cleanTickerStyle(prog.faixaEstilo) : null;
+      var t = el('div', 'faixa');
+      var sep = est ? P.sepText(est.sep) : '•';
+      var ESP = '\u00a0\u00a0\u00a0\u00a0'; // espaços que não somem (o separador fica no meio)
+      var juntar = sep ? ESP + sep + ESP : ESP + '\u00a0\u00a0';
+      // uma volta do texto: os avisos e, no fim, o separador (a volta seguinte encosta nela sem salto)
+      var volta = function () {
+        var s = el('span', 'faixa-volta');
+        avisos.forEach(function (a) {
+          var p = el('span', 'faixa-aviso', a.texto);
+          if (a.cor) p.style.color = a.cor;
+          if (a.negrito) p.style.fontWeight = '700';
+          if (a.italico) p.style.fontStyle = 'italic';
+          s.appendChild(p);
+          s.appendChild(el('span', 'faixa-sep', juntar));
+        });
+        return s;
+      };
+      var trilho = el('div', 'faixa-trilho');
+      var primeira = volta();
+      trilho.appendChild(primeira);
+      t.appendChild(trilho);
+      if (est) {
+        caixa.style.background = est.bg;
+        t.style.color = est.color;
+        t.style.fontWeight = est.bold ? '700' : '400';
+        t.style.fontStyle = est.italic ? 'italic' : 'normal';
+        t.style.fontFamily = P.fontCss(est.font);
+        t.style.fontSize = Math.round(caixa.offsetHeight * est.size / 100) + 'px';
+        if (est.label) {
+          var et = el('div', 'faixa-etiqueta', est.label);
+          et.style.color = est.labelColor; et.style.background = est.labelBg;
+          et.style.fontSize = t.style.fontSize; et.style.fontFamily = t.style.fontFamily;
+          caixa.appendChild(et);
+          caixa.classList.add('com-etiqueta');
+        }
+      }
+      caixa.appendChild(t);
+      // velocidade do contrato: dp/s (60 ≈ 120 px/s em 1080p)
+      var px = prog.velocidade * (window.innerHeight / 540);
+      var chave = avisos.map(function (a) { return a.texto; }).join('\n');
+      // videowall: a posição sai do epoch do conjunto (a mesma conta nas outras TVs); senão, do começo desta faixa
+      var t0 = prog.conjunto && prog.conjunto.modo === 'wall' ? prog.conjunto.epoch
+        : (inicioFaixa[chave] || (inicioFaixa[chave] = ctx.agora()));
+      var tentativas = 0;
+      var comecar = function () {
+        if (!document.documentElement.contains(t)) return;
+        var cw = primeira.offsetWidth, W = t.offsetWidth;
+        // a página ainda sem tamanho: tenta de novo logo depois
+        if (!cw || !W) { if (tentativas++ < 20) setTimeout(comecar, 250); return; }
+        // voltas suficientes para cobrir a faixa duas vezes: anda uma "volta longa" (n voltas) e recomeça no mesmo desenho
+        var n = Math.max(1, Math.ceil(W / cw));
+        for (var k = 1; k < n * 2; k++) trilho.appendChild(volta());
+        var L = cw * n, dur = Math.max(2000, L / px * 1000);
+        var fase = ((ctx.agora() - t0) % dur + dur) % dur;
+        // só transform (o compositor anima sozinho, sem recalcular a página a cada quadro): a animação do próprio
+        // elemento (Web Animations, Chromium 36+), com a fase do relógio; sem ela, a animação de CSS com atraso negativo
+        if (trilho.animate) {
+          var an = trilho.animate([{ transform: 'translate3d(0,0,0)' }, { transform: 'translate3d(' + (-L) + 'px,0,0)' }],
+            { duration: dur, iterations: Infinity, easing: 'linear' });
+          try { an.currentTime = fase; } catch (e) { /* nada */ }
+        } else {
+          var nome = 'rolar' + Math.round(L);
+          var st = el('style', null, '@keyframes ' + nome + ' { from { transform: translate3d(0,0,0); } to { transform: translate3d(' + (-L) + 'px,0,0); } }');
+          t.appendChild(st);
+          trilho.style.animation = nome + ' ' + (dur / 1000) + 's linear ' + (-fase / 1000) + 's infinite';
+        }
+      };
+      setTimeout(comecar, 60);
+    }
+
+    /** Os avisos da tela: os com estilo (ticker.rich) quando vierem, senão só o texto (ticker.items). */
+    function avisosDa(prog) {
+      if (prog.avisosRicos) return prog.avisosRicos;
+      return prog.avisos.map(function (x) { return { texto: x }; });
+    }
+
+    /**
+     * Zona de vídeo: o ao vivo (stream.hls) pelo controlador TelasAoVivo, que fica numa camada própria e sobrevive
+     * aos redesenhos; quando ele desiste (3 recargas sem andar) ou não há ao vivo, os vídeos guardados em laço nesta
+     * zona, e o ao vivo é tentado de novo depois (30 s, 60 s… até 5 min).
+     */
+    function zonaVideo(caixa, prog, ret) {
+      var guardados = prog.offline.itens, k = 0, emReserva = false;
+      function guardado() {
+        if (!guardados.length) return semVideo();
+        var f = guardados[k++ % guardados.length];
+        ctx.url(f.sha256).then(function (u) {
+          if (!emReserva) return;
+          if (!u) return timers.push(setTimeout(guardado, 1000));
+          var v = novoVideo();
+          v.onended = guardado;
+          v.onerror = function () { timers.push(setTimeout(guardado, 1000)); };
+          v.src = u;
+          trocar(caixa, v);
+          tocar(v);
+        });
+      }
+      function semVideo() {
+        // nada para passar: a imagem sem internet ou a logo da revenda
+        var c = el('div', 'item');
+        if (prog.offline.imagem) ctx.url(prog.offline.imagem.sha256).then(function (u) { if (u) { var i = el('img', 'midia'); i.src = u; c.appendChild(i); } });
+        else logo(c, prog);
+        trocar(caixa, c);
+      }
+      var vivo = ctx.aoVivo;
+      if (prog.stream.hls && vivo && vivo.suporta(prog.stream.hls)) {
+        usouVivo = true;
+        var rodada = 0;
+        var aoVivo = function () {
+          emReserva = false;
+          trocar(caixa, el('div', 'item')); // a zona fica vazia (transparente): o ao vivo aparece pela camada dele
+          vivo.tocar(prog.stream.hls, ret, function () {
+            emReserva = true;
+            guardado();
+            timers.push(setTimeout(aoVivo, N.esperaAoVivo(rodada++) * 1000));
+          });
+        };
+        aoVivo();
+      } else {
+        emReserva = true;
+        guardado();
+      }
+    }
+
+    /** Mostra o bloco da programação. */
+    /** Zona de relógio, logomarca, clima, QR ou texto fixo, com o desenho da prévia. */
+    function zonaFixa(c, zona, prog) {
+      var n = zona.kind === 'text'
+        ? raiz.TelasPrevia.itemPreview({ kind: 'text', title: zona.title, text: zona.text }, { theme: tema(prog) })
+        : zonaPrevia(zona.kind, zona.kind === 'qr' ? { qr: zona.qr, title: zona.title } : null, prog);
+      if (!n) return;
+      var z = el('div', 'tvc-z' + (c._ov || ''));
+      z.appendChild(n);
+      c.appendChild(z);
+      medidas(c);
+    }
+
+    var usouVivo = false, usouHdmi = false, vezHdmi = 0;
+
+    /**
+     * A zona da entrada HDMI (só Samsung): a janela de TV fica ATRÁS da página, então a página precisa ser transparente
+     * no retângulo da zona: o fundo do layout sai do html/body/#conteudo e é pintado em volta do retângulo (4 faixas),
+     * e as outras zonas seguem por cima ou ao lado. Sem sinal, entrada que a TV não tem ou API que falha: um aviso
+     * discreto na zona, o erro vai para o diagnóstico, e o resto do layout continua.
+     */
+    function zonaHdmi(c, zona, prog, jan, alvo, bloco) {
+      usouHdmi = true;
+      var vez = ++vezHdmi;
+      var n = ctx.hdmiEntrada ? ctx.hdmiEntrada() : 1;
+      c.className += ' zona-hdmi';
+      var fundo = (bloco && bloco.layout.fundo) || prog.marca.fundo || '#000';
+      var aviso = function (txt) {
+        if (c._aviso) c.removeChild(c._aviso);
+        c._aviso = el('div', 'hdmi-aviso', txt);
+        c.appendChild(c._aviso);
+      };
+      // outra TV (LG) ou navegador: sem a janela de TV, a zona fica com o fundo do layout e o aviso (sem buraco na página)
+      if (!ctx.hdmi || !ctx.hdmi.disponivel()) { c.style.background = fundo; aviso('Entrada HDMI ' + n + ' (só na TV Samsung)'); return; }
+      var faixas = [[0, 0, 100, zona.y], [0, zona.y + zona.h, 100, 100 - zona.y - zona.h], [0, zona.y, zona.x, zona.h], [zona.x + zona.w, zona.y, 100 - zona.x - zona.w, zona.h]];
+      faixas.forEach(function (f) {
+        if (f[2] <= 0 || f[3] <= 0) return;
+        var d = el('div', 'hdmi-fundo');
+        d.style.left = f[0] + '%'; d.style.top = f[1] + '%'; d.style.width = f[2] + '%'; d.style.height = f[3] + '%';
+        d.style.background = fundo;
+        alvo.insertBefore(d, alvo.firstChild); // embaixo das zonas
+      });
+      raizEl.style.background = 'transparent';
+      document.body.style.background = 'transparent';
+      document.documentElement.style.background = 'transparent';
+      ctx.hdmi.mostrar(n, N.retanguloNaTela(zona, jan), function (r) {
+        if (vez !== vezHdmi) return; // o layout já mudou
+        if (!r.ok) { aviso('Entrada HDMI ' + n + ' indisponível'); if (ctx.aoErro) ctx.aoErro('HDMI ' + n + ': ' + r.motivo); return; }
+        if (r.conectada === false) { aviso('Entrada HDMI ' + n + ' sem sinal'); if (ctx.aoErro) ctx.aoErro('HDMI ' + n + ' sem sinal'); }
+      });
+    }
+
+    function semHdmi(prog) {
+      vezHdmi++;
+      if (ctx.hdmi) ctx.hdmi.esconder();
+      document.documentElement.style.background = '';
+      document.body.style.background = (prog && prog.marca && prog.marca.fundo) || '#000';
+    }
+
+    function mostrar(prog, bloco) {
+      limpar();
+      usouVivo = false;
+      usouHdmi = false;
+      desenharBloco(prog, bloco);
+      // o bloco novo não tem a zona HDMI: a janela de TV some e a página volta a ter fundo
+      if (!usouHdmi) semHdmi(prog);
+      // o bloco novo não tem zona de vídeo (ou não tem ao vivo): o ao vivo para
+      if (!usouVivo && ctx.aoVivo) ctx.aoVivo.parar();
+      // a rádio de fundo: a do layout no ar (a mesma continua tocando); layout sem rádio, ou com vídeo, para
+      if (ctx.radio) {
+        ctx.radio.abafar(false);
+        var audio = bloco && bloco.layout && bloco.layout.audio;
+        if (audio) ctx.radio.tocar(audio); else ctx.radio.parar();
+      }
+    }
+
+    /**
+     * O formato especial da zona (zone.shape): clip-path: polygon() com os pontos de public/shared/tvcorp-formas.js (as TVs
+     * de 2018–2020 não têm clip-path: path()), medidos no tamanho real da zona; e o filete (zone.edge) num <svg> por cima,
+     * na largura em % da altura da tela. Devolve o polygon() (para o ao vivo, na camada dele) ou null.
+     */
+    function recorte(c, zona, alvo, tentativa) {
+      var P = raiz.TelasPrevia;
+      if (!zona.forma || !P || !P.shapePolygon) return null;
+      var W = c.offsetWidth, H = c.offsetHeight;
+      if (!W || !H) {
+        // a página ainda sem tamanho (desenhada antes de aparecer): tenta de novo logo depois
+        if ((tentativa || 0) < 20) timers.push(setTimeout(function () { if (c.parentNode) recorte(c, zona, alvo, (tentativa || 0) + 1); }, 250));
+        return null;
+      }
+      var pts = P.shapePolygon(zona.forma, W, H);
+      if (!pts || pts.length < 3) return null; // formato que esta versão não conhece: o retângulo
+      var lista = pts.map(function (p) { return p[0] + '% ' + p[1] + '%'; }).join(', ');
+      var css = 'polygon(' + lista + ')';
+      c.style.webkitClipPath = css;
+      c.style.clipPath = css;
+      if (zona.kind === 'video') {
+        // o ao vivo da Samsung (AVPlay) é um plano de vídeo por baixo da página: não recorta nem obedece a camadas, e o
+        // <video> de HLS da TV também não (e pesa: a faixa engasgava). O vídeo fica no retângulo e uma máscara com o fundo do
+        // layout cobre o que fica fora do formato (o retângulo menos o formato, polygon evenodd), acima da camada do vídeo
+        var mascara = el('div', 'zona-mascara');
+        // 1 px a mais em cada lado: a borda do vídeo não aparece como um fio na emenda
+        mascara.style.left = 'calc(' + c.style.left + ' - 1px)'; mascara.style.top = 'calc(' + c.style.top + ' - 1px)';
+        mascara.style.width = 'calc(' + c.style.width + ' + 2px)'; mascara.style.height = 'calc(' + c.style.height + ' + 2px)';
+        mascara.style.background = (atual && atual.bloco && atual.bloco.layout.fundo) || raizEl.style.background || '#000';
+        var inv = 'polygon(evenodd, 0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, ' + lista + ', ' + pts[0][0] + '% ' + pts[0][1] + '%, 0% 0%)';
+        mascara.style.webkitClipPath = inv;
+        mascara.style.clipPath = inv;
+        alvo.appendChild(mascara);
+      }
+      if (zona.filete && P.edgeCommands && P.toPathD) {
+        var NS = 'http://www.w3.org/2000/svg';
+        var svg = document.createElementNS(NS, 'svg');
+        svg.setAttribute('class', 'zona-filete');
+        svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+        svg.setAttribute('preserveAspectRatio', 'none');
+        svg.style.left = c.style.left; svg.style.top = c.style.top; svg.style.width = c.style.width; svg.style.height = c.style.height;
+        svg.style.zIndex = c.style.zIndex || (zona.kind === 'video' ? '2' : '');
+        var p = document.createElementNS(NS, 'path');
+        p.setAttribute('d', P.toPathD(P.edgeCommands(zona.forma, W, H)));
+        p.setAttribute('fill', 'none');
+        p.setAttribute('stroke', zona.filete.cor);
+        p.setAttribute('stroke-width', String(Math.max(1, zona.filete.largura / 100 * (window.innerHeight || 1080))));
+        p.setAttribute('stroke-linecap', 'round');
+        p.setAttribute('stroke-linejoin', 'round');
+        svg.appendChild(p);
+        alvo.appendChild(svg);
+      }
+      return css;
+    }
+
+    function desenharBloco(prog, bloco) {
+      atual = { prog: prog, bloco: bloco };
+      raizEl.style.background = (bloco && bloco.layout.fundo) || prog.marca.fundo || '#000';
+      if (!bloco) {
+        // sem TV Corporativa/grade: tela cheia com o vídeo (como o layout `full` do Android) e os avisos embaixo
+        var z = el('div', 'zona');
+        z.style.left = '0'; z.style.top = '0'; z.style.width = '100%';
+        z.style.height = prog.avisos.length ? '90%' : '100%';
+        raizEl.appendChild(z);
+        zonaVideo(z, prog, { x: 0, y: 0, w: 100, h: prog.avisos.length ? 90 : 100 });
+        if (prog.avisos.length) {
+          var f = el('div', 'zona zona-ticker');
+          f.style.left = '0'; f.style.top = '90%'; f.style.width = '100%'; f.style.height = '10%';
+          raizEl.appendChild(f);
+          faixa(f, avisosDa(prog), prog);
+        }
+        return;
+      }
+      // videowall (signage.wall.mode 'wall'): o layout vale para o conjunto inteiro; esta TV desenha o quadro todo (com a
+      // moldura) e mostra só a janela dela. Sem grid/clamp: position absolute em % (TVs de 2018–2020)
+      var alvo = raizEl, jan = null;
+      if (prog.conjunto && prog.conjunto.modo === 'wall') {
+        jan = N.janelaConjunto(prog.conjunto);
+        alvo = el('div', 'quadro-conjunto');
+        alvo.style.left = jan.offsetX + '%'; alvo.style.top = jan.offsetY + '%';
+        alvo.style.width = jan.scaleX + '%'; alvo.style.height = jan.scaleY + '%';
+        raizEl.appendChild(alvo);
+      }
+      N.zonasParaTela(bloco.layout.zonas, bloco.itens).forEach(function (zona) {
+        var c = el('div', 'zona zona-' + zona.kind);
+        c.style.left = zona.x + '%'; c.style.top = zona.y + '%'; c.style.width = zona.w + '%'; c.style.height = zona.h + '%';
+        // a zona por cima: acima da camada do ao vivo (z-index 1) e com o vidro translúcido da prévia (.tvc-ov.tvc-op-N)
+        if (zona.overlay) { c.style.zIndex = '3'; c._ov = ' tvc-ov tvc-op-' + zona.opacidade; c.className += ' zona-ov'; }
+        // a zona com formato entra na vizinha (que pode ser o vídeo): fica acima da camada do ao vivo, abaixo das de cima
+        else if (zona.forma && zona.kind !== 'video') c.style.zIndex = '2';
+        alvo.appendChild(c);
+        var recorteCss = recorte(c, zona, alvo);
+        var itens = bloco.itens[zona.id] || [];
+        // o ao vivo fica na camada dele, posicionada na tela: a zona do quadro do conjunto vira % desta tela (com o recorte)
+        if (zona.kind === 'video') { var rv = N.retanguloNaTela(zona, jan); rv.cobrir = zona.preencher; /* proporcional por padrão; cover só com zone.fit 'cover' */ if (recorteCss) rv.recorte = recorteCss; zonaVideo(c, prog, rv); }
+        else if (zona.kind === 'hdmi') zonaHdmi(c, zona, prog, jan, alvo, bloco);
+        else if (zona.kind === 'playlist') playlist(c, itens, prog);
+        else if (zona.kind === 'ticker') faixa(c, avisosDa(prog).concat(itens.filter(function (i) { return i.kind === 'text'; }).map(function (i) { return { texto: i.title || i.text }; })), prog);
+        else if (raiz.TelasPrevia && !itens.length && ['clock', 'logo', 'weather', 'qr', 'text'].indexOf(zona.kind) >= 0) zonaFixa(c, zona, prog);
+        else if (zona.kind === 'clock') relogio(c, prog);
+        else if (zona.kind === 'logo') logo(c, prog);
+        else if (zona.kind === 'text') { var cc = el('div', 'cartao'); if (zona.title) cc.appendChild(el('div', 'titulo', zona.title)); if (zona.text) cc.appendChild(el('div', 'texto', zona.text)); c.appendChild(cc); }
+        else if (itens.length) playlist(c, itens, prog); // news, quotes… com itens: como playlist
+      });
+    }
+
+    return {
+      mostrar: mostrar,
+      calar: calar,
+      // limpar por fora (tela revogada, TV desligada pelo horário, conteúdo apagado) para também o ao vivo
+      limpar: function () { limpar(); if (ctx.aoVivo) ctx.aoVivo.parar(); if (ctx.radio) ctx.radio.parar(); semHdmi(atual && atual.prog); },
+      atual: function () { return atual; }
+    };
+  }
+
+  raiz.TelasTela = { criar: criar };
+})(typeof self !== 'undefined' ? self : this);

@@ -16,7 +16,7 @@ const officeName = (id) => (id == null ? 'Empresa toda' : D().offices.find((o) =
 const secs = (n) => { const m = Math.floor(n / 60); const s = n % 60; return m ? `${m} min${s ? ` ${s} s` : ''}` : `${s} s`; };
 
 /** As listas que os itens citam (lidas ao abrir o editor; uma que falhe fica vazia). */
-async function sources() {
+export async function sources() {
   const get = ([p, key]) => tapi(p).then((r) => listOf(r, key)).catch(() => []);
   const [media, posts, kpis, feeds, widgets, people] = await Promise.all([['/api/tvcorp/media', 'media'], ['/api/tvcorp/posts', 'posts'], ['/api/tvcorp/kpis', 'kpis'], ['/api/tvcorp/feeds', 'feeds'], ['/api/tvcorp/widgets', 'widgets'], ['/api/tvcorp/people?limit=500', 'people']].map(get));
   return { media: media.filter((m) => m.status !== 'rejected'), posts, kpis, feeds: feeds.filter((x) => x.kind === 'rss' || x.kind === 'quotes' || x.kind === 'weather'), widgets, people };
@@ -34,7 +34,7 @@ export function itemTitle(it, src) {
   return k;
 }
 /** O item como o app desenha, com os dados que o painel tem (a prévia; na TV os dados vêm prontos do servidor). */
-async function previewOf(it, src) {
+export async function previewOf(it, src, { orient = null } = {}) {
   const theme = themeOf();
   const find = (list) => list.find((x) => x.id === it.refId);
   if (it.refKind === 'media') {
@@ -42,7 +42,8 @@ async function previewOf(it, src) {
     if (m.kind === 'slide') {
       // a foto do slide (boas-vindas, oferta…) é outra mídia, guardada pelo número em fields.image
       const image = m.fields?.image ? await tblob(`/api/tvcorp/media/${m.fields.image}/file`).catch(() => null) : null;
-      return itemPreview({ kind: 'slide', template: m.template, fields: m.fields, image }, { theme });
+      // orient: a versão (deitado/em pé) que a zona escolhe, como o servidor manda para a TV
+      return itemPreview({ kind: 'slide', template: m.template, fields: orient ? { ...m.fields, orient } : m.fields, image }, { theme });
     }
     if (m.kind === 'video') return itemPreview({ kind: 'video', poster: m.poster ? await tblob(m.poster).catch(() => null) : null, seconds: m.seconds, title: m.title, processing: m.status !== 'ok' }, { theme });
     return itemPreview({ kind: 'image', url: await tblob(`/api/tvcorp/media/${m.id}/file`).catch(() => null), title: m.title }, { theme });
@@ -66,6 +67,11 @@ async function previewOf(it, src) {
   if (it.refKind === 'news' || it.refKind === 'quotes') {
     const x = find(src.feeds); const c = x?.preview || {};
     if (it.refKind === 'quotes') return itemPreview({ kind: 'quotes', title: x?.name, at: c.at, source: c.source || '', items: (c.items || []).map((i) => ({ label: i.code, value: i.sell ?? i.buy, change: i.change ?? null, prefix: 'R$', decimals: 2 })) }, { theme });
+    // cada notícia sozinha, como na TV: a prévia mostra a primeira (com a cópia da foto guardada pelo servidor)
+    if (it.params?.mode !== 'lista') {
+      const i = (c.items || [])[0];
+      return itemPreview({ kind: 'news', single: true, title: x?.name, source: c.source || '', image: i?.img?.file ? `/tvcorp/noticia/${i.img.file}` : null, items: i ? [{ ...i, source: c.source }] : [] }, { theme });
+    }
     return itemPreview({ kind: 'news', title: x?.name, items: (c.items || []).map((i) => ({ ...i, source: c.source })), source: c.source || x?.name || '' }, { theme });
   }
   if (it.refKind === 'widget') return itemPreview(widgetItem(find(src.widgets), { kpis: src.kpis, feeds: src.feeds }), { theme });

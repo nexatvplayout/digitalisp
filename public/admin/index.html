@@ -51,9 +51,24 @@
       <a href="#tvcorp/unidades" data-view="tvcorp" data-sub="unidades" data-area="revenda cliente" class="side-sub">Unidades e grupos</a>
       <a href="#tvcorp/comandos" data-view="tvcorp" data-sub="comandos" data-area="revenda cliente" class="side-sub">Comandos</a>
       <a href="#tvcorp/instalar" data-view="tvcorp" data-sub="instalar" data-area="revenda cliente" class="side-sub">Instalar o aplicativo</a>
+      <!-- prefeitura (modo órgão público, views/prefeitura.js): só com o modo no plano e a permissão prefeitura.manage -->
+      <div class="sep" data-area="revenda cliente" data-pref hidden>Prefeitura<span class="badge" id="pfBadge" hidden></span></div>
+      <a href="#prefeitura/mapa" data-view="prefeitura" data-sub="mapa" data-area="revenda cliente" data-pref hidden class="side-sub">Mapa</a>
+      <a href="#prefeitura/telas" data-view="prefeitura" data-sub="telas" data-area="revenda cliente" data-pref hidden class="side-sub">Telas</a>
+      <a href="#prefeitura/grupos" data-view="prefeitura" data-sub="grupos" data-area="revenda cliente" data-pref hidden class="side-sub">Grupos</a>
+      <a href="#prefeitura/reparticoes" data-view="prefeitura" data-sub="reparticoes" data-area="revenda cliente" data-pref hidden class="side-sub">Repartições</a>
+      <a href="#prefeitura/regioes" data-view="prefeitura" data-sub="regioes" data-area="revenda cliente" data-pref hidden class="side-sub">Regiões</a>
+      <a href="#prefeitura/alertas" data-view="prefeitura" data-sub="alertas" data-area="revenda cliente" data-pref hidden class="side-sub">Alertas</a>
+      <a href="#prefeitura/desaparecidos" data-view="prefeitura" data-sub="desaparecidos" data-area="revenda cliente" data-pref hidden class="side-sub">Desaparecidos</a>
+      <a href="#prefeitura/ocorrencias" data-view="prefeitura" data-sub="ocorrencias" data-area="revenda cliente" data-pref hidden class="side-sub">Ocorrências</a>
+      <a href="#prefeitura/senhas" data-view="prefeitura" data-sub="senhas" data-area="revenda cliente" data-pref hidden class="side-sub">Senhas</a>
+      <a href="#prefeitura/cartoes" data-view="prefeitura" data-sub="cartoes" data-area="revenda cliente" data-pref hidden class="side-sub">Cartões</a>
+      <a href="#prefeitura/videos" data-view="prefeitura" data-sub="videos" data-area="revenda cliente" data-pref hidden class="side-sub">Sem internet</a>
+      <a href="#prefeitura/aprovacoes" data-view="prefeitura" data-sub="aprovacoes" data-area="revenda cliente" data-pref hidden class="side-sub">Aprovações</a>
       <div class="sep" data-area="revenda cliente">Conteúdo</div>
       <a href="#tvcorp/midias" data-view="tvcorp" data-sub="midias" data-area="revenda cliente" class="side-sub">Mídias</a>
       <a href="#tvcorp/templates" data-view="tvcorp" data-sub="templates" data-area="revenda cliente" class="side-sub">Templates</a>
+      <a href="#tvcorp/qrcodes" data-view="tvcorp" data-sub="qrcodes" data-area="revenda cliente" class="side-sub">QR Codes</a>
       <a href="#tvcorp/aovivo" data-view="tvcorp" data-sub="aovivo" data-area="revenda cliente" class="side-sub">Ao vivo (HLS)</a>
       <a href="#tvcorp/playlists" data-view="tvcorp" data-sub="playlists" data-area="revenda cliente" class="side-sub">Playlists</a>
       <a href="#tvcorp/layouts" data-view="tvcorp" data-sub="layouts" data-area="revenda cliente" class="side-sub">Layouts</a>
@@ -81,6 +96,7 @@
       <div class="side-foot">
         <p class="who dim small" id="who"></p>
         <button type="button" class="small" id="logout">Sair</button>
+        <p class="versao dim" id="versao" title="Versão do sistema no ar"></p>
       </div>
     </nav>
     <main>
@@ -99,6 +115,10 @@
       <section class="view" id="view-tvcorp" hidden>
         <header class="head"><h2>Telas e conteúdo</h2><p class="dim tc-sub" data-area="revenda">As telas da própria revenda. As telas dos clientes ficam no painel de cada um (Clientes → Abrir o painel do cliente).</p></header>
         <section class="tc" id="tcPanel" aria-label="Telas e conteúdo"></section>
+      </section>
+      <section class="view" id="view-prefeitura" hidden>
+        <header class="head"><h2>Painel da Prefeitura</h2></header>
+        <section class="pf" id="pfPanel" aria-label="Painel da Prefeitura"></section>
       </section>
       <section class="view" id="view-revendas" hidden>
         <header class="head"><h2>Revendas</h2></header>

@@ -1,0 +1,15 @@
+{
+  "name": "digital-isp-apps-tv",
+  "version": "1.0.28",
+  "private": true,
+  "description": "Apps de tela para TVs Samsung (Tizen) e LG (webOS): o player web em comum/ e os empacotamentos",
+  "type": "commonjs",
+  "scripts": {
+    "test": "node --test \"teste/*.test.js\"",
+    "servidor-falso": "node teste/servidor-falso.js",
+    "empacotar": "node scripts/empacotar.js todos"
+  },
+  "devDependencies": {
+    "esbuild-wasm": "^0.28.2"
+  }
+}

@@ -8,6 +8,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { boot, cleanup, api, platformLogin, newTenant } from './helpers/srv.js';
+import { canal, usuario, auditoria } from './helpers/prefeitura.js'; // DIGITAL ISP: canal ao vivo (HLS) e usuário de permissão limitada
 
 const leaks = (v) => /token_hash|key_hash|link_hash|link_pass|"pass"|"pin"|"salt"|scrypt\$/.test(JSON.stringify(v));
 const ENV = { TELAS_LINK_LOGIN_PER_IP: '500', TELAS_LINK_LOGIN_PER_USER: '6', TELAS_ACTIVATE_PER_IP: '50', PUBLIC_HLS_URL: 'https://hls.exemplo.test' };
@@ -21,8 +22,8 @@ async function roteiro(s) {
   assert.equal((await P('POST', '/api/platform/plans', { code: 'p-pref', name: 'Prefeitura', priceCents: 0, profileId: prof.data.id, limits: { channels: 1 } })).status, 201);
   const A = await newTenant(P, s.base, { slug: 'ctl-a', planCode: 'p-pref', status: 'active' });
   const B = await newTenant(P, s.base, { slug: 'ctl-b', planCode: 'p-pref', status: 'active' });
-  assert.equal((await A.api('POST', '/api/channels', { name: 'TV A', slug: 'ctl-a-tv' })).status, 201);
-  assert.equal((await B.api('POST', '/api/channels', { name: 'TV B', slug: 'ctl-b-tv' })).status, 201);
+  await canal(A.api, 'TV A'); // DIGITAL ISP: o canal ao vivo (HLS) no lugar do canal do NEXA
+  await canal(B.api, 'TV B'); // DIGITAL ISP: o canal ao vivo (HLS) no lugar do canal do NEXA
   const post = async (T, url, body, want = 201) => { const r = await T.api('POST', url, body); assert.equal(r.status, want, `${url}: ${JSON.stringify(r.data)}`); return r.data; };
   const centro = await post(A, '/api/prefeitura/regions', { name: 'Centro' });
   const ubs = await post(A, '/api/prefeitura/offices', { name: 'UBS Centro', type: 'ubs', lat: -22.9, lng: -43.2, regionId: centro.id, address: 'Rua Um, 10', respName: 'Responsável de teste' });
@@ -278,7 +279,7 @@ async function roteiro(s) {
   assert.deepEqual((await A.api('PUT', '/api/prefeitura/defaults', { alertTexts: null })).data.alertTexts, {});
 
   /* ---------------------------------------------------------------- a auditoria leva quem fez */
-  const audit = JSON.stringify((await A.api('GET', '/api/audit?limit=500')).data);
+  const audit = JSON.stringify(await auditoria(s, A.id));
   for (const want of [/repartição: UBS Centro \(ana\.gestora\)/, /repartição: SECOM \(comunicacao\)/, /repartição: Defesa Civil \(plantao\)/, /usuário \\"ana\.gestora\\" \(gestor\) criado no painel da repartição \\"UBS Centro\\" \(a senha única do link deixou de valer\)/,
     /usuário \\"joao\.guiche\\" do painel da repartição \\"UBS Centro\\": senha trocada/, /comando screenshot para a tela .* pelo painel da repartição/, /tela \\"Recepção da UBS\\" \(#\d+\) revogada pelo painel da repartição/,
     /APROVADO pelo link da SECOM/, /RECUSADO: Confirme o horário de sábado\. pelo link da SECOM/, /aviso geral da prefeitura alterado pela SECOM/, /entrada pelo link de controle da repartição \(usuário ana\.gestora, gestor\)/]) assert.match(audit, want);

@@ -233,9 +233,25 @@ class SetupScreen(act: MainActivity, private var step: Int, private val message:
 
     private fun buildManaged() {
         val store = Engine.store
-        col.addView(Ui.label(act, "Endereço do servidor", 16f, Ui.MUTED), Ui.lp(top = gap(16f)))
+        val serverLabel = Ui.label(act, "Endereço do servidor", 16f, Ui.MUTED)
+        col.addView(serverLabel, Ui.lp(top = gap(16f)))
         val server = Ui.field(act, Store.defaultServer ?: "https://…", store.server)
         col.addView(server, Ui.lp(top = gap(4f)))
+        // com o servidor padrão do build (e nenhum outro gravado), o campo fica escondido num "avançado"
+        val def = Store.defaultServer
+        if (def != null && (store.server.isEmpty() || Urls.origin(store.server) == def)) {
+            serverLabel.visibility = View.GONE
+            server.visibility = View.GONE
+            col.addView(
+                Ui.button(act, "Avançado: usar outro servidor") { b ->
+                    serverLabel.visibility = View.VISIBLE
+                    server.visibility = View.VISIBLE
+                    b.visibility = View.GONE
+                    server.requestFocus()
+                },
+                Ui.lp(top = gap(4f)),
+            )
+        }
         col.addView(Ui.label(act, "Código de cadastro (gerado no painel, vale uma vez e por 24 h)", 16f, Ui.MUTED), Ui.lp(top = gap()))
         val key = Ui.field(act, "XXXX-XXXX")
         key.typeface = android.graphics.Typeface.MONOSPACE
@@ -700,6 +716,7 @@ class SettingsScreen(act: MainActivity) : Screen(act) {
             line("Som da chamada", act.callSoundSummary())
         }
         if (c?.internal != null) line("Tela interna", act.internalSummary())
+        if (Engine.managed) line("Desaparecidos", act.missingSummary())
         line(
             "Relógio",
             when {

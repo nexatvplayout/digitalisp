@@ -18,6 +18,8 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.TextView
+import br.com.digitalisp.telas.core.TickerRun
+import br.com.digitalisp.telas.core.TickerStyle
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
@@ -104,8 +106,28 @@ object Ui {
     }
 }
 
-/** Moldura do vídeo: encaixa o filho na proporção do vídeo (faixas pretas no que sobrar). */
+/**
+ * Moldura do vídeo: por padrão encaixa o filho na proporção do vídeo, inteiro (faixas pretas no que sobrar). Com [cover]
+ * (zona de vídeo com `fit: 'cover'`), preenche a moldura e corta as bordas.
+ */
 class VideoFrame(ctx: Context) : FrameLayout(ctx) {
+    /** A zona do vídeo tem formato (recorte) ou corta as bordas: o player desenha numa TextureView (a SurfaceView ignora o recorte). */
+    var forceTexture = false
+
+    /** Preencher a zona cortando as bordas (`fit: 'cover'`); falso = proporcional, sem cortar. */
+    var cover = false
+        set(v) {
+            if (v != field) {
+                field = v
+                if (v) forceTexture = true
+                requestLayout()
+            }
+        }
+
+    init {
+        clipChildren = true
+    }
+
     var aspect: Float = 16f / 9f
         set(v) {
             if (v > 0f && v != field) {
@@ -121,7 +143,8 @@ class VideoFrame(ctx: Context) : FrameLayout(ctx) {
         if (w == 0 || h == 0) return
         var cw = w
         var ch = (w / aspect).toInt()
-        if (ch > h) {
+        // proporcional: o vídeo inteiro cabe (faixas pretas); cover: o vídeo cobre tudo (as bordas saem da moldura)
+        if (if (cover) ch < h else ch > h) {
             ch = h
             cw = (h * aspect).toInt()
         }
@@ -142,17 +165,28 @@ class VideoFrame(ctx: Context) : FrameLayout(ctx) {
     }
 }
 
-/** Faixa de avisos rolando da direita para a esquerda. */
+/**
+ * Faixa de avisos rolando da direita para a esquerda. Com `ticker.style` (DIGITAL ISP): cores, negrito, itálico, tamanho
+ * (% da altura), fonte, separador e a etiqueta fixa à esquerda; com `ticker.rich`, cada aviso com a cor e o estilo dele.
+ */
 class TickerView(ctx: Context) : View(ctx) {
-    private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    /** Um pedaço do texto: o que escrever e com que pincel. */
+    private class Run(val text: String, val paint: Paint, var width: Float = 0f)
+
+    private val base = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
         typeface = Typeface.DEFAULT_BOLD
     }
-    private var unit = ""
+    private val labelText = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val labelBg = Paint()
+    private var runs: List<Run> = emptyList()
     private var unitWidth = 0f
     private var offset = 0f
     private var lastAt = 0L
     private var speedPx = 0f
+    private var style: TickerStyle? = null
+    private var label = ""
+    private var labelW = 0f
     var running = true
         set(v) {
             field = v
@@ -164,10 +198,50 @@ class TickerView(ctx: Context) : View(ctx) {
         setBackgroundColor(0xFF0B1E3A.toInt())
     }
 
+    private fun face(font: String, bold: Boolean, italic: Boolean): Typeface {
+        val fam = when (font) {
+            "serif" -> Typeface.SERIF
+            "mono" -> Typeface.MONOSPACE
+            "condensada" -> Typeface.create("sans-serif-condensed", Typeface.NORMAL)
+            else -> Typeface.SANS_SERIF
+        }
+        val st = when {
+            bold && italic -> Typeface.BOLD_ITALIC
+            bold -> Typeface.BOLD
+            italic -> Typeface.ITALIC
+            else -> Typeface.NORMAL
+        }
+        return Typeface.create(fam, st)
+    }
+
     /** `speed` do contrato tratado como dp por segundo. */
-    fun set(items: List<String>, speed: Int) {
-        val text = items.joinToString("      •      ")
-        unit = if (text.isEmpty()) "" else "$text      •      "
+    fun set(items: List<String>, speed: Int, style: TickerStyle? = null, rich: List<TickerRun> = emptyList()) {
+        this.style = style
+        setBackgroundColor(style?.bg ?: 0xFF0B1E3A.toInt())
+        val color = style?.color ?: Color.WHITE
+        val bold = style?.bold ?: true
+        val italic = style?.italic ?: false
+        val font = style?.font ?: "sans"
+        base.color = color
+        base.typeface = face(font, bold, italic)
+        val sep = if (style == null) "•" else style.sep
+        val gap = if (sep.isEmpty()) "        " else "      $sep      "
+        // os avisos com estilo, se vieram na mesma quantidade do texto simples; senão, o texto simples
+        val list: List<TickerRun> = if (rich.isNotEmpty()) rich else items.map { TickerRun(it, null, false, false) }
+        val out = ArrayList<Run>()
+        for (r in list) {
+            val p = if (r.color == null && !r.bold && !r.italic) base else Paint(base).apply {
+                r.color?.let { c -> this.color = c }
+                typeface = face(font, bold || r.bold, italic || r.italic)
+            }
+            out.add(Run(r.text, p))
+            out.add(Run(gap, base))
+        }
+        runs = out
+        label = style?.label.orEmpty()
+        labelText.color = style?.labelColor ?: Color.WHITE
+        labelText.typeface = face(font, true, false)
+        labelBg.color = style?.labelBg ?: 0xFF1D4ED8.toInt()
         speedPx = Ui.dp(context, speed.toFloat()).toFloat()
         remeasure()
         offset = -width.toFloat() // começa entrando pela direita
@@ -175,8 +249,17 @@ class TickerView(ctx: Context) : View(ctx) {
     }
 
     private fun remeasure() {
-        paint.textSize = (height - paddingTop - paddingBottom) * 0.52f
-        unitWidth = if (unit.isEmpty()) 0f else paint.measureText(unit)
+        val inner = (height - paddingTop - paddingBottom).toFloat()
+        val size = inner * ((style?.size ?: 52) / 100f)
+        for (r in runs) r.paint.textSize = size
+        base.textSize = size
+        unitWidth = 0f
+        for (r in runs) {
+            r.width = r.paint.measureText(r.text)
+            unitWidth += r.width
+        }
+        labelText.textSize = size * 0.85f
+        labelW = if (label.isEmpty()) 0f else labelText.measureText(label) + size * 1.2f
     }
 
     override fun setPadding(left: Int, top: Int, right: Int, bottom: Int) {
@@ -198,15 +281,28 @@ class TickerView(ctx: Context) : View(ctx) {
         if (offset >= unitWidth) offset -= unitWidth
         // margem do overscan (padding): o fundo vai até a borda; o texto corre só dentro da área segura
         val inner = (height - paddingTop - paddingBottom).toFloat()
-        val base = paddingTop + inner / 2f - (paint.descent() + paint.ascent()) / 2f
+        val baseline = paddingTop + inner / 2f - (base.descent() + base.ascent()) / 2f
+        val left = paddingLeft + labelW
         canvas.save()
-        canvas.clipRect(paddingLeft.toFloat(), paddingTop.toFloat(), (width - paddingRight).toFloat(), (height - paddingBottom).toFloat())
-        var x = paddingLeft - offset
+        canvas.clipRect(left, paddingTop.toFloat(), (width - paddingRight).toFloat(), (height - paddingBottom).toFloat())
+        var x = left - offset
         while (x < width) {
-            if (x + unitWidth > 0) canvas.drawText(unit, x, base, paint)
+            if (x + unitWidth > 0) {
+                var rx = x
+                for (r in runs) {
+                    if (rx + r.width > left && rx < width) canvas.drawText(r.text, rx, baseline, r.paint)
+                    rx += r.width
+                }
+            }
             x += unitWidth
         }
         canvas.restore()
+        if (labelW > 0f) {
+            // a etiqueta fixa à esquerda (ex.: AVISOS), na altura da faixa inteira
+            canvas.drawRect(0f, 0f, left, height.toFloat(), labelBg)
+            val lb = paddingTop + inner / 2f - (labelText.descent() + labelText.ascent()) / 2f
+            canvas.drawText(label, paddingLeft + labelText.textSize * 0.6f, lb, labelText)
+        }
         if (running) postInvalidateOnAnimation()
     }
 }

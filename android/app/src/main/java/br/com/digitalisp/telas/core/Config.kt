@@ -12,7 +12,19 @@ enum class Layout { FULL, TICKER, SIDE, LBAR, PORTRAIT, QUEUE }
 
 data class DeviceCfg(val id: Long, val name: String, val office: String, val officeType: String, val region: String)
 data class StreamCfg(val hls: String?, val backup: String?, val volume: Int, val muted: Boolean)
-data class TickerCfg(val items: List<String>, val speed: Int)
+data class TickerCfg(val items: List<String>, val speed: Int, val style: TickerStyle? = null, val rich: List<TickerRun> = emptyList())
+
+/**
+ * O estilo da faixa (`ticker.style`, public/shared/faixa.js): cores ARGB, `size` em % da altura da faixa (30 a 90),
+ * `font` (sans, serif, condensada, mono), `sep` (o texto entre os avisos) e a etiqueta fixa à esquerda ("" = sem).
+ */
+data class TickerStyle(
+    val color: Int, val bg: Int, val bold: Boolean, val italic: Boolean, val size: Int, val font: String, val sep: String,
+    val label: String, val labelColor: Int, val labelBg: Int,
+)
+
+/** Um aviso com o estilo dele (`ticker.rich`): cor (null = a da faixa), negrito e itálico. */
+data class TickerRun(val text: String, val color: Int?, val bold: Boolean, val italic: Boolean)
 data class SideCfg(val widgets: List<String>, val qrUrl: String?, val title: String?)
 data class LockCfg(val pinHash: String, val pinSalt: String, val exitSeq: List<String>) {
     val hasPin: Boolean get() = pinHash.isNotEmpty()
@@ -22,13 +34,19 @@ data class OfflineItem(val url: String, val sha256: String, val bytes: Long)
 /** Minutos desde a meia-noite; `days` com 0 = domingo … 6 = sábado (7 também vale como domingo). Vazio = todo dia. */
 data class ScheduleCfg(val onMin: Int, val offMin: Int, val days: Set<Int>)
 
-/** Clima (contrato §7.1). `icon`: clear | cloudy | partly | rain | storm | fog. `at` = quando o servidor mediu (epoch ms). */
-data class WeatherCfg(val city: String, val tempC: Int?, val condition: String, val icon: String, val at: Long) {
-    /** Clima velho demais (aparelho dias sem rede) engana: some depois de 3 h. Sem `at`, vale. */
+/**
+ * Clima (contrato §7.1). `icon`: clear | cloudy | partly | rain | storm | fog. `at` = quando o servidor mediu (epoch ms).
+ * `art`/`artPort`: a foto do tempo, deitada e em pé (DIGITAL ISP), para a zona de clima.
+ */
+data class WeatherCfg(
+    val city: String, val tempC: Int?, val condition: String, val icon: String, val at: Long,
+    val art: SignageFile? = null, val artPort: SignageFile? = null,
+) {
+    /** Clima velho demais (aparelho dias sem rede) engana: some depois de 6 h. Sem `at`, vale. */
     fun fresh(now: Long): Boolean = at <= 0L || now - at < MAX_AGE_MS
 
     companion object {
-        const val MAX_AGE_MS = 3 * 60 * 60 * 1000L
+        const val MAX_AGE_MS = 6 * 60 * 60 * 1000L
         val ICONS = setOf("clear", "cloudy", "partly", "rain", "storm", "fog")
     }
 }
@@ -140,6 +158,60 @@ object ConfigParser {
         return out
     }
 
+    /** O clima do /config (null = sem clima: cidade não configurada, ou temperatura e texto vazios). */
+    fun weather(it: JSONObject?): WeatherCfg? {
+        if (it == null) return null
+        val temp = it.optDouble("tempC", Double.NaN)
+        val w = WeatherCfg(
+            city = (str(it, "city") ?: "").take(60),
+            tempC = if (temp.isNaN() || temp < -90 || temp > 70) null else Math.round(temp).toInt(),
+            condition = (str(it, "condition") ?: "").take(60),
+            icon = str(it, "icon")?.lowercase()?.takeIf { i -> i in WeatherCfg.ICONS } ?: "cloudy",
+            at = it.optLong("at", 0L).coerceAtLeast(0L),
+            art = Signage.file(it.optJSONObject("art")),
+            artPort = Signage.file(it.optJSONObject("artPort")),
+        )
+        return if (w.tempC == null && w.condition.isEmpty()) null else w
+    }
+
+    private val HEX6 = Regex("#[0-9a-fA-F]{6}")
+    private fun hex(v: Any?, def: Int): Int = (v as? String)?.trim()?.takeIf { HEX6.matches(it) }?.let { (0xFF000000 or it.substring(1).toLong(16)).toInt() } ?: def
+
+    val TICKER_FONTS = setOf("sans", "serif", "condensada", "mono")
+    val TICKER_SEPS = mapOf("ponto" to "•", "barra" to "|", "traco" to "—", "estrela" to "★", "nada" to "")
+
+    /** O estilo da faixa (o que faltar ou vier errado fica no padrão de faixa.js); ausente = null (o desenho de sempre). */
+    fun tickerStyle(v: JSONObject?): TickerStyle? {
+        if (v == null) return null
+        val size = (v.opt("size") as? Number)?.toDouble()?.let { if (it.isNaN()) null else Math.round(it).toInt() }
+        return TickerStyle(
+            color = hex(v.opt("color"), 0xFFFFFFFF.toInt()),
+            bg = hex(v.opt("bg"), 0xFF0B1E3A.toInt()),
+            bold = if (v.has("bold")) v.opt("bold") == true else true,
+            italic = v.opt("italic") == true,
+            size = size?.coerceIn(30, 90) ?: 52,
+            font = (v.opt("font") as? String)?.takeIf { it in TICKER_FONTS } ?: "sans",
+            sep = TICKER_SEPS[(v.opt("sep") as? String)] ?: "•",
+            label = ((v.opt("label") as? String) ?: "").filter { it.code >= 0x20 }.trim().take(20),
+            labelColor = hex(v.opt("labelColor"), 0xFFFFFFFF.toInt()),
+            labelBg = hex(v.opt("labelBg"), 0xFF1D4ED8.toInt()),
+        )
+    }
+
+    /** Os avisos com estilo: { text, color?, bold?, italic? }; sem texto, sai. */
+    fun tickerRich(a: JSONArray?): List<TickerRun> {
+        if (a == null) return emptyList()
+        val out = ArrayList<TickerRun>()
+        for (i in 0 until a.length()) {
+            val o = a.optJSONObject(i) ?: continue
+            val t = (o.opt("text") as? String)?.replace(Regex("\\s+"), " ")?.trim()?.take(300) ?: continue
+            if (t.isEmpty()) continue
+            out.add(TickerRun(t, (o.opt("color") as? String)?.let { if (HEX6.matches(it.trim())) hex(it, 0) else null }, o.opt("bold") == true, o.opt("italic") == true))
+            if (out.size >= 60) break
+        }
+        return out
+    }
+
     fun layoutOf(raw: String?): Layout = when (raw?.trim()?.lowercase()) {
         "ticker" -> Layout.TICKER
         "lbar" -> Layout.LBAR
@@ -163,17 +235,7 @@ object ConfigParser {
         val up = o.optJSONObject("update")
         val layoutRaw = str(o, "layout") ?: "full"
 
-        val weather = o.optJSONObject("weather")?.let {
-            val temp = it.optDouble("tempC", Double.NaN)
-            val w = WeatherCfg(
-                city = (str(it, "city") ?: "").take(60),
-                tempC = if (temp.isNaN() || temp < -90 || temp > 70) null else Math.round(temp).toInt(),
-                condition = (str(it, "condition") ?: "").take(60),
-                icon = str(it, "icon")?.lowercase()?.takeIf { i -> i in WeatherCfg.ICONS } ?: "cloudy",
-                at = it.optLong("at", 0L).coerceAtLeast(0L),
-            )
-            if (w.tempC == null && w.condition.isEmpty()) null else w
-        }
+        val weather = weather(o.optJSONObject("weather"))
 
         val cards = ArrayList<CardCfg>()
         o.optJSONArray("cards")?.let { arr ->
@@ -246,7 +308,10 @@ object ConfigParser {
             ),
             layoutRaw = layoutRaw,
             layout = layoutOf(layoutRaw),
-            ticker = TickerCfg(strings(t?.optJSONArray("items")), (t?.optInt("speed", 60) ?: 60).coerceIn(20, 200)),
+            ticker = TickerCfg(
+                strings(t?.optJSONArray("items")), (t?.optInt("speed", 60) ?: 60).coerceIn(20, 200),
+                tickerStyle(t?.optJSONObject("style")), tickerRich(t?.optJSONArray("rich")),
+            ),
             side = SideCfg(
                 widgets = if (sd?.has("widgets") == true) strings(sd.optJSONArray("widgets")).map { it.lowercase() } else listOf("clock", "qr"),
                 qrUrl = Urls.clean(str(sd, "qrUrl")),

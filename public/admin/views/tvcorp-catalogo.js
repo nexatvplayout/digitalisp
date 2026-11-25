@@ -151,6 +151,8 @@ export function checkZones(zones) {
   if (!Array.isArray(zones) || !zones.length) return 'O layout precisa de pelo menos uma zona.';
   if (zones.length > LIMITS.zones) return `No máximo ${LIMITS.zones} zonas por layout.`;
   if (zones.filter((x) => x.kind === 'video').length > 1) return 'No máximo uma zona de vídeo por layout.';
+  if (zones.filter((x) => x.kind === 'hdmi').length > 1) return 'No máximo uma zona de entrada HDMI por layout.';
+  if (zones.some((x) => x.kind === 'hdmi') && zones.some((x) => x.kind === 'video')) return 'A entrada HDMI e o vídeo do canal não ficam no mesmo layout.';
   const ids = new Set();
   for (const q of zones) {
     if (!TVC_ZONE_ID_RE.test(String(q.id || ''))) return `Nome de zona inválido: "${q.id}". Comece com uma letra; use letras minúsculas, números e hífen (até 16).`;

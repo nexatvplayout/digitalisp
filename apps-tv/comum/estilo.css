@@ -1,0 +1,120 @@
+:root { --cor: #2563eb; --margem: 3vh; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #000; color: #fff; cursor: none;
+  font-family: "Samsung One", "LG Smart UI", Roboto, "Segoe UI", Arial, sans-serif; }
+[hidden] { display: none !important; }
+
+#conteudo { position: absolute; inset: 0; left: 0; top: 0; right: 0; bottom: 0; overflow: hidden; }
+.zona { position: absolute; overflow: hidden; }
+/* videowall: o quadro do conjunto inteiro, maior que a tela e deslocado; #conteudo recorta a janela desta TV */
+.quadro-conjunto { position: absolute; overflow: hidden; }
+/* o filete na borda do recorte da zona (zone.edge): por cima dela, sem cortar a metade de fora do traço */
+.zona-filete { position: absolute; overflow: visible; pointer-events: none; }
+/* o que fica fora do formato de uma zona de vídeo, pintado com o fundo do layout, acima da camada do ao vivo */
+.zona-mascara { position: absolute; z-index: 2; pointer-events: none; }
+/* comando identify: o nome da TV e a posição no conjunto, por cima de tudo */
+#identifica { position: absolute; left: 0; top: 0; right: 0; bottom: 0; z-index: 40; background: rgba(2,6,23,.92); color: #fff;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+#identifica .id-pos { font-size: 45vh; font-weight: 800; line-height: 1; }
+#identifica .id-nome { font-size: 6vh; font-weight: 700; margin-top: 2vh; }
+#identifica .id-conj { font-size: 4vh; opacity: .8; margin-top: 1vh; }
+.item { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+.midia { position: absolute; left: 0; top: 0; width: 100%; height: 100%; object-fit: cover; background: #000; }
+.midia.contain { object-fit: contain; }
+video.midia { object-fit: contain; }
+.legenda { position: absolute; left: 0; right: 0; bottom: 0; padding: 1.2vh 3vw; font-size: 3vh; background: rgba(0,0,0,.55); }
+
+.cartao { position: absolute; left: 0; top: 0; right: 0; bottom: 0; box-sizing: border-box; padding: 6% 7%;
+  display: flex; flex-direction: column; justify-content: center; background: rgba(0,0,0,.35); }
+.fundo-cartao { opacity: .45; }
+.cartao .rotulo { font-size: 2.6vh; text-transform: uppercase; letter-spacing: .1em; color: var(--cor); font-weight: 700; margin-bottom: 1.5vh; }
+.cartao .titulo { font-size: 6vh; font-weight: 800; line-height: 1.1; margin-bottom: 2vh; }
+.cartao .texto { font-size: 3.6vh; line-height: 1.35; white-space: pre-line; }
+.cartao .manchete { font-size: 3.4vh; line-height: 1.3; padding: 1vh 0; border-bottom: 1px solid rgba(255,255,255,.15); }
+.cartao .numero { font-size: 12vh; font-weight: 800; font-variant-numeric: tabular-nums; }
+.relogio { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: flex; align-items: center;
+  justify-content: center; font-size: 9vh; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.zona-ticker { background: rgba(0,0,0,.8); display: flex; align-items: center; }
+.faixa { position: relative; width: 100%; height: 100%; overflow: hidden; display: flex; align-items: center; font-size: 4vh; }
+/* o trilho com as voltas do texto lado a lado; anda só por transform (will-change: camada própria no compositor) */
+.faixa-trilho { position: absolute; left: 0; top: 0; height: 100%; display: flex; align-items: center; white-space: nowrap;
+  will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
+.faixa-volta { flex: none; white-space: nowrap; }
+.zona-ticker.com-etiqueta .faixa { flex: 1; width: auto; }
+.faixa-etiqueta { flex: none; height: 100%; display: flex; align-items: center; padding: 0 1.2em; font-weight: 800;
+  letter-spacing: .06em; position: relative; z-index: 1; white-space: nowrap; }
+@keyframes rolar { from { transform: translateX(0); } to { transform: translateX(-100%) translateX(-100vw); } }
+
+/* camadas sem conteúdo: só a logo da revenda (white-label) */
+.camada { position: absolute; left: 0; top: 0; right: 0; bottom: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; text-align: center; padding: var(--margem); box-sizing: border-box; z-index: 5; background: #000; }
+.logo-revenda { max-width: 42vw; max-height: 32vh; object-fit: contain; margin-bottom: 5vh; }
+/* abertura e carregamento: a marca DIGITAL ISP (comum/marca/logo-digital-isp.svg, de marca/svg/logo-horizontal-fundo-escuro.svg) */
+.camada-app { background: #071630; }
+.logo-app { width: 46vw; max-height: 28vh; object-fit: contain; margin-bottom: 6vh; }
+.codigo { font-size: 15vh; font-weight: 800; letter-spacing: .08em; font-variant-numeric: tabular-nums; }
+.chave { font-size: 8vh; width: 60vw; text-align: center; text-transform: uppercase; background: #111; color: #fff;
+  border: .4vh solid var(--cor); border-radius: 1vh; padding: 1vh; }
+.instrucao { font-size: 3.4vh; opacity: .85; max-width: 70vw; margin-top: 3vh; line-height: 1.4; }
+.barra { width: 40vw; height: 1vh; background: rgba(255,255,255,.15); border-radius: 1vh; overflow: hidden; }
+#espera-barra { width: 0; height: 100%; background: var(--cor); transition: width .5s; }
+
+#desligada { position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: #000; z-index: 8; }
+
+/* o alerta em tela cheia, com o desenho da prévia do painel (public/shared/telas-previa.css, .al): a tela toda na cor do
+   nível (o vermelho por padrão: nunca transparente), a linha de cima, o título grande e o texto */
+#alerta { position: absolute; left: 0; top: 0; right: 0; bottom: 0; z-index: 30; display: flex; flex-direction: column;
+  justify-content: center; padding: 6vw; box-sizing: border-box; background: #b3261e; color: #fff; text-align: left; }
+#alerta.nivel-0 { background: #1f5fbf; }
+#alerta.nivel-1 { background: #b7791f; }
+#alerta.nivel-2 { background: #b3261e; }
+#alerta-cabeca { font: 600 2.2vw/1 Consolas, "Courier New", monospace; letter-spacing: .1em; margin-bottom: 2vw; }
+#alerta-titulo { font-weight: 800; font-size: 7vw; line-height: 1.02; margin-bottom: 2vw; word-wrap: break-word; }
+#alerta-texto { font-size: 3vw; line-height: 1.3; max-width: 30em; white-space: pre-line; word-wrap: break-word; }
+@media (orientation: portrait) {
+  #alerta-titulo { font-size: 11vw; } #alerta-texto { font-size: 5vw; } #alerta-cabeca { font-size: 3.4vw; }
+}
+
+#diag { position: absolute; right: 3vw; top: 4vh; z-index: 20; background: rgba(0,0,0,.88); border: 1px solid #444;
+  border-radius: 1vh; padding: 2vh 2vw; font-size: 2.4vh; max-width: 60vw; }
+#diag b { display: inline-block; min-width: 14vw; color: #9ca3af; font-weight: 600; }
+.diag-linha { position: absolute; left: 3vw; right: 3vw; bottom: 3vh; font-size: 2.6vh; opacity: .7; text-align: center;
+  font-variant-numeric: tabular-nums; word-break: break-all; }
+/* o ao vivo numa camada própria, acima das zonas e abaixo do cadastro e do alerta (AVPlay: o vídeo aparece no lugar do object) */
+#aovivo { position: absolute; left: 0; top: 0; right: 0; bottom: 0; z-index: 1; pointer-events: none; overflow: hidden; }
+.aovivo-el { position: absolute; background: transparent; object-fit: contain; }
+video.aovivo-el { background: #000; }
+
+/* efeitos dos itens da playlist: a entrada e o zoom lento nas fotos (Ken Burns) */
+.tr-fade { animation: tr-fade .8s ease-out both; }
+.tr-slide { animation: tr-slide .7s ease-out both; }
+.tr-zoom { animation: tr-zoom .8s ease-out both; }
+@keyframes tr-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes tr-slide { from { opacity: 0; transform: translateX(8%); } to { opacity: 1; transform: translateX(0); } }
+@keyframes tr-zoom { from { opacity: 0; transform: scale(1.08); } to { opacity: 1; transform: scale(1); } }
+img.kenburns { animation: kenburns 10s linear both; transform-origin: 50% 50%; }
+@keyframes kenburns { from { transform: scale(1); } to { transform: scale(1.12) translate(-1.5%, -1%); } }
+
+/* imagem inteira (contain) com a mesma foto desfocada e escurecida atrás: um canvas de 32 px esticado (o navegador suaviza)
+   e um pouco maior que o quadro, para a borda borrada não aparecer */
+.tela-fundo-foto { position: absolute; left: -8%; top: -8%; width: 116%; height: 116%; z-index: 0; }
+.tvc-it-image .tvc-it-img { z-index: 1; }
+.tvc-it-image .tvc-sl-cap { position: relative; z-index: 2; }
+/* o vídeo próprio inteiro (contain) sobre o fundo do layout, sem faixas pretas */
+.item-video video.midia { background: transparent; }
+
+/* a zona da entrada HDMI: transparente (a janela de TV aparece por trás da página); o fundo do layout vem das faixas em volta */
+.zona-hdmi { background: transparent; }
+.hdmi-fundo { position: absolute; }
+.hdmi-aviso { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 1.2vh 2vw; border-radius: 1vh;
+  background: rgba(2, 6, 23, 0.75); color: #e2e8f0; font-size: 2.6vh; white-space: nowrap; }
+/* o menu do app (tecla verde): a entrada HDMI que aparece nos layouts com a zona HDMI */
+#menu { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 25; min-width: 34vw;
+  background: rgba(2, 6, 23, 0.94); border: 1px solid #334155; border-radius: 1.6vh; padding: 3vh 3vw; color: #e2e8f0; }
+#menu h2 { margin: 0 0 2vh; font-size: 3.4vh; }
+#menu .menu-item { font-size: 2.8vh; margin-bottom: 1.4vh; color: #94a3b8; }
+#menu .menu-opcoes { display: flex; flex-wrap: wrap; }
+#menu .menu-op { padding: 1.2vh 1.6vw; margin: 0 1vw 1vh 0; border-radius: 1vh; border: 2px solid #334155; font-size: 2.8vh; }
+#menu .menu-op.sel { border-color: var(--cor, #0ea5e9); background: rgba(14, 165, 233, 0.18); color: #fff; }
+#menu .menu-op.foco { outline: 3px solid #fff; }
+#menu .menu-dica { margin-top: 2vh; font-size: 2.2vh; color: #64748b; }
