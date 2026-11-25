@@ -543,8 +543,60 @@
   // ------------------------------------------------------------------ ajustes escondidos (↑ ↑ ↓ ↓ OK)
 
   var seq = [];
+  // ------------------------------------------------------------------ menu do app (tecla verde ou ↑ ↑ ↓ ↓ ←)
+  // Hoje: a entrada HDMI que aparece nos layouts com a zona HDMI (HDMI 1 a 4; só as que a TV tem, quando ela diz)
+  var menu = { aberto: false, ops: [], foco: 0 };
+  function abrirMenu() {
+    var m = $('menu');
+    ctxTela.hdmi = ctxTela.hdmi || (raiz.TelasHdmi ? raiz.TelasHdmi.criar() : null);
+    var listar = ctxTela.hdmi ? ctxTela.hdmi.entradas : function (cb) { cb(N.entradasHdmi(null)); };
+    listar(function (lista) {
+      var atualN = ctxTela.hdmiEntrada();
+      menu.ops = lista;
+      menu.foco = Math.max(0, lista.map(function (o) { return o.n; }).indexOf(atualN));
+      menu.aberto = true;
+      desenharMenu();
+      m.hidden = false;
+    });
+  }
+  function desenharMenu() {
+    var m = $('menu');
+    var atualN = ctxTela.hdmiEntrada();
+    m.innerHTML = '';
+    var t = document.createElement('h2'); t.textContent = 'Configurações'; m.appendChild(t);
+    var it = document.createElement('div'); it.className = 'menu-item'; it.textContent = 'Entrada HDMI nos layouts com HDMI'; m.appendChild(it);
+    var ops = document.createElement('div'); ops.className = 'menu-opcoes';
+    menu.ops.forEach(function (o, i) {
+      var b = document.createElement('div');
+      b.className = 'menu-op' + (o.n === atualN ? ' sel' : '') + (i === menu.foco ? ' foco' : '');
+      b.textContent = 'HDMI ' + o.n + (o.conectada === true ? ' ●' : o.conectada === false ? ' (sem cabo)' : '');
+      ops.appendChild(b);
+    });
+    m.appendChild(ops);
+    var d = document.createElement('div'); d.className = 'menu-dica';
+    d.textContent = (ctxTela.hdmi && ctxTela.hdmi.disponivel() ? '' : 'Esta TV não mostra a entrada HDMI pelo app. ') + '◀ ▶ escolhe · OK salva · Voltar fecha';
+    m.appendChild(d);
+  }
+  function fecharMenu() { menu.aberto = false; $('menu').hidden = true; }
+  function teclaMenu(k) {
+    if (k === 'BACK' || k === 'GREEN') { fecharMenu(); return; }
+    var n = menu.ops.length;
+    if (!n) return;
+    if (k === 'LEFT' || k === 'UP') menu.foco = (menu.foco - 1 + n) % n;
+    else if (k === 'RIGHT' || k === 'DOWN') menu.foco = (menu.foco + 1) % n;
+    else if (k === 'OK') {
+      A.gravar('hdmiEntrada', menu.ops[menu.foco].n);
+      fecharMenu();
+      erro(null);
+      desenhar(true); // o layout com HDMI já aparece com a entrada nova
+      return;
+    }
+    desenharMenu();
+  }
+
   function teclas(ev) {
     var k = P.tecla(ev);
+    if (menu.aberto && k) { ev.preventDefault(); teclaMenu(k); return; }
     // dentro do campo da chave, Backspace/Esc são do campo (apagar), não o "Voltar" do app
     if (ev.target && ev.target.tagName === 'INPUT' && (ev.keyCode === 8 || ev.keyCode === 27 || ev.keyCode === 13 || ev.keyCode === 65376)) return;
     if (k === 'BACK') { ev.preventDefault(); if (!$('diag').hidden) $('diag').hidden = true; return; } // não sai do app
@@ -554,6 +606,7 @@
     if (k === 'OK' && !$('cadastro').hidden && !campo.hidden && document.activeElement !== campo) { campo.focus(); return; }
     seq.push(k); seq = seq.slice(-5);
     if (seq.join(' ') === 'UP UP DOWN DOWN OK' || k === 'INFO') { seq = []; diagnostico(); }
+    else if (seq.slice(-5).join(' ') === 'UP UP DOWN DOWN LEFT' || k === 'GREEN') { seq = []; $('diag').hidden = true; abrirMenu(); }
   }
 
   function diagnostico() {
@@ -573,6 +626,8 @@
         ['Ao vivo', ctxTela.aoVivo ? ctxTela.aoVivo.motor + (ctxTela.aoVivo.ativo() ? ' · tocando ' + ctxTela.aoVivo.url() : ' · parado') : '—'],
         ['Espaço', esp ? Math.round(esp.used / 1048576) + ' MB usados, ' + Math.round(esp.free / 1048576) + ' MB livres' : 'a TV não informa'],
         ['Hora', new Date(agora()).toLocaleString('pt-BR')],
+        ['Entrada HDMI', 'HDMI ' + ctxTela.hdmiEntrada() + (ctxTela.hdmi && ctxTela.hdmi.disponivel() ? '' : ' (esta TV não mostra pelo app)')],
+        ['Menu', 'tecla verde ou ↑ ↑ ↓ ↓ ←'],
         ['Último erro', est.erro || '—']
       ];
       $('diag-lista').innerHTML = '';
@@ -608,6 +663,9 @@
       aoErro: function (m) { erro('ao vivo (' + ctxTela.aoVivo.motor + '): ' + m); }
     });
     // a rádio de fundo do layout sem vídeo (layout.audio)
+    // a entrada HDMI da TV nas zonas 'hdmi' (só Samsung); a escolhida no menu fica no aparelho (padrão: HDMI 1)
+    ctxTela.hdmi = raiz.TelasHdmi ? raiz.TelasHdmi.criar() : null;
+    ctxTela.hdmiEntrada = function () { var n = Number(A.ler('hdmiEntrada', 1)); return n >= 1 && n <= 8 ? n : 1; };
     ctxTela.radio = raiz.TelasRadio.criar({
       mudo: function () { return ctxTela.mudo; },
       volume: function () { return ctxTela.volume; },

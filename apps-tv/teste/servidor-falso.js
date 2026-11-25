@@ -115,6 +115,15 @@ function tzLocal() { return Intl.DateTimeFormat().resolvedOptions().timeZone || 
 /** A grade com um item de cada tipo (teste visual contra a prévia do painel). */
 function blocoTipos() {
   const lateral = est.tipos === 'lateral';
+  if (est.tipos === 'hdmi') {
+    // "HDMI + lateral + barra": a entrada HDMI da TV à esquerda, a playlist à direita e a faixa embaixo
+    const tipos = itensTipos(arquivo, Math.floor(Date.now() / 3600000) * 3600000);
+    return { id: 'grade-tipos', layout: { orientation: 'land', background: '#0b1220', zones: [
+      { id: 'tv', kind: 'hdmi', x: 0, y: 0, w: 70, h: 88 },
+      { id: 'lado', kind: 'playlist', x: 70, y: 0, w: 30, h: 88 },
+      { id: 'bar', kind: 'ticker', x: 0, y: 88, w: 100, h: 12 }] }, days: [], from: 0, to: 1440,
+      zones: { lado: tipos.filter((t) => t.kind === 'slide').slice(0, 3) } };
+  }
   if (est.tipos === 'clima') {
     // a zona de clima (o clima da tela, sem itens) ao lado do vídeo
     return { id: 'grade-tipos', layout: { orientation: 'land', background: '#0b1220', zones: [
@@ -409,7 +418,7 @@ function controle(req, res, url) {
     registrar('ao vivo: ' + (est.aoVivo || 'nenhum'));
     return volta();
   }
-  if (p === '/teste/tipos') { est.tipos = ['lateral', 'cheia', 'sobre', 'formas', 'provedor', 'clima'].includes(q.get('modo')) ? q.get('modo') : null; est.versao++; registrar('todos os tipos: ' + (est.tipos || 'desligado')); return volta(); }
+  if (p === '/teste/tipos') { est.tipos = ['lateral', 'cheia', 'sobre', 'formas', 'provedor', 'clima', 'hdmi'].includes(q.get('modo')) ? q.get('modo') : null; est.versao++; registrar('todos os tipos: ' + (est.tipos || 'desligado')); return volta(); }
   if (p === '/teste/tema') { est.tema = { color: q.get('cor') || '#6d28d9', mode: q.get('modo') === 'light' ? 'light' : 'dark' }; est.versao++; return volta(); }
   if (p === '/teste/itens.json') return json(res, 200, { itens: itensTipos(arquivo, Date.now()), tema: est.tema, tz: tzLocal() });
   if (p === '/teste/previa-painel' || p === '/teste/previa-tv' || p === '/teste/comparar') {

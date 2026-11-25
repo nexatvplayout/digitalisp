@@ -499,3 +499,23 @@ test('zona de vídeo: proporcional por padrão; fit cover preenche', () => {
   const p = N.lerConfig(cfg('r', [bl(null), bl('cover')]));
   assert.deepEqual(p.blocos.map((x) => x.layout.zonas[0].preencher), [false, true]);
 });
+
+test('zona hdmi: uma por layout, nunca com vídeo nem por cima; layout com HDMI sem rádio', () => {
+  const z = (id, kind, extra) => Object.assign({ id, kind, x: 0, y: 0, w: 70, h: 88 }, extra || {});
+  const bl = (id, zones, audio) => ({ id, layout: { zones, audio }, days: [], from: 0, to: 1440, zones: {} });
+  const radio = { kind: 'radio', url: 'https://r.x/a.mp3' };
+  const p = N.lerConfig(cfg('r', [
+    bl('a', [z('h', 'hdmi'), z('l', 'playlist', { x: 70, w: 30 }), z('h2', 'hdmi', { y: 88, h: 12 })], radio),
+    bl('b', [z('v', 'video'), z('h', 'hdmi', { x: 70, w: 30 })]),
+    bl('c', [z('p', 'playlist'), z('h', 'hdmi', { overlay: true })])]));
+  assert.deepEqual(p.blocos.map((b) => b.layout.zonas.map((x) => x.kind)), [['hdmi', 'playlist'], ['video'], ['playlist']]);
+  assert.equal(p.blocos[0].layout.audio, null);
+});
+
+test('entradas HDMI da TV e o retângulo da janela de TV', () => {
+  assert.deepEqual(N.entradasHdmi({ connected: [{ type: 'HDMI', number: 2 }, { type: 'TV', number: 1 }], disconnected: [{ type: 'HDMI', number: 1 }, { type: 'HDMI', number: 3 }] }),
+    [{ n: 1, conectada: false }, { n: 2, conectada: true }, { n: 3, conectada: false }]);
+  assert.equal(N.entradasHdmi(null).length, 4);
+  assert.deepEqual(N.retanguloJanela({ x: 0, y: 0, w: 70, h: 88 }), ['0%', '0%', '70%', '88%']);
+  assert.deepEqual(N.retanguloJanela({ x: -50, y: 0, w: 150, h: 100 }), ['0%', '0%', '100%', '100%']);
+});

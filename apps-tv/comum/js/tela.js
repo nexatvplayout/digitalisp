@@ -690,12 +690,59 @@
       medidas(c);
     }
 
-    var usouVivo = false;
+    var usouVivo = false, usouHdmi = false, vezHdmi = 0;
+
+    /**
+     * A zona da entrada HDMI (só Samsung): a janela de TV fica ATRÁS da página, então a página precisa ser transparente
+     * no retângulo da zona: o fundo do layout sai do html/body/#conteudo e é pintado em volta do retângulo (4 faixas),
+     * e as outras zonas seguem por cima ou ao lado. Sem sinal, entrada que a TV não tem ou API que falha: um aviso
+     * discreto na zona, o erro vai para o diagnóstico, e o resto do layout continua.
+     */
+    function zonaHdmi(c, zona, prog, jan, alvo, bloco) {
+      usouHdmi = true;
+      var vez = ++vezHdmi;
+      var n = ctx.hdmiEntrada ? ctx.hdmiEntrada() : 1;
+      c.className += ' zona-hdmi';
+      var fundo = (bloco && bloco.layout.fundo) || prog.marca.fundo || '#000';
+      var aviso = function (txt) {
+        if (c._aviso) c.removeChild(c._aviso);
+        c._aviso = el('div', 'hdmi-aviso', txt);
+        c.appendChild(c._aviso);
+      };
+      // outra TV (LG) ou navegador: sem a janela de TV, a zona fica com o fundo do layout e o aviso (sem buraco na página)
+      if (!ctx.hdmi || !ctx.hdmi.disponivel()) { c.style.background = fundo; aviso('Entrada HDMI ' + n + ' (só na TV Samsung)'); return; }
+      var faixas = [[0, 0, 100, zona.y], [0, zona.y + zona.h, 100, 100 - zona.y - zona.h], [0, zona.y, zona.x, zona.h], [zona.x + zona.w, zona.y, 100 - zona.x - zona.w, zona.h]];
+      faixas.forEach(function (f) {
+        if (f[2] <= 0 || f[3] <= 0) return;
+        var d = el('div', 'hdmi-fundo');
+        d.style.left = f[0] + '%'; d.style.top = f[1] + '%'; d.style.width = f[2] + '%'; d.style.height = f[3] + '%';
+        d.style.background = fundo;
+        alvo.insertBefore(d, alvo.firstChild); // embaixo das zonas
+      });
+      raizEl.style.background = 'transparent';
+      document.body.style.background = 'transparent';
+      document.documentElement.style.background = 'transparent';
+      ctx.hdmi.mostrar(n, N.retanguloNaTela(zona, jan), function (r) {
+        if (vez !== vezHdmi) return; // o layout já mudou
+        if (!r.ok) { aviso('Entrada HDMI ' + n + ' indisponível'); if (ctx.aoErro) ctx.aoErro('HDMI ' + n + ': ' + r.motivo); return; }
+        if (r.conectada === false) { aviso('Entrada HDMI ' + n + ' sem sinal'); if (ctx.aoErro) ctx.aoErro('HDMI ' + n + ' sem sinal'); }
+      });
+    }
+
+    function semHdmi(prog) {
+      vezHdmi++;
+      if (ctx.hdmi) ctx.hdmi.esconder();
+      document.documentElement.style.background = '';
+      document.body.style.background = (prog && prog.marca && prog.marca.fundo) || '#000';
+    }
 
     function mostrar(prog, bloco) {
       limpar();
       usouVivo = false;
+      usouHdmi = false;
       desenharBloco(prog, bloco);
+      // o bloco novo não tem a zona HDMI: a janela de TV some e a página volta a ter fundo
+      if (!usouHdmi) semHdmi(prog);
       // o bloco novo não tem zona de vídeo (ou não tem ao vivo): o ao vivo para
       if (!usouVivo && ctx.aoVivo) ctx.aoVivo.parar();
       // a rádio de fundo: a do layout no ar (a mesma continua tocando); layout sem rádio, ou com vídeo, para
@@ -801,6 +848,7 @@
         var itens = bloco.itens[zona.id] || [];
         // o ao vivo fica na camada dele, posicionada na tela: a zona do quadro do conjunto vira % desta tela (com o recorte)
         if (zona.kind === 'video') { var rv = N.retanguloNaTela(zona, jan); rv.cobrir = zona.preencher; /* proporcional por padrão; cover só com zone.fit 'cover' */ if (recorteCss) rv.recorte = recorteCss; zonaVideo(c, prog, rv); }
+        else if (zona.kind === 'hdmi') zonaHdmi(c, zona, prog, jan, alvo, bloco);
         else if (zona.kind === 'playlist') playlist(c, itens, prog);
         else if (zona.kind === 'ticker') faixa(c, avisosDa(prog).concat(itens.filter(function (i) { return i.kind === 'text'; }).map(function (i) { return { texto: i.title || i.text }; })), prog);
         else if (raiz.TelasPrevia && !itens.length && ['clock', 'logo', 'weather', 'qr', 'text'].indexOf(zona.kind) >= 0) zonaFixa(c, zona, prog);
@@ -815,7 +863,7 @@
       mostrar: mostrar,
       calar: calar,
       // limpar por fora (tela revogada, TV desligada pelo horário, conteúdo apagado) para também o ao vivo
-      limpar: function () { limpar(); if (ctx.aoVivo) ctx.aoVivo.parar(); if (ctx.radio) ctx.radio.parar(); },
+      limpar: function () { limpar(); if (ctx.aoVivo) ctx.aoVivo.parar(); if (ctx.radio) ctx.radio.parar(); semHdmi(atual && atual.prog); },
       atual: function () { return atual; }
     };
   }

@@ -12,7 +12,7 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  var VERSAO = '1.0.27';
+  var VERSAO = '1.0.28';
   var TZ_PADRAO = 'America/Sao_Paulo';
   var SHA = /^[0-9a-f]{64}$/;
   var DIA = /^\d{4}-\d{2}-\d{2}$/;
@@ -30,7 +30,7 @@
   };
 
   var ZONAS = ['video', 'playlist', 'ticker', 'clock', 'weather', 'qr', 'logo', 'text', 'news', 'quotes',
-    'countdown', 'safety', 'worldclock', 'queue', 'widget'];
+    'countdown', 'safety', 'worldclock', 'queue', 'widget', 'hdmi'];
   // `video` como item de playlist é extensão do DIGITAL ISP (o Android 1.3 ignora o tipo que não conhece).
   var ITENS = ['image', 'video', 'slide', 'post', 'birthdays', 'kpi', 'news', 'quotes', 'menu', 'countdown',
     'safety', 'worldclock', 'text', 'clock', 'weather', 'qr', 'logo',
@@ -295,11 +295,13 @@
     var id = str(o, 'id');
     var lay = o.layout;
     if (!id || !lay || !Array.isArray(lay.zones)) return null;
-    var zonas = [], ids = {}, video = false;
+    var zonas = [], ids = {}, video = false, hdmi = false;
     for (var i = 0; i < lay.zones.length && zonas.length < TETO.zonas; i++) {
       var z = lerZona(lay.zones[i]);
       if (!z || ids[z.id]) continue;
       if (z.kind === 'video') { if (video) continue; video = true; }
+      // a entrada HDMI da TV: no máximo uma por layout, nunca junto com a zona de vídeo nem por cima
+      if (z.kind === 'hdmi') { if (video || hdmi || z.overlay) continue; hdmi = true; }
       ids[z.id] = true;
       zonas.push(z);
     }
@@ -320,7 +322,7 @@
     return {
       id: id.slice(0, 64),
       layout: { retrato: str(lay, 'orientation') === 'port', fundo: cores(str(lay, 'background')), zonas: zonas,
-        audio: video ? null : lerAudio(lay.audio) },
+        audio: video || hdmi ? null : lerAudio(lay.audio) },
       days: dias(o.days), from: from, to: to,
       dateFrom: DIA.test(str(o, 'dateFrom') || '') ? str(o, 'dateFrom') : null,
       dateTo: DIA.test(str(o, 'dateTo') || '') ? str(o, 'dateTo') : null,
@@ -431,6 +433,26 @@
     if (noite && lista.indexOf('clima-' + c + '-noite-' + forma) >= 0) return 'clima-' + c + '-noite-' + forma;
     if (lista.indexOf('clima-' + c + '-' + forma) >= 0) return 'clima-' + c + '-' + forma;
     return null;
+  }
+
+  /**
+   * As entradas HDMI da TV (tizen.systeminfo VIDEOSOURCE: { connected: [{type, number}], disconnected: [...] }) para o
+   * menu: [{ n, conectada }] em ordem; sem a informação (outra TV, navegador), HDMI 1 a 4 sem saber a conexão (null).
+   */
+  function entradasHdmi(vs) {
+    if (!vs || (!vs.connected && !vs.disconnected)) return [1, 2, 3, 4].map(function (n) { return { n: n, conectada: null }; });
+    var m = {};
+    (vs.connected || []).forEach(function (s) { if (s && s.type === 'HDMI' && s.number > 0) m[s.number] = true; });
+    (vs.disconnected || []).forEach(function (s) { if (s && s.type === 'HDMI' && s.number > 0 && !m[s.number]) m[s.number] = false; });
+    var lista = Object.keys(m).map(Number).sort(function (a, b) { return a - b; }).map(function (n) { return { n: n, conectada: m[n] }; });
+    return lista.length ? lista : [1, 2, 3, 4].map(function (n) { return { n: n, conectada: null }; });
+  }
+
+  /** O retângulo da zona (em % da tela) como a janela de TV pede: ['x%', 'y%', 'w%', 'h%'], dentro da tela. */
+  function retanguloJanela(r) {
+    var c = function (v) { return Math.round(Math.max(0, Math.min(100, v)) * 100) / 100 + '%'; };
+    var x = Math.max(0, r.x), y = Math.max(0, r.y);
+    return [c(x), c(y), c(Math.min(100 - x, r.w + Math.min(0, r.x))), c(Math.min(100 - y, r.h + Math.min(0, r.y)))];
   }
 
   // as zonas que só mostram o que vier nos itens (sem item, ficam vazias)
@@ -900,7 +922,7 @@
     contarExibicao: contarExibicao, loteExibicao: loteExibicao, baixarLote: baixarLote, corpoSinal: corpoSinal,
     espera: espera, camadaSemConteudo: camadaSemConteudo, linhaDiagnostico: linhaDiagnostico,
     nivelAlerta: nivelAlerta, cabecaAlerta: cabecaAlerta, definirArtes: definirArtes, lerAudio: lerAudio, esperaRadio: esperaRadio,
-    lerConjunto: lerConjunto, janelaConjunto: janelaConjunto, retanguloCobrir: retanguloCobrir, zonasParaTela: zonasParaTela, climaParaItem: climaParaItem, ehNoite: ehNoite, nomeFotoClima: nomeFotoClima, posicaoSincronizada: posicaoSincronizada, retanguloNaTela: retanguloNaTela,
+    lerConjunto: lerConjunto, janelaConjunto: janelaConjunto, retanguloCobrir: retanguloCobrir, zonasParaTela: zonasParaTela, climaParaItem: climaParaItem, entradasHdmi: entradasHdmi, retanguloJanela: retanguloJanela, ehNoite: ehNoite, nomeFotoClima: nomeFotoClima, posicaoSincronizada: posicaoSincronizada, retanguloNaTela: retanguloNaTela,
     vigiaNovo: vigiaNovo, vigiaAoVivo: vigiaAoVivo, vigiaFalhou: vigiaFalhou, esperaAoVivo: esperaAoVivo
   };
 });
