@@ -9,7 +9,7 @@ Cerca de 115 KB no total. Abre direto do disco: dê dois cliques em `index.html`
 |---|---|
 | `index.html` | A página, com todas as seções e um pequeno script do formulário de contato |
 | `estilo.css` | O visual (cores da marca, responsivo) |
-| `img/` | Logos do kit (`marca/svg`), a imagem de compartilhamento `og-digitalisp.png` (1200×630, gerada do kit) e as fotos do guia de compatibilidade (`guia-recepcao.webp` e `aparelhos/`), recortadas da arte enviada pelo dono |
+| `img/` | Logos do kit (`marca/svg`), a imagem de compartilhamento `og-digitalisp.png` (1200×630, gerada do kit) e as fotos do guia de compatibilidade (`guia-recepcao.webp` e `aparelhos/`), recortadas da arte enviada pelo dono, e as fotos de exemplo de aplicação em `exemplos/` (geradas com GPT Image no OpenArt, pasta DIGITAL ISP; WebP de 800 e 1600 px, sem marcas reais) |
 | `favicon.*`, `apple-touch-icon.png`, `android-chrome-*.png`, `site.webmanifest` | Ícones copiados de `marca/favicon` |
 
 Seções: o que é, para quem é (revendas e segmentos), como funciona (3 passos), funcionalidades, aplicativos das telas,

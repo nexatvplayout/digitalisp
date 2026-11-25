@@ -374,3 +374,52 @@ textarea { resize: vertical; }
   .chip-1 { right: 0; }
   .faixa-cta { padding: 20px; }
 }
+
+/* Fotos de exemplo de aplicação (geradas com GPT Image, sem marcas) */
+.hero-foto {
+  width: 100%; height: auto; border-radius: 18px; border: 6px solid rgba(255,255,255,.12);
+  box-shadow: 0 24px 60px rgba(0,0,0,.45);
+}
+.hero-arte .chip-1 { top: -14px; }
+.hero-arte .chip-2 { bottom: -14px; }
+
+.foto-faixa { position: relative; margin: 40px 0 0; border-radius: 20px; overflow: hidden; box-shadow: var(--sombra); }
+.foto-faixa img { width: 100%; height: auto; aspect-ratio: 21 / 8; object-fit: cover; object-position: 50% 8%; }
+.foto-faixa figcaption {
+  position: absolute; left: 0; right: 0; bottom: 0; padding: 48px 28px 22px; color: #fff; font-size: 1.08rem;
+  background: linear-gradient(180deg, transparent, rgba(6,23,58,.95) 55%);
+}
+.foto-faixa strong { color: var(--ciano); }
+
+.fid-topo { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; }
+.fid-foto { margin: 0; }
+.fid-foto img { width: 100%; height: auto; border-radius: 16px; border: 1px solid rgba(255,255,255,.15); box-shadow: 0 18px 50px rgba(0,0,0,.4); }
+.fid-foto figcaption { margin-top: 10px; font-size: .92rem; color: #9FB4D8; }
+
+.secao-exemplos { background: var(--fundo-claro); }
+.exemplos { list-style: none; margin: 32px 0 0; padding: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 22px; }
+.exemplos figure { position: relative; margin: 0; border-radius: 18px; overflow: hidden; box-shadow: var(--sombra); background: var(--marinho); }
+.exemplos img { width: 100%; height: auto; transition: transform .4s ease; }
+.exemplos figure:hover img { transform: scale(1.03); }
+.exemplos figcaption {
+  position: absolute; left: 0; right: 0; bottom: 0; padding: 42px 20px 16px; color: #E6EEFB; font-size: .95rem;
+  background: linear-gradient(180deg, transparent, rgba(6,23,58,.9));
+}
+.exemplos strong { display: block; color: #fff; font-size: 1.15rem; }
+@media (prefers-reduced-motion: reduce) { .exemplos img { transition: none; } .exemplos figure:hover img { transform: none; } }
+
+.foto-lado {
+  margin: 40px 0 0; display: grid; grid-template-columns: 1.2fr 1fr; gap: 28px; align-items: center;
+  background: #fff; border: 1px solid var(--borda); border-radius: 20px; padding: 14px; box-shadow: var(--sombra);
+}
+.foto-lado img { width: 100%; height: auto; border-radius: 12px; }
+.foto-lado figcaption { padding: 8px 18px 8px 0; color: var(--texto-suave); font-size: 1.05rem; }
+.foto-lado strong { display: block; color: var(--marinho); font-size: 1.25rem; margin-bottom: 6px; }
+
+@media (max-width: 820px) {
+  .fid-topo, .foto-lado { grid-template-columns: 1fr; gap: 20px; }
+  .foto-lado figcaption { padding: 0 8px 8px; }
+  .foto-faixa img { aspect-ratio: 16 / 9; }
+  .foto-faixa figcaption { position: static; background: var(--marinho); padding: 16px 18px; font-size: 1rem; }
+  .exemplos { grid-template-columns: 1fr; }
+}
