@@ -9,6 +9,7 @@ import { validCpf, validCnpj, parseDocument, parsePhoneAny, formatPhoneAny } fro
 import { graphicsBytes } from './storage-graphics.js'; // imagens do cliente contam na cota (docs/ARMAZENAMENTO.md)
 // funcionalidades por plano (docs/PLATAFORMA.md, "Funcionalidades por plano"): o catálogo, o mesmo do Superadmin e do painel
 import * as CAT from '../public/shared/funcionalidades.js';
+import { prefeituraLigada } from './prefeitura-contas.js'; // o módulo Prefeitura ligado pelo superadmin, conta por conta
 
 export const DAY = 24 * 3600 * 1000;
 export const HOUR = 3600 * 1000;
@@ -145,8 +146,10 @@ const NO_PLAN = { id: null, code: null, name: 'Sem plano', description: '', pric
 let planHook = null;
 export const setPlanHook = (fn) => { planHook = typeof fn === 'function' ? fn : null; };
 export async function effectivePlan(tenant) {
-  if (planHook && tenant) { const p = await planHook(tenant, basePlan); if (p) return p; }
-  return basePlan(tenant);
+  const p = (planHook && tenant ? await planHook(tenant, basePlan) : null) || await basePlan(tenant);
+  // DIGITAL ISP: o módulo Prefeitura também liga conta por conta pelo superadmin (desligado por padrão em todas)
+  if (tenant && !p.features?.prefeitura && await prefeituraLigada(tenant.id)) return { ...p, features: { ...p.features, prefeitura: true } };
+  return p;
 }
 async function basePlan(tenant) {
   const plan = tenant?.plan_id ? await getPlan(Number(tenant.plan_id)) : null;
@@ -154,7 +157,7 @@ async function basePlan(tenant) {
   if (plan) return defaultHasAll(tenant) ? { ...plan, features: CAT.allFeaturesWith(plan.features) } : plan;
   if (tenant?.id === DEFAULT_TENANT_ID) {
     const unl = await getPlanByCode(UNLIMITED_PLAN);
-    return unl ? { ...unl, features: CAT.everyFeature() } : { ...NO_PLAN, limits: cleanLimits({}), features: CAT.allFeatures() };
+    return unl ? { ...unl, features: CAT.allFeatures() } : { ...NO_PLAN, limits: cleanLimits({}), features: CAT.allFeatures() };
   }
   // sem plano válido: nenhum dos 10 recursos de antes (como sempre) e o que era livre continua (a regra legacy do catálogo)
   return { ...NO_PLAN, limits: Object.fromEntries(LIMIT_KEYS.map((k) => [k, 0])), features: cleanFeatures({}) };
@@ -329,7 +332,7 @@ export async function savePlatformSettings(body, { gatewayOk = () => true } = {}
 }
 
 /* ------------------------------------------------------------------ início: plano Ilimitado e cliente padrão */
-const allTrue = () => CAT.everyFeature(); // o Ilimitado tem tudo, os modos (modo prefeitura) também
+const allTrue = () => CAT.allFeatures(); // o Ilimitado tem tudo, menos os modos (a Prefeitura só liga de propósito, conta por conta)
 const allNull = () => Object.fromEntries(LIMIT_KEYS.map((k) => [k, null]));
 
 /** Garante o plano `ilimitado` (sem limites, todos os recursos) e o cliente id 1. Seguro para rodar a cada boot. */

@@ -128,7 +128,7 @@ function clienteForm(c, planos, done, box) {
       field('Valor mensal (R$)', inp('valor', centsIn(c?.cobranca?.valorCents), { inputmode: 'decimal', placeholder: 'vazio = o preço do plano' }))),
     field('Observações', el('textarea', { name: 'notes', rows: 2, maxlength: 1000, text: c?.notes || '' }), { full: true }),
     // prefeitura (modo órgão público no plano do cliente): o município travado, que só a revenda e a plataforma trocam
-    editando && c.plano?.prefeitura ? municipioCard(`/api/revenda/clientes/${c.id}/telas-municipio`, { idPrefix: 'rcm' }) : null,
+    editando && (c.prefeitura || c.plano?.prefeitura) ? municipioCard(`/api/revenda/clientes/${c.id}/telas-municipio`, { idPrefix: 'rcm' }) : null,
     el('div', { class: 'rv-actions' }, el('button', { class: 'primary', type: 'submit', text: editando ? 'Salvar' : 'Cadastrar cliente' })));
   ligarCep({ cep: f.elements.zip, rua: f.elements.street, bairro: f.elements.district, numero: f.elements.number, place });
   f.addEventListener('submit', guard(async (e) => {

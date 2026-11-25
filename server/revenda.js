@@ -63,6 +63,8 @@ async function clienteDto(t, extrasRow = null, planos = null, uso = null) {
   return {
     ...T.tenantDto(t, null), ...(extrasRow ? extrasDto(extrasRow) : await loadExtras(t.id)),
     pessoa: c.pessoa, planoId: c.planoClienteId, plano: plano ? { id: plano.id, nome: plano.nome, telas: plano.telas, precoCents: plano.precoCents, prefeitura: Boolean(plano.modulos?.prefeitura) } : null,
+    // o módulo Prefeitura de fato (o plano do cliente ou o superadmin, conta por conta)
+    prefeitura: Boolean((await T.effectivePlan(t))?.features?.prefeitura),
     uso: uso || null,
   };
 }

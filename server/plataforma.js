@@ -13,6 +13,8 @@ import { clientIp } from './clientip.js';
 import { mountFeatureProfiles, storedFeatures } from './funcionalidades.js';
 import { hiddenCodes, setSiteVisible } from './site-planos.js'; // "Mostrar no site" de cada plano
 import { mountRevendas, saveExtras, loadExtras, extrasDto } from './revendas.js';
+import { clientesDe } from './contas.js';
+import { contasComPrefeitura, ligarPrefeitura } from './prefeitura-contas.js'; // o módulo Prefeitura, conta por conta
 
 const { fail } = T;
 const ah = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -207,6 +209,26 @@ export function mountPlataforma(app) {
     const t = await tenantOr404(idParam(req));
     aud(res, t.id, `entrou no painel da revenda ${t.slug}`);
     res.json(access.issueImpersonation(req.user, t.id));
+  }));
+
+  // o módulo Prefeitura da revenda e de cada cliente dela: desligado por padrão; o superadmin liga conta por conta
+  r.get('/tenants/:id/prefeitura', A('platform.view'), ah(async (req, res) => {
+    const t = await tenantOr404(idParam(req));
+    const on = await contasComPrefeitura();
+    const clientes = [];
+    for (const id of await clientesDe(t.id)) { const c = await T.getTenant(id); if (c) clientes.push({ id: Number(c.id), name: c.name, on: on.has(Number(c.id)) }); }
+    clientes.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+    res.set('Cache-Control', 'no-store').json({ revenda: { id: Number(t.id), name: t.name, on: on.has(Number(t.id)) }, clientes });
+  }));
+  r.put('/tenants/:id/prefeitura/:conta', A('platform.tenants'), ah(async (req, res) => {
+    const t = await tenantOr404(idParam(req));
+    const conta = Number(req.params.conta);
+    if (conta !== Number(t.id) && !(await clientesDe(t.id)).includes(conta)) throw fail(404, 'A conta não é desta revenda.');
+    const on = Boolean(req.body?.on);
+    await ligarPrefeitura(conta, on);
+    T.invalidateTenants();
+    aud(res, conta, `${on ? 'ligou' : 'desligou'} o módulo Prefeitura da conta #${conta} (revenda ${t.slug})`);
+    res.json({ id: conta, on });
   }));
 
   // a revenda esqueceu a senha: gera uma nova para o administrador dela (mostrada uma vez; troca no primeiro acesso)

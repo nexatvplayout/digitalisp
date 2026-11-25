@@ -78,6 +78,8 @@ export function createPlanGate({ channelTenant, peekTenantId, resolveTenant }) {
       let pub; // o cliente do pedido público, só quando preciso
       const seen = new Set();
       for (const h of hits) {
+        // o Painel da Prefeitura é sempre com sessão: sem token, a própria rota responde 401 (não o plano do cliente padrão)
+        if (h.key === 'prefeitura' && tok == null) continue;
         let tids;
         if (h.slug) {
           const ct = channelTenant(h.slug);
