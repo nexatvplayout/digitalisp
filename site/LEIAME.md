@@ -9,10 +9,10 @@ Cerca de 115 KB no total. Abre direto do disco: dê dois cliques em `index.html`
 |---|---|
 | `index.html` | A página, com todas as seções e um pequeno script do formulário de contato |
 | `estilo.css` | O visual (cores da marca, responsivo) |
-| `img/` | Logos do kit (`marca/svg`), a imagem de compartilhamento `og-digitalisp.png` (1200×630, gerada do kit) e as fotos do guia de compatibilidade (`guia-recepcao.webp` e `aparelhos/`), recortadas da arte enviada pelo dono, e as fotos de exemplo de aplicação em `exemplos/` (geradas com GPT Image no OpenArt, pasta DIGITAL ISP; WebP de 800 e 1600 px, sem marcas reais) |
+| `img/` | Logos do kit (`marca/svg`), a imagem de compartilhamento `og-digitalisp.png` (1200×630, gerada do kit) e as fotos do guia de compatibilidade (`guia-recepcao.webp` e `aparelhos/`), recortadas da arte enviada pelo dono, e as fotos de exemplo de aplicação em `exemplos/` e `layouts/` (geradas com GPT Image no OpenArt, pasta DIGITAL ISP; WebP de 800 e 1600 px, sem marcas reais) |
 | `favicon.*`, `apple-touch-icon.png`, `android-chrome-*.png`, `site.webmanifest` | Ícones copiados de `marca/favicon` |
 
-Seções: o que é, para quem é (revendas e segmentos), como funciona (3 passos), funcionalidades, aplicativos das telas,
+Seções: vantagens, fidelização, exemplos, modelos de layout, o que é, para quem é (revendas e segmentos), como funciona (3 passos), funcionalidades, aplicativos das telas,
 seja uma revenda e contato. Sem preços e sem citar concorrentes.
 
 ## Como publicar
@@ -56,10 +56,16 @@ Para trocar o número: substitua `5521999089151` (5 lugares, incluindo a variáv
    - aviso quando uma tela cai e venda de espaço para anunciantes (mídia indoor);
    - cobrança pelo sistema com boleto e Pix;
    - templates por segmento (o número "5.000" ficou de fora de propósito; dá para incluir quando estiver perto);
-   - Samsung, LG e o instalador pelo celular já estão marcados como **em breve**.
 3. **Domínio**: apontar `www.digitalisp.com.br` para a hospedagem. As meta tags (canonical, Open Graph) já usam
    `https://www.digitalisp.com.br/`; se o endereço final for outro, troque em `index.html`.
 4. Opcional: política de privacidade (LGPD) quando o formulário passar a enviar dados para o servidor.
+
+## Modelos de layout
+
+A seção `#layouts` foi gerada a partir do catálogo real (`TVC_LAYOUT_MODELS` e `TVC_LAYOUT_SETS` em
+`public/shared/tvcorp-tipos.js`, formas em `tvcorp-formas.js`): os desenhos das zonas são SVG feitos com as mesmas
+posições e formas da prévia do painel. Cada foto mostra um layout que existe (o nome aparece embaixo). Se o catálogo
+mudar, atualize os desenhos e o número "mais de 210 layouts".
 
 ## Cuidados ao mexer
 
