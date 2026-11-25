@@ -11,6 +11,13 @@ import { themeOf, slideEditor } from './tvcorp-midias.js';
 import { quadrosDaPlaylist, formatoDaMidia, combina, dicaArte, FORMATO_TXT } from './tvcorp-quadros.js';
 import { templatesPara } from './tvcorp-templates.js';
 import { SLIDE_TEMPLATE } from './tvcorp-catalogo.js';
+import { abrirPreviaViva } from './tvcorp-previa-viva.js';
+
+/** A prévia da playlist: a sequência tocando em tela cheia, item por item no tempo de cada um, sem abrir a lista. */
+const previaDaPlaylist = (pl, orientation = 'land') => abrirPreviaViva(
+  { name: `Prévia ${pl.name}`.slice(0, 60), orientation, background: '#0b1220', zones: [{ id: 'main', kind: 'playlist', x: 0, y: 0, w: 100, h: 100 }] },
+  { zonePlaylists: { main: pl.id }, titulo: `Prévia · ${pl.name}`, nota: 'A playlist tocando como na TV, em tela cheia: cada item no tempo dele, só os que valem agora (dias, horários e período).' },
+);
 
 const officeName = (id) => (id == null ? 'Empresa toda' : D().offices.find((o) => o.id === id)?.name || `#${id}`);
 const secs = (n) => { const m = Math.floor(n / 60); const s = n % 60; return m ? `${m} min${s ? ` ${s} s` : ''}` : `${s} s`; };
@@ -311,6 +318,7 @@ export default async function paintPlaylists(box, ctx) {
     el('td', {}, ...(used(pl.id).length ? used(pl.id).map((n) => chip(n)) : [el('span', { class: 'dim small', text: 'em nenhuma grade' })])),
     el('td', { text: when(pl.updatedAt) }),
     el('td', { class: 'pf-actions' },
+      btn('▶ Prévia', guard(() => previaDaPlaylist(pl)), 'small'),
       btn('Itens', guard(() => editItems(pl, reload)), 'small primary'),
       btn('Renomear', () => editPlaylist(pl, reload), 'small'),
       btn('Apagar', guard(async () => { if (used(pl.id).length && !confirm(`"${pl.name}" está em ${used(pl.id).length} grade(s): a zona dela fica vazia. Apagar mesmo assim?`)) return; if (!used(pl.id).length && !confirm(`Apagar a playlist "${pl.name}"?`)) return; await tapi(`/api/tvcorp/playlists/${pl.id}`, { method: 'DELETE' }); await reload(); }), 'small danger'))));

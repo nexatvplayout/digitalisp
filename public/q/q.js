@@ -1,6 +1,7 @@
 // A página do QR code de mídia ou playlist: passa as propagandas uma por vez, no tempo de cada uma, como na tela (o mesmo
 // desenho dos slides, de public/shared/tvcorp-previa.js). No celular em pé, o slide vem na versão em pé.
-// Toque na imagem para pausar ou continuar; setas e pontinhos para ir e voltar; "Ver todos" mostra a lista.
+// Toque na imagem para pausar ou continuar; setas e pontinhos para ir e voltar. Só as propagandas e os controles: sem o
+// nome da lista nem da empresa, e tudo cabe na tela do celular (o slide encolhe sozinho para a altura que sobra).
 // Só texto por textContent; nada de estilo por script.
 import { slidePreview } from '/shared/tvcorp-previa.js';
 
@@ -69,20 +70,12 @@ try {
   const r = await fetch(`/q/${encodeURIComponent(code)}/conteudo`, { cache: 'no-store' });
   if (!r.ok) throw new Error('não encontrado');
   const d = await r.json();
-  $('titulo').textContent = d.titulo || 'Conteúdo';
-  document.title = d.titulo || 'Conteúdo';
-  $('empresa').textContent = d.empresa || '';
   const box = $('itens');
+  box.replaceChildren();
   const itens = (d.itens || []).filter((it) => ['image', 'video', 'slide'].includes(it.kind));
   if (!itens.length) box.append(el('p', { class: 'q-vazio' }, 'Nada para mostrar agora.'));
-  else if (itens.length === 1) box.append(desenho(itens[0], { lista: true }));
-  else {
-    box.append(apresentacao(itens));
-    const lista = el('div', { class: 'q-lista', hidden: true }, ...itens.map((it) => desenho(it, { lista: true })));
-    const ver = el('button', { type: 'button', class: 'q-ver', onclick: () => { lista.hidden = !lista.hidden; ver.textContent = lista.hidden ? 'Ver todos' : 'Esconder a lista'; } }, 'Ver todos');
-    box.append(ver, lista);
-  }
+  else if (itens.length === 1) box.append(el('div', { class: 'q-palco' }, desenho(itens[0], { lista: true })));
+  else box.append(apresentacao(itens));
 } catch {
-  $('titulo').textContent = 'Conteúdo indisponível';
-  $('empresa').textContent = 'Este QR code foi desligado ou não existe mais.';
+  $('itens').replaceChildren(el('p', { class: 'q-vazio' }, 'Este QR code foi desligado ou não existe mais.'));
 }
