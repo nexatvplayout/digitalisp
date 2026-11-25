@@ -87,6 +87,8 @@ function revendaForm(t, plans, done) {
       field('Dia do vencimento', inp('dia', t?.cobranca?.diaVencimento ?? 10, { type: 'number', min: 1, max: 28 })),
       field('Valor mensal (R$)', inp('valor', centsToInput(t?.cobranca?.valorCents), { inputmode: 'decimal', placeholder: 'vazio = o preço do plano' }))),
     field('Observações', el('textarea', { name: 'notes', rows: 2, maxlength: 1000, text: t?.notes || '' }), { full: true }),
+    // o módulo Prefeitura: desligado por padrão; o superadmin liga para a revenda ou para cada cliente dela
+    editing ? prefeituraCard(t) : null,
     // prefeitura (modo órgão público no plano da revenda): o município travado das telas da própria revenda
     editing && plans.find((p) => p.code === t.planCode)?.features?.prefeitura ? municipioCard(`/api/platform/tenants/${t.id}/telas-municipio`, { idPrefix: 'rvm' }) : null,
     el('div', { class: 'rv-actions' }, el('button', { class: 'primary', type: 'submit', text: editing ? 'Salvar' : 'Cadastrar revenda' }),
@@ -129,6 +131,27 @@ function revendaForm(t, plans, done) {
     }
   }));
   return f;
+}
+
+/** O módulo Prefeitura conta por conta: a revenda e cada cliente dela, cada um com o seu interruptor (salva na hora). */
+function prefeituraCard(t) {
+  const lista = el('div', { class: 'pf-contas' }, el('p', { class: 'dim', text: 'Carregando…' }));
+  const linha = (conta, rotulo) => el('label', { class: 'pl-mod' },
+    el('input', { type: 'checkbox', checked: conta.on, 'aria-label': `Módulo Prefeitura: ${conta.name}`, onchange: guard(async (e) => {
+      const on = e.target.checked;
+      try { await api(`/api/platform/tenants/${t.id}/prefeitura/${conta.id}`, { method: 'PUT', body: { on } }); toast(`Módulo Prefeitura ${on ? 'ligado' : 'desligado'}: ${conta.name}.`); }
+      catch (err) { e.target.checked = !on; throw err; }
+    }) }),
+    el('span', {}, el('b', { text: conta.name }), el('small', { class: 'dim', text: rotulo })));
+  (async () => {
+    try {
+      const d = await api(`/api/platform/tenants/${t.id}/prefeitura`);
+      lista.replaceChildren(linha(d.revenda, ' a própria revenda'),
+        ...(d.clientes.length ? d.clientes.map((c) => linha(c, ' cliente final')) : [el('p', { class: 'dim small', text: 'A revenda ainda não tem clientes finais.' })]));
+    } catch (err) { lista.replaceChildren(el('p', { class: 'dim', text: `Não deu para carregar: ${err.message}` })); }
+  })();
+  return el('fieldset', { class: 'rv-sec' }, el('legend', { text: 'Módulo Prefeitura (órgão público)' }),
+    el('p', { class: 'hint', text: 'Desligado por padrão. Ligue só para a conta que é prefeitura ou órgão público: o menu Prefeitura aparece só para ela.' }), lista);
 }
 
 /* ================================================================== planos e módulos */
