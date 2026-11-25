@@ -33,6 +33,8 @@
 /* zonas que não são playlist */
 .tvc-z-video { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2cqh; background: linear-gradient(135deg, #1e293b, #0b1220); color: #e2e8f0; font-size: min(7cqh, 4.5cqw); }
 .tvc-live { background: #d92d20; color: #fff; font-weight: 700; padding: 0.3em 0.7em; border-radius: 0.3em; font-size: 0.8em; letter-spacing: 0.08em; }
+.tvc-hdmi { background: #0d80ff; }
+.tvc-z-hdmi { background: linear-gradient(135deg, #0a2150, #06173a); }
 .tvc-z-empty { display: flex; align-items: center; justify-content: center; background: var(--tbg); color: var(--tdim); font-size: min(9cqh, 7cqw); border: 1px dashed rgba(148, 163, 184, 0.4); }
 .tvc-z-ticker { display: flex; align-items: center; gap: 2cqw; background: var(--tc); color: #fff; padding: 0 2cqw; font-size: 38cqh; white-space: nowrap; }
 .tvc-z-ticker b { background: rgba(0, 0, 0, 0.25); padding: 0 1cqw; }

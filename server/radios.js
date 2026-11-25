@@ -71,6 +71,7 @@ export function mountRadios(app, { needs, signedIn, ah, onChange = () => {} }) {
       if (!stationOf(station)) throw fail(400, 'Rádio não encontrada na lista.');
       let zones = []; try { zones = JSON.parse(lay.zones || '[]'); } catch { /* sem zonas */ }
       if (zones.some((z) => z.kind === 'video')) throw fail(400, 'Este layout tem o vídeo do canal ao vivo: a rádio de fundo é para layouts sem vídeo.');
+      if (zones.some((z) => z.kind === 'hdmi')) throw fail(400, 'Este layout tem a entrada HDMI da TV, que já traz o som dela: a rádio de fundo é para layouts sem HDMI.');
     }
     const volume = Math.min(100, Math.max(10, Math.round(Number(b.volume) || 100)));
     await db.run('DELETE FROM isp_layout_radio WHERE layout_id = ?', [lay.id]);

@@ -182,7 +182,7 @@ export function layoutEditor(lay, reload, factoryKey = null, copyOf = null, { ao
       return s;
     };
     // por cima da imagem: a zona fica sobre as outras, com o fundo translúcido
-    const layer = (z) => (z.kind === 'video' ? null : el('span', { class: 'tc-layer' },
+    const layer = (z) => (z.kind === 'video' || z.kind === 'hdmi' ? null : el('span', { class: 'tc-layer' },
       el('label', { class: 'pf-check' }, el('input', { type: 'checkbox', checked: Boolean(z.overlay), 'aria-label': `Zona ${z.id} por cima`, onchange: (e) => { if (e.target.checked) { z.overlay = true; z.opacity ??= 60; } else { delete z.overlay; delete z.opacity; } canvas.paint(); paintRows(); paintPv(); } }), el('span', { text: 'Por cima' })),
       z.overlay ? el('select', { 'aria-label': `Fundo da zona ${z.id}`, onchange: (e) => { z.opacity = Number(e.target.value); paintPv(); } }, ...[0, 20, 40, 60, 80, 100].map((v) => opt(v, v ? `fundo ${v}%` : 'sem fundo', (z.opacity ?? 60) === v))) : null));
     // o formato da zona (recorte) e o filete na borda do recorte
@@ -284,7 +284,7 @@ function factoryView(reload) {
   const sel = (k, first, options) => el('select', { 'aria-label': first, onchange: (e) => { FV[k] = e.target.value; paint(); } }, opt('', first, !FV[k]), ...options.map(([v, t]) => opt(v, t, FV[k] === v)));
   const bar = el('div', { class: 'pf-bar' }, sel('segment', 'Todos os segmentos', LAYOUT_SEGMENTS.map((x) => [x.key, x.label])), sel('orient', 'Deitado e em pé', [['land', 'Deitado'], ['port', 'Em pé']]),
     sel('tvs', 'Uma ou várias TVs', [['1', 'Uma TV'], ['n', 'Várias TVs (conjunto)']]),
-    sel('main', 'Principal: qualquer', [['playlist', 'Principal: playlist'], ['video', 'Principal: vídeo ao vivo']]),
+    sel('main', 'Principal: qualquer', [['playlist', 'Principal: playlist'], ['video', 'Principal: vídeo ao vivo'], ['hdmi', 'Principal: entrada HDMI']]),
     sel('shape', 'Formato: todos', [['special', 'Formatos especiais'], ['rect', 'Só retângulos']]));
   const count = el('span', { class: 'dim small' });
   const grid = el('div', { class: 'tc-lgrid' });
@@ -293,7 +293,7 @@ function factoryView(reload) {
     const ok = (x) => (!FV.segment || x.segment === FV.segment) && (!FV.orient || x.orientation === FV.orient);
     const singles = FV.tvs === 'n' ? [] : FACTORY_LAYOUTS.filter((l) => !l.set && ok(l) && (!FV.main || l.main === FV.main) && (!FV.shape || (FV.shape === 'special') === l.special));
     // os conjuntos de várias TVs são de playlist (cardápio): somem quando o filtro pede o vídeo ao vivo
-    const sets = FV.tvs === '1' || FV.main === 'video' || FV.shape === 'special' ? [] : FACTORY_SETS.filter(ok);
+    const sets = FV.tvs === '1' || FV.main === 'video' || FV.main === 'hdmi' || FV.shape === 'special' ? [] : FACTORY_SETS.filter(ok);
     count.textContent = `${singles.length + sets.length} modelo(s)`;
     put(grid,
       ...sets.map((x) => el('div', { class: 'tc-lcard tc-set' },
@@ -302,7 +302,7 @@ function factoryView(reload) {
           btns(btn('Usar este conjunto', () => setDialog(x, reload), 'small primary'))))),
       ...singles.map((l) => el('div', { class: 'tc-lcard' },
         grande(l, layoutPreview(l, { ...previewOpts(l), labels: false })),
-        el('div', { class: 'tc-lcard-b' }, el('div', {}, chip('1 TV', 'tc-tvs'), ' ', chip(segLabel(l.segment)), ' ', l.main === 'video' ? chip('Vídeo ao vivo') : l.main === 'playlist' ? chip('Playlist') : null, l.special ? ' ' : null, l.special ? chip('Formato especial') : null), el('b', { text: l.label }), el('div', { class: 'dim small', text: l.desc }),
+        el('div', { class: 'tc-lcard-b' }, el('div', {}, chip('1 TV', 'tc-tvs'), ' ', chip(segLabel(l.segment)), ' ', l.main === 'video' ? chip('Vídeo ao vivo') : l.main === 'hdmi' ? chip('Entrada HDMI · TV Samsung') : l.main === 'playlist' ? chip('Playlist') : null, l.special ? ' ' : null, l.special ? chip('Formato especial') : null), el('b', { text: l.label }), el('div', { class: 'dim small', text: l.desc }),
           quadrosTxt(l) ? el('div', { class: 'small tc-quadros', text: `Quadros das playlists: ${quadrosTxt(l)}` }) : null,
           btns(btn('Usar este modelo', () => layoutEditor(null, reload, l.key), 'small primary'), btn('▶ Ao vivo', () => abrirPreviaViva({ ...l, name: l.label }), 'small'),
             // o mesmo modelo com o canal ao vivo no lugar da playlist principal

@@ -67,6 +67,8 @@ export const TVC_ZONES = Object.freeze([
   { key: 'worldclock', label: 'Relógio mundial', desc: 'A hora em outras cidades.', params: ['title', 'widget'] },
   { key: 'queue', label: 'Chamada de senha', desc: 'A senha chamada e as últimas chamadas (quando a unidade tem a chamada de senha).' },
   // DIGITAL ISP: qualquer gadget direto na zona (relógio, clima, agenda, indicadores, avaliações, como chegar, página)
+  // DIGITAL ISP: a imagem de uma entrada HDMI da TV (decodificador, câmera, computador); a entrada é escolhida no menu do app da TV
+  { key: 'hdmi', label: 'Entrada HDMI da TV', desc: 'A imagem de uma entrada HDMI da TV (decodificador, câmera, computador). A entrada (HDMI 1, 2, 3…) é escolhida no menu do app da TV Samsung. No máximo uma por layout, sem o vídeo do canal.' },
   { key: 'widget', label: 'Gadget', desc: 'Um gadget escolhido na aba Barras e blocos: relógio, clima, agenda, indicadores, avaliações, como chegar, página e outros.', params: ['widget'] },
 ]);
 export const TVC_ZONE = Object.freeze(Object.fromEntries(TVC_ZONES.map((z) => [z.key, z])));
@@ -278,7 +280,7 @@ function familyLayouts() {
 export function layoutMainOf(m) {
   const zs = m?.zones || [];
   const z = zs.find((x) => x.id === 'main') || [...zs].sort((a, b) => b.w * b.h - a.w * a.h)[0];
-  return z?.kind === 'video' ? 'video' : z?.kind === 'playlist' ? 'playlist' : 'other';
+  return z?.kind === 'video' ? 'video' : z?.kind === 'hdmi' ? 'hdmi' : z?.kind === 'playlist' ? 'playlist' : 'other';
 }
 /**
  * Os layouts prontos. Cada zona em % da tela (inteiros 0 a 100). hint: o conteúdo sugerido para a playlist da zona (o
@@ -508,6 +510,22 @@ export const TVC_LAYOUT_MODELS = Object.freeze([
     zones: [Z('main', 'video', 0, 0, 100, 88), Z('world', 'worldclock', 3, 5, 34, 14, { title: 'Horário pelo mundo', overlay: true, opacity: 60, shape: 'pilula' }), Z('weather', 'weather', 75, 5, 22, 14, { overlay: true, opacity: 60, shape: 'pilula' }), Z('bar', 'ticker', 0, 88, 100, 12)] },
   { key: 'fx-aovivo-em-pe-onda', special: true, segment: 'evento', label: 'Evento em pé com vídeo em onda', desc: 'Em pé: o canal ao vivo com a borda em onda, o contador, a programação e o texto rolante.', orientation: 'port', background: '#312e81',
     zones: [Z('main', 'video', 0, 0, 100, 36, { shape: 'onda-base', edge: { color: '#f5b31c', width: 0.6 } }), Z('countdown', 'countdown', 4, 38, 92, 22, { shape: 'cantos' }), Z('qr', 'qr', 4, 62, 92, 26, { qr: 'https://exemplo.com.br', title: 'Programação completa', shape: 'cantos' }), Z('bar', 'ticker', 0, 90, 100, 10)] },
+  // ---------------------------------------------------------------- DIGITAL ISP: a entrada HDMI da TV no lugar do ao vivo (app Samsung)
+  { key: 'hdmi-tela-cheia', label: 'HDMI em tela cheia', desc: 'Só a entrada HDMI da TV, escolhida no menu do app Samsung.', orientation: 'land', background: '#000000', zones: [Z('main', 'hdmi', 0, 0, 100, 100)] },
+  { key: 'hdmi-lateral', label: 'HDMI + lateral', desc: 'A entrada HDMI da TV e uma coluna de conteúdo à direita.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'hdmi', 0, 0, 75, 100), Z('right', 'playlist', 75, 0, 25, 100)] },
+  { key: 'hdmi-lateral-barra', label: 'HDMI + lateral + barra', desc: 'Em L: a entrada HDMI, a coluna de conteúdo e o texto rolante embaixo.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'hdmi', 0, 0, 75, 88), Z('right', 'playlist', 75, 0, 25, 88), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'hdmi-barra', label: 'HDMI + barra', desc: 'A entrada HDMI e o texto rolante embaixo.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'hdmi', 0, 0, 100, 88), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'hdmi-dois-quadros', label: 'HDMI + dois quadros', desc: 'A entrada HDMI grande e duas playlists à direita.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'hdmi', 0, 0, 66, 100), Z('top', 'playlist', 66, 0, 34, 50), Z('bottom', 'playlist', 66, 50, 34, 50)] },
+  { key: 'hdmi-gadgets', label: 'HDMI + relógio, clima e notícias', desc: 'A entrada HDMI, o relógio, o clima, as notícias e o texto rolante.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'hdmi', 0, 0, 72, 88), Z('clock', 'clock', 72, 0, 28, 22), Z('weather', 'weather', 72, 22, 28, 22), Z('news', 'news', 72, 44, 28, 44), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'hdmi-recepcao', segment: 'recepcao', label: 'Recepção com HDMI', desc: 'A entrada HDMI, a chamada de senha e o texto rolante.', orientation: 'land', background: '#0b1220',
+    zones: [Z('main', 'hdmi', 0, 0, 70, 88), Z('queue', 'queue', 70, 0, 30, 88), Z('bar', 'ticker', 0, 88, 100, 12)] },
+  { key: 'hdmi-em-pe', segment: 'loja', label: 'HDMI em pé', desc: 'Em pé: a entrada HDMI em cima, a playlist embaixo e o texto rolante.', orientation: 'port', background: '#0b1220',
+    zones: [Z('main', 'hdmi', 0, 0, 100, 45), Z('content', 'playlist', 0, 45, 100, 45), Z('bar', 'ticker', 0, 90, 100, 10)] },
   // DIGITAL ISP: os gerados por família (formas × segmento), 4 com a playlist e 4 com o vídeo ao vivo por segmento
   ...familyLayouts(),
 ].map((m) => Object.freeze({ segment: 'geral', ...m, zones: Object.freeze(m.zones) })));

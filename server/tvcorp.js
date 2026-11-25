@@ -352,7 +352,7 @@ export function createTvcorp({
     };
     // a rádio de fundo (layout sem vídeo do canal): o app toca o stream no volume da tela; o app antigo ignora
     const audio = audioOf ? audioOf(tenantId, lay.id) : null;
-    if (audio && !layout.zones.some((z) => z.kind === 'video')) layout.audio = audio;
+    if (audio && !layout.zones.some((z) => z.kind === 'video' || z.kind === 'hdmi')) layout.audio = audio;
     const zones = {};
     // a playlist escolhida no layout é o padrão da zona; a da grade (ou da programação da tela) vence
     const zp = { ...Object.fromEntries(lay.zones.filter((z) => z.playlist != null).map((z) => [z.id, z.playlist])), ...K.zonePlaylistsFor(lay.zones, s.zonePlaylists) };
