@@ -77,7 +77,9 @@ export async function paintQueueOffice(box, ui, o, prefix = '/api/prefeitura') {
   const sName = el('input', { type: 'text', maxlength: String(LIMITS.queueServiceName), placeholder: 'Ex.: Atendimento geral', 'aria-label': 'Nome da fila' });
   const sPrefix = el('input', { type: 'text', maxlength: String(LIMITS.queuePrefix), placeholder: 'A', 'aria-label': 'Letra da senha', class: 'pf-short' });
   const sPrio = chk(true);
-  const urlBox = el('div', { class: 'pf-keybox', hidden: true });
+  // cada link aparece logo abaixo do botão dele (o do totem e o do guichê; o das salas fica na etapa 3)
+  const urlBox = el('div', { class: 'pf-keybox pf-kb-totem', hidden: true });
+  const guicheBox = el('div', { class: 'pf-keybox pf-kb-guiche', hidden: true });
   const roomsBox = el('div', {});
   const rows = q.services.map((s) => el('tr', { class: s.active ? '' : 'pf-gone' },
     el('td', {}, el('b', { text: s.prefix })), el('td', { text: s.name }), el('td', { text: s.priority ? `${s.prefix}P: com prioritária` : 'sem prioritária' }), el('td', { text: s.active ? 'ativa' : 'desativada' }),
@@ -114,7 +116,7 @@ export async function paintQueueOffice(box, ui, o, prefix = '/api/prefeitura') {
         if (q.totem.on && !confirm('Gerar outro endereço? O totem que está aberto para de emitir senhas.')) return;
         const r = await api(`${base}/totem`, { method: 'POST', body: {} });
         await again();
-        const b = box.querySelector('.pf-keybox'); b.hidden = false;
+        const b = box.querySelector('.pf-kb-totem'); b.hidden = false; b.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
         mostrarLink(b, 'O link do totem: abra no tablet ou computador da entrada (é ali que o cliente tira a senha).', r.url);
       }) }, q.totem.on ? 'Gerar outro link e QR code do totem' : 'Gerar o link e QR code do totem'),
       q.totem.on ? el('button', { class: 'btn danger', type: 'button', onclick: guard(async () => { if (!confirm('Desligar o totem?')) return; await api(`${base}/totem`, { method: 'DELETE' }); toast('Totem desligado.'); await again(); }) }, 'Desligar o totem') : null),
@@ -127,10 +129,11 @@ export async function paintQueueOffice(box, ui, o, prefix = '/api/prefeitura') {
         if (q.guiche?.on && !confirm('Gerar outro endereço? Os guichês abertos com o endereço de antes param de chamar.')) return;
         const r = await api(`${base}/guiche`, { method: 'POST', body: {} });
         await again();
-        const b = box.querySelector('.pf-keybox'); b.hidden = false;
+        const b = box.querySelector('.pf-kb-guiche'); b.hidden = false; b.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
         mostrarLink(b, 'O link do guichê: abra no computador de cada atendente (é ali que ele chama a senha).', r.url);
       }) }, q.guiche?.on ? 'Gerar outro link e QR code do guichê' : 'Gerar o link e QR code do guichê'),
       q.guiche?.on ? el('button', { class: 'btn danger', type: 'button', onclick: guard(async () => { if (!confirm('Desligar o endereço do guichê?')) return; await api(`${base}/guiche`, { method: 'DELETE' }); toast('Endereço do guichê desligado.'); await again(); }) }, 'Desligar') : null),
+    guicheBox,
     el('p', { class: 'dim small', text: 'Emitir pela recepção, chamar, repetir, encaminhar e finalizar são feitos na página de controle da repartição (o link de controle, em Repartições).' }));
   await paintRooms(roomsBox, ui, o, base);
 }
@@ -176,15 +179,23 @@ async function paintRooms(box, ui, o, base) {
         x.link.on ? el('button', { class: 'btn small', type: 'button', onclick: guard(async () => { if (!confirm(`Revogar o endereço de "${x.name}"?`)) return; await api(`${base}/rooms/${x.id}/link`, { method: 'DELETE' }); await again(); }) }, 'Revogar') : null,
         el('button', { class: 'btn small', type: 'button', onclick: guard(async () => { await api(`${base}/rooms/${x.id}`, { method: 'PATCH', body: { active: !x.active } }); await again(); }) }, x.active ? 'Desativar' : 'Reativar'),
         el('button', { class: 'btn small danger', type: 'button', onclick: guard(async () => { if (!confirm(`Remover a sala "${x.name}"?`)) return; await api(`${base}/rooms/${x.id}`, { method: 'DELETE' }); await again(); }) }, 'Remover'))))) : el('p', { class: 'dim small', text: 'Nenhuma sala ainda.' }),
-    el('div', { class: 'pf-bar' }, rName, rKind, rGroup, el('button', { class: 'btn primary', type: 'button', onclick: guard(async () => { await api(`${base}/rooms`, { method: 'POST', body: { name: rName.value, kind: rKind.value, groupId: rGroup.value ? Number(rGroup.value) : null } }); toast('Sala criada.'); await again(); }) }, '+ Adicionar sala')),
-    r.rooms.some((x) => x.active) ? el('div', { class: 'pf-btns left' }, el('button', { class: 'btn primary', type: 'button', onclick: guard(async () => {
+    el('div', { class: 'pf-bar' }, rName, rKind, rGroup, el('button', { class: 'btn primary', type: 'button', onclick: guard(async () => {
+      // a sala nasce com o link dela: o profissional abre (QR code) e chama, pausa e finaliza cada paciente
+      const nova = await api(`${base}/rooms`, { method: 'POST', body: { name: rName.value, kind: rKind.value, groupId: rGroup.value ? Number(rGroup.value) : null } });
+      const sala = nova?.room || nova;
+      const link = sala?.id ? await api(`${base}/rooms/${sala.id}/link`, { method: 'POST', body: {} }).catch(() => null) : null;
+      toast('Sala criada.'); await again();
+      if (link?.url) showUrl(`O link de "${sala.name || rName.value}": o profissional abre no celular ou computador da sala para chamar o paciente, pausar, finalizar o atendimento e chamar o próximo.`, link.url);
+    }) }, '+ Adicionar sala')),
+    el('div', { class: 'pf-btns left' }, el('button', { class: 'btn primary', type: 'button', onclick: guard(async () => {
       const salas = r.rooms.filter((x) => x.active);
+      if (!salas.length) throw new Error('Cadastre primeiro as salas (o nome, por exemplo Consultório 1, e "+ Adicionar sala"): cada sala ganha o link dela.');
       if (salas.some((x) => x.link.on) && !confirm('Gerar os links de todas as salas? Os links de antes deixam de valer (abra os novos em cada consultório).')) return;
       const links = [];
       for (const x of salas) links.push({ name: x.name, url: (await api(`${base}/rooms/${x.id}/link`, { method: 'POST', body: {} })).url });
       await again();
       todasAsSalas(box.querySelector('.pf-keybox') || keyBox, links);
-    }) }, 'Gerar os links de todas as salas (com QR code)')) : null,
+    }) }, 'Gerar os links de todas as salas (com QR code)')),
     keyBox,
     el('p', { class: 'dim small', text: `Etapas do atendimento: ${r.upa.flow.length ? r.upa.flow.map((x) => x.name || r.services.find((y) => y.id === x.serviceId)?.name).join(' → ') : 'não configuradas'}. QR do acompanhante: ${r.upa.follow ? 'ligado' : 'desligado'}. As etapas, o QR, a espera estimada e os pedidos de apoio se configuram na página da repartição, aba Salas e consultórios.` }),
     el('div', { class: 'pf-btns left' }, el('button', { class: 'btn', type: 'button', onclick: csv }, 'Indicadores dos últimos 7 dias (CSV)')));
