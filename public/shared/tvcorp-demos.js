@@ -446,3 +446,7 @@ export const demoZones = (d, playlistOf = () => null, channel = null) => d.zones
 
 /** Um canal público de teste (HLS), para a demonstração ter vídeo ao vivo quando a conta ainda não cadastrou canal. */
 export const DEMO_CHANNEL = { nome: 'Canal de demonstração', url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8' };
+
+/** É um layout de demonstração? (criado por "Usar esta demonstração": o nome do catálogo). Os outros são os da pessoa. */
+const NOMES_DEMO = new Set(DEMO_LAYOUTS.map((x) => x.label));
+export const ehLayoutDemo = (l) => NOMES_DEMO.has(String(l?.name || ''));

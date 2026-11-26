@@ -11,6 +11,7 @@ import { radioPicker } from './tvcorp-radio.js';
 import { abrirPreviaViva } from './tvcorp-previa-viva.js';
 import { nomeCanal, opcaoYoutube, OPCAO_YT, novoCanalYoutube } from './tvcorp-youtube.js'; // o YouTube ao vivo no lugar do canal
 import { demosView } from './tvcorp-demos.js';
+import { ehLayoutDemo } from '../../shared/tvcorp-demos.js';
 import { faixaCard } from './tvcorp-faixa.js'; // o texto rolante digitado no próprio editor do layout // os layouts de demonstração (só nas contas ligadas)
 import { state } from '../lib.js';
 import { wifiQr, vcardQr, qrKind, qrLabel } from '../../shared/qr-conteudo.js';
@@ -277,7 +278,7 @@ export default async function paintLayouts(box, ctx) {
   const def = d.defaults || {};
   HAS_CITY = Boolean(def.cidade || def.extra?.cidade || def.config?.cidade || feeds.some((x) => x.kind === 'weather'));
   const usedBy = (id) => d.schedules.filter((s) => s.layoutId === id).map((s) => s.name);
-  const mine = d.layouts.map((l) => el('div', { class: 'tc-lcard' },
+  const cartao = (l) => el('div', { class: 'tc-lcard' },
     grande(l, layoutPreview(l, { ...previewOpts(l), labels: false })),
     el('div', { class: 'tc-lcard-b' },
       el('b', { text: l.name }),
@@ -285,13 +286,19 @@ export default async function paintLayouts(box, ctx) {
       quadrosTxt(l) ? el('div', { class: 'small tc-quadros', text: `Quadros das playlists: ${quadrosTxt(l)}` }) : null,
       el('div', {}, ...(usedBy(l.id).length ? usedBy(l.id).map((n) => chip(n)) : [el('span', { class: 'dim small', text: 'em nenhuma grade' })])),
       btns(btn('▶ Ao vivo', () => abrirPreviaViva(l), 'small'), btn('Editar', () => layoutEditor(l, reload), 'small'), btn('Duplicar', () => layoutEditor(null, reload, null, l), 'small'),
-        btn('Apagar', guard(async () => { if (usedBy(l.id).length) { toast(`Este layout está em ${usedBy(l.id).length} grade(s). Troque o layout delas antes de apagar.`, true); return; } if (!confirm(`Apagar o layout "${l.name}"?`)) return; await tapi(`/api/tvcorp/layouts/${l.id}`, { method: 'DELETE' }); await reload(); }), 'small danger')))));
+        btn('Apagar', guard(async () => { if (usedBy(l.id).length) { toast(`Este layout está em ${usedBy(l.id).length} grade(s). Troque o layout delas antes de apagar.`, true); return; } if (!confirm(`Apagar o layout "${l.name}"?`)) return; await tapi(`/api/tvcorp/layouts/${l.id}`, { method: 'DELETE' }); await reload(); }), 'small danger'))));
+  // DIGITAL ISP: separados os meus layouts (os que a pessoa fez) e os de demonstração (os do catálogo, pelo nome)
+  const meus = d.layouts.filter((l) => !ehLayoutDemo(l)).map(cartao);
+  const demos = d.layouts.filter(ehLayoutDemo).map(cartao);
   const factoryBox = factoryView(reload);
   const walls = D().walls || listOf(await tapi('/api/tvcorp/walls').catch(() => null), 'walls');
   put(box,
     note('O layout divide a tela em zonas: o vídeo do canal, playlists, o texto rolante, relógio, clima, QR code, logomarca, a chamada de senha e os widgets. Escolha um modelo pronto e ajuste; a grade diz qual layout vale em cada tela, dia e horário.'),
-    label(`Layouts da empresa (${d.layouts.length} de ${LIMITS.layouts})`),
-    mine.length ? el('div', { class: 'tc-lgrid' }, ...mine) : empty('Nenhum layout da empresa ainda. Comece por um modelo pronto abaixo.'),
+    label(`Meus layouts (${meus.length})`),
+    note(`${d.layouts.length} de ${LIMITS.layouts} layouts usados nesta conta.`, 'small'),
+    meus.length ? el('div', { class: 'tc-lgrid' }, ...meus) : empty('Nenhum layout seu ainda. Comece por um modelo pronto abaixo.'),
+    demos.length ? label(`Layouts de demonstração já criados (${demos.length})`) : null,
+    demos.length ? el('div', { class: 'tc-lgrid' }, ...demos) : null,
     label(`Conjuntos de telas (${walls.length})`),
     note('Várias TVs juntas: no cardápio por tela cada TV tem o seu layout e a troca dos itens acontece junto em todas; no videowall um layout só, do tamanho do conjunto, e cada TV mostra a parte dela. Use "Identificar" para ver o número de cada TV na tela e montar na ordem.'),
     walls.length ? el('div', { class: 'tc-lgrid' }, ...walls.map((w) => wallCard(w, reload))) : empty('Nenhum conjunto ainda. Crie um, ou use um modelo pronto de várias TVs abaixo.'),

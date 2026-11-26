@@ -2,7 +2,7 @@
 // Ligado, as telas escolhidas (ou todas) trocam de layout sozinhas, na ordem da lista, a cada intervalo escolhido aqui.
 // O servidor faz a troca (server/tvcorp-demo-rodizio.js): continua com o painel fechado. Rotas: GET/PUT /api/tvcorp/demo-rodizio.
 import { el, guard, toast, tapi, put, f, opt, note, btn, btns, dialog, D } from './tvcorp-base.js';
-import { DEMO_LAYOUTS } from '../../shared/tvcorp-demos.js';
+import { DEMO_LAYOUTS, ehLayoutDemo } from '../../shared/tvcorp-demos.js';
 import { usarDemo } from './tvcorp-demos.js';
 
 const TEMPOS = [[10, '10 segundos'], [15, '15 segundos'], [20, '20 segundos'], [30, '30 segundos'], [45, '45 segundos'], [60, '1 minuto'], [120, '2 minutos'], [300, '5 minutos'], [600, '10 minutos'], [1800, '30 minutos'], [3600, '1 hora']];
@@ -33,16 +33,24 @@ async function abrir(ctx, botao) {
   todas.addEventListener('change', pintaTelas);
   put(telaBox, ...telas.map((x) => el('label', { class: 'tc-demo-op' }, marcaTela.get(x.id), ` ${x.name}`)));
   pintaTelas();
-  // os layouts (a lista, na ordem da aba Layouts)
-  const layBox = el('div', { class: 'tc-demo-lista' });
+  // os layouts, em dois grupos: os meus (os que a pessoa fez) e os de demonstração; na ordem da aba Layouts
+  const layBox = el('div', {});
   const conta = note('', 'small');
   let marcados = new Set(atual.layoutIds.length ? atual.layoutIds : (d.layouts || []).map((l) => l.id));
   const pintaLayouts = () => {
     const ls = D().layouts || [];
-    put(layBox, ...ls.map((l) => {
-      const c = el('input', { type: 'checkbox', checked: marcados.has(l.id), onchange: (e) => { if (e.target.checked) marcados.add(l.id); else marcados.delete(l.id); contar(); } });
-      return el('label', { class: 'tc-demo-op' }, c, ` ${l.name}`);
-    }));
+    const caixa = (l) => el('label', { class: 'tc-demo-op' },
+      el('input', { type: 'checkbox', checked: marcados.has(l.id), onchange: (e) => { if (e.target.checked) marcados.add(l.id); else marcados.delete(l.id); contar(); } }), ` ${l.name}`);
+    const grupo = (titulo, lista, vazio) => {
+      const so = (sim) => () => { for (const l of lista) { if (sim) marcados.add(l.id); else marcados.delete(l.id); } pintaLayouts(); };
+      return el('div', { class: 'tc-demo-grupo' },
+        el('div', { class: 'tc-demo-grupo-cab' }, `${titulo} (${lista.length})`,
+          lista.length ? btn('Marcar estes', so(true), 'small') : null, lista.length ? btn('Desmarcar estes', so(false), 'small') : null),
+        lista.length ? el('div', { class: 'tc-demo-lista' }, ...lista.map(caixa)) : note(vazio, 'small'));
+    };
+    put(layBox,
+      grupo('Meus layouts', ls.filter((l) => !ehLayoutDemo(l)), 'Nenhum layout seu ainda: os que você fizer na aba Layouts aparecem aqui.'),
+      grupo('Layouts de demonstração', ls.filter(ehLayoutDemo), 'Nenhum layout de demonstração nesta conta: use o botão abaixo para criar.'));
     contar();
   };
   const contar = () => {
