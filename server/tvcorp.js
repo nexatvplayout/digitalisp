@@ -76,6 +76,7 @@ export function createTvcorp({
   weatherArt = null, // (cond, req) -> { art, artPort }: a foto de fundo do item de clima
   originOf = null, // (req) -> https://site: completa os endereços relativos dos itens (a foto da notícia)
   widgetFallback = null, // (tenantId, sample) -> id de um gadget do cliente: a zona de gadget sem gadget escolhido não fica vazia na TV
+  rodizio = null, // DIGITAL ISP: o rodízio de DEMONSTRAÇÃO (server/tvcorp-demo-rodizio.js): { layoutDe, ler, salvar, ligada }
 }) {
   if (!db) throw new Error('createTvcorp: falta o banco');
   const noStore = (res) => res.set('Cache-Control', 'no-store');
@@ -420,7 +421,10 @@ export function createTvcorp({
     const data = await load(tenantId);
     const tz = tzOf(data.settings);
     const parts = K.localParts(now(), tz);
-    const schedules = extra ? [...data.schedules.filter((s) => s.id !== extra.id), extra] : data.schedules;
+    let schedules = extra ? [...data.schedules.filter((s) => s.id !== extra.id), extra] : data.schedules;
+    // o rodízio de DEMONSTRAÇÃO: por cima de tudo nesta tela, o layout da vez (troca sozinho a cada intervalo)
+    const dz = rodizio && at?.deviceId ? await rodizio.layoutDe(tenantId, at.deviceId, now(), (id) => data.layouts.has(Number(id))).catch(() => null) : null;
+    if (dz) schedules = [...schedules, { id: 9_000_000 + dz.pos, name: 'Demonstração (rodízio)', layoutId: dz.layoutId, zonePlaylists: {}, scope: { kind: 'devices', devices: [Number(at.deviceId)] }, days: [], timeFrom: 0, timeTo: 1440, dateFrom: null, dateTo: null, priority: L.priorityMax + 1, status: 'ok' }];
     const { blocks, fallback } = K.resolveBlocks(schedules, at, { today: parts.day, fallbackId: data.settings.defaultSchedule ?? null });
     return { data, tz, parts, blocks, fallback, current: K.blockNow(blocks, fallback, parts) };
   }
@@ -934,6 +938,16 @@ export function createTvcorp({
       changed(req.tenantId);
       res.locals.audit = `tv corporativa: conjunto de telas "${cur.name}" (#${cur.id}) apagado`;
       res.json({ ok: true });
+    }));
+
+    /* ---- o rodízio de DEMONSTRAÇÃO (só nas contas com a demonstração ligada) */
+    const soDemo = ah(async (req, res, next) => { if (!rodizio || !(await rodizio.ligada(req.tenantId))) return res.status(403).json({ error: 'A demonstração não está ligada nesta conta.' }); next(); });
+    app.get(`${B}/demo-rodizio`, M, soDemo, ah(async (req, res) => noStore(res).json(await rodizio.ler(req.tenantId))));
+    app.put(`${B}/demo-rodizio`, M, soDemo, ah(async (req, res) => {
+      const r = await rodizio.salvar(req.tenantId, req.body || {}, now());
+      changed(req.tenantId);
+      res.locals.audit = r.on ? `tv corporativa: demonstração ligada (${r.layoutIds.length} layouts, a cada ${r.seconds} s, ${r.devices.length ? `${r.devices.length} tela(s)` : 'todas as telas'})` : 'tv corporativa: demonstração desligada';
+      noStore(res).json(r);
     }));
 
     /* ---- grade */

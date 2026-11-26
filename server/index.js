@@ -39,7 +39,8 @@ import { createNewsImages } from './noticias-img.js'; // a cópia da foto de cad
 import { prepareMediaImage } from './tvcorp-midia.js'; // a foto da notícia em WebP vira JPEG
 import { forecast as weatherForecast } from './weather.js'; // o clima das telas (Open-Meteo/INMET, com cache e cota)
 import { sitePlans } from './site-planos.js'; // os planos ativos e públicos no site (GET /api/site/planos)
-import { demoLigada } from './demo-contas.js'; // os layouts de demonstração, só nas contas ligadas
+import { demoLigada } from './demo-contas.js';
+import { layoutDoRodizio, lerRodizio, salvarRodizio } from './tvcorp-demo-rodizio.js'; // o rodízio de DEMONSTRAÇÃO na aba Telas // os layouts de demonstração, só nas contas ligadas
 
 const bootedAt = Date.now();
 const ah = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -272,6 +273,8 @@ const tvcorp = createTvcorp({
   pendingOther: async (tenantId) => { const p = await tvcorpDados.pending(tenantId); return (p.posts || 0) + (p.suggestions || 0); },
   forget: (tenantId) => telas?.forget(tenantId),
   audit: access.audit, ipOf: clientIp,
+  // o rodízio de DEMONSTRAÇÃO da aba Telas (só nas contas com a demonstração ligada)
+  rodizio: { layoutDe: layoutDoRodizio, ler: lerRodizio, salvar: salvarRodizio, ligada: demoLigada },
 });
 telas = createTelas({
   weatherArt: climaArtOf, // a foto de fundo de cada tempo (config.weather.art/artPort)

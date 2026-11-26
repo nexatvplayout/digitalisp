@@ -5,7 +5,8 @@ import {
   el, guard, toast, tapi, tblob, put, f, opt, table, label, note, empty, btn, btns, chip, dialog, D, T,
   active, officeOf, groupsOf, statusOf, sinceText, counters, dot, when, ago, now, pct, STATUS,
 } from './tvcorp-base.js';
-import { copyText, api } from '../lib.js';
+import { copyText, api, state } from '../lib.js';
+import { botaoDemonstracao } from './tvcorp-demo-rodizio.js'; // o rodízio de DEMONSTRAÇÃO (só nas contas ligadas)
 import { createMap } from '../telas-mapa.js';
 import { officeStatus, OFFICE_STATUS_LABEL } from '../../shared/telas-geo.js';
 import { LAYOUTS, LAYOUT_KEYS, COMMANDS, typeLabel } from '../../shared/telas-tipos.js';
@@ -248,6 +249,7 @@ export default async function paintTelas(box, ctx) {
     counterRow(counters(active()), active().length),
     d.rede ? null : note('A rede de telas ainda não respondeu (rotas /api/tvcorp/rede). A lista aparece quando o servidor for atualizado.', 'pf-banner'),
     btns(btn('+ TV box', () => newKey(reload), 'primary'), toggle, btn('Aplicativos', () => ctx.go('instalar'), 'small'),
+      state.me?.demoLayouts && !T.demo ? botaoDemonstracao(ctx) : null,
       el('span', { class: 'dim small', text: 'Cada TV box entra com uma chave de uso único (24 h), já ligada à unidade.' })),
     keys.length ? el('div', {}, label('Chaves esperando uso (a chave em si só aparece ao gerar)'), table(['Unidade', 'Nome da tela', 'Vence', 'Gerada por', ''], keys)) : null,
     V.mode === 'mapa' ? el('div', {}, mapBox, mapNote, note('Cada pino é uma unidade. Verde: todas as telas no ar. Amarelo: alguma ligada sem imagem. Vermelho: alguma desligada. Cinza: sem tela. As filiais podem estar em cidades diferentes: o mapa abre mostrando todas.')) : listBox);
