@@ -50,6 +50,9 @@
 .pf-inline { display: flex; gap: 6px; }
 .pf-inline > * { flex: 1 1 0; min-width: 0; }
 .pf-check { display: inline-flex; gap: 6px; align-items: center; font: inherit; font-size: var(--text-sm); letter-spacing: 0; text-transform: none; color: var(--c-fg-2); }
+/* a caixinha nunca encolhe com o texto longo ao lado ("os botões dessas opções estão micro pequenos"): o mesmo tamanho em todo o painel, alinhada à primeira linha */
+.pf-check input[type="checkbox"], .pf-check input[type="radio"] { flex: none; width: 18px; height: 18px; margin: 0; accent-color: var(--c-accent); }
+.pf-check:has(> span:nth-child(2)) { align-items: flex-start; } .pf-check:has(> span:nth-child(2)) > input { margin-top: 2px; }
 .pf-checks { display: flex; flex-wrap: wrap; gap: 6px 16px; }
 .pf-checks.tall { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); max-height: 220px; overflow: auto; padding: 8px 10px; border: 1px solid var(--c-line); border-radius: 8px; background: var(--c-sunken); }
 .pf-addr { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: end; margin-top: 10px; }
