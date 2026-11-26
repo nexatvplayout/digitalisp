@@ -94,7 +94,12 @@ export const canAir = () => can('playout.control') || can('live.plantao');
 export const base = () => `/api/c/${state.slug}`;
 
 export function toast(msg, err = false) {
-  const box = $('#toasts');
+  // a janela aberta (dialog modal) fica numa camada acima da página: o aviso vai para dentro dela, senão some atrás
+  // ("não está aceitando criar grupos": o erro aparecia por baixo da janela); some com a janela e é refeito na página
+  let box = $('#toasts');
+  if (!box) { box = el('div', { id: 'toasts', 'aria-live': 'polite' }); document.body.append(box); }
+  const host = [...document.querySelectorAll('dialog[open]')].pop() || document.body;
+  if (box.parentElement !== host) host.append(box);
   const ms = err ? 6000 : 3200;
   // o mesmo aviso ainda na tela (17/10: "Escolha um item que ainda não foi ao ar." saiu 4 vezes seguidas, um por tentativa,
   // cada um 6 s na tela): renova o que já está lá, em vez de empilhar cópias

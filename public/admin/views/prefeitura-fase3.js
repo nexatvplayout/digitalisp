@@ -135,7 +135,11 @@ async function paintRooms(box, ui, o, base) {
         el('button', { class: 'btn small', type: 'button', onclick: guard(async () => { await api(`${base}/room-groups/${g.id}`, { method: 'PATCH', body: { auto: !g.auto } }); await again(); }) }, g.auto ? 'Desligar automático' : 'Ligar automático'),
         el('button', { class: 'btn small danger', type: 'button', onclick: guard(async () => { if (!confirm(`Remover o grupo "${g.name}"?`)) return; await api(`${base}/room-groups/${g.id}`, { method: 'DELETE' }); await again(); }) }, 'Remover'))))) : el('p', { class: 'dim small', text: 'Nenhum grupo ainda. Um grupo junta as salas que atendem as mesmas filas (ex.: Clínico geral = Consultórios 1, 2 e 3).' }),
     el('div', { class: 'pf-bar' }, gName, ...gChecks, el('label', { class: 'pf-check' }, gAuto, el('span', { text: 'automático' })),
-      el('button', { class: 'btn', type: 'button', onclick: guard(async () => { await api(`${base}/room-groups`, { method: 'POST', body: { name: gName.value, serviceIds: gChecks.map((l) => l.querySelector('input')).filter((i) => i.checked).map((i) => Number(i.value)), auto: gAuto.checked } }); toast('Grupo criado.'); await again(); }) }, '+ Adicionar grupo')),
+      el('button', { class: 'btn', type: 'button', onclick: guard(async () => {
+        // o grupo junta salas que atendem as mesmas filas: sem fila marcada (ou sem fila criada) não há grupo
+        if (!gChecks.length) throw new Error('Crie primeiro uma fila (em Filas, acima): o grupo diz quais filas as salas dele atendem.');
+        if (!gChecks.some((l) => l.querySelector('input').checked)) throw new Error('Marque ao menos uma fila que o grupo atende (as caixinhas ao lado do nome).');
+        await api(`${base}/room-groups`, { method: 'POST', body: { name: gName.value, serviceIds: gChecks.map((l) => l.querySelector('input')).filter((i) => i.checked).map((i) => Number(i.value)), auto: gAuto.checked } }); toast('Grupo criado.'); await again(); }) }, '+ Adicionar grupo')),
     el('p', { class: 'dim small', text: `Etapas do atendimento: ${r.upa.flow.length ? r.upa.flow.map((x) => x.name || r.services.find((y) => y.id === x.serviceId)?.name).join(' → ') : 'não configuradas'}. QR do acompanhante: ${r.upa.follow ? 'ligado' : 'desligado'}. As etapas, o QR, a espera estimada e os pedidos de apoio se configuram na página da repartição, aba Salas e consultórios.` }),
     el('div', { class: 'pf-btns left' }, el('button', { class: 'btn', type: 'button', onclick: csv }, 'Indicadores dos últimos 7 dias (CSV)')));
 }
