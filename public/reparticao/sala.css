@@ -13,3 +13,6 @@
 .s .s-step.in { border-left: 4px solid var(--ok, #2e9e5b); }
 .s .s-pick { display: flex; flex-wrap: wrap; gap: 6px; grid-column: 1 / -1; }
 @media (max-width: 420px) { .s .r-btns .r-btn { flex: 1 1 100%; } }
+/* Disponível / Pausa: o estado de agora marcado (laranja), não apagado */
+#pause.s-on { background: #d9480f; border-color: #d9480f; color: #fff; font-weight: 700; }
+.s-paused { color: #ffb347; font-weight: 600; }

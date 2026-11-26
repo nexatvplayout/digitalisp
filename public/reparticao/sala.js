@@ -73,8 +73,14 @@ function paint() {
   if (keep) $('forwardTo').value = keep;
   $('forward').disabled = !t || !D.forward.length;
   $('call').disabled = false;
-  $('available').disabled = D.room.state === 'available'; $('pause').disabled = D.room.state === 'pause';
-  $('available').classList.toggle('primary', D.room.state === 'pause');
+  // Disponível / Pausa: o estado de agora fica marcado (não parece um botão apagado) e o outro é o que se toca
+  const pausada = D.room.state === 'pause';
+  $('available').disabled = D.room.state === 'available'; $('pause').disabled = false;
+  $('available').classList.toggle('primary', pausada);
+  $('available').textContent = pausada ? 'Voltar a atender (Disponível)' : 'Disponível ✓';
+  $('pause').textContent = pausada ? 'Em pausa ✓' : 'Pausa';
+  $('pause').classList.toggle('s-on', pausada);
+  $('pauseNote').hidden = !pausada;
   $('now').hidden = false;
   paintSupport(); paintQueue();
 }
@@ -162,7 +168,7 @@ $('requeue').addEventListener('click', run(() => api('/requeue', {}), 'A senha v
 $('next').addEventListener('click', run(() => api('/forward', { next: true }), (r) => `Encaminhada para ${r.stage}. A sala está disponível.`));
 $('forward').addEventListener('click', run(() => api('/forward', { serviceId: Number($('forwardTo').value) }), 'Senha encaminhada (mantém a prioridade e a cor).'));
 $('available').addEventListener('click', run(() => api('/state', { state: 'available' }), 'Sala disponível.'));
-$('pause').addEventListener('click', run(() => api('/state', { state: 'pause' }), 'Sala em pausa: o automático não manda pacientes.'));
+$('pause').addEventListener('click', run(() => (D?.room?.state === 'pause' ? Promise.resolve() : api('/state', { state: 'pause' })), () => 'Sala em pausa: o automático não manda pacientes. Toque em Disponível para voltar.'));
 
 const clock = () => { $('clock').textContent = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); };
 clock(); setInterval(clock, 20000);
