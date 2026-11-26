@@ -66,6 +66,14 @@
     function abaixar(sim) {
       abaixado = !!sim;
       videos.forEach(function (v) { if (v._vol === undefined) v._vol = v.volume; v.volume = Math.max(0, Math.min(1, v._vol * (abaixado ? 0.1 : 1))); });
+      volumeYoutube();
+    }
+    /** O vídeo do YouTube na zona: o volume da tela (e a queda de 90% na chamada da senha) pela página dele. */
+    var ytFrames = [];
+    function volumeYoutube() {
+      ytFrames = ytFrames.filter(function (f) { return document.body.contains(f); });
+      var vol = (ctx.volume === undefined ? 100 : ctx.volume) * (abaixado ? 0.1 : 1);
+      ytFrames.forEach(function (f) { try { f.contentWindow.postMessage({ telasVolume: Math.round(vol), mudo: calado || !!ctx.mudo || ctx.volume === 0 }, '*'); } catch (e) { /* carregando */ } });
     }
 
     function limpar() {
@@ -82,6 +90,7 @@
     function calar(sim) {
       calado = !!sim;
       videos.forEach(function (v) { v.muted = calado || !!v._mudo; });
+      volumeYoutube();
     }
 
     function novoVideo() {
@@ -696,6 +705,18 @@
         if (prog.offline.imagem) ctx.url(prog.offline.imagem.sha256).then(function (u) { if (u) { var i = el('img', 'midia'); i.src = u; c.appendChild(i); } });
         else logo(c, prog);
         trocar(caixa, c);
+      }
+      // o vídeo ao vivo do YouTube: a página do servidor numa moldura (ela mesma tenta de novo se a live cair)
+      if (prog.stream.youtube) {
+        var f = el('iframe', 'midia yt');
+        f.setAttribute('allow', 'autoplay; encrypted-media');
+        f.setAttribute('frameborder', '0');
+        f.setAttribute('scrolling', 'no');
+        var mudoYt = calado || !!ctx.mudo || ctx.volume === 0;
+        f.src = prog.stream.youtube + (prog.stream.youtube.indexOf('?') < 0 ? '?' : '&') + 'vol=' + (ctx.volume === undefined ? 100 : ctx.volume) + '&mute=' + (mudoYt ? 1 : 0);
+        ytFrames.push(f);
+        trocar(caixa, f);
+        return;
       }
       var vivo = ctx.aoVivo;
       if (prog.stream.hls && vivo && vivo.suporta(prog.stream.hls)) {

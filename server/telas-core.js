@@ -244,7 +244,7 @@ export function contractConfig({ eff, device, office, region, stream, update = n
   const q = queue && queue.enabled ? { enabled: true, voice: Boolean(queue.voice), title: queue.title || 'Atendimento', showName: Boolean(queue.showName), pair } : { enabled: false, voice: false, title: null, showName: false, pair: [] };
   return {
     device: { id: Number(device.id), name: device.name, office: office.name, officeType: office.type, region: region?.name ?? null },
-    stream: { hls: stream?.hls ?? null, backup: eff.backup ?? null, volume: eff.volume, muted: Boolean(eff.muted) },
+    stream: { hls: stream?.hls ?? null, backup: eff.backup ?? null, volume: eff.volume, muted: Boolean(eff.muted), ...(stream?.youtube?.page ? { youtube: { page: stream.youtube.page } } : {}) },
     layout: isQueueLayout(eff.layout) && !q.enabled ? 'full' : eff.layout, // "queue" e os do §15 só com a senha ligada
     // items: só o texto (o app antigo); style e rich: o estilo da faixa e o de cada aviso (os apps novos; o antigo ignora)
     ticker: { items: tickerTexts(eff.tickerItems, electoral), speed: eff.tickerSpeed, style: eff.tickerStyle || null, rich: tickerRich(eff.tickerItems, electoral) },

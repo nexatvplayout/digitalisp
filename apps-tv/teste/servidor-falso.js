@@ -211,7 +211,7 @@ function montarConfig(tela) {
     rev: '',
     device: { name: tela.name },
     brand: { name: 'Provedor X', logo: arquivo('logo-revenda.svg'), color: '#0ea5e9', background: '#020617' },
-    stream: { hls: est.aoVivo, volume: 100, muted: true },
+    stream: { hls: est.aoVivo, volume: 100, muted: true, ...(est.youtube ? { youtube: { page: est.youtube } } : {}) },
     // o clima da tela no formato do servidor (server/weather.js): /teste/clima?cond=clear|partly|cloudy|fog|rain|storm|nada
     weather: est.clima === 'nada' ? null : { provider: 'teste', source: 'INMET', hasNow: true, place: { ibge: '3304557', city: 'Rio de Janeiro', uf: 'RJ' },
       updatedAt: Math.floor(Date.now() / 3600000) * 3600000,
@@ -422,6 +422,8 @@ function controle(req, res, url) {
     }
     return json(res, 404, { error: 'código não encontrado' });
   }
+  // o vídeo ao vivo do YouTube (/teste/youtube?page=<endereço da página /tvcorp/youtube.html?v=…>; vazio = desliga)
+  if (p === '/teste/youtube') { est.youtube = q.get('page') || null; est.versao++; registrar('youtube: ' + (est.youtube || 'nenhum')); return volta(); }
   if (p === '/teste/aovivo') {
     const u = q.get('url');
     est.aoVivo = !u ? null : (u === 'video' ? `${BASE}/midia/video-teste.mp4` : u);

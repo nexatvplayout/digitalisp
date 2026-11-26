@@ -9,6 +9,7 @@ import { FACTORY_LAYOUTS, FACTORY_LAYOUT, FACTORY_SETS, LAYOUT_SEGMENTS, ZONE_KI
 import { themeOf } from './tvcorp-midias.js';
 import { radioPicker } from './tvcorp-radio.js';
 import { abrirPreviaViva } from './tvcorp-previa-viva.js';
+import { nomeCanal, opcaoYoutube, OPCAO_YT, novoCanalYoutube } from './tvcorp-youtube.js'; // o YouTube ao vivo no lugar do canal
 import { demosView } from './tvcorp-demos.js';
 import { faixaCard } from './tvcorp-faixa.js'; // o texto rolante digitado no próprio editor do layout // os layouts de demonstração (só nas contas ligadas)
 import { state } from '../lib.js';
@@ -203,8 +204,16 @@ export function layoutEditor(lay, reload, factoryKey = null, copyOf = null, { ao
     // o vídeo ao vivo: proporcional (padrão, com faixas pretas se a zona tiver outro formato) ou preenchendo a zona (corta as bordas)
     const fitPick = (z) => (z.kind === 'video' ? el('label', { class: 'pf-check' }, el('input', { type: 'checkbox', checked: z.fit === 'cover', 'aria-label': `Vídeo da zona ${z.id} preenchendo a zona`, onchange: (e) => { if (e.target.checked) z.fit = 'cover'; else delete z.fit; paintPv(); } }), el('span', { text: 'Preencher a zona (corta as bordas)' })) : null);
     // o canal ao vivo da zona de vídeo: escolhido aqui (o da tela, na aba Telas, ainda vence; sem canal, o da unidade)
-    const chPick = (z) => (z.kind === 'video' ? el('select', { 'aria-label': `Canal ao vivo da zona ${z.id}`, onchange: (e) => { if (e.target.value) z.channel = Number(e.target.value); else delete z.channel; paintPv(); } },
-      opt('', CANAIS.length ? 'Canal ao vivo: o da unidade' : 'Nenhum canal cadastrado (aba Ao vivo (HLS))', z.channel == null), ...CANAIS.map((c) => opt(c.id, `Canal ao vivo: ${c.name}`, Number(z.channel) === Number(c.id)))) : null);
+    const chPick = (z) => (z.kind === 'video' ? el('select', { 'aria-label': `Canal ao vivo da zona ${z.id}`, onchange: async (e) => {
+      const sel = e.target;
+      if (sel.value === OPCAO_YT) { // cadastra o link do YouTube como canal e já escolhe
+        const c = await novoCanalYoutube().catch((x) => { toast(x.message, true); return null; });
+        if (!c) { sel.value = z.channel != null ? String(z.channel) : ''; return; }
+        CANAIS.push(c); sel.insertBefore(opt(c.id, nomeCanal(c), true), sel.lastChild); sel.value = String(c.id);
+      }
+      if (sel.value) z.channel = Number(sel.value); else delete z.channel; paintPv();
+    } },
+      opt('', CANAIS.length ? 'Canal ao vivo: o da unidade' : 'Nenhum canal cadastrado (aba Ao vivo (HLS))', z.channel == null), ...CANAIS.map((c) => opt(c.id, nomeCanal(c), Number(z.channel) === Number(c.id))), opcaoYoutube()) : null);
     // o texto rolante: os textos da faixa (os mesmos da aba Barras e blocos), digitados aqui mesmo, ao escolher a zona
     const tickerDlg = () => dialog('Texto rolante: os textos da faixa', el('div', {}, note('Digite os avisos que passam na faixa. Valem para todas as telas da empresa (os mesmos da aba Barras e blocos).', 'small'), faixaCard(D().defaults?.config || {}, async () => { await reload?.(); })), { wide: true });
     const tickPick = (z) => (z.kind === 'ticker' ? btn('Digitar os textos', tickerDlg, 'small primary') : null);

@@ -289,6 +289,9 @@ class MainActivity : Activity(), Engine.Ui {
     /** Bloco sem zona de vídeo: o som do canal fica mudo (o player continua o mesmo). */
     private var signMuted = false
 
+    /** DIGITAL ISP: o vídeo ao vivo do YouTube na zona de vídeo (a página do servidor numa WebView, por cima do player). */
+    private var ytView: android.webkit.WebView? = null
+
     // ------------------------------------------------------------------ ciclo de vida
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -631,7 +634,7 @@ class MainActivity : Activity(), Engine.Ui {
         // TV em pé com a saída do aparelho deitada: gira a composição inteira
         val rotate = (if (block != null) block.layout.portrait else layout == Layout.PORTRAIT) && !displayPortrait
         val angle = if (rotate) Engine.store.rotation else 0
-        val key = listOf(w, h, layout, angle, c?.ticker, c?.side, c?.weather, c?.cards, c?.queue, Engine.store.overscanPct, c?.layoutRaw, c?.theme).joinToString("|") +
+        val key = listOf(w, h, layout, angle, c?.ticker, c?.side, c?.weather, c?.cards, c?.queue, Engine.store.overscanPct, c?.layoutRaw, c?.theme, c?.stream?.youtube).joinToString("|") +
             (if (block != null) "|signage:" + System.identityHashCode(block) else "")
         if (key == compKey) return
         compKey = key
@@ -648,6 +651,8 @@ class MainActivity : Activity(), Engine.Ui {
         insets = ins
 
         compHost.removeAllViews()
+        ytView?.let { try { it.destroy() } catch (_: Throwable) { } }
+        ytView = null
         ticker = null
         clockView = null
         dateView = null
@@ -773,6 +778,7 @@ class MainActivity : Activity(), Engine.Ui {
         }
         frame.addView(fallbackView)
         paintFallback()
+        c?.stream?.youtube?.let { page -> buildYoutube(frame, page, c) }
         // legenda (contrato §14): dentro da área do vídeo, por cima dele e longe das bordas (margem do overscan); a faixa
         // de avisos e o cartão da chamada ficam fora da moldura do vídeo ou por cima, então ela nunca os cobre
         // 1.2.6 (dono, 15/11): igual à legenda da TV Samsung e da web (core/CaptionLook): uma caixa escura translúcida
@@ -876,9 +882,48 @@ class MainActivity : Activity(), Engine.Ui {
     private var programDucked = false
     private fun duckProgram(on: Boolean) {
         programDucked = on
+        youtubeVolume()
         player.duck(on) // o vídeo do canal
         SignVideo.duckAll(on) // os vídeos da playlist com som
         updateRadio() // a rádio de fundo do layout
+    }
+
+    /** A WebView com a página do YouTube, ocupando a moldura do vídeo (16:9). Sem WebView no aparelho, fica o player. */
+    @android.annotation.SuppressLint("SetJavaScriptEnabled")
+    private fun buildYoutube(frame: VideoFrame, page: String, c: TelaConfig) {
+        val wv = try {
+            android.webkit.WebView(this).apply {
+                settings.javaScriptEnabled = true
+                settings.domStorageEnabled = true
+                settings.mediaPlaybackRequiresUserGesture = false
+                setBackgroundColor(Color.BLACK)
+                isFocusable = false
+                isFocusableInTouchMode = false
+                webViewClient = object : android.webkit.WebViewClient() {
+                    override fun shouldOverrideUrlLoading(view: android.webkit.WebView?, request: android.webkit.WebResourceRequest?): Boolean = false
+                    override fun onPageFinished(view: android.webkit.WebView?, url: String?) { youtubeVolume() }
+                }
+            }
+        } catch (_: Throwable) {
+            null
+        } ?: return
+        val (vol, mudo) = youtubeLevel(c)
+        frame.addView(wv, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        wv.loadUrl(page + (if (page.contains("?")) "&" else "?") + "vol=" + vol + "&mute=" + (if (mudo) 1 else 0))
+        ytView = wv
+    }
+
+    /** O volume do YouTube: o da tela, 10% na chamada da senha e no alerta; mudo como a tela. */
+    private fun youtubeLevel(c: TelaConfig): Pair<Int, Boolean> {
+        val vol = if (programDucked) c.stream.volume / 10 else c.stream.volume
+        return vol to (c.stream.muted || c.stream.volume == 0)
+    }
+
+    private fun youtubeVolume() {
+        val wv = ytView ?: return
+        val c = cfg ?: return
+        val (vol, mudo) = youtubeLevel(c)
+        try { wv.evaluateJavascript("window.telasVolume&&telasVolume($vol,$mudo)", null) } catch (_: Throwable) { }
     }
 
     private fun updateRadio() {
@@ -1751,7 +1796,8 @@ class MainActivity : Activity(), Engine.Ui {
         applyCaptions()
         player.setVolume(c.stream.volume, c.stream.muted || signMuted)
         buildComposition()
-        val key = "${c.stream.hls}|${c.stream.backup}|${Engine.standalone}"
+        youtubeVolume()
+        val key = "${c.stream.hls}|${c.stream.backup}|${c.stream.youtube}|${Engine.standalone}"
         if (key != streamKey || !playing) {
             streamKey = key
             if (scheduleOn) startPlayback()
@@ -1843,7 +1889,8 @@ class MainActivity : Activity(), Engine.Ui {
     private fun perform(action: WdAction) {
         val c = cfg ?: return
         when (action) {
-            is WdAction.Play -> when (action.source.also { signal.reload() }) {
+            // o YouTube no lugar do canal: o player fica parado (a WebView toca)
+            is WdAction.Play -> if (c.stream.youtube != null) player.stop() else when (action.source.also { signal.reload() }) {
                 Source.HLS -> if (wd.hasMain) player.playLive(c.stream.hls!!) else player.stop()
                 Source.BACKUP -> if (wd.hasBackup) player.playLive(c.stream.backup!!) else player.stop()
                 Source.OFFLINE -> {

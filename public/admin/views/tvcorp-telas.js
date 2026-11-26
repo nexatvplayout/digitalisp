@@ -6,7 +6,8 @@ import {
   active, officeOf, groupsOf, statusOf, sinceText, counters, dot, when, ago, now, pct, STATUS,
 } from './tvcorp-base.js';
 import { copyText, api, state } from '../lib.js';
-import { botaoDemonstracao } from './tvcorp-demo-rodizio.js'; // o rodízio de DEMONSTRAÇÃO (só nas contas ligadas)
+import { botaoDemonstracao } from './tvcorp-demo-rodizio.js';
+import { nomeCanal, opcaoYoutube, OPCAO_YT, novoCanalYoutube } from './tvcorp-youtube.js'; // o YouTube ao vivo no lugar do canal // o rodízio de DEMONSTRAÇÃO (só nas contas ligadas)
 import { createMap } from '../telas-mapa.js';
 import { officeStatus, OFFICE_STATUS_LABEL } from '../../shared/telas-geo.js';
 import { LAYOUTS, LAYOUT_KEYS, COMMANDS, typeLabel } from '../../shared/telas-tipos.js';
@@ -29,9 +30,16 @@ function programacaoDaTela(d, reload) {
   const escolhas = { ...(minha?.zonePlaylists || {}) };
   // o canal ao vivo da zona de vídeo, só desta tela (Ao vivo (HLS)); vazio = o canal da unidade, se ela tiver
   let canais = []; let canalTela = null;
-  const canal = el('select', { onchange: (e) => { canalTela = e.target.value ? Number(e.target.value) : null; } });
+  const canal = el('select', { onchange: async (e) => {
+    if (e.target.value === OPCAO_YT) { // cadastra o link do YouTube como canal e já escolhe
+      const c = await novoCanalYoutube().catch((x) => { toast(x.message, true); return null; });
+      if (c) { canais.push(c); canalTela = c.id; }
+      desenharCanal(); return;
+    }
+    canalTela = e.target.value ? Number(e.target.value) : null;
+  } });
   const desenharCanal = () => put(canal, opt('', canais.length ? 'O canal da unidade (ou nenhum)' : 'Nenhum canal cadastrado (aba Ao vivo)', canalTela == null),
-    ...canais.filter((c) => c.ativo).map((c) => opt(c.id, c.name, canalTela === c.id)));
+    ...canais.filter((c) => c.ativo).map((c) => opt(c.id, nomeCanal(c), canalTela === c.id)), opcaoYoutube());
   Promise.all([api('/api/hls').catch(() => []), api('/api/hls/telas').catch(() => ({}))]).then(([l, m]) => {
     canais = Array.isArray(l) ? l : []; canalTela = m?.[d.id] ?? null; desenharCanal();
   });
@@ -41,7 +49,7 @@ function programacaoDaTela(d, reload) {
     const zonas = (l?.zones || []).filter((z) => TVC_PLAYLIST_ZONES.includes(z.kind));
     const temVideo = (l?.zones || []).some((z) => z.kind === 'video');
     const zh = (l?.zones || []).find((z) => z.kind === 'hdmi');
-    put(zonasBox, ...(zh ? [note(zh.input ? `Entrada HDMI ${zh.input} (escolhida no layout). Para trocar, edite o layout na aba Layouts.` : 'Entrada HDMI: a escolhida no menu do app da TV. Para fixar uma (HDMI 1 a 4), escolha no layout, na aba Layouts.', 'small')] : []), ...(temVideo ? [f('Canal ao vivo da zona de vídeo', canal)] : []), ...(l ? (zonas.length ? zonas.map((z) => {
+    put(zonasBox, ...(zh ? [note(zh.input ? `Entrada HDMI ${zh.input} (escolhida no layout). Para trocar, edite o layout na aba Layouts.` : 'Entrada HDMI: a escolhida no menu do app da TV. Para fixar uma (HDMI 1 a 4), escolha no layout, na aba Layouts.', 'small')] : []), ...(temVideo ? [f('Canal ao vivo (ou vídeo do YouTube) da zona de vídeo', canal)] : []), ...(l ? (zonas.length ? zonas.map((z) => {
       const sel = el('select', { onchange: (e) => { escolhas[z.id] = e.target.value ? Number(e.target.value) : null; } },
         opt('', 'Nenhuma', !escolhas[z.id]), ...(data.playlists || []).map((p) => opt(p.id, p.name, Number(escolhas[z.id]) === p.id)));
       return f(`Playlist da zona "${z.name || z.id}"`, sel);

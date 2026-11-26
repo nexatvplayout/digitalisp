@@ -11,7 +11,8 @@ import java.net.URI
 enum class Layout { FULL, TICKER, SIDE, LBAR, PORTRAIT, QUEUE }
 
 data class DeviceCfg(val id: Long, val name: String, val office: String, val officeType: String, val region: String)
-data class StreamCfg(val hls: String?, val backup: String?, val volume: Int, val muted: Boolean)
+/** youtube (DIGITAL ISP): a página do servidor que toca o vídeo ao vivo do YouTube na zona de vídeo, no lugar do canal. */
+data class StreamCfg(val hls: String?, val backup: String?, val volume: Int, val muted: Boolean, val youtube: String? = null)
 data class TickerCfg(val items: List<String>, val speed: Int, val style: TickerStyle? = null, val rich: List<TickerRun> = emptyList())
 
 /**
@@ -305,6 +306,7 @@ object ConfigParser {
                 backup = Urls.clean(str(s, "backup")),
                 volume = (s?.optInt("volume", 100) ?: 100).coerceIn(0, 100),
                 muted = s?.optBoolean("muted", false) ?: false,
+                youtube = Urls.clean(str(s?.optJSONObject("youtube"), "page")),
             ),
             layoutRaw = layoutRaw,
             layout = layoutOf(layoutRaw),

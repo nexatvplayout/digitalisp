@@ -4,12 +4,15 @@
 import { el, tapi, put, opt, label, note, btn, dialog, listOf } from './tvcorp-base.js';
 import { layoutPreview, itemPreview } from '../../shared/tvcorp-previa.js';
 import { themeOf } from './tvcorp-midias.js';
+import { ehYoutube, iframeYoutube } from './tvcorp-youtube.js';
 
 let hlsLib = null;
 const carregarHlsJs = () => hlsLib || (hlsLib = import('/vendor/hls.mjs').then((m) => m.default).catch(() => { hlsLib = null; return null; }));
 
 /** Toca o HLS num <video> (sem som de início: o navegador só deixa tocar sozinho assim). Devolve o "parar". */
 async function tocar(video, url, aviso) {
+  // o vídeo ao vivo do YouTube: a mesma página que a TV abre
+  if (url && ehYoutube(url)) { const f = iframeYoutube(url, { classe: video.className }); video.replaceWith(f); return () => f.remove(); }
   video.muted = true;
   if (!url) { aviso.textContent = 'Nenhum canal ao vivo cadastrado (aba Ao vivo).'; return () => {}; }
   if (video.canPlayType('application/vnd.apple.mpegurl')) { video.src = url; video.play().catch(() => {}); return () => { video.pause(); video.removeAttribute('src'); }; }
@@ -43,7 +46,10 @@ export async function abrirPreviaViva(layout, { zonePlaylists = null, titulo = '
   const canal = el('select', { 'aria-label': 'Canal ao vivo' }, ...listaCanais.map((c, i) => opt(c.url, c.name || `Canal ${i + 1}`, canalUrl ? c.url === canalUrl : i === 0)));
   const aviso = el('p', { class: 'small dim', 'aria-live': 'polite' });
   const palco = el('div', { class: `tc-live-palco${layout.orientation === 'port' ? ' port' : ''}` });
-  const aplicaSom = () => palco.querySelectorAll('video, audio').forEach((m) => { m.muted = !somLigado; if (somLigado) m.play?.().catch(() => {}); });
+  const aplicaSom = () => {
+    palco.querySelectorAll('video, audio').forEach((m) => { m.muted = !somLigado; if (somLigado) m.play?.().catch(() => {}); });
+    palco.querySelectorAll('iframe.tc-yt').forEach((f) => { try { f.contentWindow.postMessage({ telasVolume: 100, mudo: !somLigado }, location.origin); } catch { /* ainda carregando */ } });
+  };
 
   async function montar() {
     parar();

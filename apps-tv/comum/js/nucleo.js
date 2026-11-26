@@ -12,7 +12,7 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  var VERSAO = '1.0.35';
+  var VERSAO = '1.0.36';
   var TZ_PADRAO = 'America/Sao_Paulo';
   var SHA = /^[0-9a-f]{64}$/;
   var DIA = /^\d{4}-\d{2}-\d{2}$/;
@@ -569,6 +569,8 @@
       offline: { itens: offItens, imagem: arquivo(off.image, teste) },
       stream: {
         hls: hls && urlPermitida(hls, teste) ? hls : null,
+        // DIGITAL ISP: o vídeo ao vivo do YouTube no lugar do canal (a página do servidor que toca o vídeo, aberta na zona)
+        youtube: s.youtube && typeof s.youtube === 'object' && urlPermitida(str(s.youtube, 'page'), teste) ? str(s.youtube, 'page') : null,
         volume: Math.max(0, Math.min(100, num(s, 'volume', 100))),
         mudo: s.muted === true
       },
