@@ -18,7 +18,7 @@ export default async function paintResumo(box, ctx) {
     put(box, el('div', { class: 'card pf-empty' },
       el('h3', { text: 'Comece pela primeira tela' }),
       note('Cadastre a unidade (matriz, filial, fábrica, loja), gere a chave de acesso e digite-a na TV box com o aplicativo NEXA Telas. Depois monte as mídias, as playlists e a grade.', 'dim'),
-      btns(btn('Unidades e grupos', () => ctx.go('unidades'), 'primary'), btn('Instalar o aplicativo', () => ctx.go('instalar')), btn('Ver as mídias', () => ctx.go('midias')))));
+      btns(btn('Unidades e grupos', () => ctx.go('unidades'), 'primary'), btn('Aplicativos', () => ctx.go('instalar')), btn('Ver as mídias', () => ctx.go('midias')))));
     return;
   }
   put(box,

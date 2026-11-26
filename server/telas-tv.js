@@ -18,6 +18,7 @@ import { config } from './config.js';
 
 export const TV_DIR = process.env.TELAS_TV_DIR || path.join(config.root, 'server', 'assets', 'telas-tv'); // TELAS_TV_DIR: nos testes
 export const INSTALADOR_DIR = process.env.INSTALADOR_DIR || path.join(config.root, 'server', 'assets', 'instalador');
+export const INSTALADORES_DIR = path.join(config.root, 'server', 'assets', 'instaladores'); // os instaladores pelo computador
 const MAX_BYTES = 200 * 1024 * 1024;
 const NOME = /^[A-Za-z0-9_.-]{1,100}$/;
 const SHA = /^[0-9a-f]{64}$/;
@@ -117,6 +118,8 @@ export function createInstaladorStore({ dir = INSTALADOR_DIR } = {}) {
       res.sendFile(l.arquivo);
     };
     app.get('/instalador/latest.apk', apk);
+    // o instalador pelo computador (Fire TV e TV box Android, pelo cabo USB ou pela rede): o script baixa sempre o APK mais novo
+    app.get('/instaladores/tv-box.zip', (req, res) => { res.set('Cache-Control', 'public, max-age=300'); res.download(path.join(INSTALADORES_DIR, 'DIGITAL-ISP-Instalador-TV-box.zip'), 'DIGITAL-ISP-Instalador-TV-box.zip', (e) => { if (e && !res.headersSent) res.status(404).json({ error: 'Instalador não disponível.' }); }); });
     app.get(['/instalador', '/instalador/'], (req, res) => {
       res.set('Cache-Control', 'no-cache');
       const l = latest();

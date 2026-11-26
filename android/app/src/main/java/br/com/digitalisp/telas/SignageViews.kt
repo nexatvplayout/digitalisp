@@ -282,14 +282,12 @@ class SignItemView(
         return y
     }
 
-    private fun accentBar(w: Int, h: Int, color: Int) {
-        val t = minOf(w, h) * 0.018f
-        ops += { c ->
-            paint.style = Paint.Style.FILL
-            paint.color = color
-            c.drawRect(0f, 0f, t + edge.left, h.toFloat(), paint)
-        }
-    }
+    /**
+     * DIGITAL ISP (26/11/2026): a barra vertical na borda esquerda do slide saiu. A prévia do painel e o app Samsung/LG não
+     * têm essa barra, e na TV ela aparecia como uma faixa de cima a baixo que mudava de cor a cada slide (pedido do dono).
+     */
+    @Suppress("UNUSED_PARAMETER")
+    private fun accentBar(w: Int, h: Int, color: Int) = Unit
 
     private fun drawCover(c: Canvas, b: Bitmap, dst: RectF, contain: Boolean = false, radius: Float = 0f) {
         val bw = b.width.toFloat()

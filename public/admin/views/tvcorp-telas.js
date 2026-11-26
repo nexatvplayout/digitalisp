@@ -241,7 +241,7 @@ export default async function paintTelas(box, ctx) {
   put(box,
     counterRow(counters(active()), active().length),
     d.rede ? null : note('A rede de telas ainda não respondeu (rotas /api/tvcorp/rede). A lista aparece quando o servidor for atualizado.', 'pf-banner'),
-    btns(btn('+ TV box', () => newKey(reload), 'primary'), toggle, btn('Instalar o aplicativo', () => ctx.go('instalar'), 'small'),
+    btns(btn('+ TV box', () => newKey(reload), 'primary'), toggle, btn('Aplicativos', () => ctx.go('instalar'), 'small'),
       el('span', { class: 'dim small', text: 'Cada TV box entra com uma chave de uso único (24 h), já ligada à unidade.' })),
     keys.length ? el('div', {}, label('Chaves esperando uso (a chave em si só aparece ao gerar)'), table(['Unidade', 'Nome da tela', 'Vence', 'Gerada por', ''], keys)) : null,
     V.mode === 'mapa' ? el('div', {}, mapBox, mapNote, note('Cada pino é uma unidade. Verde: todas as telas no ar. Amarelo: alguma ligada sem imagem. Vermelho: alguma desligada. Cinza: sem tela. As filiais podem estar em cidades diferentes: o mapa abre mostrando todas.')) : listBox);

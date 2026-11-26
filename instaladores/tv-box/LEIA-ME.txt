@@ -1,0 +1,23 @@
+DIGITAL ISP - instalar no Amazon Fire TV (ou numa TV box Android)
+=========================================
+
+ANTES (no Fire TV, uma vez so):
+ 1. Configuracoes > Minha Fire TV > Sobre
+ 2. Clique 7 vezes em cima do nome do aparelho, ate aparecer "Voce agora e um desenvolvedor".
+ 3. Volte: Configuracoes > Minha Fire TV > Opcoes do desenvolvedor
+ 4. Ligue "Depuracao ADB" (e "Apps de fontes desconhecidas", se aparecer).
+
+NO COMPUTADOR:
+ 1. Extraia este ZIP numa pasta.
+ 2. Clique duas vezes em INSTALAR.bat.
+ 3. Se a TV perguntar "Permitir depuracao USB?", marque "Sempre permitir" e clique OK.
+
+O script:
+ - baixa sempre a versao mais nova do app no site do DIGITAL ISP;
+ - baixa o adb oficial do Google na primeira vez;
+ - procura o Fire TV pelo cabo USB; se nao achar, pede o IP e instala pela rede
+   (o IP fica em Configuracoes > Minha Fire TV > Sobre > Rede);
+ - instala, e abre o app.
+
+Depois de aberto, vincule a tela pelo painel como nas outras TVs.
+As atualizacoes seguintes chegam sozinhas pelo proprio app.

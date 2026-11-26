@@ -49,7 +49,7 @@ export const TABS = [
   { id: 'celular', label: 'Celular', perm: 'tvcorp.manage', paint: paintCelular },
   { id: 'relatorios', label: 'Relatórios', perm: 'tvcorp.manage', paint: paintRelatorios },
   { id: 'comandos', label: 'Comandos', perm: 'tvcorp.manage', paint: paintComandos },
-  { id: 'instalar', label: 'Instalar o aplicativo', perm: 'tvcorp.manage', paint: paintInstalar },
+  { id: 'instalar', label: 'Aplicativos', perm: 'tvcorp.manage', paint: paintInstalar },
   { id: 'config', label: 'Configurações', perm: 'tvcorp.manage', paint: paintConfig },
 ];
 /** As abas que quem está logado vê (pela permissão de cada uma). */

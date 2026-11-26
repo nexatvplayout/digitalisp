@@ -8,10 +8,10 @@ import { templateCatalog } from '../public/shared/templates-catalogo.js';
 
 const slides = (p) => { const all = templateCatalog().filter((t) => t.segment === p.seg && t.orient === 'land'); return p.pick.map((i) => all[i]); };
 
-test('23 layouts de demonstração (3 com chamada de senha), válidos, com playlists de slides premium', () => {
-  assert.equal(DEMO_LAYOUTS.length, 23);
-  assert.ok(DEMO_LAYOUTS.filter((d) => d.zones.some((z) => z.kind === 'queue')).length >= 3, 'layouts de senha');
-  assert.equal(new Set(DEMO_LAYOUTS.map((d) => d.key)).size, 23, 'chaves únicas');
+test('54 layouts de demonstração (5 com chamada de senha), válidos, com playlists de slides premium', () => {
+  assert.equal(DEMO_LAYOUTS.length, 54);
+  assert.ok(DEMO_LAYOUTS.filter((d) => d.zones.some((z) => z.kind === 'queue')).length >= 5, 'layouts de senha');
+  assert.equal(new Set(DEMO_LAYOUTS.map((d) => d.key)).size, 54, 'chaves únicas');
   const segs = new Set(DEMO_SEGMENTS.map(([k]) => k));
   for (const k of ['provedor', 'padaria', 'lanchonete', 'farmacia', 'mercado']) assert.ok(DEMO_LAYOUTS.filter((d) => d.segment === k).length >= 2, `${k}: pelo menos 2`);
   for (const d of DEMO_LAYOUTS) {
