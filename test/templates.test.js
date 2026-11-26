@@ -176,13 +176,13 @@ test('a prévia desenha cada template com o modelo, o formato e o texto, sem "un
   } finally { globalThis.document = prev; }
 });
 
-test('PREMIUM: 200 prontos com foto própria, 8 por nicho em 25 nichos, nos dois formatos, com o filtro por nicho', () => {
+test('PREMIUM: 208 prontos com foto própria, 8 por nicho em 26 nichos, nos dois formatos, com o filtro por nicho', () => {
   const P = ALL.filter((t) => /^premium-/.test(t.segment));
-  assert.equal(P.length, 400, '200 × 2 formatos');
+  assert.equal(P.length, 416, '208 × 2 formatos');
   assert.ok(P.every((t) => t.premium && /^foto-pm-/.test(t.fields.art)));
-  assert.equal(new Set(P.map((t) => t.fields.art)).size, 200, 'uma foto por modelo');
-  assert.equal(C.PREMIUM_NICHES.length, 25);
+  assert.equal(new Set(P.map((t) => t.fields.art)).size, 208, 'uma foto por modelo');
+  assert.equal(C.PREMIUM_NICHES.length, 26);
   for (const n of C.PREMIUM_NICHES) assert.equal(C.filterTemplates(ALL, { niche: n.key }).length, 16, n.key);
-  for (const k of ['supermercado', 'padaria', 'farmacia', 'restaurante', 'pizzaria', 'clinica', 'academia', 'oficina', 'igreja', 'condominio', 'publico', 'provedor']) assert.ok(C.PREMIUM_NICHES.some((n) => n.key === `premium-${k}`), k);
+  for (const k of ['supermercado', 'padaria', 'farmacia', 'restaurante', 'pizzaria', 'lanchonete', 'clinica', 'academia', 'oficina', 'igreja', 'condominio', 'publico', 'provedor']) assert.ok(C.PREMIUM_NICHES.some((n) => n.key === `premium-${k}`), k);
   assert.ok(C.filterTemplates(ALL, { q: 'premium padaria' }).length >= 16, 'a busca acha por "premium"');
 });

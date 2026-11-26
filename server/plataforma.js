@@ -14,7 +14,8 @@ import { mountFeatureProfiles, storedFeatures } from './funcionalidades.js';
 import { hiddenCodes, setSiteVisible } from './site-planos.js'; // "Mostrar no site" de cada plano
 import { mountRevendas, saveExtras, loadExtras, extrasDto } from './revendas.js';
 import { clientesDe } from './contas.js';
-import { contasComPrefeitura, ligarPrefeitura } from './prefeitura-contas.js'; // o módulo Prefeitura, conta por conta
+import { contasComPrefeitura, ligarPrefeitura } from './prefeitura-contas.js';
+import { demoLigada, ligarDemo } from './demo-contas.js'; // os layouts de demonstração, só nas contas ligadas // o módulo Prefeitura, conta por conta
 
 const { fail } = T;
 const ah = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -229,6 +230,19 @@ export function mountPlataforma(app) {
     T.invalidateTenants();
     aud(res, conta, `${on ? 'ligou' : 'desligou'} o módulo Prefeitura da conta #${conta} (revenda ${t.slug})`);
     res.json({ id: conta, on });
+  }));
+
+  // os layouts de demonstração (o fim da aba Layouts): por padrão só a conta principal; o superadmin liga outra revenda
+  r.get('/tenants/:id/demo', A('platform.view'), ah(async (req, res) => {
+    const t = await tenantOr404(idParam(req));
+    res.set('Cache-Control', 'no-store').json({ id: Number(t.id), on: await demoLigada(t.id) });
+  }));
+  r.put('/tenants/:id/demo', A('platform.tenants'), ah(async (req, res) => {
+    const t = await tenantOr404(idParam(req));
+    const on = Boolean(req.body?.on);
+    await ligarDemo(t.id, on);
+    aud(res, t.id, `${on ? 'ligou' : 'desligou'} os layouts de demonstração da revenda ${t.slug}`);
+    res.json({ id: Number(t.id), on });
   }));
 
   // a revenda esqueceu a senha: gera uma nova para o administrador dela (mostrada uma vez; troca no primeiro acesso)

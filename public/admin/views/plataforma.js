@@ -89,6 +89,7 @@ function revendaForm(t, plans, done) {
     field('Observações', el('textarea', { name: 'notes', rows: 2, maxlength: 1000, text: t?.notes || '' }), { full: true }),
     // o módulo Prefeitura: desligado por padrão; o superadmin liga para a revenda ou para cada cliente dela
     editing ? prefeituraCard(t) : null,
+    editing ? demoCard(t) : null,
     // prefeitura (modo órgão público no plano da revenda): o município travado das telas da própria revenda
     editing && plans.find((p) => p.code === t.planCode)?.features?.prefeitura ? municipioCard(`/api/platform/tenants/${t.id}/telas-municipio`, { idPrefix: 'rvm' }) : null,
     el('div', { class: 'rv-actions' }, el('button', { class: 'primary', type: 'submit', text: editing ? 'Salvar' : 'Cadastrar revenda' }),
@@ -131,6 +132,19 @@ function revendaForm(t, plans, done) {
     }
   }));
   return f;
+}
+
+/** Os layouts de demonstração no fim da aba Layouts desta revenda (salva na hora). */
+function demoCard(t) {
+  const box = el('input', { type: 'checkbox', disabled: true, 'aria-label': `Layouts de demonstração: ${t.name}`, onchange: guard(async (e) => {
+    const on = e.target.checked;
+    try { await api(`/api/platform/tenants/${t.id}/demo`, { method: 'PUT', body: { on } }); toast(`Layouts de demonstração ${on ? 'ligados' : 'desligados'}: ${t.name}.`); }
+    catch (err) { e.target.checked = !on; throw err; }
+  }) });
+  api(`/api/platform/tenants/${t.id}/demo`).then((d) => { box.checked = Boolean(d.on); box.disabled = false; }).catch(() => {});
+  return el('fieldset', { class: 'rv-sec' }, el('legend', { text: 'Layouts de demonstração' }),
+    el('p', { class: 'hint', text: 'Os 20 layouts prontos (provedor, padaria, lanchonete, farmácia, mercado...) no fim da aba Layouts desta revenda, para mostrar aos clientes. Por padrão, só a conta principal.' }),
+    el('label', { class: 'pl-mod' }, box, el('span', {}, el('b', { text: t.name }), el('small', { class: 'dim', text: ' a própria revenda' }))));
 }
 
 /** O módulo Prefeitura conta por conta: a revenda e cada cliente dela, cada um com o seu interruptor (salva na hora). */

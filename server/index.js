@@ -39,6 +39,7 @@ import { createNewsImages } from './noticias-img.js'; // a cópia da foto de cad
 import { prepareMediaImage } from './tvcorp-midia.js'; // a foto da notícia em WebP vira JPEG
 import { forecast as weatherForecast } from './weather.js'; // o clima das telas (Open-Meteo/INMET, com cache e cota)
 import { sitePlans } from './site-planos.js'; // os planos ativos e públicos no site (GET /api/site/planos)
+import { demoLigada } from './demo-contas.js'; // os layouts de demonstração, só nas contas ligadas
 
 const bootedAt = Date.now();
 const ah = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -142,6 +143,8 @@ app.get('/api/me', signedIn, ah(async (req, res) => {
     tenant: tenant ? { id: tenant.id, slug: tenant.slug, name: tenant.name, status: tenant.status } : null,
     plan: plan ? { code: plan.code, name: plan.name } : null,
     planFeatures: plan?.features || {},
+    // os layouts de demonstração no fim da aba Layouts (server/demo-contas.js): só nas contas ligadas
+    demoLayouts: tenant ? await demoLigada(tenant.id) : false,
     catalog,
   });
 }));

@@ -9,6 +9,8 @@ import { FACTORY_LAYOUTS, FACTORY_LAYOUT, FACTORY_SETS, LAYOUT_SEGMENTS, ZONE_KI
 import { themeOf } from './tvcorp-midias.js';
 import { radioPicker } from './tvcorp-radio.js';
 import { abrirPreviaViva } from './tvcorp-previa-viva.js';
+import { demosView } from './tvcorp-demos.js'; // os layouts de demonstração (só nas contas ligadas)
+import { state } from '../lib.js';
 import { wifiQr, vcardQr, qrKind, qrLabel } from '../../shared/qr-conteudo.js';
 import { quadroPx, formatoDe, FORMATO_TXT, dicaArte, quadrosDoLayout } from './tvcorp-quadros.js';
 import { ZONE_SHAPES, EDGE_COLORS } from '../../shared/tvcorp-formas.js';
@@ -279,7 +281,9 @@ export default async function paintLayouts(box, ctx) {
     walls.length ? el('div', { class: 'tc-lgrid' }, ...walls.map((w) => wallCard(w, reload))) : empty('Nenhum conjunto ainda. Crie um, ou use um modelo pronto de várias TVs abaixo.'),
     btns(btn('+ Conjunto de telas', () => wallDialog(null, reload), 'small primary')),
     label('Modelos prontos'),
-    factoryBox);
+    factoryBox,
+    // DIGITAL ISP: os layouts de demonstração, no fim da página, só nas contas ligadas pelo superadmin
+    state.me?.demoLayouts ? demosView(reload) : null);
 }
 /** O filtro dos modelos prontos (segmento, formato e quantas TVs): fica entre uma visita e outra à aba. */
 const FV = { segment: '', orient: '', tvs: '', main: '', shape: '' };

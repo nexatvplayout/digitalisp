@@ -326,3 +326,8 @@ dialog.pf-dlg.tc-lay-dlg { width: min(97vw, 1560px); max-width: 97vw; }
 /* a miniatura do layout abre grande com um clique */
 .tc-pv-click { cursor: zoom-in; border-radius: 10px; }
 .tc-pv-click:hover, .tc-pv-click:focus-visible { outline: 2px solid #38bdf8; outline-offset: 2px; }
+/* DIGITAL ISP: os layouts de demonstração (views/tvcorp-demos.js) */
+.tc-demos { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--c-line); }
+.tc-demo-segs { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 10px; }
+.tc-demo-pv { cursor: zoom-in; }
+.tc-demo-pv .tvc-previa { max-width: none; border: 0; border-radius: 0; }
