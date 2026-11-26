@@ -1,16 +1,16 @@
 {
   "tizen": {
-    "version": "1.0.31",
+    "version": "1.0.32",
     "appId": "DgIspTela1.Telas",
-    "file": "DigitalISP-1.0.31.wgt",
-    "sha256": "0aa92ee2154558d0d4fef2a852e966191ef4c939016890c483d8014b7b8eead0",
-    "bytes": 46208628
+    "file": "DigitalISP-1.0.32.wgt",
+    "sha256": "ecb6daf314fee88b7a15fe567488eba3c7382076f90b6bc9f24c9714651267d2",
+    "bytes": 46208770
   },
   "webos": {
-    "version": "1.0.31",
+    "version": "1.0.32",
     "appId": "br.com.digitalisp.telas",
-    "file": "br.com.digitalisp.telas_1.0.31_all.ipk",
-    "sha256": "49d2c4e450cd5ec1834eee8fa402a00a65ee1251538bcde5490f4e988f215abb",
-    "bytes": 46160182
+    "file": "br.com.digitalisp.telas_1.0.32_all.ipk",
+    "sha256": "7e560d34bcac61ef34b7042d898b44df6e487c1cbaaf093ffafaa2b70239ca04",
+    "bytes": 46160350
   }
 }

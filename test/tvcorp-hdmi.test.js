@@ -27,3 +27,10 @@ test('uma HDMI por layout, sem o vídeo do canal e sem ficar por cima', () => {
   assert.throws(() => K.cleanZone(Z('a', 'hdmi', 0, 0, 50, 50, { overlay: true })), /não pode ficar por cima/);
   assert.match(checkZones([Z('a', 'hdmi', 0, 0, 50, 100), Z('b', 'video', 50, 0, 50, 100)]), /não ficam no mesmo layout/);
 });
+
+test('a entrada HDMI escolhida no layout: de 1 a 4, só na zona HDMI', () => {
+  assert.equal(K.cleanZone(Z('main', 'hdmi', 0, 0, 75, 100, { input: 2 })).input, 2);
+  assert.equal(K.cleanZone(Z('main', 'hdmi', 0, 0, 75, 100, { input: '' })).input, undefined, 'vazio: a do menu da TV');
+  assert.throws(() => K.cleanZone(Z('main', 'hdmi', 0, 0, 75, 100, { input: 5 })), /de 1 a 4/);
+  assert.equal(K.cleanZone(Z('main', 'video', 0, 0, 75, 100, { input: 2 })).input, undefined, 'só a zona HDMI');
+});

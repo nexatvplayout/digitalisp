@@ -39,7 +39,8 @@ function programacaoDaTela(d, reload) {
     const l = (data.layouts || []).find((x) => x.id === Number(layout.value));
     const zonas = (l?.zones || []).filter((z) => TVC_PLAYLIST_ZONES.includes(z.kind));
     const temVideo = (l?.zones || []).some((z) => z.kind === 'video');
-    put(zonasBox, ...(temVideo ? [f('Canal ao vivo da zona de vídeo', canal)] : []), ...(l ? (zonas.length ? zonas.map((z) => {
+    const zh = (l?.zones || []).find((z) => z.kind === 'hdmi');
+    put(zonasBox, ...(zh ? [note(zh.input ? `Entrada HDMI ${zh.input} (escolhida no layout). Para trocar, edite o layout na aba Layouts.` : 'Entrada HDMI: a escolhida no menu do app da TV. Para fixar uma (HDMI 1 a 4), escolha no layout, na aba Layouts.', 'small')] : []), ...(temVideo ? [f('Canal ao vivo da zona de vídeo', canal)] : []), ...(l ? (zonas.length ? zonas.map((z) => {
       const sel = el('select', { onchange: (e) => { escolhas[z.id] = e.target.value ? Number(e.target.value) : null; } },
         opt('', 'Nenhuma', !escolhas[z.id]), ...(data.playlists || []).map((p) => opt(p.id, p.name, Number(escolhas[z.id]) === p.id)));
       return f(`Playlist da zona "${z.name || z.id}"`, sel);

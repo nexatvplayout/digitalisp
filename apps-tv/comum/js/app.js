@@ -580,7 +580,7 @@
       return;
     }
     var atualN = ctxTela.hdmiEntrada();
-    m.appendChild(el2('div', 'menu-item' + (menu.linha === 0 ? ' ativo' : ''), 'Entrada HDMI nos layouts com HDMI'));
+    m.appendChild(el2('div', 'menu-item' + (menu.linha === 0 ? ' ativo' : ''), 'Entrada HDMI (quando o layout do painel não escolhe uma)'));
     var ops = el2('div', 'menu-opcoes');
     menu.ops.forEach(function (o, i) {
       ops.appendChild(el2('div', 'menu-op' + (o.n === atualN ? ' sel' : '') + (menu.linha === 0 && i === menu.foco ? ' foco' : ''),

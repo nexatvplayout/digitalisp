@@ -701,7 +701,8 @@
     function zonaHdmi(c, zona, prog, jan, alvo, bloco) {
       usouHdmi = true;
       var vez = ++vezHdmi;
-      var n = ctx.hdmiEntrada ? ctx.hdmiEntrada() : 1;
+      // a entrada escolhida no layout (painel) vence; sem ela, a do menu do app
+      var n = zona.entrada || (ctx.hdmiEntrada ? ctx.hdmiEntrada() : 1);
       c.className += ' zona-hdmi';
       var fundo = (bloco && bloco.layout.fundo) || prog.marca.fundo || '#000';
       var aviso = function (txt) {

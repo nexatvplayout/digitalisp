@@ -12,7 +12,7 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  var VERSAO = '1.0.31';
+  var VERSAO = '1.0.32';
   var TZ_PADRAO = 'America/Sao_Paulo';
   var SHA = /^[0-9a-f]{64}$/;
   var DIA = /^\d{4}-\d{2}-\d{2}$/;
@@ -271,7 +271,9 @@
       ? { cor: str(ed, 'color').toLowerCase(), largura: Math.max(0.2, Math.min(3, num(ed, 'width', 1))) } : null;
     // zona de vídeo: proporcional (contain, faixas) por padrão; fit 'cover' preenche a zona cortando as bordas
     var preencher = str(o, 'fit') === 'cover';
-    return { id: id.slice(0, 32), kind: kind, x: x, y: y, w: w, h: h, qr: str(o, 'qr'), overlay: ov, opacidade: op, forma: forma, filete: filete, preencher: preencher,
+    // a entrada HDMI escolhida no layout pelo painel (1 a 4); sem ela, a do menu do app
+    var entrada = kind === 'hdmi' && [1, 2, 3, 4].indexOf(num(o, 'input', 0)) >= 0 ? num(o, 'input', 0) : null;
+    return { id: id.slice(0, 32), kind: kind, x: x, y: y, w: w, h: h, qr: str(o, 'qr'), overlay: ov, opacidade: op, forma: forma, filete: filete, preencher: preencher, entrada: entrada,
       title: umaLinha(str(o, 'title') || '', TETO.titulo), text: limpar(str(o, 'text') || '', TETO.texto) };
   }
 

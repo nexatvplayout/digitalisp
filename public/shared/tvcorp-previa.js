@@ -405,7 +405,7 @@ function zoneContent(zone, opts) {
     case 'qr': return h('div', `tvc-z-qr ${th}`, opts.qr ? qrSvg(opts.qr, 'tvc-z-qrc') : h('div', 'tvc-z-qrph'), h('span', '', opts.qrLabel || 'Aponte a câmera'));
     case 'logo': return h('div', `tvc-z-logo ${th}`, opts.logo ? Object.assign(h('img', ''), { alt: 'Logomarca', src: opts.logo }) : h('span', '', opts.brand || 'Logomarca'));
     // DIGITAL ISP: a entrada HDMI da TV (só o app Samsung mostra a imagem; aqui, o lugar dela)
-    case 'hdmi': return h('div', 'tvc-z-video tvc-z-hdmi', h('span', 'tvc-live tvc-hdmi', 'HDMI'), h('span', 'tvc-z-vt', opts.hdmi || 'Entrada HDMI da TV'));
+    case 'hdmi': return h('div', 'tvc-z-video tvc-z-hdmi', h('span', 'tvc-live tvc-hdmi', 'HDMI'), h('span', 'tvc-z-vt', opts.hdmi || (zone.input ? `Entrada HDMI ${zone.input}` : 'Entrada HDMI da TV')));
     case 'queue': return h('div', `tvc-z-queue ${th}`, h('span', '', 'SENHA'), h('b', '', 'A 042'), h('span', '', 'Guichê 2'));
     default: return it ? itemPreview(it, opts) : h('div', `tvc-z-empty ${th}`, ZONE_NAMES[zone.kind] || zone.kind);
   }

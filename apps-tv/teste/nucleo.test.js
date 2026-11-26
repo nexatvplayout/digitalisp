@@ -519,3 +519,9 @@ test('entradas HDMI da TV e o retângulo da janela de TV', () => {
   assert.deepEqual(N.retanguloJanela({ x: 0, y: 0, w: 70, h: 88 }), ['0%', '0%', '70%', '88%']);
   assert.deepEqual(N.retanguloJanela({ x: -50, y: 0, w: 150, h: 100 }), ['0%', '0%', '100%', '100%']);
 });
+
+test('zona hdmi: a entrada escolhida no layout (1 a 4); sem ela, a do menu', () => {
+  const bl = (id, input) => ({ id, layout: { zones: [Object.assign({ id: 'h', kind: 'hdmi', x: 0, y: 0, w: 70, h: 100 }, input != null ? { input } : {})] }, days: [], from: 0, to: 1440, zones: {} });
+  const p = N.lerConfig(cfg('r', [bl('a', 3), bl('b', null), bl('c', 9)]));
+  assert.deepEqual(p.blocos.map((x) => x.layout.zonas[0].entrada), [3, null, null]);
+});

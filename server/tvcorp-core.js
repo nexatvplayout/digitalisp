@@ -125,6 +125,12 @@ export function cleanZone(z, i = 0) {
   if (kind === 'video' && z.fit === 'cover') out.fit = 'cover';
   // DIGITAL ISP: o canal ao vivo (aba Ao vivo (HLS)) escolhido no próprio layout; o da tela vence, e sem ele vale o da unidade
   if (kind === 'video' && z.channel != null && z.channel !== '') out.channel = idOf(z.channel, `${what}, canal ao vivo`);
+  // DIGITAL ISP: a entrada HDMI da TV escolhida no próprio layout (1 a 4); sem ela, vale a escolhida no menu do app da TV
+  if (kind === 'hdmi' && z.input != null && z.input !== '') {
+    const n = Number(z.input);
+    if (!Number.isInteger(n) || n < 1 || n > 4) throw fail(400, `${what}: a entrada HDMI vai de 1 a 4.`);
+    out.input = n;
+  }
   const params = TVC_ZONE[kind].params || [];
   if (params.includes('title')) { const t = line(z.title, L.label); if (t) out.title = t; }
   if (params.includes('text')) { const t = line(z.text, L.zoneText); if (t) out.text = t; }
