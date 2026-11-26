@@ -7,6 +7,7 @@
 import { levelLabel } from '/shared/triagem-catalogo.js';
 import { RISKS } from '/shared/telas-tipos.js';
 import { roomStateLabel, minText } from '/shared/telas-salas.js';
+import { mostrarPanicos } from '/reparticao/alerta-panico.js';
 
 const $ = (id) => document.getElementById(id);
 const token = location.pathname.split('/').filter(Boolean)[1] || '';
@@ -36,6 +37,8 @@ const run = (fn, msg) => async () => { try { const r = await fn(); if (msg) ok(t
 
 function paint() {
   document.title = `${D.room.name} · ${D.office}`;
+  // o pânico aberto (desta sala ou de outra): a faixa piscando com o bipe, até alguém encerrar
+  mostrarPanicos(D.panic, { minhaSala: D.room.name, fechar: async (id) => { await api(`/panic/${id}/close`, {}); await load(); } });
   $('room').textContent = D.room.name; $('office').textContent = `${D.room.kindLabel} · ${D.office}`;
   $('state').textContent = roomStateLabel(D.room.state); $('state').className = `r-state ${D.room.state}`;
   const t = D.current;
@@ -118,6 +121,43 @@ $('repeat').addEventListener('click', run(() => api('/repeat', {}), 'Chamada mos
 const noshow = run(() => api('/noshow', {}), 'Marcada como não compareceu. A sala está disponível.');
 $('noshow').addEventListener('click', () => { if (confirm(`Marcar ${D?.current?.code || 'a senha'} como não compareceu?`)) noshow(); });
 $('finish').addEventListener('click', run(() => api('/finish', {}), 'Atendimento finalizado. A sala está disponível.'));
+// ao terminar: o próximo paciente (se houver alguém esperando) ou uma pausa
+$('finishNext').addEventListener('click', run(async () => {
+  await api('/finish', {});
+  try { return await api('/call', {}); } catch (x) { return { semFila: x.message }; }
+}, (r) => (r.semFila ? `Atendimento finalizado. ${r.semFila}` : `Atendimento finalizado. Chamando ${r.ticket.code}.`)));
+$('finishPause').addEventListener('click', run(async () => { await api('/finish', {}); return api('/state', { state: 'pause' }); }, 'Atendimento finalizado. Sala em pausa: toque em Disponível para voltar.'));
+
+// o pânico: avisa na hora e grava o som da sala por 2 minutos (o navegador pede o microfone na primeira vez)
+let gravando = false;
+async function gravar(id) {
+  if (gravando || !navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) return;
+  gravando = true;
+  const nota = $('panicNote');
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const rec = new MediaRecorder(stream);
+    const partes = [];
+    rec.ondataavailable = (e) => { if (e.data && e.data.size) partes.push(e.data); };
+    rec.onstop = async () => {
+      stream.getTracks().forEach((t) => t.stop());
+      const blob = new Blob(partes, { type: rec.mimeType || 'audio/webm' });
+      try {
+        const res = await fetch(`/api/sala/panic/${id}/audio`, { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'audio/webm' }, body: blob });
+        nota.textContent = res.ok ? 'Gravação de 2 minutos enviada ao painel da unidade.' : 'Não foi possível enviar a gravação.';
+      } catch { nota.textContent = 'Não foi possível enviar a gravação (sem rede).'; }
+      gravando = false;
+    };
+    rec.start(5000);
+    let resta = 120;
+    nota.textContent = 'Gravando o som da sala: 2:00';
+    const t = setInterval(() => { resta -= 1; nota.textContent = `Gravando o som da sala: ${Math.floor(resta / 60)}:${String(resta % 60).padStart(2, '0')}`; if (resta <= 0) { clearInterval(t); rec.stop(); } }, 1000);
+  } catch { nota.textContent = 'O alerta foi enviado. Sem permissão do microfone, a gravação não foi feita.'; gravando = false; }
+}
+$('panic').addEventListener('click', async () => {
+  if (!confirm('Acionar o PÂNICO? As outras salas, o guichê e a recepção recebem o alerta agora.')) return;
+  try { const r = await api('/panic', {}); ok('Pânico acionado: a equipe foi avisada.'); await load(); gravar(r.id); } catch (x) { err(x.message); }
+});
 $('requeue').addEventListener('click', run(() => api('/requeue', {}), 'A senha voltou para a fila, no lugar de antes.'));
 $('next').addEventListener('click', run(() => api('/forward', { next: true }), (r) => `Encaminhada para ${r.stage}. A sala está disponível.`));
 $('forward').addEventListener('click', run(() => api('/forward', { serviceId: Number($('forwardTo').value) }), 'Senha encaminhada (mantém a prioridade e a cor).'));

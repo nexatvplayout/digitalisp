@@ -122,7 +122,19 @@ async function roteiro(s) {
   assert.match(lk.url, /^https:\/\/painel\.exemplo\.test\/reparticao\/[A-Za-z0-9_-]{43}\/sala$/);
   const st = lk.url.split('/').at(-2); const Sx = bearer(st);
   assert.equal((await G('GET', `${Q}/rooms`)).data.rooms[1].link.on, true);
-  assert.ok(!JSON.stringify((await G('GET', `${Q}/rooms`)).data).includes(st), 'o endereço não volta');
+  // DIGITAL ISP (26/11/2026, pedido do dono): o link da sala fica guardado e volta ao painel (o QR code fica à vista)
+  assert.equal((await G('GET', `${Q}/rooms`)).data.rooms.find((x) => x.id === room[2].id).url, lk.url, 'o link guardado volta ao painel');
+  // DIGITAL ISP: o pânico da sala: aparece nas páginas, grava, o painel ouve e encerra
+  const pz = await Sx('POST', '/api/sala/panic', {});
+  assert.equal(pz.status, 201, JSON.stringify(pz.data));
+  assert.equal((await Sx('GET', '/api/sala')).data.panic.length, 1, 'a sala vê o pânico aberto');
+  const au = await fetch(`${s.base}/api/sala/panic/${pz.data.id}/audio`, { method: 'POST', headers: { authorization: `Bearer ${st}`, 'content-type': 'audio/webm' }, body: Buffer.from('som-de-teste') });
+  assert.equal(au.status, 200);
+  const lp = (await G('GET', `${Q}/panic`)).data.panic;
+  assert.deepEqual([lp.length, lp[0].audio, lp[0].closedAt], [1, true, null]);
+  assert.equal(Buffer.from((await G('GET', `${Q}/panic/${pz.data.id}/audio`)).data.data, 'base64').toString(), 'som-de-teste');
+  assert.equal((await G('POST', `${Q}/panic/${pz.data.id}/close`, {})).status, 200);
+  assert.equal((await Sx('GET', '/api/sala')).data.panic.length, 0, 'encerrado, sai das páginas');
   const page = await fetch(`${s.base}/reparticao/${st}/sala`);
   assert.equal(page.status, 200); const csp = page.headers.get('content-security-policy');
   assert.match(csp, /default-src 'none'/); assert.ok(!/unsafe-inline|https?:/.test(csp)); assert.equal(page.headers.get('x-frame-options'), 'DENY');

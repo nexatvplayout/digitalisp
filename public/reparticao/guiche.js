@@ -2,6 +2,7 @@
 // que o gestor da repartição (ou a prefeitura) gera, como o do totem. O token do guichê SÓ chama a próxima senha, repete,
 // marca "não compareceu", finaliza e encaminha: não emite senha, não vê nomes além do da senha em atendimento, não abre a
 // página de controle. Sem login: quem tem o endereço atende; gerar outro derruba o anterior.
+import { mostrarPanicos } from '/reparticao/alerta-panico.js';
 const $ = (id) => document.getElementById(id);
 const token = location.pathname.split('/').filter(Boolean)[1] || '';
 const KEY = `nexa.guiche.${token.slice(0, 12)}`;
@@ -28,6 +29,8 @@ const waited = (ms) => { const m = Math.max(0, Math.round(ms / 60000)); return m
 
 function paint() {
   $('office').textContent = G.office; $('title').textContent = G.title;
+  // o pânico de alguma sala: a faixa piscando com o bipe, até alguém encerrar
+  mostrarPanicos(G.panic, { fechar: async (id) => { await api(`/panic/${id}/close`, {}); await load(); } });
   $('waiting').textContent = `${G.waiting} esperando`;
   const from = $('from').value;
   $('from').replaceChildren(option('', 'Todas as filas', !from), ...G.services.map((s) => option(s.id, s.name, String(s.id) === from)));

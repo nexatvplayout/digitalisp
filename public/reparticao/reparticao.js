@@ -23,6 +23,52 @@ const built = new Map(); // aba -> { node, show?, refresh? }
 const badges = new Map(); // aba -> número ao lado do nome
 const TAB_KEY = `nexa.reparticao.${link.slice(0, 12)}.aba`;
 
+
+/* ------------------------------------------------------------------ DIGITAL ISP: o alerta que pisca até ser respondido
+   Pânico de uma sala (nível 3, vermelho) e pedido de apoio aberto (nível 2 para Segurança e Enfermagem, laranja; nível 1
+   para os outros, amarelo): uma janela por cima de tudo, piscando, com o bipe repetindo pelo nível, até alguém encerrar o
+   pânico ou aceitar o pedido. Confere a cada 4 s. */
+let alertaTimer = null; let bipeTimer = null; let bipeCtx = null; let bipeNivel = 0;
+const NIVEL_APOIO = (kind) => (/segura|enferm/i.test(String(kind || '')) ? 2 : 1);
+function bipeAlerta(nivel) {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+    bipeCtx = bipeCtx || new AC(); if (bipeCtx.state === 'suspended') bipeCtx.resume();
+    const n = nivel === 3 ? 6 : nivel === 2 ? 4 : 2; const t0 = bipeCtx.currentTime + 0.02;
+    for (let i = 0; i < n; i++) {
+      const o = bipeCtx.createOscillator(); const g = bipeCtx.createGain(); const t = t0 + i * 0.3;
+      o.type = 'square'; o.frequency.value = nivel === 3 ? (i % 2 ? 660 : 1040) : nivel === 2 ? 880 : 660;
+      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.25, t + 0.02); g.gain.linearRampToValueAtTime(0.0001, t + 0.24);
+      o.connect(g); g.connect(bipeCtx.destination); o.start(t); o.stop(t + 0.26);
+    }
+  } catch { /* sem som */ }
+}
+function pintarAlerta(itens) {
+  let box = document.getElementById('rpAlerta');
+  if (!box) { box = el('div', { id: 'rpAlerta', class: 'rp-alerta', role: 'alertdialog', 'aria-live': 'assertive' }); document.body.append(box); }
+  box.hidden = !itens.length;
+  const nivel = itens.reduce((m, x) => Math.max(m, x.nivel), 0);
+  box.className = `rp-alerta n${nivel}`;
+  put(box, el('div', { class: 'rp-alerta-c' },
+    el('h2', { text: nivel === 3 ? 'PÂNICO: pedido de socorro' : nivel === 2 ? 'Apoio urgente' : 'Pedido de apoio' }),
+    ...itens.map((x) => el('div', { class: `rp-alerta-i n${x.nivel}` },
+      el('b', { text: x.titulo }), el('span', { text: x.texto }),
+      el('button', { type: 'button', class: 'r-btn primary', onclick: async (e) => { e.currentTarget.disabled = true; try { await x.responder(); await vigiarAlertas(); } catch (er) { err(er.message); e.currentTarget.disabled = false; } } }, x.botao)))));
+  if (nivel !== bipeNivel) {
+    clearInterval(bipeTimer); bipeTimer = null; bipeNivel = nivel;
+    if (nivel) { bipeAlerta(nivel); bipeTimer = setInterval(() => bipeAlerta(nivel), nivel === 3 ? 3000 : nivel === 2 ? 6000 : 12000); }
+  }
+}
+async function vigiarAlertas() {
+  if (!S.session) return;
+  const [sup, pan] = await Promise.all([api('/queue/support').catch(() => null), api('/queue/panic').catch(() => null)]);
+  const t = Date.now(); const itens = [];
+  for (const p of (pan?.panic || [])) if (!p.closedAt && t - p.at < 2 * 3600_000) itens.push({ nivel: 3, titulo: `PÂNICO em ${p.room}`, texto: `acionado às ${hour(p.at)}: vá até lá ou chame ajuda`, botao: 'Recebido: encerrar', responder: () => api(`/queue/panic/${p.id}/close`, { method: 'POST' }) });
+  for (const x of (sup?.requests || [])) if (x.status === 'open') itens.push({ nivel: NIVEL_APOIO(x.kind), titulo: `${x.kind} · ${x.room}`, texto: `pedido às ${hour(x.createdAt)}`, botao: 'Aceitar', responder: () => api(`/queue/support/${x.id}/accept`, { method: 'POST' }) });
+  itens.sort((a, b) => b.nivel - a.nivel);
+  pintarAlerta(itens);
+}
+
 /* ------------------------------------------------------------------ entrada e saída */
 function leave(msg = '') {
   S.session = null; S.state = null; store.set(null);
@@ -63,6 +109,7 @@ async function enter() {
   await Senha.start({ retab });
   retab(true);
   clearInterval(timer); timer = setInterval(refresh, 15000);
+  clearInterval(alertaTimer); alertaTimer = setInterval(() => vigiarAlertas().catch(() => {}), 4000); vigiarAlertas().catch(() => {});
   clearInterval(clock); clock = setInterval(paintClock, 20000); paintClock();
 }
 /** A cada 15 s: a situação das telas, os alertas e os pedidos (o que a pessoa está escrevendo fica como está). */

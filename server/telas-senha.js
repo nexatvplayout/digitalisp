@@ -75,11 +75,21 @@ export function createSenha({ available, audit = async () => {}, ipOf = (req) =>
       await db.run(`UPDATE telas_office_extras SET ${sets.join(', ')}, updated_at = ? WHERE office_id = ? AND tenant_id = ?`, [...vals, t, officeId, tenantId]);
     }
   }
+  /**
+   * DIGITAL ISP (26/11/2026): os links gerados (totem, guichê e cada sala) ficam guardados na configuração da unidade, para o
+   * painel mostrar sempre o link e o QR code (antes só o hash: aparecia uma vez). chave: 'totem', 'guiche' ou 'sala:<id>'; url null apaga.
+   */
+  async function guardarLink(o, chave, url) {
+    const x = await extrasOf(Number(o.tenant_id), Number(o.id));
+    const links = { ...(x.data.links || {}) };
+    if (url) links[chave] = url; else delete links[chave];
+    await saveExtras(Number(o.tenant_id), Number(o.id), { data: { ...x.data, links } });
+  }
   /** A configuração da fila da repartição (com o de fábrica) e se a chamada de senha está ligada. */
   async function queueOf(o) {
     const x = await extrasOf(Number(o.tenant_id), Number(o.id));
     const g = await db.get('SELECT created_at FROM telas_guiche WHERE office_id = ? AND tenant_id = ?', [o.id, o.tenant_id]);
-    return { enabled: enabledFor(o), ...S.queueConfigOf(x.data.queue, o.type), totem: { on: Boolean(x.totemHash), at: x.totemAt }, guiche: { on: Boolean(g), at: num(g?.created_at) } };
+    return { enabled: enabledFor(o), ...S.queueConfigOf(x.data.queue, o.type), totem: { on: Boolean(x.totemHash), at: x.totemAt }, guiche: { on: Boolean(g), at: num(g?.created_at) }, links: x.data.links || {} };
   }
   const servicesOf = (tenantId, officeId) => db.all('SELECT * FROM telas_queue_services WHERE tenant_id = ? AND office_id = ? ORDER BY sort, id', [tenantId, officeId]);
   const needOn = (o) => { if (!enabledFor(o)) throw fail(403, 'A chamada de senha está desligada nesta repartição (o módulo liga no Painel da Prefeitura, em Repartições).'); };
@@ -353,7 +363,7 @@ export function createSenha({ available, audit = async () => {}, ipOf = (req) =>
     return { ticket: ticketDto({ ...tk, risk, name }) };
   }
 
-  const salas = createSalas({ now, today, queueOf, extrasOf, saveExtras, servicesOf, ticketOf, needOn, enabledFor, changed, publicUrl, available, audit, ipOf, timers,
+  const salas = createSalas({ now, today, queueOf, extrasOf, saveExtras, guardarLink, servicesOf, ticketOf, needOn, enabledFor, changed, publicUrl, available, audit, ipOf, timers,
     ops: { callNext, close, forward, repeat, requeue, triage } });
 
   /** O resumo para a recepção e o guichê: as filas, quem espera (na ordem em que será chamado), quem está sendo atendido. */
@@ -372,7 +382,7 @@ export function createSenha({ available, audit = async () => {}, ipOf = (req) =>
     const more = (t) => { const x = up.perTicket(t); return { overMin: x.overMin, stage: x.stage ? { name: x.stage.name, index: x.stage.index, total: x.stage.total, mode: x.stage.mode, next: x.stage.next } : null, ...(t.status === 'called' ? { arrivedAt: x.arrivedAt, callState: x.callState } : {}), ...(t.status === 'waiting' && x.stage?.mode === 'sala' ? { awaitPro: true } : {}) }; };
     return {
       ...up.extra,
-      serverTime: now(), day, enabled: cfg.enabled, config: { title: cfg.title, voice: cfg.voice, showName: cfg.showName, ratio: cfg.ratio, print: cfg.print, risk: cfg.risk, targets: cfg.targets, ageBoost: cfg.ageBoost, escalate: cfg.escalate }, totem: cfg.totem, guiche: cfg.guiche,
+      serverTime: now(), day, enabled: cfg.enabled, config: { title: cfg.title, voice: cfg.voice, showName: cfg.showName, ratio: cfg.ratio, print: cfg.print, risk: cfg.risk, targets: cfg.targets, ageBoost: cfg.ageBoost, escalate: cfg.escalate }, links: cfg.links || {}, totem: cfg.totem, guiche: cfg.guiche,
       services: services.map(serviceDto), risks: RISK_KEYS,
       waiting: ranked.map((x) => ({ ...ticketDto(byId.get(x.t.id)), reason: x.reason, why: x.kind, ...more(byId.get(x.t.id)) })), serving: tickets.filter((t) => t.status === 'called').map((t) => ({ ...ticketDto(t), ...more(t) })),
       calls: calls.slice(0, 8).map((c) => ({ id: Number(c.id), ticket: c.code, desk: c.desk, by: c.called_by || '', at: Number(c.shown_at), repeats: Number(c.repeats) || 0, serviceId: Number(c.service_id), priority: Number(c.priority) > 0, risk: cfg.risk && c.risk ? c.risk : null })),
@@ -423,9 +433,11 @@ export function createSenha({ available, audit = async () => {}, ipOf = (req) =>
       needOn(o);
       const token = C.newToken();
       await saveExtras(Number(o.tenant_id), Number(o.id), { totemHash: sha256(token), totemAt: now() });
+      await guardarLink(o, 'totem', `${publicUrl(req)}/reparticao/${token}/totem`);
       return { status: 201, body: { url: `${publicUrl(req)}/reparticao/${token}/totem` }, log: `prefeitura: endereço do totem de senhas de "${o.name}" gerado (o anterior deixou de valer)`, noStore: true };
     });
     reg('delete', '/totem', async ({ o }) => {
+      await guardarLink(o, 'totem', null);
       await saveExtras(Number(o.tenant_id), Number(o.id), { totemHash: null, totemAt: null });
       return { body: { ok: true }, log: `prefeitura: totem de senhas de "${o.name}" desligado` };
     });
@@ -436,9 +448,11 @@ export function createSenha({ available, audit = async () => {}, ipOf = (req) =>
       const token = C.newToken();
       await db.run('DELETE FROM telas_guiche WHERE office_id = ? AND tenant_id = ?', [o.id, o.tenant_id]);
       await db.run('INSERT INTO telas_guiche(office_id,tenant_id,token_hash,created_by,created_at) VALUES(?,?,?,?,?)', [o.id, o.tenant_id, sha256(token), line(by, 64), now()]);
+      await guardarLink(o, 'guiche', `${publicUrl(req)}/reparticao/${token}/guiche`);
       return { status: 201, body: { url: `${publicUrl(req)}/reparticao/${token}/guiche` }, log: `prefeitura: endereço do guichê de "${o.name}" gerado (o anterior deixou de valer)`, noStore: true };
     });
     reg('delete', '/guiche', async ({ o }) => {
+      await guardarLink(o, 'guiche', null);
       await db.run('DELETE FROM telas_guiche WHERE office_id = ? AND tenant_id = ?', [o.id, o.tenant_id]);
       return { body: { ok: true }, log: `prefeitura: endereço do guichê de "${o.name}" desligado` };
     });
@@ -639,6 +653,7 @@ export function createSenha({ available, audit = async () => {}, ipOf = (req) =>
       const o = req.office; const v = await overview(o); const n = names(v.services);
       res.json({
         serverTime: v.serverTime, office: o.name, title: v.config.title, waiting: v.waiting.length, risk: v.config.risk,
+        panic: await salas.panicOpen(o).catch(() => []), // DIGITAL ISP: o pânico de alguma sala (o guichê vê e alerta)
         // a fila na ordem de chamada, com o motivo, para o "Chamar esta" (sem nomes: o guichê não lê a fila com nomes)
         queue: v.waiting.slice(0, 40).map((t) => ({ id: t.id, code: t.code, serviceId: t.serviceId, service: n.get(t.serviceId) || '', priority: t.priority, risk: t.risk, queuedAt: t.queuedAt, reason: t.reason })),
         services: v.services.filter((s) => s.active).map((s) => ({ id: s.id, name: s.name })),
@@ -660,6 +675,7 @@ export function createSenha({ available, audit = async () => {}, ipOf = (req) =>
     onTicket('forward', (o, id, b) => forward(o, id, b));
     // DIGITAL ISP: a classificação de risco pelo guichê (a cor só; o nome continua fora do alcance do guichê)
     onTicket('risk', (o, id, b) => triage(o, id, { risk: b?.risk ?? null }));
+    app.post('/api/guiche/panic/:pid/close', guiche, ah(async (req, res) => res.json(await salas.panicClose(req.office, req.params.pid, by(req.office)))));
   }
 
   /* ---------------------------------------------------------------- limpeza: 90 dias de histórico; senhas de ontem saem da fila */

@@ -37,7 +37,12 @@
       <!-- 3. em atendimento: encaminhar ou finalizar -->
       <div class="s-group" id="stepServing" hidden>
         <button type="button" class="r-btn big s-call" id="next" hidden>Encaminhar para a próxima etapa</button>
-        <button type="button" class="r-btn big s-call" id="finish">Finalizar</button>
+        <!-- DIGITAL ISP: ao terminar, já escolhe o que vem depois: o próximo paciente ou uma pausa -->
+        <button type="button" class="r-btn primary big s-call" id="finishNext">Finalizar e chamar o próximo</button>
+        <div class="r-btns">
+          <button type="button" class="r-btn" id="finishPause">Finalizar e pausar</button>
+          <button type="button" class="r-btn" id="finish">Só finalizar</button>
+        </div>
       </div>
       <details class="s-more" id="more" hidden>
         <summary>Encaminhar para outra fila ou voltar à fila</summary>
@@ -63,6 +68,12 @@
       <h2 id="hQueue">Esperando, na ordem de chamada</h2>
       <ul class="r-list" id="queue"></ul>
       <p class="r-dim" id="queueEmpty">Ninguém esperando.</p>
+    </section>
+    <!-- DIGITAL ISP: o pânico (pedido de socorro): avisa as outras salas, o guichê e o painel e grava o som da sala por 2 min -->
+    <section class="r-card pz-card" aria-labelledby="hPanic">
+      <h2 id="hPanic">Emergência</h2>
+      <button type="button" class="r-btn pz-btn" id="panic">PÂNICO · pedir socorro</button>
+      <p class="r-dim" id="panicNote">Avisa na hora as outras salas, o guichê e a recepção, e grava o som desta sala por 2 minutos (fica no painel da unidade).</p>
     </section>
     <p class="r-dim">Este endereço só chama e dá andamento ao paciente desta sala. Não emite senha e não abre o painel da repartição.</p>
   </main>

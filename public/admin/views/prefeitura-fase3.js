@@ -8,7 +8,7 @@ import { UFS } from '../../shared/br-docs.js';
 import { qrSvg } from '../../shared/telas-previa.js';
 
 /** Os links de todas as salas juntos: um cartão por sala (nome, QR code, link) e a folha para imprimir e colar em cada porta. */
-function todasAsSalas(b, links) {
+function todasAsSalas(b, links, rolar = true) {
   b.hidden = false;
   const cards = links.map((l) => el('div', { class: 'pf-sala-link' }, el('b', { text: l.name }), qrSvg(l.url, 'pf-link-qr'), el('div', { class: 'pf-url small', text: l.url }),
     el('div', { class: 'pf-btns left' }, el('button', { class: 'btn small', type: 'button', onclick: () => copyText(l.url) }, 'Copiar'), el('a', { class: 'btn small', href: l.url, target: '_blank', rel: 'noopener noreferrer', text: 'Abrir' }))));
@@ -25,10 +25,10 @@ function todasAsSalas(b, links) {
     doc.body.append(h, g);
     setTimeout(() => w.print(), 300);
   };
-  b.replaceChildren(el('p', { class: 'dim small', text: 'Os links de todas as salas (aparecem só agora: copie, abra ou imprima a folha e cole o QR code na porta de cada consultório).' }),
+  b.replaceChildren(el('p', { class: 'dim small', text: 'Os links de todas as salas (ficam guardados aqui: copie, abra ou imprima a folha e cole o QR code na porta de cada consultório).' }),
     el('div', { class: 'pf-btns left' }, el('button', { class: 'btn primary', type: 'button', onclick: imprimir }, 'Imprimir a folha com os QR codes')),
     el('div', { class: 'pf-salas-links' }, ...cards));
-  b.scrollIntoView?.({ block: 'start', behavior: 'smooth' });
+  if (rolar) b.scrollIntoView?.({ block: 'start', behavior: 'smooth' });
 }
 
 /** Um link gerado (totem, guichê ou sala): o texto, o endereço, o QR code para abrir no celular, copiar e abrir. */
@@ -39,7 +39,7 @@ function mostrarLink(b, text, url) {
     el('div', { class: 'pf-link-b' }, el('p', { class: 'dim small', text }), el('div', { class: 'pf-url', text: url }),
       el('div', { class: 'pf-btns left' }, el('button', { class: 'btn small', type: 'button', onclick: () => copyText(url) }, 'Copiar o link'),
         el('a', { class: 'btn small', href: url, target: '_blank', rel: 'noopener noreferrer', text: 'Abrir' })),
-      el('p', { class: 'dim small', text: 'Leia o QR code com a câmera do celular para abrir lá. O link aparece só agora: copie ou fotografe o QR code.' }))));
+      el('p', { class: 'dim small', text: 'Leia o QR code com a câmera do celular para abrir lá. O link fica guardado aqui; gerar outro derruba este.' }))));
 }
 import { ROOM_KINDS, roomKindLabel, roomStateLabel } from '../../shared/telas-salas.js';
 import {
@@ -136,12 +136,33 @@ export async function paintQueueOffice(box, ui, o, prefix = '/api/prefeitura') {
     guicheBox,
     el('p', { class: 'dim small', text: 'Emitir pela recepção, chamar, repetir, encaminhar e finalizar são feitos na página de controle da repartição (o link de controle, em Repartições).' }));
   await paintRooms(roomsBox, ui, o, base);
+  // DIGITAL ISP: os links ficam à vista (guardados no servidor); o que ainda não existe nasce sozinho ao abrir
+  const L = q.links || {};
+  if (q.enabled && q.services?.length && (!q.totem.on || !q.guiche?.on) && !o._linksAuto) {
+    o._linksAuto = true; // uma vez por abertura da janela (se falhar, não fica tentando)
+    if (!q.totem.on) await api(`${base}/totem`, { method: 'POST', body: {} }).catch(() => null);
+    if (!q.guiche?.on) await api(`${base}/guiche`, { method: 'POST', body: {} }).catch(() => null);
+    return again();
+  }
+  if (q.totem.on && L.totem) mostrarLink(box.querySelector('.pf-kb-totem'), 'O link do totem: abra no tablet ou computador da entrada (é ali que o cliente tira a senha).', L.totem);
+  if (q.guiche?.on && L.guiche) mostrarLink(box.querySelector('.pf-kb-guiche'), 'O link do guichê: abra no computador de cada atendente (é ali que ele chama a senha).', L.guiche);
 }
 /** §26 a §31: as salas e consultórios da repartição, os grupos (com o automático) e o endereço de cada sala; os indicadores em CSV. */
 async function paintRooms(box, ui, o, base) {
-  const r = await api(`${base}/rooms`);
+  let r = await api(`${base}/rooms`);
+  const semLink = r.rooms.filter((x) => x.active && !x.link.on && !(o._salasAuto || new Set()).has(x.id));
+  if (semLink.length) {
+    o._salasAuto = new Set([...(o._salasAuto || []), ...semLink.map((x) => x.id)]); // cada sala uma vez por abertura
+    for (const x of semLink) await api(`${base}/rooms/${x.id}/link`, { method: 'POST', body: {} }).catch(() => null);
+    r = await api(`${base}/rooms`);
+  }
   const again = () => paintRooms(box, ui, o, base);
   const keyBox = el('div', { class: 'pf-keybox', hidden: true });
+  const panicBox = el('div', {});
+  // a grade com o QR code de cada sala (o link guardado), sempre à vista
+  const gradeSalas = el('div', { class: 'pf-keybox' });
+  const comLink = r.rooms.filter((x) => x.active && x.url);
+  if (comLink.length) todasAsSalas(gradeSalas, comLink.map((x) => ({ name: x.name, url: x.url })), false); else gradeSalas.hidden = true;
   const groupSel = (cur) => el('select', { 'aria-label': 'Grupo' }, ui.opt('', 'Sem grupo', cur == null), ...r.groups.map((g) => ui.opt(g.id, g.name, g.id === cur)));
   const rName = el('input', { type: 'text', maxlength: '40', placeholder: 'Ex.: Consultório 3', 'aria-label': 'Nome da sala' });
   const rKind = el('select', { 'aria-label': 'Tipo da sala' }, ...ROOM_KINDS.map((k) => ui.opt(k.key, k.label, k.key === 'consultorio')));
@@ -197,8 +218,19 @@ async function paintRooms(box, ui, o, base) {
       todasAsSalas(box.querySelector('.pf-keybox') || keyBox, links);
     }) }, 'Gerar os links de todas as salas (com QR code)')),
     keyBox,
+    gradeSalas,
     el('p', { class: 'dim small', text: `Etapas do atendimento: ${r.upa.flow.length ? r.upa.flow.map((x) => x.name || r.services.find((y) => y.id === x.serviceId)?.name).join(' → ') : 'não configuradas'}. QR do acompanhante: ${r.upa.follow ? 'ligado' : 'desligado'}. As etapas, o QR, a espera estimada e os pedidos de apoio se configuram na página da repartição, aba Salas e consultórios.` }),
-    el('div', { class: 'pf-btns left' }, el('button', { class: 'btn', type: 'button', onclick: csv }, 'Indicadores dos últimos 7 dias (CSV)')));
+    el('div', { class: 'pf-btns left' }, el('button', { class: 'btn', type: 'button', onclick: csv }, 'Indicadores dos últimos 7 dias (CSV)')),
+    panicBox);
+  // DIGITAL ISP: os pânicos acionados nas salas, com a gravação de 2 minutos (ouvir aqui) e o encerrar
+  api(`${base}/panic`).then((p) => {
+    const lista = p?.panic || [];
+    put(panicBox, el('div', { class: 'label', text: `Pânicos acionados nas salas (${lista.length})` }),
+      lista.length ? ui.table(['Sala', 'Quando', 'Situação', 'Gravação', ''], lista.map((x) => el('tr', {},
+        el('td', { text: x.room }), el('td', { text: ui.when(x.at) }), el('td', { text: x.closedAt ? `encerrado ${ui.when(x.closedAt)}${x.closedBy ? ` por ${x.closedBy}` : ''}` : 'ABERTO' }),
+        el('td', {}, x.audio ? el('button', { class: 'btn small', type: 'button', onclick: guard(async (e) => { const r = await api(`${base}/panic/${x.id}/audio`); const bin = Uint8Array.from(atob(r.data), (c) => c.charCodeAt(0)); const au = el('audio', { controls: true, src: URL.createObjectURL(new Blob([bin], { type: r.mime })) }); e.currentTarget.replaceWith(au); au.play?.().catch(() => {}); }) }, 'Ouvir') : el('span', { class: 'dim small', text: '—' })),
+        el('td', {}, x.closedAt ? null : el('button', { class: 'btn small danger', type: 'button', onclick: guard(async () => { await api(`${base}/panic/${x.id}/close`, { method: 'POST', body: {} }); await again(); }) }, 'Encerrar'))))) : el('p', { class: 'dim small', text: 'Nenhum pânico acionado.' }));
+  }).catch(() => {});
 }
 
 async function paintReport(box, ui) {

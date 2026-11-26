@@ -293,3 +293,19 @@ textarea { resize: vertical; }
   .r-slip .s-qr { width: 34mm; height: 34mm; margin: 2mm auto; display: block; }
   .r-slip p { margin: 1mm 0; }
 }
+/* DIGITAL ISP: o pânico (a faixa piscando no alto das páginas da sala e do guichê; o botão vermelho da sala) */
+.pz-box { position: sticky; top: 0; z-index: 50; display: grid; gap: 6px; padding: 10px 14px; background: #b00020; color: #fff; animation: pz-pisca 1s steps(2, start) infinite; }
+.pz-box[hidden] { display: none; }
+.pz-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 1.1rem; }
+@keyframes pz-pisca { 50% { background: #ff1744; } }
+.pz-card { border-color: #b00020; }
+.pz-btn { width: 100%; min-height: 64px; font-size: 1.25rem; font-weight: 800; background: #b00020; color: #fff; border-color: #b00020; }
+/* o alerta que pisca até ser respondido (pânico e pedidos de apoio), por nível */
+.rp-alerta { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, .55); padding: 16px; }
+.rp-alerta[hidden] { display: none; }
+.rp-alerta-c { width: min(560px, 100%); display: grid; gap: 10px; padding: 18px; border-radius: 14px; color: #fff; animation: rp-pisca 1s steps(2, start) infinite; }
+.rp-alerta.n3 .rp-alerta-c { background: #b00020; animation-duration: .6s; } .rp-alerta.n2 .rp-alerta-c { background: #d9480f; } .rp-alerta.n1 .rp-alerta-c { background: #a07800; animation-duration: 1.6s; }
+@keyframes rp-pisca { 50% { filter: brightness(1.35); box-shadow: 0 0 0 6px rgba(255, 255, 255, .35); } }
+.rp-alerta-c h2 { margin: 0; font-size: 1.4rem; }
+.rp-alerta-i { display: grid; gap: 4px; padding: 10px; border-radius: 10px; background: rgba(0, 0, 0, .22); }
+.rp-alerta-i b { font-size: 1.15rem; }

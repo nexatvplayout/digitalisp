@@ -19,6 +19,8 @@
 */
 import path from 'node:path';
 import { db } from './db.js';
+import fs from 'node:fs';
+import express from 'express';
 import { config } from './config.js';
 import { createLimiter, ipKey } from './ratelimit.js';
 import * as C from './telas-core.js';
@@ -38,7 +40,7 @@ const KEEP_MS = 90 * 86400_000;
  * cfg), publicUrl(req), available(tenantId), audit, ipOf, timers, ops: { callNext, close, forward, repeat, requeue, triage }.
  */
 export function createSalas(deps) {
-  const { now, today, queueOf, extrasOf, saveExtras, servicesOf, ticketOf, needOn, enabledFor, changed, publicUrl, available, ipOf, timers } = deps;
+  const { now, today, queueOf, extrasOf, saveExtras, guardarLink = async () => {}, servicesOf, ticketOf, needOn, enabledFor, changed, publicUrl, available, ipOf, timers, audit = async () => {} } = deps;
   const ops = deps.ops;
   const T = (o) => Number(o.tenant_id);
 
@@ -292,6 +294,43 @@ export function createSalas(deps) {
     await db.run('INSERT INTO telas_access(tenant_id,office_id,kind,ref_id,token_hash,created_by,created_at) VALUES(?,?,?,?,?,?,?)', [T(o), o.id, kind, refId, sha256(token), line(by, 64), now()]);
     return token;
   }
+
+  /* ---------------------------------------------------------------- DIGITAL ISP (26/11/2026): o pânico da sala
+     O profissional aperta "Pânico" na página da sala: o aviso aparece na hora nas outras salas, no guichê e no painel (com
+     bipe), e a página da sala grava o som do consultório por 2 minutos (o arquivo vem depois, em /api/sala/panic/:id/audio).
+     Guardado na configuração da unidade (os últimos 50; o áudio em DATA_DIR/telas/panico/). */
+  const PANICO_DIR = path.join(config.dataDir, 'telas', 'panico');
+  const PANICO_ABERTO_MS = 2 * 3600_000;
+  const audioDe = (o, id) => path.join(PANICO_DIR, `${T(o)}-${Number(o.id)}-${Number(id)}.webm`);
+  async function panicos(o) { return ((await extrasOf(T(o), Number(o.id))).data.panicos || []); }
+  async function salvarPanicos(o, lista) { const x = await extrasOf(T(o), Number(o.id)); await saveExtras(T(o), Number(o.id), { data: { ...x.data, panicos: lista.slice(-50) } }); }
+  /** Os pânicos abertos (sem encerrar, das últimas 2 horas): o que as outras páginas mostram. */
+  async function panicOpen(o) { const t = now(); return (await panicos(o)).filter((p) => !p.closedAt && t - p.at < PANICO_ABERTO_MS).map((p) => ({ id: p.id, room: p.room, at: p.at })); }
+  async function panicNew(o, room) {
+    const lista = await panicos(o);
+    const ult = lista.filter((p) => p.roomId === Number(room.id)).at(-1);
+    if (ult && !ult.closedAt && now() - ult.at < 60_000) return { id: ult.id, repetido: true }; // dois toques seguidos: o mesmo
+    const p = { id: now(), roomId: Number(room.id), room: room.name, at: now(), closedAt: null, closedBy: null, audio: false };
+    await salvarPanicos(o, [...lista, p]);
+    await audit({ username: `sala: ${room.name}`.slice(0, 64), action: 'POST /api/sala/panic', detail: `PÂNICO acionado na sala "${room.name}" de "${o.name}"`, status: 201, tenantId: T(o) }).catch(() => {});
+    return { id: p.id };
+  }
+  async function panicClose(o, id, by) {
+    const lista = await panicos(o); const p = lista.find((x) => x.id === Number(id));
+    if (!p) throw fail(404, 'Pânico não encontrado.');
+    if (!p.closedAt) { p.closedAt = now(); p.closedBy = String(by || '').slice(0, 64); await salvarPanicos(o, lista); }
+    return { ok: true };
+  }
+  async function panicAudio(o, id, buf) {
+    const lista = await panicos(o); const p = lista.find((x) => x.id === Number(id));
+    if (!p) throw fail(404, 'Pânico não encontrado.');
+    if (!buf || !buf.length) throw fail(400, 'Gravação vazia.');
+    await fs.promises.mkdir(PANICO_DIR, { recursive: true });
+    await fs.promises.writeFile(audioDe(o, id), buf);
+    p.audio = true; await salvarPanicos(o, lista);
+    return { ok: true };
+  }
+
   const dropLink = (o, kind, refId) => db.run('DELETE FROM telas_access WHERE office_id = ? AND tenant_id = ? AND kind = ? AND ref_id = ?', [o.id, T(o), kind, refId]);
 
   /* ---------------------------------------------------------------- QR do acompanhante */
@@ -326,7 +365,8 @@ export function createSalas(deps) {
     r('get', '/rooms', async ({ o }) => {
       const [rooms, groups, upa, links, services] = await Promise.all([roomsOf(o), groupsOf(o), upaOf(o), linksOf(o), servicesOf(T(o), o.id)]);
       const tk = new Map((await db.all("SELECT id, code, status FROM telas_queue_tickets WHERE tenant_id = ? AND office_id = ? AND day = ? AND status = 'called'", [T(o), o.id, today()])).map((t) => [Number(t.id), t]));
-      return { body: { rooms: rooms.map((x) => roomDto(x, links, tk)), groups: groups.map(groupDto), upa: { ...upa, supportLink: links.has('apoio:0') ? { on: true, at: links.get('apoio:0') } : { on: false } }, services: services.map((s) => ({ id: Number(s.id), name: s.name, active: Boolean(s.active) })) } };
+      const guardados = (await extrasOf(T(o), Number(o.id))).data.links || {};
+      return { body: { rooms: rooms.map((x) => ({ ...roomDto(x, links, tk), url: links.has(`sala:${x.id}`) ? guardados[`sala:${x.id}`] || null : null })), groups: groups.map(groupDto), upa: { ...upa, supportLink: links.has('apoio:0') ? { on: true, at: links.get('apoio:0') } : { on: false } }, services: services.map((s) => ({ id: Number(s.id), name: s.name, active: Boolean(s.active) })) } };
     }, true);
     r('post', '/rooms', async ({ o, body }) => {
       needOn(o);
@@ -350,6 +390,7 @@ export function createSalas(deps) {
       const cur = await roomOf(o, params.rid);
       await db.run('DELETE FROM telas_rooms WHERE id = ? AND tenant_id = ?', [cur.id, T(o)]);
       await dropLink(o, 'sala', Number(cur.id));
+      await guardarLink(o, `sala:${cur.id}`, null);
       return { body: { ok: true }, log: `prefeitura: sala "${cur.name}" de "${o.name}" removida (o endereço dela deixou de valer)` };
     });
     r('post', '/rooms/:rid/state', async ({ o, params, body }) => ({ body: await setState(o, await roomOf(o, params.rid, { active: true }), body?.state) }), true);
@@ -358,11 +399,20 @@ export function createSalas(deps) {
       needOn(o);
       const cur = await roomOf(o, params.rid);
       const token = await newLink(o, 'sala', Number(cur.id), by);
+      await guardarLink(o, `sala:${cur.id}`, `${publicUrl(req)}/reparticao/${token}/sala`);
       return { status: 201, body: { url: `${publicUrl(req)}/reparticao/${token}/sala` }, log: `prefeitura: endereço da sala "${cur.name}" de "${o.name}" gerado (o anterior deixou de valer)`, noStore: true };
     });
+    r('get', '/panic', async ({ o }) => ({ body: { panic: (await panicos(o)).slice().reverse().slice(0, 30) } }), true);
+    r('get', '/panic/:pid/audio', async ({ o, params }) => {
+      const buf = await fs.promises.readFile(audioDe(o, params.pid)).catch(() => null);
+      if (!buf) throw fail(404, 'Sem gravação deste pânico.');
+      return { body: { mime: 'audio/webm', data: buf.toString('base64') }, noStore: true };
+    }, true);
+    r('post', '/panic/:pid/close', async ({ o, params, by }) => ({ body: await panicClose(o, params.pid, by), log: `prefeitura: pânico #${params.pid} encerrado em "${o.name}"` }), true);
     r('delete', '/rooms/:rid/link', async ({ o, params }) => {
       const cur = await roomOf(o, params.rid);
       await dropLink(o, 'sala', Number(cur.id));
+      await guardarLink(o, `sala:${cur.id}`, null);
       return { body: { ok: true }, log: `prefeitura: endereço da sala "${cur.name}" de "${o.name}" revogado` };
     });
     r('post', '/room-groups', async ({ o, body }) => {
@@ -449,7 +499,7 @@ export function createSalas(deps) {
   const noStore = (res) => res.set('Cache-Control', 'no-store');
   function mountPages(app, { headers }) {
     const page = (file, type) => (_req, res) => { res.set({ ...headers, 'Content-Type': type }).sendFile(path.join(PAGE, file)); };
-    for (const f of ['sala.js', 'sala.css', 'apoio.js', 'acompanhar.js', 'acompanhar.css']) app.get(`/reparticao/${f}`, page(f, f.endsWith('.css') ? 'text/css; charset=utf-8' : 'text/javascript; charset=utf-8'));
+    for (const f of ['sala.js', 'sala.css', 'apoio.js', 'acompanhar.js', 'acompanhar.css', 'alerta-panico.js']) app.get(`/reparticao/${f}`, page(f, f.endsWith('.css') ? 'text/css; charset=utf-8' : 'text/javascript; charset=utf-8'));
     app.get('/reparticao/:token([A-Za-z0-9_-]{32,64})/sala', page('sala.html', 'text/html; charset=utf-8'));
     app.get('/reparticao/:token([A-Za-z0-9_-]{32,64})/apoio', page('apoio.html', 'text/html; charset=utf-8'));
     app.get('/senha/:token([A-Za-z0-9_-]{32,64})', page('acompanhar.html', 'text/html; charset=utf-8'));
@@ -499,6 +549,7 @@ export function createSalas(deps) {
           arrivedAt, callState: R.callStateOf(mine, arrivedAt, upa.confirm), repeats: Number(lastCall?.repeats) || 0, shownAt: num(lastCall?.shown_at),
         } : null,
         waiting: waiting.length,
+        panic: await panicOpen(o),
         queue: ranked.slice(0, 30).map((x) => { const t = byId.get(x.t.id); return { id: Number(t.id), code: t.code, service: names.get(Number(t.service_id)) || '', priority: Number(t.priority) || 0, risk: cfg.risk ? t.risk || null : null, issuedAt: Number(t.issued_at), overMin: late.get(Number(t.id)) ?? null, reason: x.reason }; }),
         forward: services.filter((s) => s.active && (!mine || Number(s.id) !== Number(mine.service_id))).map((s) => ({ id: Number(s.id), name: s.name })),
         support: { kinds: upa.support, mine: (await db.all("SELECT * FROM telas_support WHERE tenant_id = ? AND office_id = ? AND room_id = ? AND (status IN ('open','accepted') OR created_at >= ?) ORDER BY id DESC LIMIT 10", [T(o), o.id, room.id, now() - 3600_000])).map(supportDto) },
@@ -539,6 +590,9 @@ export function createSalas(deps) {
       }
       return ops.forward(o, t.id, { serviceId: b.serviceId });
     });
+    app.post('/api/sala/panic', sala, ah(async (req, res) => res.status(201).json(await panicNew(req.office, req.room))));
+    app.post('/api/sala/panic/:pid/audio', sala, express.raw({ type: ['audio/webm', 'audio/ogg', 'audio/mp4', 'application/octet-stream'], limit: 8 * 1024 * 1024 }), ah(async (req, res) => res.json(await panicAudio(req.office, req.params.pid, req.body))));
+    app.post('/api/sala/panic/:pid/close', sala, ah(async (req, res) => res.json(await panicClose(req.office, req.params.pid, `sala: ${req.room.name}`))));
     app.post('/api/sala/state', sala, ah(async (req, res) => res.json(await setState(req.office, req.room, req.body?.state))));
     // Reavaliar: a sala reclassifica a cor de quem espera nas filas dela e passou do tempo-alvo (nada mais da triagem)
     app.post('/api/sala/tickets/:id/risk', sala, ah(async (req, res) => {
@@ -624,7 +678,7 @@ export function createSalas(deps) {
   }
 
   return {
-    operations, mountPages, mountDevice, prune, dropOffice, forCall, called, released, triaged, followFor, snapshotExtra, overviewExtra, dispatch, upaOf, callRules, arrive,
+    operations, mountPages, mountDevice, prune, dropOffice, forCall, called, released, triaged, followFor, snapshotExtra, overviewExtra, dispatch, upaOf, callRules, arrive, panicOpen, panicClose,
     stop() { clearInterval(tickTimer); },
   };
 }
