@@ -240,7 +240,7 @@ export default async function paintUnidades(box, ctx) {
 function senhaDialog(o, reload) {
   const box = el('div', {}, note('Carregando…'));
   dialog(`Chamada de senha · ${o.name}`, el('div', {},
-    note('1) Crie uma fila (a letra começa a senha: A001). 2) Gere o endereço do totem e abra no tablet ou computador da entrada: ali o cliente tira a senha. 3) Gere o endereço do guichê e abra no computador de cada atendente: ali ele chama a próxima senha, que aparece na TV com layout de senha.', 'small'),
+    note('Siga a ordem: 1) as filas; 2) os grupos de salas (opcional: as salas que atendem as mesmas filas); 3) as salas e consultórios (opcional: o nome vai à tela); 4) o que a tela mostra e a ordem de chamada; 5) o endereço do totem, onde o cliente tira a senha; 6) o endereço do guichê, onde o atendente chama. A senha chamada aparece na TV com um layout de senha.', 'small'),
     box), { wide: true });
   const ui = { data: D, table, f, opt, dialog, when: (ms) => (ms ? new Date(ms).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'), reload: async () => {}, refreshBadge: () => {} };
   const abrir = () => paintQueueOffice(box, ui, o, '/api/tvcorp/rede').catch((e) => put(box, note(`Não foi possível abrir a chamada de senha: ${e.message}`)));
