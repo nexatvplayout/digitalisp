@@ -5,15 +5,17 @@
 const VIDEO = /^[A-Za-z0-9_-]{11}$/;
 const CANAL = /^UC[A-Za-z0-9_-]{22}$/;
 const HANDLE = /^@[A-Za-z0-9._-]{3,100}$/;
+/** O endereço colado, com ou sem https:// na frente. */
+const urlDe = (s) => { const t = String(s ?? '').trim(); return new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(t) ? t : `https://${t}`); };
 
 /** O endereço é do YouTube? */
 export function ehYoutube(url) {
-  try { return /(^|\.)(youtube\.com|youtu\.be|youtube-nocookie\.com)$/i.test(new URL(String(url).trim()).hostname); } catch { return false; }
+  try { return /(^|\.)(youtube\.com|youtu\.be|youtube-nocookie\.com)$/i.test(urlDe(url).hostname); } catch { return false; }
 }
 
 /** { v: id do vídeo } | { c: id do canal UC… } | { handle: '@nome' } | null (não é link de vídeo ou canal do YouTube). */
 export function youtubeDe(url) {
-  let u; try { u = new URL(String(url).trim()); } catch { return null; }
+  let u; try { u = urlDe(url); } catch { return null; }
   const host = u.hostname.toLowerCase().replace(/^(www|m|music)\./, '');
   const p = u.pathname.split('/').filter(Boolean);
   if (host === 'youtu.be') return VIDEO.test(p[0] || '') ? { v: p[0] } : null;

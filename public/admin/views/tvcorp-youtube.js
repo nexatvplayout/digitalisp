@@ -24,7 +24,7 @@ export const opcaoYoutube = () => opt(OPCAO_YT, '+ Vídeo ao vivo do YouTube (co
 
 /** Pede o link e o nome e cadastra como canal ao vivo. Devolve o canal (ou null, se a pessoa desistiu). */
 export async function novoCanalYoutube() {
-  const link = prompt('Cole o link do vídeo ao vivo do YouTube (ou o do canal, para tocar a live que estiver no ar):\nEx.: https://www.youtube.com/watch?v=…  ·  https://youtu.be/…  ·  https://www.youtube.com/@canal');
+  const link = prompt('Cole o link do vídeo ao vivo do YouTube (ou o do canal, para tocar a live que estiver no ar):\nEx.: youtube.com/watch?v=…  ·  youtu.be/…  ·  youtube.com/@canal');
   if (!link || !link.trim()) return null;
   if (!ehYoutube(link)) { toast('Esse link não é do YouTube.', true); return null; }
   const nome = prompt('Nome para este vídeo (aparece nas listas de canal):', 'YouTube ao vivo');

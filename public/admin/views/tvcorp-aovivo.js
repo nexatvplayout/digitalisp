@@ -61,7 +61,7 @@ export default async function paintAoVivo(box) {
   const tipo = el('select', { 'aria-label': 'Tipo do canal', onchange: () => {
     const yt = tipo.value === 'youtube';
     urlCampo.querySelector('span').textContent = yt ? 'Link do YouTube (o vídeo ao vivo ou o canal)' : 'Endereço HLS (.m3u8)';
-    url.placeholder = yt ? 'https://www.youtube.com/watch?v=…  ou  https://www.youtube.com/@canal' : 'https://…/playlist.m3u8';
+    url.placeholder = yt ? 'youtube.com/watch?v=…  ou  youtube.com/@canal' : 'https://…/playlist.m3u8';
     if (yt && !nome.value) nome.value = 'YouTube ao vivo';
   } }, el('option', { value: 'hls', text: 'Link HLS (.m3u8)' }), el('option', { value: 'youtube', text: 'YouTube (colar o link)' }));
   const linha = (c) => el('div', { class: 'av-row' },

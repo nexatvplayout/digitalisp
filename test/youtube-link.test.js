@@ -10,6 +10,7 @@ test('youtube: vídeo, live, canal e @nome', () => {
   assert.deepEqual(youtubeDe('https://m.youtube.com/embed/aqz-KE-bpKQ'), { v: 'aqz-KE-bpKQ' });
   assert.deepEqual(youtubeDe('https://www.youtube.com/channel/UCSMOQeBJ2RAnuFungnQOxLg/live'), { c: 'UCSMOQeBJ2RAnuFungnQOxLg' });
   assert.deepEqual(youtubeDe('https://www.youtube.com/@BlenderOfficial/streams'), { handle: '@BlenderOfficial' });
+  assert.deepEqual(youtubeDe('youtu.be/aqz-KE-bpKQ'), { v: 'aqz-KE-bpKQ' }); // colado sem https://
   assert.equal(youtubeDe('https://www.youtube.com/xyz'), null);
   assert.equal(youtubeDe('https://exemplo.com/live.m3u8'), null);
   assert.equal(ehYoutube('https://youtu.be/aqz-KE-bpKQ'), true);
