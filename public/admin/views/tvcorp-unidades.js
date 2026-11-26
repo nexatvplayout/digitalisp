@@ -209,7 +209,7 @@ export default async function paintUnidades(box, ctx) {
         btn('Editar', () => editOffice(o, reload), 'small'),
         btn('Usuários e link', () => officeAccess(o), 'small'),
         btn('+ TV box', () => newKey(reload, o.id), 'small'),
-        btn('PIN novo', guard(async () => { if (!confirm(`Gerar um PIN de saída novo para as TV box de "${o.name}"? O de antes deixa de valer em até 30 segundos.`)) return; const r = await tapi(`/api/tvcorp/rede/offices/${o.id}/pin`, { method: 'POST', body: {} }); showOnce(`PIN de saída · ${o.name}`, 'O PIN aparece só agora. Anote e passe ao responsável pela unidade.', String(r.pin)); }), 'small'),
+        btn('PIN novo', guard(async () => { if (!confirm(`Gerar um PIN de saída novo para as TV box de "${o.name}"? O de antes deixa de valer em até 10 segundos.`)) return; const r = await tapi(`/api/tvcorp/rede/offices/${o.id}/pin`, { method: 'POST', body: {} }); showOnce(`PIN de saída · ${o.name}`, 'O PIN aparece só agora. Anote e passe ao responsável pela unidade.', String(r.pin)); }), 'small'),
         btn('Excluir', guard(async () => { if (devs.length) { toast('Esta unidade ainda tem telas. Revogue ou mude as telas de unidade antes.', true); return; } if (!confirm(`Excluir a unidade "${o.name}"?`)) return; await tapi(`/api/tvcorp/rede/offices/${o.id}`, { method: 'DELETE' }); await reload(); }), 'small danger')));
   });
   const groupRows = d.groups.map((g) => {

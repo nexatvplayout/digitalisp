@@ -30,10 +30,10 @@ export default async function paintComandos(box, ctx) {
     const d = active().find((x) => x.id === Number(sendDev.value)); if (!d) throw new Error('Escolha a tela.');
     if (sendCmd.value === 'reboot' && !confirm(`Reiniciar o aparelho "${d.name}"? A tela fica sem imagem por 1 a 2 minutos.`)) return;
     await tapi(`/api/tvcorp/rede/devices/${d.id}/commands`, { method: 'POST', body: { type: sendCmd.value } });
-    toast(`${cmdLabel(sendCmd.value)}: a tela "${d.name}" recebe no próximo sinal de vida (até 30 s).`); await load();
+    toast(`${cmdLabel(sendCmd.value)}: a tela "${d.name}" recebe no próximo sinal de vida (até 10 s).`); await load();
   });
   put(box,
-    note('Cada comando fica registrado com quem mandou e quando. A tela recebe no próximo sinal de vida (até 30 segundos); desligada, recebe quando ligar.'),
+    note('Cada comando fica registrado com quem mandou e quando. A tela recebe no próximo sinal de vida (até 10 segundos); desligada, recebe quando ligar.'),
     el('div', { class: 'pf-bar' }, f('Tela', sendDev), f('Comando', sendCmd), btn('Enviar', send, 'primary')),
     el('div', { class: 'pf-bar' }, f('Tela', dev), f('De', from), f('Até', to), btn('Ver', load)),
     out);

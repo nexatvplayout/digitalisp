@@ -9,7 +9,8 @@ import { FACTORY_LAYOUTS, FACTORY_LAYOUT, FACTORY_SETS, LAYOUT_SEGMENTS, ZONE_KI
 import { themeOf } from './tvcorp-midias.js';
 import { radioPicker } from './tvcorp-radio.js';
 import { abrirPreviaViva } from './tvcorp-previa-viva.js';
-import { demosView } from './tvcorp-demos.js'; // os layouts de demonstração (só nas contas ligadas)
+import { demosView } from './tvcorp-demos.js';
+import { faixaCard } from './tvcorp-faixa.js'; // o texto rolante digitado no próprio editor do layout // os layouts de demonstração (só nas contas ligadas)
 import { state } from '../lib.js';
 import { wifiQr, vcardQr, qrKind, qrLabel } from '../../shared/qr-conteudo.js';
 import { quadroPx, formatoDe, FORMATO_TXT, dicaArte, quadrosDoLayout } from './tvcorp-quadros.js';
@@ -204,12 +205,15 @@ export function layoutEditor(lay, reload, factoryKey = null, copyOf = null, { ao
     // o canal ao vivo da zona de vídeo: escolhido aqui (o da tela, na aba Telas, ainda vence; sem canal, o da unidade)
     const chPick = (z) => (z.kind === 'video' ? el('select', { 'aria-label': `Canal ao vivo da zona ${z.id}`, onchange: (e) => { if (e.target.value) z.channel = Number(e.target.value); else delete z.channel; paintPv(); } },
       opt('', CANAIS.length ? 'Canal ao vivo: o da unidade' : 'Nenhum canal cadastrado (aba Ao vivo (HLS))', z.channel == null), ...CANAIS.map((c) => opt(c.id, `Canal ao vivo: ${c.name}`, Number(z.channel) === Number(c.id)))) : null);
-    const params = (z) => [chPick(z), fitPick(z), plPick(z), shapePick(z), layer(z), ...(ZONE_KIND[z.kind]?.params || []).map((k) => (k === 'widget' ? widgetPick(z) : k === 'qr' ? qrField(z) : el('input', { type: k === 'qr' ? 'url' : 'text', maxlength: String(PARAM[k][1]), value: z[k] || '', placeholder: PARAM[k][0], 'aria-label': `${PARAM[k][0]} da zona ${z.id}`, onchange: (e) => { z[k] = e.target.value.trim(); paintPv(); } })))];
+    // o texto rolante: os textos da faixa (os mesmos da aba Barras e blocos), digitados aqui mesmo, ao escolher a zona
+    const tickerDlg = () => dialog('Texto rolante: os textos da faixa', el('div', {}, note('Digite os avisos que passam na faixa. Valem para todas as telas da empresa (os mesmos da aba Barras e blocos).', 'small'), faixaCard(D().defaults?.config || {}, async () => { await reload?.(); })), { wide: true });
+    const tickPick = (z) => (z.kind === 'ticker' ? btn('Digitar os textos', tickerDlg, 'small primary') : null);
+    const params = (z) => [tickPick(z), chPick(z), fitPick(z), plPick(z), shapePick(z), layer(z), ...(ZONE_KIND[z.kind]?.params || []).map((k) => (k === 'widget' ? widgetPick(z) : k === 'qr' ? qrField(z) : el('input', { type: k === 'qr' ? 'url' : 'text', maxlength: String(PARAM[k][1]), value: z[k] || '', placeholder: PARAM[k][0], 'aria-label': `${PARAM[k][0]} da zona ${z.id}`, onchange: (e) => { z[k] = e.target.value.trim(); paintPv(); } })))];
     const tam = (z) => { const px = quadroPx(st, z); return el('td', { class: 'small', title: z.kind === 'playlist' ? dicaArte({ px }) : '' }, el('b', { text: `${px.w}×${px.h}` }), el('div', { class: 'dim', text: FORMATO_TXT[formatoDe(px)] })); };
     const dicas = st.zones.filter((z) => z.kind === 'playlist').map((z) => note(`Quadro "${z.id}": ${dicaArte({ px: quadroPx(st, z) })}`, 'small'));
     put(rowsBox, table(['Zona', 'O que mostra', 'Esquerda %', 'Alto %', 'Largura %', 'Altura %', 'Na TV (px)', 'Conteúdo fixo', ''], st.zones.map((z, i) => el('tr', { class: st.sel === i ? 'tc-sel' : '' },
       el('td', {}, el('input', { type: 'text', maxlength: '20', value: z.id, class: 'tc-id-in', 'aria-label': 'Nome da zona', onchange: (e) => { z.id = e.target.value.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 16) || `z${i + 1}`; e.target.value = z.id; canvas.paint(); paintPv(); } })),
-      el('td', {}, el('select', { 'aria-label': `Tipo da zona ${z.id}`, onchange: (e) => { z.kind = e.target.value; canvas.paint(); paintRows(); paintPv(); } }, ...ZONE_KINDS.map((k) => opt(k.key, k.label, k.key === z.kind)))),
+      el('td', {}, el('select', { 'aria-label': `Tipo da zona ${z.id}`, onchange: (e) => { z.kind = e.target.value; canvas.paint(); paintRows(); paintPv(); if (z.kind === 'ticker') tickerDlg(); } }, ...ZONE_KINDS.map((k) => opt(k.key, k.label, k.key === z.kind)))),
       el('td', {}, num(z, 'x')), el('td', {}, num(z, 'y')), el('td', {}, num(z, 'w')), el('td', {}, num(z, 'h')),
       tam(z),
       el('td', {}, ...params(z)),
@@ -239,7 +243,7 @@ export function layoutEditor(lay, reload, factoryKey = null, copyOf = null, { ao
       const body = { name: name.value.trim(), orientation: st.orientation, zones: st.zones.map((z) => Object.fromEntries(Object.entries(z).filter(([, v]) => v !== '' && v != null))), background: st.background, factoryKey: st.factoryKey };
       const saved = lay ? await tapi(`/api/tvcorp/layouts/${lay.id}`, { method: 'PATCH', body }) : await tapi('/api/tvcorp/layouts', { method: 'POST', body });
       await radio.save(saved?.id ?? lay?.id); // a rádio de fundo, depois que o layout existe
-      toast('Layout salvo. As telas com grade neste layout trocam em até 1 minuto.');
+      toast('Layout salvo. As telas com grade neste layout trocam em segundos.');
       await reload();
     },
   });
@@ -484,7 +488,7 @@ export function wallDialog(w, reload) {
       if (st.mode === 'wall' && mkGrade.checked && devices.length) {
         await tapi('/api/tvcorp/schedules', { method: 'POST', body: { name: `${body.name} · videowall`.slice(0, LIMITS.name), layoutId: body.layoutId, zonePlaylists: {}, scope: { kind: 'devices', devices }, days: [], timeFrom: 0, timeTo: 1440, priority: 50 } });
       }
-      toast(`Conjunto salvo.${st.mode === 'wall' && mkGrade.checked && devices.length ? ' A grade do videowall foi criada: escolha as playlists das zonas na aba Grade.' : ''} As telas recebem a posição em até 1 minuto.`);
+      toast(`Conjunto salvo.${st.mode === 'wall' && mkGrade.checked && devices.length ? ' A grade do videowall foi criada: escolha as playlists das zonas na aba Grade.' : ''} As telas recebem a posição em segundos.`);
       await reload();
     },
   });

@@ -41,7 +41,7 @@ function chartDialog(k) {
 function valueDialog(k, reload) {
   const v = el('input', { type: 'text', inputmode: 'decimal', value: k.value ?? '' });
   dialog(`Valor · ${k.name}`, el('div', { class: 'pf-grid' }, f(`Valor agora${k.unit ? ` (${k.unit})` : ''}`, v), note(`Meta: ${num(k.target)} ${k.unit || ''}`)), {
-    save: async () => { const n = toNum(v.value); if (!Number.isFinite(n)) throw new Error('Digite um número.'); await tapi(`/api/tvcorp/kpis/${k.id}/value`, { method: 'POST', body: { value: n } }); toast('Valor salvo. As telas mostram em até 1 minuto.'); await reload(); },
+    save: async () => { const n = toNum(v.value); if (!Number.isFinite(n)) throw new Error('Digite um número.'); await tapi(`/api/tvcorp/kpis/${k.id}/value`, { method: 'POST', body: { value: n } }); toast('Valor salvo. As telas mostram em segundos.'); await reload(); },
   });
 }
 function editKpi(k, reload) {

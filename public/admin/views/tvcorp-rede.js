@@ -75,13 +75,13 @@ export async function paintAlertas(box, ctx) {
     const body = { title: A.title, text: A.text, level: A.level, sound: A.sound, class: 'utilidade', scope: s, durationMin: A.durationMin };
     if (A.level === 'critical') { if (!confirm(`Nível máximo. Confirmar o alerta EXTREMO para ${reach.dataset.total || 'as'} telas?`)) return; body.confirmExtreme = true; }
     const out = await tapi('/api/tvcorp/rede/alerts', { method: 'POST', body });
-    toast(`Alerta enviado${out.reach ? `: ${out.reach.total} tela(s)` : ''}. Aparece em até 30 segundos.`);
+    toast(`Alerta enviado${out.reach ? `: ${out.reach.total} tela(s)` : ''}. Aparece em até 10 segundos.`);
     Object.assign(A, { title: '', text: '' }); await again();
   });
   const row = (x, live) => el('tr', {},
     el('td', {}, el('span', { class: `pf-level ${x.level}`, text: severityOf(x.level).label }), ' ', el('b', { text: x.title }), el('div', { class: 'dim small', text: (x.text || '').slice(0, 120) })),
     el('td', { text: alertScopeText(x.scope) }), el('td', { text: `${when(x.startsAt)} até ${when(x.until)}` }), el('td', { text: `${x.delivered ?? 0} tela(s)`, 'data-alerta': String(x.id) }), el('td', { text: x.createdBy || '—' }),
-    el('td', { class: 'pf-actions' }, live ? btn('Encerrar', guard(async () => { if (!confirm(`Encerrar o alerta "${x.title}"? Sai das telas em até 30 segundos.`)) return; await tapi(`/api/tvcorp/rede/alerts/${x.id}/cancel`, { method: 'POST' }); toast('Alerta encerrado.'); await again(); }), 'small danger') : null));
+    el('td', { class: 'pf-actions' }, live ? btn('Encerrar', guard(async () => { if (!confirm(`Encerrar o alerta "${x.title}"? Sai das telas em até 10 segundos.`)) return; await tapi(`/api/tvcorp/rede/alerts/${x.id}/cancel`, { method: 'POST' }); toast('Alerta encerrado.'); await again(); }), 'small danger') : null));
   const heads = ['Alerta', 'Para onde', 'Período', 'Mostraram', 'Enviado por', ''];
   put(box,
     note('O alerta cobre a tela inteira, por cima de tudo, até o fim do prazo ou até ser encerrado. Use para o que é urgente: evacuação, simulado, falta de energia, aviso de crise. Para o dia a dia, use os comunicados (aba RH).'),
@@ -149,7 +149,7 @@ export async function paintAprovacoes(box, ctx) {
     if (a.src === 'tvc') await tapi(`/api/tvcorp/approvals/${a.id}/decide`, { method: 'POST', body: { approve, note: reason } });
     else if (a.src === 'post') await tapi(`/api/tvcorp/posts/${a.id}/decide`, { method: 'POST', body: { approve, reason } });
     else await tapi(`/api/tvcorp/rede/approvals/${a.id}/${approve ? 'approve' : 'reject'}`, { method: 'POST', body: { note: reason } });
-    toast(approve ? 'Aprovado: vai às telas em até 1 minuto.' : 'Devolvido.'); await again();
+    toast(approve ? 'Aprovado: vai às telas em segundos.' : 'Devolvido.'); await again();
   });
   const row = (a, live) => el('tr', {},
     el('td', {}, el('b', { text: a.office || 'unidade' }), el('div', { class: 'dim small', text: `${a.requestedBy || '—'} · ${when(a.requestedAt)}` })),

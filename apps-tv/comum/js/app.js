@@ -259,7 +259,7 @@
         if (est.nova && !fila) reconciliar();
       });
     }).then(function () {
-      timerCiclo = setTimeout(ciclo, 30000);
+      timerCiclo = setTimeout(ciclo, 10000); // a cada 10 s: a mudança do painel chega em segundos (antes 30 s)
     }, function (e) {
       if (e && e.status === 401) { // tela revogada no painel: para o conteúdo e volta ao cadastro
         est.token = null; A.gravar('token', null);

@@ -10,13 +10,29 @@ const pl = (seg, pick = [0, 1, 2, 3, 4, 5, 6, 7]) => ({ seg: `premium-${seg}`, p
 const frase = (id, x, y, w, h, title, text) => Z(id, 'text', x, y, w, h, title ? { title, text } : { text });
 const qr = (id, x, y, w, h, title, path) => Z(id, 'qr', x, y, w, h, { title, qr: `https://exemplo.com.br/${path}` });
 const BG = '#0b1220';
+/** A próxima vez que o dia (mês, dia) cai, em AAAA-MM-DD (a contagem da data comemorativa nunca fica no passado). */
+export function proximaData(m, d, hoje = new Date()) {
+  const pad = (n) => String(n).padStart(2, '0');
+  let y = hoje.getFullYear();
+  if (new Date(y, m - 1, d) < new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate())) y += 1;
+  return `${y}-${pad(m)}-${pad(d)}`;
+}
+/** A Páscoa do ano (cálculo de Meeus): a data muda todo ano. */
+export function pascoa(ano) {
+  const a = ano % 19; const b = Math.floor(ano / 100); const c = ano % 100; const d = Math.floor(b / 4); const e = b % 4;
+  const f = Math.floor((b + 8) / 25); const g = Math.floor((b - f + 1) / 3); const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4); const k = c % 4; const l = (32 + 2 * e + 2 * i - h - k) % 7; const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  return [Math.floor((h + l - 7 * m + 114) / 31), ((h + l - 7 * m + 114) % 31) + 1];
+}
+/** Playlist de slides escritos à mão (os temáticos): [modelo, campos, foto, paleta]. md: [mês, dia] da data, para a contagem. */
+const sl = (lista) => ({ slides: lista });
 
 /** Os segmentos da seção (a ordem do filtro). */
 export const DEMO_SEGMENTS = [
   ['provedor', 'Provedor de internet'], ['padaria', 'Padaria'], ['lanchonete', 'Lanchonete'], ['farmacia', 'Farmácia'],
   ['mercado', 'Mercado'], ['alimentacao', 'Restaurante e pizzaria'], ['saude', 'Saúde'], ['servicos', 'Serviços e lazer'],
   ['varejo', 'Moda, construção e imóveis'], ['bares', 'Bares e eventos'], ['corporativo', 'Empresas e escolas'],
-  ['comunidade', 'Igreja, condomínio e órgão público'],
+  ['comunidade', 'Igreja, condomínio e órgão público'], ['datas', 'Datas comemorativas'],
 ];
 
 export const DEMO_LAYOUTS = Object.freeze([
@@ -228,6 +244,86 @@ export const DEMO_LAYOUTS = Object.freeze([
   { key: 'odontologia-tv', segment: 'saude', label: 'Odontologia · Espera com TV', desc: 'O canal ao vivo e os tratamentos passando na coluna ao lado.',
     orientation: 'land', background: BG, video: true,
     zones: [Z('main', 'video', 0, 0, 68, 100), Z('right', 'playlist', 68, 0, 32, 100, { pl: pl('odontologia') })] },
+  // ================================================================ datas comemorativas (26/11/2026): fotos próprias de cada data
+  { key: 'data-natal', segment: 'datas', label: 'Natal · Vitrine com contagem', desc: 'As ofertas de Natal em tela cheia, a hora por cima e a frase da data.',
+    orientation: 'land', background: BG,
+    zones: [Z('main', 'playlist', 0, 0, 100, 86, { pl: sl([
+      ['data-comemorativa', { title: 'Feliz Natal!', date: { md: [12, 25] }, text: 'Que a sua casa se encha de paz e alegria.' }, 'foto-tm-natal-arvore', 'vermelho'],
+      ['oferta', { title: 'Cesta de Natal', price: 'R$ 129,90', oldPrice: 'R$ 159,90', tag: 'NATAL', text: 'Panetone, espumante, chocolates e castanhas.' }, 'foto-tm-natal-ceia', 'vermelho'],
+      ['comunicado', { title: 'Horário especial', text: 'Dias 24 e 31 abrimos das 8h às 18h.' }, 'foto-tm-natal-arvore', 'verde'],
+      ['oferta', { title: 'Peru temperado', price: 'R$ 39,90', unit: 'o quilo', tag: 'CEIA', text: 'Encomende o seu e retire no dia 24.' }, 'foto-tm-natal-ceia', 'dourado'],
+    ]) }), Z('clock', 'clock', 0, 86, 22, 14), frase('frase', 22, 86, 78, 14, '', 'Boas festas para você e sua família!')] },
+  { key: 'data-ano-novo', segment: 'datas', label: 'Ano Novo · Telão com vídeo no meio', desc: 'A virada ao vivo no centro e os brindes e votos dos dois lados.',
+    orientation: 'land', background: BG, video: true,
+    zones: [Z('left', 'playlist', 0, 0, 25, 100, { pl: sl([
+      ['data-comemorativa', { title: 'Feliz Ano Novo!', date: { md: [1, 1] }, text: 'Um ano cheio de conquistas.' }, 'foto-tm-anonovo-fogos', 'dourado'],
+      ['comunicado', { title: 'Réveillon', text: 'Festa da virada a partir das 22h.' }, 'foto-tm-anonovo-brinde', 'dourado'],
+    ]) }), Z('main', 'video', 25, 0, 50, 100), Z('right', 'playlist', 75, 0, 25, 100, { pl: sl([
+      ['oferta', { title: 'Espumante', price: 'R$ 39,90', tag: 'BRINDE', text: 'Gelado para a virada.' }, 'foto-tm-anonovo-brinde', 'dourado'],
+      ['comunicado', { title: 'Obrigado!', text: 'Obrigado por estar com a gente neste ano.' }, 'foto-tm-anonovo-fogos', 'azul'],
+    ]) })] },
+  { key: 'data-carnaval', segment: 'datas', label: 'Carnaval · Folia com QR por cima', desc: 'A festa em tela cheia, a hora e o QR code da programação por cima.',
+    orientation: 'land', background: BG,
+    zones: [Z('main', 'playlist', 0, 0, 100, 100, { pl: sl([
+      ['comunicado', { title: 'É Carnaval!', text: 'Bloco, marchinha e muita alegria.' }, 'foto-tm-carnaval-mascaras', 'roxo'],
+      ['oferta', { title: 'Kit folia', price: 'R$ 29,90', tag: 'CARNAVAL', text: 'Máscara, confete e serpentina.' }, 'foto-tm-carnaval-confete', 'roxo'],
+      ['comunicado', { title: 'Folia com segurança', text: 'Beba água e use protetor solar.' }, 'foto-tm-carnaval-confete', 'laranja'],
+    ]) }), Z('clock', 'clock', 3, 4, 20, 22, { overlay: true, opacity: 55 }), Z('qr', 'qr', 80, 56, 17, 40, { overlay: true, opacity: 55, title: 'Programação', qr: 'https://exemplo.com.br/carnaval/programacao' })] },
+  { key: 'data-pascoa', segment: 'datas', label: 'Páscoa · Loja em L', desc: 'Os ovos de Páscoa em destaque, a coluna com hora, clima e QR, e a frase.',
+    orientation: 'land', background: BG, pascoa: true,
+    zones: [Z('main', 'playlist', 0, 0, 75, 85, { pl: sl([
+      ['data-comemorativa', { title: 'Feliz Páscoa!', date: 'pascoa', text: 'Renovação, esperança e chocolate.' }, 'foto-tm-pascoa-coelho', 'marrom'],
+      ['oferta', { title: 'Ovo de chocolate 500 g', price: 'R$ 59,90', oldPrice: 'R$ 74,90', tag: 'PÁSCOA', text: 'Ao leite, branco ou meio amargo.' }, 'foto-tm-pascoa-ovos', 'marrom'],
+      ['oferta', { title: 'Colomba pascal', price: 'R$ 34,90', tag: 'TRADICIONAL', text: 'Com frutas ou gotas de chocolate.' }, 'foto-tm-pascoa-coelho', 'dourado'],
+    ]) }), Z('clock', 'clock', 75, 0, 25, 28), Z('weather', 'weather', 75, 28, 25, 27),
+      qr('qr', 75, 55, 25, 30, 'Encomende', 'docesdapascoa/encomenda'), frase('frase', 0, 85, 100, 15, '', 'Encomendas até quinta-feira')] },
+  { key: 'data-maes', segment: 'datas', label: 'Dia das Mães · Vitrine em pé', desc: 'TV em pé: os presentes, as flores e a contagem até o Dia das Mães.',
+    orientation: 'port', background: BG,
+    zones: [Z('main', 'playlist', 0, 0, 100, 60, { pl: sl([
+      ['data-comemorativa', { title: 'Dia das Mães', date: 'maes', text: 'Para quem cuida de você com tanto amor.' }, 'foto-tm-maes-flores', 'rosa'],
+      ['oferta', { title: 'Buquê de rosas', price: 'R$ 89,90', tag: 'PRESENTE', text: 'Entregamos com cartão.' }, 'foto-tm-maes-flores', 'rosa'],
+    ]) }), Z('mid', 'playlist', 0, 60, 100, 28, { pl: sl([
+      ['comunicado', { title: 'Café da manhã especial', text: 'Encomende a cesta para domingo.' }, 'foto-tm-maes-cafe', 'rosa'],
+      ['comunicado', { title: 'Embrulho grátis', text: 'Em qualquer presente da loja.' }, 'foto-tm-maes-cafe', 'vinho'],
+    ]) }), frase('frase', 0, 88, 100, 12, '', 'Mãe merece o melhor')] },
+  { key: 'data-namorados', segment: 'datas', label: 'Dia dos Namorados · Quatro quadros', desc: 'Presentes, jantar, flores e a contagem até o Dia dos Namorados.',
+    orientation: 'land', background: BG,
+    zones: [Z('q1', 'playlist', 0, 0, 50, 50, { pl: sl([['data-comemorativa', { title: 'Dia dos Namorados', date: { md: [6, 12] }, text: 'Celebre o amor.' }, 'foto-tm-namorados-chocolate', 'vermelho']]) }),
+      Z('q2', 'playlist', 50, 0, 50, 50, { pl: sl([['oferta', { title: 'Caixa de bombons', price: 'R$ 49,90', tag: 'AMOR', text: 'Coração recheado.' }, 'foto-tm-namorados-chocolate', 'vinho']]) }),
+      Z('q3', 'playlist', 0, 50, 50, 50, { pl: sl([['comunicado', { title: 'Jantar a dois', text: 'Reserve a sua mesa para o dia 12.' }, 'foto-tm-namorados-jantar', 'vinho']]) }),
+      Z('q4', 'playlist', 50, 50, 50, 50, { pl: sl([['oferta', { title: 'Rodízio romântico', price: 'R$ 149,90', unit: 'o casal', tag: 'RESERVE', text: 'Com sobremesa e espumante.' }, 'foto-tm-namorados-jantar', 'vermelho']]) })] },
+  { key: 'data-junina', segment: 'datas', label: 'Festa Junina · Arraiá com faixa de título', desc: 'A faixa do arraiá, as comidas típicas, a hora e o clima.',
+    orientation: 'land', background: BG,
+    zones: [frase('frase', 0, 0, 100, 14, '', 'Arraiá chegando! Bora pro forró'), Z('main', 'playlist', 0, 14, 70, 86, { pl: sl([
+      ['data-comemorativa', { title: 'Festa Junina', date: { md: [6, 24] }, text: 'Quadrilha, fogueira e comida boa.' }, 'foto-tm-junina-fogueira', 'laranja'],
+      ['precos', { title: 'Comidas típicas', text: 'Pamonha | R$ 8,00\nCanjica | R$ 7,00\nPé de moleque | R$ 3,00\nQuentão | R$ 6,00', note: 'Barraca aberta a partir das 18h.' }, 'foto-tm-junina-doces', 'laranja'],
+      ['comunicado', { title: 'Concurso de quadrilha', text: 'Inscreva o seu grupo até sexta.' }, 'foto-tm-junina-fogueira', 'marrom'],
+    ]) }), Z('clock', 'clock', 70, 14, 30, 43), Z('weather', 'weather', 70, 57, 30, 43)] },
+  { key: 'data-pais', segment: 'datas', label: 'Dia dos Pais · Jogo e presentes', desc: 'O jogo ao vivo em cima e os presentes e o churrasco em dois quadros embaixo.',
+    orientation: 'land', background: BG, video: true,
+    zones: [Z('main', 'video', 0, 0, 100, 70), Z('left', 'playlist', 0, 70, 50, 30, { pl: sl([
+      ['data-comemorativa', { title: 'Dia dos Pais', date: 'pais', text: 'Para o seu herói.' }, 'foto-tm-pais-presente', 'azul'],
+      ['oferta', { title: 'Kit presente', price: 'R$ 99,90', tag: 'PAI', text: 'Carteira e relógio.' }, 'foto-tm-pais-presente', 'grafite'],
+    ]) }), Z('right', 'playlist', 50, 70, 50, 30, { pl: sl([
+      ['oferta', { title: 'Kit churrasco', price: 'R$ 119,90', tag: 'DOMINGO', text: 'Picanha, linguiça e carvão.' }, 'foto-tm-pais-churrasco', 'vermelho'],
+      ['comunicado', { title: 'Almoço de domingo', text: 'Reserve a mesa para a família.' }, 'foto-tm-pais-churrasco', 'marrom'],
+    ]) })] },
+  { key: 'data-criancas', segment: 'datas', label: 'Dia das Crianças · Loja com logomarca', desc: 'A logomarca e a frase no alto, e os brinquedos em destaque embaixo.',
+    orientation: 'land', background: BG,
+    zones: [Z('logo', 'logo', 0, 0, 22, 18), frase('frase', 22, 0, 78, 18, '', 'Diversão garantida para a criançada'), Z('main', 'playlist', 0, 18, 100, 82, { pl: sl([
+      ['data-comemorativa', { title: 'Dia das Crianças', date: { md: [10, 12] }, text: 'Brincar é coisa séria!' }, 'foto-tm-criancas-brinquedos', 'azul'],
+      ['oferta', { title: 'Brinquedos educativos', price: 'R$ 39,90', tag: '12 DE OUTUBRO', text: 'Blocos, quebra-cabeças e jogos.' }, 'foto-tm-criancas-brinquedos', 'laranja'],
+      ['oferta', { title: 'Kit festa', price: 'R$ 24,90', tag: 'DOCES', text: 'Balões, pirulitos e confete.' }, 'foto-tm-criancas-baloes', 'rosa'],
+    ]) })] },
+  { key: 'data-black-friday', segment: 'datas', label: 'Black Friday · Vídeo e ofertas', desc: 'O canal ao vivo, as ofertas da Black Friday ao lado e a frase do desconto.',
+    orientation: 'land', background: BG, video: true,
+    zones: [Z('main', 'video', 0, 0, 66, 86), Z('top', 'playlist', 66, 0, 34, 43, { pl: sl([
+      ['oferta', { title: 'Até 50% de desconto', price: 'R$ 99,90', oldPrice: 'R$ 199,90', tag: 'BLACK FRIDAY', text: 'Só nesta semana.' }, 'foto-tm-black-sacolas', 'grafite'],
+      ['comunicado', { title: 'Ofertas relâmpago', text: 'A cada hora, uma oferta nova.' }, 'foto-tm-black-carrinho', 'grafite'],
+    ]) }), Z('bottom', 'playlist', 66, 43, 34, 43, { pl: sl([
+      ['oferta', { title: 'Leve 3, pague 2', price: 'R$ 59,90', tag: 'COMBO', text: 'Em toda a loja.' }, 'foto-tm-black-carrinho', 'dourado'],
+      ['data-comemorativa', { title: 'Black Friday', date: 'black', text: 'Os melhores preços do ano.' }, 'foto-tm-black-sacolas', 'grafite'],
+    ]) }), frase('frase', 0, 86, 100, 14, '', 'Black Friday: os menores preços do ano')] },
 ]);
 
 /**
@@ -289,6 +385,16 @@ export const DEMO_FRASES = Object.freeze({
   'academia-quatro': [['Treino em grupo','Aulas de hora em hora.'],['Avaliação física','Agende com o professor.'],['Traga um amigo','Na primeira semana ele treina de graça.']],
   'hotel-pe': [['Bem-vindo!','Café da manhã das 6h30 às 10h.'],['Piscina','Aberta das 8h às 20h.'],['Passeios','Pergunte na recepção.']],
   'odontologia-tv': [['Sorria!','Escove os dentes três vezes ao dia.'],['Clareamento','Pergunte pelas condições especiais.'],['Retorno','Marque a próxima consulta antes de sair.']],
+  'data-natal': [['Natal solidário','Doe um brinquedo na urna da entrada.'],['Embrulho grátis','Em qualquer presente.'],['Encomendas','Ceia completa sob encomenda até o dia 22.']],
+  'data-ano-novo': [['Vista branco','Paz e luz para o ano novo.'],['Faça um pedido','Que tudo dê certo no ano que vem!'],['Contagem regressiva','Faltam poucos dias para a virada.']],
+  'data-carnaval': [['Bloco da casa','Concentração no sábado às 15h.'],['Fantasia','A mais criativa ganha prêmio.'],['Horário','Abrimos na quarta-feira de cinzas ao meio-dia.']],
+  'data-pascoa': [['Caça aos ovos','Domingo às 10h para a criançada.'],['Ovos artesanais','Feitos aqui, recheados na hora.'],['Páscoa solidária','Doe um ovo para uma criança.']],
+  'data-maes': [['Homenagem','Obrigado por tudo, mãe.'],['Sorteio','Cada compra vale um cupom.'],['Abrimos domingo','Das 9h às 14h.']],
+  'data-namorados': [['Surpreenda','Presentes a partir de R$ 29,90.'],['Cartão grátis','Escreva a sua mensagem de amor.'],['Reserve já','Mesas limitadas para o jantar.']],
+  'data-junina': [['Traje caipira','Venha a caráter e ganhe um quentão.'],['Correio elegante','Mande um recado para o seu par.'],['Pescaria','Prêmios para todas as idades.']],
+  'data-pais': [['Pai herói','Uma homenagem a quem está sempre com você.'],['Sorteio','Concorra a um kit churrasco.'],['Embrulho grátis','Em qualquer presente.']],
+  'data-criancas': [['Brincadeiras','Pula-pula e pintura facial no sábado.'],['Desconto','10% em todos os brinquedos.'],['Leitura','Livros infantis com preço especial.']],
+  'data-black-friday': [['Corra!','Estoque limitado.'],['Parcele','Em até 10 vezes sem juros.'],['Frete grátis','Nas compras acima de R$ 199.']],
 });
 
 /** As zonas do layout como vão ao servidor (sem a playlist de exemplo; a playlist criada entra no lugar). */
@@ -297,12 +403,28 @@ export const DEMO_FRASES = Object.freeze({
  * (um slide "comunicado" com a foto de um dos prontos). catalog: os templates (templateCatalog()).
  * Devolve { zona: [{ id, name, template, fields }] }.
  */
+/** A data de um slide temático: { md: [mês, dia] } ou as datas móveis (páscoa, mães, pais, black). */
+function dataDe(v, hoje = new Date()) {
+  if (v && v.md) return proximaData(v.md[0], v.md[1], hoje);
+  const ano = hoje.getFullYear();
+  // o n-ésimo dia da semana (0 = domingo) do mês; a Black Friday é a sexta depois da 4ª quinta de novembro
+  const nth = (y, m, dow, n) => { const p = new Date(y, m - 1, 1); const off = (dow - p.getDay() + 7) % 7; return [m, 1 + off + 7 * (n - 1)]; };
+  const de = (y) => (v === 'pascoa' ? pascoa(y) : v === 'maes' ? nth(y, 5, 0, 2) : v === 'pais' ? nth(y, 8, 0, 2) : v === 'black' ? (() => { const [m, d] = nth(y, 11, 4, 4); return [m, d + 1]; })() : null);
+  const a = de(ano); if (!a) return undefined;
+  const pad = (n) => String(n).padStart(2, '0');
+  const hoje0 = new Date(ano, hoje.getMonth(), hoje.getDate());
+  const [m, d] = new Date(ano, a[0] - 1, a[1]) < hoje0 ? de(ano + 1) : a;
+  return `${new Date(ano, a[0] - 1, a[1]) < hoje0 ? ano + 1 : ano}-${pad(m)}-${pad(d)}`;
+}
 export function demoItens(d, catalog) {
   const out = {};
   const zs = d.zones.filter((z) => z.pl);
   zs.forEach((z, zi) => {
-    const all = catalog.filter((t) => t.segment === z.pl.seg && t.orient === 'land');
-    const slides = z.pl.pick.map((i) => all[i]).filter(Boolean).map((t) => ({ id: t.id, name: t.name.replace(' premium', ''), template: t.template, fields: t.fields }));
+    const all = z.pl.slides ? [] : catalog.filter((t) => t.segment === z.pl.seg && t.orient === 'land');
+    const slides = z.pl.slides
+      ? z.pl.slides.map(([template, base, art, palette], i) => ({ id: `${d.key}-${z.id}-${i + 1}`, name: `${d.label.split(' · ')[0]} · ${base.title}`.slice(0, 60), template, fields: { ...base, date: base.date ? dataDe(base.date) : undefined, art, palette, variant: 'dark' } }))
+        .map((t) => { if (!t.fields.date) delete t.fields.date; return t; })
+      : z.pl.pick.map((i) => all[i]).filter(Boolean).map((t) => ({ id: t.id, name: t.name.replace(' premium', ''), template: t.template, fields: t.fields }));
     const frases = zi === 0 ? (DEMO_FRASES[d.key] || []) : [];
     const lista = [];
     slides.forEach((t, i) => {

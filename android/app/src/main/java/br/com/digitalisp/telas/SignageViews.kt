@@ -1503,13 +1503,28 @@ class SignItemView(
         }
     }
 
+    /**
+     * DIGITAL ISP (26/11/2026): a frase ocupa a zona, com a maior letra que couber (até 3 linhas), no meio da altura. Antes a
+     * letra vinha da menor medida da zona: numa faixa de 14% da altura saía com uns 15 px, pequena demais na TV.
+     */
     private fun textBlock(r: RectF, title: String, text: String) {
-        val y = header(r, "", title, look.accent, 0.09f)
-        if (text.isEmpty()) return
-        val base = minOf(r.width(), r.height() * 1.4f)
-        val px = base * 0.07f
-        val l = SignText.fit(text, r.width().toInt(), (r.bottom - y).toInt().coerceAtLeast(1), px, px * 0.45f, look.text, false, Signage.MAX_LINES)
-        ops += { c -> SignText.draw(c, l, r.left, y) }
+        val w = r.width().toInt().coerceAtLeast(1)
+        val tPx = if (title.isEmpty()) 0f else minOf(r.height() * (if (text.isEmpty()) 0.6f else 0.32f), r.width() * 0.09f)
+        val tl = if (title.isEmpty()) null else
+            SignText.fit(title, w, (r.height() * (if (text.isEmpty()) 1f else 0.45f)).toInt().coerceAtLeast(1), tPx, tPx * 0.35f, look.text, true, 2)
+        val gap = if (tl != null && text.isNotEmpty()) tPx * 0.2f else 0f
+        val restH = (r.height() - (tl?.height ?: 0) - gap).coerceAtLeast(1f)
+        val xPx = minOf(restH * 0.55f, r.width() * 0.07f)
+        // faixa baixa e larga: uma linha só (a letra diminui até caber); coluna ou caixa: até 3 linhas
+        val lines = if (restH < r.width() * 0.2f) 1 else 3
+        val xl = if (text.isEmpty()) null else SignText.fit(text, w, restH.toInt(), xPx, xPx * 0.3f, look.text, false, lines)
+        val total = (tl?.height ?: 0) + gap + (xl?.height ?: 0)
+        val y0 = r.top + (r.height() - total).coerceAtLeast(0f) / 2f
+        ops += { c ->
+            var y = y0
+            if (tl != null) { SignText.draw(c, tl, r.left, y); y += tl.height + gap }
+            if (xl != null) SignText.draw(c, xl, r.left, y)
+        }
     }
 
     private fun qrBlock(r: RectF) {

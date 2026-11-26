@@ -238,7 +238,7 @@ export function pageBuilder(m, images, onSaved, { preset = 'aviso' } = {}) {
       if (m) await tupload(`/api/tvcorp/media/${m.id}/image?${q}`, jpg, { method: 'PUT', type: 'image/jpeg' });
       else id = (await tupload(`/api/tvcorp/media/image?${q}&seconds=${Number(seconds.value) || 12}${office.value ? `&officeId=${office.value}` : ''}`, jpg, { type: 'image/jpeg' }))?.id;
       if (id) await tapi(`/api/tvcorp/media/${id}`, { method: 'PATCH', body: { title: name, seconds: Number(seconds.value) || 12, officeId: office.value ? Number(office.value) : null, page } });
-      toast(m ? 'Página salva. As telas trocam em até 1 minuto.' : 'Página criada. Ponha-a numa playlist para ir às telas.');
+      toast(m ? 'Página salva. As telas trocam em segundos.' : 'Página criada. Ponha-a numa playlist para ir às telas.');
       await onSaved?.();
     },
   });

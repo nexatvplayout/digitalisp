@@ -287,7 +287,7 @@ async function editItems(pl, reload) {
     save: async () => {
       const body = { items: items.map(({ refKind, refId, params, seconds, days, timeFrom, timeTo, validFrom, validTo }) => ({ refKind, refId, params, seconds: Number(seconds) || LIMITS.secondsDefault, days: days || '', timeFrom: timeFrom ?? null, timeTo: timeTo ?? null, validFrom: validFrom || null, validTo: validTo || null })) };
       await tapi(`/api/tvcorp/playlists/${pl.id}/items`, { method: 'PUT', body });
-      toast('Playlist salva. As telas trocam em até 1 minuto.');
+      toast('Playlist salva. As telas trocam em segundos.');
       await reload();
     },
   });

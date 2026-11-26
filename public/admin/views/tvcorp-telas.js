@@ -109,7 +109,7 @@ export function newKey(reload, officeId = null) {
 async function sendCommand(d, type) {
   if (type === 'reboot' && !confirm(`Reiniciar o aparelho "${d.name}"? A tela fica sem imagem por 1 a 2 minutos.`)) return;
   await tapi(`/api/tvcorp/rede/devices/${d.id}/commands`, { method: 'POST', body: { type } });
-  toast(`${COMMANDS.find((c) => c.key === type)?.label || type}: a tela "${d.name}" recebe no próximo sinal de vida (até 30 s).`);
+  toast(`${COMMANDS.find((c) => c.key === type)?.label || type}: a tela "${d.name}" recebe no próximo sinal de vida (até 10 s).`);
 }
 /** "O que está passando agora": a grade, o layout e o item de cada zona, pelo último sinal de vida. */
 async function nowText(d) {
@@ -187,7 +187,7 @@ function editDevice(d, reload) {
     save: async () => {
       const config = { layout: layout.value || null, volume: vol.value === '' ? null : Number(vol.value), muted: muted.checked || null, schedule: on.value && offT.value ? { tvOn: on.value, tvOff: offT.value, days: [...days] } : null };
       await tapi(`/api/tvcorp/rede/devices/${d.id}`, { method: 'PATCH', body: { name: name.value, officeId: Number(office.value), groups: [...picks], config } });
-      toast('Tela salva. Ela troca em até 30 segundos.');
+      toast('Tela salva. Ela troca em até 10 segundos.');
       await reload();
     },
   });

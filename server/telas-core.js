@@ -98,7 +98,7 @@ export function cleanTheme(v) {
   if (!THEME_MODES.some((m) => m.key === mode)) throw fail(400, 'Tema: claro (light) ou escuro (dark).');
   return { color, mode };
 }
-export const HEARTBEAT_SEC = 30;
+export const HEARTBEAT_SEC = 10; // DIGITAL ISP (26/11/2026): a mudança do painel chega à TV em até ~10 s (antes 30)
 const CONFIG_KEYS = Object.keys(FACTORY);
 /** O que um grupo define: só os avisos e o layout. */
 export const GROUP_CONFIG_KEYS = ['layout', 'tickerItems'];

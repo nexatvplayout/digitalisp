@@ -719,6 +719,27 @@ export const TVC_ARTS = Object.freeze([
   { key: 'foto-pm-lanchonete-misto', label: 'Foto premium: lanchonete 6', tone: 'dark', photo: true },
   { key: 'foto-pm-lanchonete-balcao', label: 'Foto premium: lanchonete 7', tone: 'dark', photo: true },
   { key: 'foto-pm-lanchonete-delivery', label: 'Foto premium: lanchonete 8', tone: 'dark', photo: true },
+  // DIGITAL ISP: as fotos das datas comemorativas (layouts de demonstração temáticos)
+  { key: 'foto-tm-natal-arvore', label: 'Foto da data: natal · arvore', tone: 'dark', photo: true },
+  { key: 'foto-tm-natal-ceia', label: 'Foto da data: natal · ceia', tone: 'dark', photo: true },
+  { key: 'foto-tm-anonovo-fogos', label: 'Foto da data: anonovo · fogos', tone: 'dark', photo: true },
+  { key: 'foto-tm-anonovo-brinde', label: 'Foto da data: anonovo · brinde', tone: 'dark', photo: true },
+  { key: 'foto-tm-carnaval-mascaras', label: 'Foto da data: carnaval · mascaras', tone: 'dark', photo: true },
+  { key: 'foto-tm-carnaval-confete', label: 'Foto da data: carnaval · confete', tone: 'dark', photo: true },
+  { key: 'foto-tm-pascoa-ovos', label: 'Foto da data: pascoa · ovos', tone: 'dark', photo: true },
+  { key: 'foto-tm-pascoa-coelho', label: 'Foto da data: pascoa · coelho', tone: 'dark', photo: true },
+  { key: 'foto-tm-maes-flores', label: 'Foto da data: maes · flores', tone: 'dark', photo: true },
+  { key: 'foto-tm-maes-cafe', label: 'Foto da data: maes · cafe', tone: 'dark', photo: true },
+  { key: 'foto-tm-namorados-chocolate', label: 'Foto da data: namorados · chocolate', tone: 'dark', photo: true },
+  { key: 'foto-tm-namorados-jantar', label: 'Foto da data: namorados · jantar', tone: 'dark', photo: true },
+  { key: 'foto-tm-junina-fogueira', label: 'Foto da data: junina · fogueira', tone: 'dark', photo: true },
+  { key: 'foto-tm-junina-doces', label: 'Foto da data: junina · doces', tone: 'dark', photo: true },
+  { key: 'foto-tm-pais-presente', label: 'Foto da data: pais · presente', tone: 'dark', photo: true },
+  { key: 'foto-tm-pais-churrasco', label: 'Foto da data: pais · churrasco', tone: 'dark', photo: true },
+  { key: 'foto-tm-criancas-brinquedos', label: 'Foto da data: criancas · brinquedos', tone: 'dark', photo: true },
+  { key: 'foto-tm-criancas-baloes', label: 'Foto da data: criancas · baloes', tone: 'dark', photo: true },
+  { key: 'foto-tm-black-sacolas', label: 'Foto da data: black · sacolas', tone: 'dark', photo: true },
+  { key: 'foto-tm-black-carrinho', label: 'Foto da data: black · carrinho', tone: 'dark', photo: true },
   { key: 'foto-pm-bar-chope', label: 'Foto premium: bar e petiscaria 1', tone: 'dark', photo: true },
   { key: 'foto-pm-bar-petiscos', label: 'Foto premium: bar e petiscaria 2', tone: 'dark', photo: true },
   { key: 'foto-pm-bar-balde', label: 'Foto premium: bar e petiscaria 3', tone: 'dark', photo: true },
@@ -961,3 +982,14 @@ export const TVC_APPROVAL_KINDS = Object.freeze(['tvc-media', 'tvc-schedule', 't
 
 /** Minutos do dia em "HH:MM" (1440 = "24:00"). */
 export const minutesText = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+
+/**
+ * DIGITAL ISP: o formato do slide numa zona. Deitado (16:9) só quando a zona é bem mais larga que alta (1,3:1 ou mais);
+ * a zona quadrada ou alta recebe o slide em pé, que tem a letra no tamanho certo (o deitado numa metade da tela saía
+ * com a letra pela metade e o preço cortado). orientation: a do layout (land 1920×1080, port 1080×1920).
+ */
+export function slideOrientOf(zone, orientation) {
+  const [TW, TH] = orientation === 'port' ? [1080, 1920] : [1920, 1080];
+  const w = (TW * Number(zone?.w || 0)) / 100; const h = (TH * Number(zone?.h || 0)) / 100;
+  return h > 0 && w / h >= 1.3 ? 'land' : 'port';
+}

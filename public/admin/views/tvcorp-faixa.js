@@ -96,7 +96,7 @@ export function faixaCard(cfg, onSaved) {
     const items = rows.map((r) => ({ ...r, text: String(r.text || '').trim() })).filter((r) => r.text).map((r) => markAviso(markAvisoStyle(r), r.cls));
     if (items.length > TL.tickerItems) throw new Error(`No máximo ${TL.tickerItems} avisos.`);
     await tapi('/api/tvcorp/rede/defaults', { method: 'PUT', body: { config: { tickerItems: items, tickerSpeed: speed, tickerStyle: { ...st, label: st.label.trim() }, tickerNews: news.feeds.size ? { feeds: [...news.feeds], max: news.max } : null } } });
-    toast('Texto rolante salvo. As telas trocam em até 1 minuto.');
+    toast('Texto rolante salvo. As telas trocam em segundos.');
     await onSaved?.();
   });
   paintRows(); paintPv();

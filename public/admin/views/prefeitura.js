@@ -235,7 +235,7 @@ function pinsOf(list) {
 }
 async function sendCommand(d, type) {
   await api(`/api/prefeitura/devices/${d.id}/commands`, { method: 'POST', body: { type } });
-  toast(`${COMMANDS.find((c) => c.key === type).label}: a tela "${d.name}" recebe no próximo sinal de vida (até 30 s).`);
+  toast(`${COMMANDS.find((c) => c.key === type).label}: a tela "${d.name}" recebe no próximo sinal de vida (até 10 s).`);
 }
 /** A última captura da tela (o JPEG vem com a sessão do painel: vira um endereço blob: só desta página). */
 async function loadShot(d, img, note) {
@@ -569,7 +569,7 @@ function editDevice(d) {
       if (internal.checked !== Boolean(d.internal) || (internal.checked && Number(sector.value || 0) !== (d.sectorId || 0)) || Number(office.value) !== d.officeId) {
         await api(`/api/prefeitura/devices/${d.id}/internal`, { method: 'PATCH', body: { internal: internal.checked, sectorId: internal.checked && sector.value ? Number(sector.value) : null } });
       }
-      toast('Tela salva. Ela troca em até 30 segundos.');
+      toast('Tela salva. Ela troca em até 10 segundos.');
       await reload();
     },
   });
@@ -635,7 +635,7 @@ function editGroup(g) {
       const b = { name: name.value, description: desc.value, color: useColor.checked ? color.value : null, officeType: kind.value || null, sort: Number(sort.value) || 0, config: cfg.read() };
       if (!kind.value) b.deviceIds = [...picks];
       if (g) await api(`/api/prefeitura/groups/${g.id}`, { method: 'PATCH', body: b }); else await api('/api/prefeitura/groups', { method: 'POST', body: b });
-      toast('Grupo salvo. As telas dele trocam em até 30 segundos.');
+      toast('Grupo salvo. As telas dele trocam em até 10 segundos.');
       await reload();
     },
   });
@@ -815,7 +815,7 @@ function paintReparticoes(box) {
   const cards = d.offices.map((o) => repCard(ui, o, {
     now, regionName: (id) => regionOf(id)?.name || null,
     editOffice: (x) => editOffice(x), officeUsers: (x) => officeUsers(ui, x), addBox: (x) => newKey(x.id), editDevice, officeLink,
-    newPin: guard(async () => { if (!confirm(`Gerar um PIN de saída novo para as TV box de "${o.name}"? É o PIN que destrava a TV box no local (não é a senha do painel). O de antes deixa de valer nas telas dela em até 30 segundos.`)) return; const r = await api(`/api/prefeitura/offices/${o.id}/pin`, { method: 'POST', body: {} }); await reload(); showPin(o.name, r.pin); }),
+    newPin: guard(async () => { if (!confirm(`Gerar um PIN de saída novo para as TV box de "${o.name}"? É o PIN que destrava a TV box no local (não é a senha do painel). O de antes deixa de valer nas telas dela em até 10 segundos.`)) return; const r = await api(`/api/prefeitura/offices/${o.id}/pin`, { method: 'POST', body: {} }); await reload(); showPin(o.name, r.pin); }),
     remove: guard(async () => { if (!confirm(`Excluir a repartição "${o.name}"?`)) return; await api(`/api/prefeitura/offices/${o.id}`, { method: 'DELETE' }); await reload(); }),
   }));
   const c = d.defaults.config;
@@ -938,7 +938,7 @@ function paintAlertas(box) {
     // Extremo é o nível máximo: uma confirmação a mais (o servidor também cobra)
     if (a.level === 'critical') { if (!confirm(`Este é o nível máximo. Confirmar alerta EXTREMO para ${$('#pfReach')?.dataset.total || 'as'} telas?`)) return; body.confirmExtreme = true; }
     const r = await api('/api/prefeitura/alerts', { method: 'POST', body });
-    toast(`Alerta enviado: ${r.reach.total} tela(s), ${r.reach.online} ligada(s) agora. Aparece em até 30 segundos.`);
+    toast(`Alerta enviado: ${r.reach.total} tela(s), ${r.reach.online} ligada(s) agora. Aparece em até 10 segundos.`);
     Object.assign(a, { title: '', text: '', category: null, kind: null });
     await loadAlerts(); paintAlertas(box);
   });
@@ -952,7 +952,7 @@ function paintAlertas(box) {
     el('td', { text: x.createdBy || '—' }),
     el('td', { class: 'pf-actions' },
       el('button', { class: 'btn small', type: 'button', onclick: () => alertDetails(x) }, 'Entregas'),
-      live ? el('button', { class: 'btn small danger', type: 'button', onclick: guard(async () => { if (!confirm(`Encerrar o alerta "${x.title}"? Ele sai das telas em até 30 segundos.`)) return; await api(`/api/prefeitura/alerts/${x.id}/cancel`, { method: 'POST' }); toast('Alerta encerrado.'); await loadAlerts(); paintAlertas(box); }) }, 'Encerrar') : null));
+      live ? el('button', { class: 'btn small danger', type: 'button', onclick: guard(async () => { if (!confirm(`Encerrar o alerta "${x.title}"? Ele sai das telas em até 10 segundos.`)) return; await api(`/api/prefeitura/alerts/${x.id}/cancel`, { method: 'POST' }); toast('Alerta encerrado.'); await loadAlerts(); paintAlertas(box); }) }, 'Encerrar') : null));
   const heads = ['Alerta', 'Alcance', 'Período', 'Situação', 'Mostraram', 'Enviado por', ''];
   put(box, 
     el('div', { class: 'card pf-compose' },

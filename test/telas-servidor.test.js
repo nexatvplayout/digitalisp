@@ -126,7 +126,7 @@ test('Prefeitura: modo prefeitura pelo perfil, TV box pelo contrato, grupos, ale
     assert.deepEqual(Object.keys(c1.data).sort(), ['callSound', 'captions', 'cards', 'device', 'heartbeatSec', 'layout', 'lock', 'offline', 'queue', 'rev', 'schedule', 'side', 'stream', 'theme', 'ticker', 'weather']);
     assert.deepEqual(c1.data.device, { id: act.data.deviceId, name: 'UBS Centro, recepção', office: 'UBS Centro', officeType: 'ubs', region: 'Centro' });
     assert.match(c1.data.stream.hls, new RegExp(`^https://hls\\.exemplo\\.test/hls/${slugA}/.+\\.m3u8$`));
-    assert.deepEqual([c1.data.stream.backup, c1.data.stream.volume, c1.data.stream.muted, c1.data.heartbeatSec, c1.data.schedule], [null, 100, false, 30, null]);
+    assert.deepEqual([c1.data.stream.backup, c1.data.stream.volume, c1.data.stream.muted, c1.data.heartbeatSec, c1.data.schedule], [null, 100, false, 10, null]);
     // padrão da prefeitura: layout, avisos gerais e o PIN (só o sal e o hash)
     assert.equal(c1.data.layout, 'ticker'); assert.deepEqual(c1.data.ticker, { items: ['Aviso geral da prefeitura.'], speed: 60, style: null, rich: [{ text: 'Aviso geral da prefeitura.' }] });
     assert.equal(c1.data.lock.pinHash, sha(`${c1.data.lock.pinSalt}4321`)); assert.deepEqual(c1.data.lock.exitSeq, ['UP', 'UP', 'DOWN', 'DOWN', 'OK']);

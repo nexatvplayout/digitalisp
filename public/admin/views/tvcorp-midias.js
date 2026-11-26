@@ -101,7 +101,7 @@ export function slideEditor(m, images, onSaved, { template = null, fields = null
       if (!fields.title && !fields.image) throw new Error('Escreva o título do slide.');
       const body = { kind: 'slide', title: title.value.trim() || fields.title || fields.caption || t.label, template: st.template, fields, seconds: Number(seconds.value) || 12, officeId: office.value ? Number(office.value) : null };
       if (m) await tapi(`/api/tvcorp/media/${m.id}`, { method: 'PATCH', body }); else await tapi('/api/tvcorp/media', { method: 'POST', body });
-      toast(m ? 'Slide salvo. As telas trocam em até 1 minuto.' : 'Slide criado. Ponha-o numa playlist para ir às telas.');
+      toast(m ? 'Slide salvo. As telas trocam em segundos.' : 'Slide criado. Ponha-o numa playlist para ir às telas.');
       await onSaved?.();
     },
   });

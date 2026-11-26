@@ -154,7 +154,7 @@ test('contrato: o JSON da configuração tem exatamente os campos do contrato e 
   assert.deepEqual(cfg.stream, { hls: 'https://hls.test/hls/x/master.m3u8', backup: null, volume: 100, muted: false });
   assert.deepEqual(cfg.ticker, { items: ['A'], speed: 60, style: null, rich: [{ text: 'A' }] }); assert.deepEqual(cfg.side, { widgets: ['clock'], qrUrl: null, title: null });
   assert.deepEqual(Object.keys(cfg.lock), ['pinHash', 'pinSalt', 'exitSeq']); assert.equal(cfg.lock.pinHash, sha(`${cfg.lock.pinSalt}1234`));
-  assert.deepEqual([cfg.offline, cfg.schedule, cfg.heartbeatSec], [{ items: [], image: null }, null, 30]);
+  assert.deepEqual([cfg.offline, cfg.schedule, cfg.heartbeatSec], [{ items: [], image: null }, null, 10]);
   assert.deepEqual(C.contractConfig({ ...args, region: null, eff: C.effectiveConfig({}) }).lock, { pinHash: null, pinSalt: null, exitSeq: ['UP', 'UP', 'DOWN', 'DOWN', 'OK'] }, 'sem PIN: nulos');
   // atualização do app: só quando a prefeitura define (https, SHA-256 e versionCode)
   const up = { url: 'https://dl.exemplo.test/telas.apk', sha256: 'A'.repeat(64), versionCode: '12' };

@@ -149,7 +149,7 @@ export function reachDialog(ui, o) {
   const modes = el('div', { class: 'pf-checks' }, ...REACH_MODES.map((m) => el('label', { class: 'pf-check' }, el('input', { type: 'radio', name: `reach-${o.id}`, value: m.key, checked: m.key === mode, onchange: () => { mode = m.key; paintPicks(); } }), el('span', { text: m.label }))));
   paintPicks();
   ui.dialog(`Alcance dos alertas · ${o.name}`, el('div', { class: 'pf-reach' },
-    el('p', { class: 'dim small', text: `Quando "${o.name}" manda um alerta para o "Alcance da prefeitura" pelo painel dela, ele aparece em todas estas telas ao mesmo tempo (cada TV box recebe no próximo sinal de vida, a cada 30 segundos no máximo). As regras continuam: Severo e Extremo, tipos de aviso e a aprovação de cada repartição.` }),
+    el('p', { class: 'dim small', text: `Quando "${o.name}" manda um alerta para o "Alcance da prefeitura" pelo painel dela, ele aparece em todas estas telas ao mesmo tempo (cada TV box recebe no próximo sinal de vida, a cada 10 segundos no máximo). As regras continuam: Severo e Extremo, tipos de aviso e a aprovação de cada repartição.` }),
     modes, picks,
     // DIGITAL ISP: sem canais no ar, o alerta fica só nas telas (o "também no ar dos canais" do NEXA não existe aqui)
     el('p', { class: 'dim small', text: 'Não envia nada a celulares nem a sistemas nacionais: são só as telas da prefeitura.' })), {

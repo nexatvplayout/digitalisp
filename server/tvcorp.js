@@ -29,7 +29,7 @@ import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import express from 'express';
 import {
-  TVC_LIMITS as L, TVC_SLIDE_MODEL, TVC_REF_KIND, TVC_APPROVAL_KINDS, TVC_PLAYLIST_ZONES, TVC_ART, isTvcOfficeType, itemRef, parseItemRef,
+  TVC_LIMITS as L, TVC_SLIDE_MODEL, TVC_REF_KIND, TVC_APPROVAL_KINDS, TVC_PLAYLIST_ZONES, TVC_ART, isTvcOfficeType, itemRef, parseItemRef, slideOrientOf,
 } from '../public/shared/tvcorp-tipos.js';
 import { deviceStatus } from '../public/shared/telas-tipos.js';
 import * as K from './tvcorp-core.js';
@@ -396,12 +396,11 @@ export function createTvcorp({
       for (const f of feeds) out.push(...await itemsOf(tenantId, officeId, { refKind: 'news', refId: Number(f.id), seconds: 12, params: {} }, data, req, at));
       if (out.length) zones[z.id] = out.slice(0, L.itemsPerZone); else delete zones[z.id];
     }
-    // DIGITAL ISP: todo slide tem as duas versões (deitado e em pé): a zona escolhe. Zona mais alta que larga (na tela de
-    // verdade, 1920×1080 ou 1080×1920) recebe o slide em pé; as outras, deitado. Os anúncios das playlists se ajustam sozinhos.
-    const [TW, TH] = lay.orientation === 'port' ? [1080, 1920] : [1920, 1080];
+    // DIGITAL ISP: todo slide tem as duas versões (deitado e em pé): a zona escolhe (slideOrientOf). Só a zona bem mais larga
+    // que alta (1,3:1 ou mais, na tela de verdade) recebe o deitado; a quadrada ou alta, o em pé, com a letra no tamanho certo.
     for (const z of lay.zones) {
       const list = zones[z.id]; if (!list?.length) continue;
-      const orient = (TH * z.h) / 100 > (TW * z.w) / 100 ? 'port' : 'land';
+      const orient = slideOrientOf(z, lay.orientation); // DIGITAL ISP: zona quase quadrada também recebe o slide em pé
       zones[z.id] = list.map((it) => {
         if (it.kind === 'slide' && it.fields && it.fields.orient !== orient) return { ...it, fields: { ...it.fields, orient } };
         if (it.kind === 'weather' && weatherArt && !it.art) { const a = weatherArt(it.cond, req); return a ? { ...it, ...a } : it; }

@@ -3,15 +3,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as K from '../server/tvcorp-core.js';
-import { DEMO_LAYOUTS, DEMO_SEGMENTS, demoZones } from '../public/shared/tvcorp-demos.js';
+import { DEMO_LAYOUTS, DEMO_SEGMENTS, demoZones, demoItens } from '../public/shared/tvcorp-demos.js';
+import { TVC_ART } from '../public/shared/tvcorp-tipos.js';
 import { templateCatalog } from '../public/shared/templates-catalogo.js';
 
-const slides = (p) => { const all = templateCatalog().filter((t) => t.segment === p.seg && t.orient === 'land'); return p.pick.map((i) => all[i]); };
+const CAT = templateCatalog();
 
-test('54 layouts de demonstração (5 com chamada de senha), válidos, com playlists de slides premium', () => {
-  assert.equal(DEMO_LAYOUTS.length, 54);
+test('64 layouts de demonstração (5 com senha, 10 de datas comemorativas), válidos, com playlists de slides premium', () => {
+  assert.equal(DEMO_LAYOUTS.length, 64);
   assert.ok(DEMO_LAYOUTS.filter((d) => d.zones.some((z) => z.kind === 'queue')).length >= 5, 'layouts de senha');
-  assert.equal(new Set(DEMO_LAYOUTS.map((d) => d.key)).size, 54, 'chaves únicas');
+  assert.equal(new Set(DEMO_LAYOUTS.map((d) => d.key)).size, 64, 'chaves únicas');
   const segs = new Set(DEMO_SEGMENTS.map(([k]) => k));
   for (const k of ['provedor', 'padaria', 'lanchonete', 'farmacia', 'mercado']) assert.ok(DEMO_LAYOUTS.filter((d) => d.segment === k).length >= 2, `${k}: pelo menos 2`);
   for (const d of DEMO_LAYOUTS) {
@@ -23,11 +24,13 @@ test('54 layouts de demonstração (5 com chamada de senha), válidos, com playl
     if (d.video) assert.equal(ok.find((z) => z.kind === 'video').channel, 7, `${d.key}: o canal vai na zona de vídeo`);
     const pls = d.zones.filter((z) => z.pl);
     assert.ok(pls.length >= 1 || d.senha, `${d.key}: tem playlist`);
+    const itens = demoItens(d, CAT);
     for (const z of pls) {
-      const list = slides(z.pl);
-      assert.ok(list.length >= 2 && list.every(Boolean), `${d.key}/${z.id}: slides do ${z.pl.seg}`);
+      const list = itens[z.id] || [];
+      assert.ok(list.length >= 1 && list.every(Boolean), `${d.key}/${z.id}: slides`);
       for (const t of list) {
-        assert.ok(/^foto-pm-/.test(t.fields.art), `${d.key}: foto premium`);
+        assert.ok(/^foto-(pm|tm)-/.test(t.fields.art) && TVC_ART[t.fields.art]?.photo, `${d.key}: foto registrada (${t.fields.art})`);
+        if (t.template === 'data-comemorativa') assert.match(String(t.fields.date), /^\d{4}-\d{2}-\d{2}$/, `${d.key}: a data`);
         assert.doesNotThrow(() => K.cleanSlide(t.template, t.fields), `${d.key}: ${t.id}`);
       }
       assert.equal(ok.find((x) => x.id === z.id).playlist, 100 + z.id.length, `${d.key}/${z.id}: a playlist vai na zona`);
@@ -48,7 +51,7 @@ test('as frases de cada negócio entram na primeira playlist, como slides válid
     assert.equal(frases.length, Math.min(fr.length, primeira.length - frases.length), `${d.key}: frases intercaladas`);
     for (const t of primeira) {
       assert.doesNotThrow(() => K.cleanSlide(t.template, t.fields), `${d.key}: ${t.id}`);
-      assert.ok(/^foto-pm-/.test(t.fields.art), `${d.key}: ${t.id} com foto`);
+      assert.ok(/^foto-(pm|tm)-/.test(t.fields.art), `${d.key}: ${t.id} com foto`);
       assert.ok(t.name.length <= 60, `${d.key}: nome curto`);
     }
     assert.ok(!/whatsapp|instagram|facebook/i.test(JSON.stringify(fr)), `${d.key}: sem marca de terceiros`);

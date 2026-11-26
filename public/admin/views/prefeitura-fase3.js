@@ -66,7 +66,7 @@ async function paintQueueOffice(box, ui, o) {
       el('label', { class: 'pf-check' }, showName, el('span', { text: 'Mostrar (e falar) o primeiro nome e a inicial do sobrenome no lugar da senha, quando o nome foi informado' })),
       el('label', { class: 'pf-check' }, risk, el('span', { text: `Classificação de risco por cor (${RISKS.map((r) => r.key).join(', ')}): a ordem de chamada passa a ser a da cor e, depois, a chegada` })),
       el('label', { class: 'pf-check' }, print, el('span', { text: 'O totem imprime a senha (pela impressão do navegador do aparelho)' })),
-      el('div', { class: 'pf-btns left' }, el('button', { class: 'btn primary', type: 'button', onclick: guard(async () => { await api(`${base}/config`, { method: 'PUT', body: { title: title.value, ratio: Number(ratio.value), voice: voice.checked, showName: showName.checked, risk: risk.checked, print: print.checked } }); toast('Configuração da senha salva. As telas trocam em até 30 segundos.'); await again(); }) }, 'Salvar configuração'))),
+      el('div', { class: 'pf-btns left' }, el('button', { class: 'btn primary', type: 'button', onclick: guard(async () => { await api(`${base}/config`, { method: 'PUT', body: { title: title.value, ratio: Number(ratio.value), voice: voice.checked, showName: showName.checked, risk: risk.checked, print: print.checked } }); toast('Configuração da senha salva. As telas trocam em até 10 segundos.'); await again(); }) }, 'Salvar configuração'))),
     el('div', { class: 'label', text: 'Totem de retirada de senha (tablet ou tela de toque na entrada)' }),
     el('p', { class: 'dim small', text: q.totem.on ? `Totem ligado desde ${ui.when(q.totem.at)}. O endereço não fica guardado: se perdeu, gere outro (o anterior deixa de valer). O endereço do totem só emite senha: não abre o link de controle nem vê a fila.` : 'O totem tem um endereço próprio, que só emite senha (não é o link de controle e não precisa da senha da repartição). A emissão tem freio contra abuso.' }),
     el('div', { class: 'pf-btns left' },
@@ -206,7 +206,7 @@ function editCard(ui, o, kinds, c, done) {
     save: async () => {
       const body = { kind: kind.value, title: title.value, lines: lines.value.split('\n').map((s) => s.trim()).filter(Boolean), weekday: weekday.value === '' ? null : Number(weekday.value), dateFrom: from.value || null, dateTo: to.value || null, seconds: Number(seconds.value), sort: Number(sort.value) || 0, class: cls.value };
       if (c) await api(`/api/prefeitura/offices/${o.id}/cards/${c.id}`, { method: 'PATCH', body }); else await api(`/api/prefeitura/offices/${o.id}/cards`, { method: 'POST', body });
-      toast('Cartão salvo. As telas trocam em até 30 segundos.');
+      toast('Cartão salvo. As telas trocam em até 10 segundos.');
       await done();
     },
   });
@@ -270,7 +270,7 @@ export async function paintVideos(box, ui) {
       const f = file.files?.[0]; if (!f) return;
       if (f.size > 15 * 1024 * 1024) { file.value = ''; throw new Error('A imagem passa de 15 MB. Escolha outra.'); }
       await api(url, { method: 'PUT', form: f, headers: { 'content-type': f.type || 'application/octet-stream' } });
-      toast('Imagem enviada. As telas baixam e guardam em até 1 minuto.');
+      toast('Imagem enviada. As telas baixam e guardam em segundos.');
       await paintVideos(box, ui);
     }));
     put(imgBox,
@@ -352,7 +352,7 @@ export async function paintAprovacoes(box, ui) {
     let note = '';
     if (what === 'reject') { note = prompt(`Recusar o pedido de "${a.office || 'repartição'}"? Escreva o motivo (a repartição vê):`, ''); if (note === null) return; }
     await api(`/api/prefeitura/approvals/${a.id}/${what}`, { method: 'POST', body: { note } });
-    toast(what === 'approve' ? 'Aprovado: vai às telas em até 30 segundos.' : 'Recusado.');
+    toast(what === 'approve' ? 'Aprovado: vai às telas em até 10 segundos.' : 'Recusado.');
     await ui.refreshBadge?.();
     await again();
   });

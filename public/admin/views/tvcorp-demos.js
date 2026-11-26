@@ -7,11 +7,17 @@ import { layoutPreview } from '../../shared/tvcorp-previa.js';
 import { templateCatalog } from '../../shared/templates-catalogo.js';
 import { DEMO_LAYOUTS, DEMO_SEGMENTS, demoZones, demoItens, DEMO_CHANNEL } from '../../shared/tvcorp-demos.js';
 import { themeOf } from './tvcorp-midias.js';
+import { slideOrientOf } from '../../shared/tvcorp-tipos.js';
 import { abrirPreviaViva } from './tvcorp-previa-viva.js';
 
 const SEG = Object.fromEntries(DEMO_SEGMENTS);
 /** Os slides de cada zona: os prontos premium e as frases do negócio (deitados: a TV ajusta o formato pela zona). */
-const itensDe = (d) => demoItens(d, templateCatalog());
+const itensDe = (d) => {
+  // o formato de cada slide é o da zona, como a TV recebe (slideOrientOf: zona quase quadrada ou alta = em pé)
+  const it = demoItens(d, templateCatalog());
+  for (const z of d.zones) if (it[z.id]) { const orient = slideOrientOf(z, d.orientation); it[z.id] = it[z.id].map((t) => ({ ...t, fields: { ...t.fields, orient } })); }
+  return it;
+};
 const WEATHER = { now: { temp: 27, cond: 'partly', text: 'Parcialmente nublado' } };
 /** A prévia do pronto: o primeiro slide de cada playlist, as frases, o QR code, o relógio e o clima de exemplo. */
 function demoPreview(d) {

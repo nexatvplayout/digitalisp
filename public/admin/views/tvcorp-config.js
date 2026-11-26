@@ -24,7 +24,7 @@ export default async function paintConfig(box, ctx) {
     if (fl.type !== 'image/png') { logoFile.value = ''; throw new Error('Envie a logomarca em PNG (com fundo transparente).'); }
     if (fl.size > LIMITS.logoBytes) { logoFile.value = ''; throw new Error('A logomarca passa de 5 MB.'); }
     await tupload('/api/tvcorp/settings/logo', fl, { method: 'PUT', type: 'image/png' });
-    toast('Logomarca enviada. Aparece nas zonas "Logomarca" em até 1 minuto.'); await ctx.reload();
+    toast('Logomarca enviada. Aparece nas zonas "Logomarca" em segundos.'); await ctx.reload();
   }));
   /* tema */
   const pv = el('div', { class: 'tc-theme-pv' });
@@ -39,7 +39,7 @@ export default async function paintConfig(box, ctx) {
   const dateBox = el('div', { class: 'pf-checks tall' }, ...DATE_LIST.map(([k, t]) => el('label', { class: 'pf-check' }, el('input', { type: 'checkbox', checked: dates.has(k), onchange: (e) => { if (e.target.checked) dates.add(k); else dates.delete(k); } }), el('span', { text: t }))));
   const saveSettings = guard(async () => {
     await tapi('/api/tvcorp/settings', { method: 'PUT', body: { theme: { color: color.value, mode: mode.value }, tz: tz.value, approval: approval.checked, fullNames: fullNames.checked, dates: [...dates] } });
-    toast('Configurações salvas. As telas trocam em até 1 minuto.'); await ctx.reload();
+    toast('Configurações salvas. As telas trocam em segundos.'); await ctx.reload();
   });
   /* rede: PIN e horário padrão */
   const pin = el('input', { type: 'password', inputmode: 'numeric', autocomplete: 'new-password', maxlength: String(TL.pinMax), placeholder: cfg.hasPin ? 'PIN definido (digite para trocar)' : `${TL.pinMin} a ${TL.pinMax} dígitos` });
@@ -63,7 +63,7 @@ export default async function paintConfig(box, ctx) {
   offFile.addEventListener('change', guard(async () => {
     const fl = offFile.files?.[0]; if (!fl) return;
     if (fl.size > LIMITS.imageBytes) { offFile.value = ''; throw new Error('A imagem passa de 15 MB.'); }
-    await tupload(OFFLINE_URL, fl, { method: 'PUT' }); toast('Imagem enviada. As telas baixam e guardam em até 1 minuto.'); await paintConfig(box, ctx);
+    await tupload(OFFLINE_URL, fl, { method: 'PUT' }); toast('Imagem enviada. As telas baixam e guardam em segundos.'); await paintConfig(box, ctx);
   }));
   put(box,
     el('div', { class: 'card tc-sec' }, el('h3', { text: 'Marca da empresa' }),

@@ -235,7 +235,7 @@ export async function paintDesaparecidos(box, ui) {
     if (!authOk.checked) return toast('Marque a confirmação: a família ou a autoridade policial autorizou a divulgação da foto e dos dados.', true);
     if (!confirm(`Pôr no ar o caso de "${name.value.trim()}" em ${total} tela(s)?${photo ? '' : '\nSEM FOTO: a tela mostra uma silhueta.'}\nEncerre assim que a pessoa for localizada.`)) return null;
     await api('/api/prefeitura/missing', { method: 'POST', body: { ...values(), qr: { mode: qrMode.value }, photo: photo?.token || undefined, reportNo: reportNo.value, authName: authName.value, authRelation: authRelation.value, authOk: true, show: show.value, everyMin: Number(everyMin.value), fullSec: Number(fullSec.value), bannerSec: Number(bannerSec.value), days: Number(days.value), scope: s } });
-    toast('Caso no ar. As telas mostram em até 30 segundos.');
+    toast('Caso no ar. As telas mostram em até 10 segundos.');
     return again();
   });
   const close = (m, reason) => guard(async () => {

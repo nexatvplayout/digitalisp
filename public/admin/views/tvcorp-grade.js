@@ -121,7 +121,7 @@ function editSchedule(s, reload) {
       const b = body();
       if (!b.name) throw new Error('Dê um nome à grade.');
       if (s) await tapi(`/api/tvcorp/schedules/${s.id}`, { method: 'PATCH', body: b }); else await tapi('/api/tvcorp/schedules', { method: 'POST', body: b });
-      toast('Grade salva. As telas trocam em até 1 minuto.');
+      toast('Grade salva. As telas trocam em segundos.');
       await reload();
     },
   });

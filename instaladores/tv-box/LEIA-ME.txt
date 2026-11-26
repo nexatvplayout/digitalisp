@@ -21,3 +21,7 @@ O script:
 
 Depois de aberto, vincule a tela pelo painel como nas outras TVs.
 As atualizacoes seguintes chegam sozinhas pelo proprio app.
+
+APP LENTO OU FECHANDO?
+ Clique duas vezes em COLETAR-DIAGNOSTICO.bat (com o aparelho ligado no cabo ou na rede).
+ Ele gera um arquivo diagnostico-<data>.txt nesta pasta: mande esse arquivo ao suporte.

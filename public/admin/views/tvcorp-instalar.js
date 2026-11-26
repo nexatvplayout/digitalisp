@@ -41,7 +41,7 @@ export default async function paintInstalar(box, ctx) {
     btns(btn('+ TV box: gerar a chave', () => newKey(ctx.reload), 'primary'), btn('Ver as telas', () => ctx.go('telas'))),
     categoria({
       titulo: 'TV box Android e Amazon Fire TV',
-      versao: app ? `${app.versionName || app.versionCode}` : null,
+      versao: app?.versionName || app?.versionCode || null,
       arquivos: [
         { nome: 'Aplicativo DIGITAL ISP (APK)', url: apkUrl(), desc: `Para TV box com Android 7 ou mais novo e Fire TV. ${mb(app?.bytes)}`.trim(), qr: true },
         { nome: 'Instalador pelo computador (Windows)', url: `${B}/instaladores/tv-box.zip`, desc: 'Instala no Fire TV ou na TV box ligada ao computador pelo cabo USB, ou pela rede. Baixa sozinho a versão mais nova do app.' },
@@ -82,7 +82,7 @@ export default async function paintInstalar(box, ctx) {
     }),
     categoria({
       titulo: 'Celular do técnico',
-      versao: inst ? `${inst.versionName || inst.versionCode}` : null,
+      versao: inst?.versionName || inst?.versionCode || null,
       arquivos: [{ nome: 'Instalador DIGITAL ISP (Android)', url: `${B}/instalador/latest.apk`, desc: `Instala o app nas TVs Samsung e LG pela rede. ${mb(inst?.bytes)}`.trim(), qr: true }],
       passos: ['Leia o QR code com o celular, baixe e instale (permita instalar desta origem, se o Android pedir).'],
     }));

@@ -86,6 +86,11 @@
 .tvc-it-big { font-size: 15.75cqw; font-weight: 700; line-height: 1; }
 .tvc-it-kpi .tvc-it-big { color: var(--band); }
 .tvc-it-x { font-size: 4.5cqw; color: var(--tdim); }
+/* DIGITAL ISP: a zona de texto (frase): a letra acompanha a altura da faixa e a largura da coluna (antes, só a largura) */
+.tvc-it-text .tvc-it-x { font-size: min(5.2cqw, 30cqh); line-height: 1.15; color: var(--tfg); }
+.tvc-it-text .tvc-it-t { font-size: min(6cqw, 26cqh); }
+/* a caixa de texto que não é faixa (coluna ou quadro): letra maior, em mais linhas */
+@container (max-aspect-ratio: 3/1) { .tvc-it-text .tvc-it-x { font-size: min(9cqw, 14cqh); } .tvc-it-text .tvc-it-t { font-size: min(10cqw, 16cqh); } }
 .tvc-it-list { margin: 0; padding-left: 1.1em; font-size: 4.22cqw; line-height: 1.35; }
 .tvc-it-list small { display: block; color: var(--tdim); font-size: 0.8em; }
 .tvc-it-list .up { color: #16a34a; } .tvc-it-list .down { color: #dc2626; }
@@ -487,6 +492,26 @@
 .tvc-sl.tvc-art-foto-pm-lanchonete-misto { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-pm-lanchonete-misto.jpg); }
 .tvc-sl.tvc-art-foto-pm-lanchonete-balcao { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-pm-lanchonete-balcao.jpg); }
 .tvc-sl.tvc-art-foto-pm-lanchonete-delivery { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-pm-lanchonete-delivery.jpg); }
+.tvc-sl.tvc-art-foto-tm-natal-arvore { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-tm-natal-arvore.jpg); }
+.tvc-sl.tvc-art-foto-tm-natal-ceia { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-tm-natal-ceia.jpg); }
+.tvc-sl.tvc-art-foto-tm-anonovo-fogos { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-tm-anonovo-fogos.jpg); }
+.tvc-sl.tvc-art-foto-tm-anonovo-brinde { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-tm-anonovo-brinde.jpg); }
+.tvc-sl.tvc-art-foto-tm-carnaval-mascaras { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-tm-carnaval-mascaras.jpg); }
+.tvc-sl.tvc-art-foto-tm-carnaval-confete { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-tm-carnaval-confete.jpg); }
+.tvc-sl.tvc-art-foto-tm-pascoa-ovos { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-tm-pascoa-ovos.jpg); }
+.tvc-sl.tvc-art-foto-tm-pascoa-coelho { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-tm-pascoa-coelho.jpg); }
+.tvc-sl.tvc-art-foto-tm-maes-flores { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-tm-maes-flores.jpg); }
+.tvc-sl.tvc-art-foto-tm-maes-cafe { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-tm-maes-cafe.jpg); }
+.tvc-sl.tvc-art-foto-tm-namorados-chocolate { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-tm-namorados-chocolate.jpg); }
+.tvc-sl.tvc-art-foto-tm-namorados-jantar { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-tm-namorados-jantar.jpg); }
+.tvc-sl.tvc-art-foto-tm-junina-fogueira { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-tm-junina-fogueira.jpg); }
+.tvc-sl.tvc-art-foto-tm-junina-doces { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-tm-junina-doces.jpg); }
+.tvc-sl.tvc-art-foto-tm-pais-presente { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-tm-pais-presente.jpg); }
+.tvc-sl.tvc-art-foto-tm-pais-churrasco { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-tm-pais-churrasco.jpg); }
+.tvc-sl.tvc-art-foto-tm-criancas-brinquedos { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-tm-criancas-brinquedos.jpg); }
+.tvc-sl.tvc-art-foto-tm-criancas-baloes { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-tm-criancas-baloes.jpg); }
+.tvc-sl.tvc-art-foto-tm-black-sacolas { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-tm-black-sacolas.jpg); }
+.tvc-sl.tvc-art-foto-tm-black-carrinho { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-tm-black-carrinho.jpg); }
 .tvc-sl.tvc-art-foto-pm-bar-chope { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-pm-bar-chope.jpg); }
 .tvc-sl.tvc-art-foto-pm-bar-petiscos { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-pm-bar-petiscos.jpg); }
 .tvc-sl.tvc-art-foto-pm-bar-balde { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.6) 100%), url(/tvcorp/arte/foto-pm-bar-balde.jpg); }
