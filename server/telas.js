@@ -79,6 +79,8 @@ const PAGE = path.join(config.root, 'public', 'reparticao');
 /** Os arquivos da página de controle (cada um sai com os cabeçalhos dela; nada mais da pasta é servido por aqui). */
 const PAGE_FILES = ['reparticao.js', 'reparticao.css', 'rep-base.js', 'rep-senha.js', 'rep-cartoes.js', 'rep-alertas.js', 'rep-telas.js', 'rep-secom.js', 'rep-desaparecidos.js', 'rep-seguranca.js', 'rep-interna.js', 'rep-salas.js', 'rep-tvcorp.js'];
 const num = (v) => (v == null ? null : Number(v));
+/** O canal ao vivo escolhido na zona de vídeo do layout da grade (o primeiro bloco que escolheu um), ou null. */
+const layoutChannel = (signage) => { for (const b of signage?.blocks || []) for (const z of b.layout?.zones || []) if (z.kind === 'video' && Number.isInteger(z.channel)) return z.channel; return null; };
 const marks = (list) => list.map(() => '?').join(',');
 const pick = (o, keys) => Object.fromEntries(keys.filter((k) => o && Object.prototype.hasOwnProperty.call(o, k)).map((k) => [k, o[k]]));
 /** Troca só os campos de keys na config guardada (os outros ficam como estão). */
@@ -488,7 +490,8 @@ export function createTelas({
       .catch((err) => { console.warn('[telas] tv corporativa:', err.message); return null; }) : null;
     const cfg = C.contractConfig({
       eff, device: dev, office: { name: dev.o_name, type: dev.o_type }, region: dev.r_name ? { name: dev.r_name } : null,
-      stream: await streamOf(tenantId, num(dev.o_channel), req, Number(dev.id)), // DIGITAL ISP: a tela pode ter o canal dela
+      // DIGITAL ISP: o canal da tela vence; depois o da zona de vídeo do layout da grade (o primeiro bloco que escolheu um); depois o da unidade
+      stream: await streamOf(tenantId, layoutChannel(signage) ?? num(dev.o_channel), req, Number(dev.id)),
       // a atualização: a da prefeitura, se ela definiu; senão o APK servido por este servidor (§23 do docs/TELAS.md)
       update: def.update || appStore.update(publicUrl(req)),
       weather: withWeatherArt(conteudo.weatherFor(def) || await weatherOfFeed(tenantId, num(dev.office_id)), req), cards, queue, offline, offlineImage, electoral, internal, signage,

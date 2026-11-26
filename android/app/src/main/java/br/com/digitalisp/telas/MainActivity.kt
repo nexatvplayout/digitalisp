@@ -1984,11 +1984,12 @@ class MainActivity : Activity(), Engine.Ui {
             if (playing) startPlayback()
         }
 
-        val waiting = scheduleOn && !isPlaying && (now - notPlayingSince > 4000 || clockView == ClockView.LOADING)
+        // sem endereço de vídeo (layout só de playlist e gadgets, ou tela sem canal): nada de aviso por cima da tela, nunca
+        val hasVideo = wd.hasMain || wd.hasBackup || wd.hasOffline
+        val waiting = hasVideo && scheduleOn && !isPlaying && (now - notPlayingSince > 4000 || clockView == ClockView.LOADING)
         status.visibility = if (waiting) View.VISIBLE else View.GONE
         if (waiting) {
             status.text = when {
-                !wd.hasMain && !wd.hasBackup && !wd.hasOffline -> "Sem endereço de vídeo configurado."
                 // TV box sem bateria de relógio: na partida é "Carregando…" (o NTP acerta em segundos); passado o prazo,
                 // a frase curta do relógio (o detalhe fica nos ajustes)
                 clockView == ClockView.LOADING -> StartupClock.LOADING_TEXT

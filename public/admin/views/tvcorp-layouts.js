@@ -23,6 +23,7 @@ const SAMPLE_TICKER = ['Bem-vindo! Use o crachá em todas as áreas', 'Refeitór
 /** Os gadgets do cliente (contador, dias sem acidente, relógio mundial: aba Barras e blocos), lidos ao abrir a aba. */
 let WIDGETS = [];
 let QRS = [];
+let CANAIS = []; // os canais ao vivo (aba Ao vivo (HLS)): o canal da zona de vídeo, escolhido no layout
 let PLAYLISTS = []; // as playlists da empresa (a playlist padrão de cada zona, escolhida no layout) // os QR codes do menu QR Codes (link curto /q/…, que conta as leituras)
 /** Há cidade para o clima? (a cidade das telas em Configurações, ou uma fonte de clima em Notícias e dados) */
 let HAS_CITY = true;
@@ -198,7 +199,10 @@ export function layoutEditor(lay, reload, factoryKey = null, copyOf = null, { ao
       opt('', z.kind === 'news' ? 'Notícias automáticas (todas as fontes)' : 'Playlist: a da grade', z.playlist == null), ...PLAYLISTS.map((p) => opt(p.id, `Playlist: ${p.name}`, Number(z.playlist) === Number(p.id)))) : null);
     // o vídeo ao vivo: proporcional (padrão, com faixas pretas se a zona tiver outro formato) ou preenchendo a zona (corta as bordas)
     const fitPick = (z) => (z.kind === 'video' ? el('label', { class: 'pf-check' }, el('input', { type: 'checkbox', checked: z.fit === 'cover', 'aria-label': `Vídeo da zona ${z.id} preenchendo a zona`, onchange: (e) => { if (e.target.checked) z.fit = 'cover'; else delete z.fit; paintPv(); } }), el('span', { text: 'Preencher a zona (corta as bordas)' })) : null);
-    const params = (z) => [fitPick(z), plPick(z), shapePick(z), layer(z), ...(ZONE_KIND[z.kind]?.params || []).map((k) => (k === 'widget' ? widgetPick(z) : k === 'qr' ? qrField(z) : el('input', { type: k === 'qr' ? 'url' : 'text', maxlength: String(PARAM[k][1]), value: z[k] || '', placeholder: PARAM[k][0], 'aria-label': `${PARAM[k][0]} da zona ${z.id}`, onchange: (e) => { z[k] = e.target.value.trim(); paintPv(); } })))];
+    // o canal ao vivo da zona de vídeo: escolhido aqui (o da tela, na aba Telas, ainda vence; sem canal, o da unidade)
+    const chPick = (z) => (z.kind === 'video' ? el('select', { 'aria-label': `Canal ao vivo da zona ${z.id}`, onchange: (e) => { if (e.target.value) z.channel = Number(e.target.value); else delete z.channel; paintPv(); } },
+      opt('', CANAIS.length ? 'Canal ao vivo: o da unidade' : 'Nenhum canal cadastrado (aba Ao vivo (HLS))', z.channel == null), ...CANAIS.map((c) => opt(c.id, `Canal ao vivo: ${c.name}`, Number(z.channel) === Number(c.id)))) : null);
+    const params = (z) => [chPick(z), fitPick(z), plPick(z), shapePick(z), layer(z), ...(ZONE_KIND[z.kind]?.params || []).map((k) => (k === 'widget' ? widgetPick(z) : k === 'qr' ? qrField(z) : el('input', { type: k === 'qr' ? 'url' : 'text', maxlength: String(PARAM[k][1]), value: z[k] || '', placeholder: PARAM[k][0], 'aria-label': `${PARAM[k][0]} da zona ${z.id}`, onchange: (e) => { z[k] = e.target.value.trim(); paintPv(); } })))];
     const tam = (z) => { const px = quadroPx(st, z); return el('td', { class: 'small', title: z.kind === 'playlist' ? dicaArte({ px }) : '' }, el('b', { text: `${px.w}×${px.h}` }), el('div', { class: 'dim', text: FORMATO_TXT[formatoDe(px)] })); };
     const dicas = st.zones.filter((z) => z.kind === 'playlist').map((z) => note(`Quadro "${z.id}": ${dicaArte({ px: quadroPx(st, z) })}`, 'small'));
     put(rowsBox, table(['Zona', 'O que mostra', 'Esquerda %', 'Alto %', 'Largura %', 'Altura %', 'Na TV (px)', 'Conteúdo fixo', ''], st.zones.map((z, i) => el('tr', { class: st.sel === i ? 'tc-sel' : '' },
@@ -250,6 +254,7 @@ export default async function paintLayouts(box, ctx) {
   WIDGETS = listOf(await tapi('/api/tvcorp/widgets').catch(() => null), 'widgets');
   QRS = listOf(await tapi('/api/qrcodes').catch(() => null), 'qrcodes');
   PLAYLISTS = listOf(await tapi('/api/tvcorp/playlists').catch(() => null), 'playlists');
+  CANAIS = await tapi('/api/hls').then((l) => (Array.isArray(l) ? l.filter((c) => c.ativo) : [])).catch(() => []);
   const feeds = listOf(await tapi('/api/tvcorp/feeds').catch(() => null), 'feeds');
   const def = d.defaults || {};
   HAS_CITY = Boolean(def.cidade || def.extra?.cidade || def.config?.cidade || feeds.some((x) => x.kind === 'weather'));

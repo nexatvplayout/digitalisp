@@ -5,9 +5,9 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
-// Assinatura de release: só se existir android/keystore.properties (fora do git), com storeFile, storePassword,
+// Assinatura de release: sÃ³ se existir android/keystore.properties (fora do git), com storeFile, storePassword,
 // keyAlias e keyPassword (como criar: docs/APP-ANDROID.md). Sem o arquivo, o release sai SEM assinatura; para testar
-// numa TV box sem a chave do dono: -Ptelas.assinarComDebug=true (só teste: um aparelho com o APK de depuração precisa
+// numa TV box sem a chave do dono: -Ptelas.assinarComDebug=true (sÃ³ teste: um aparelho com o APK de depuraÃ§Ã£o precisa
 // desinstalar antes de receber o assinado com a chave do dono).
 val keystoreProps = Properties().apply {
     val f = rootProject.file("keystore.properties")
@@ -15,9 +15,9 @@ val keystoreProps = Properties().apply {
 }
 val assinarComDebug = providers.gradleProperty("telas.assinarComDebug").orNull == "true"
 
-// Servidor padrão da tela de cadastro e da recuperação (§32). O domínio de produção ainda não foi decidido:
-// SERVIDOR_A_DEFINIR = sem padrão (quem instala digita o endereço). Para fixar: -Ptelas.servidorPadrao=https://…
-// ou a linha telas.servidorPadrao=https://… no android/gradle.properties.
+// Servidor padrÃ£o da tela de cadastro e da recuperaÃ§Ã£o (Â§32). O domÃ­nio de produÃ§Ã£o ainda nÃ£o foi decidido:
+// SERVIDOR_A_DEFINIR = sem padrÃ£o (quem instala digita o endereÃ§o). Para fixar: -Ptelas.servidorPadrao=https://â€¦
+// ou a linha telas.servidorPadrao=https://â€¦ no android/gradle.properties.
 val servidorPadrao = providers.gradleProperty("telas.servidorPadrao").orNull ?: "SERVIDOR_A_DEFINIR"
 
 android {
@@ -29,8 +29,8 @@ android {
         applicationId = "br.com.digitalisp.telas"
         minSdk = 24
         targetSdk = 35
-        versionCode = 6
-        versionName = "0.3.3"
+        versionCode = 7
+        versionName = "0.3.4"
         buildConfigField("String", "SERVIDOR_PADRAO", "\"" + servidorPadrao.replace("\"", "") + "\"")
     }
 
@@ -46,9 +46,9 @@ android {
     }
 
     buildTypes {
-        // As TV box recebem SEMPRE o build de release (sem "depurável"): o Android compila o app de verdade e as setas,
-        // o PIN e o código respondem bem mais rápido do que no de depuração, que roda sem as otimizações.
-        // R8 desligado de propósito: sem aparelho de teste aqui para conferir o encolhimento.
+        // As TV box recebem SEMPRE o build de release (sem "depurÃ¡vel"): o Android compila o app de verdade e as setas,
+        // o PIN e o cÃ³digo respondem bem mais rÃ¡pido do que no de depuraÃ§Ã£o, que roda sem as otimizaÃ§Ãµes.
+        // R8 desligado de propÃ³sito: sem aparelho de teste aqui para conferir o encolhimento.
         release {
             isMinifyEnabled = false
             signingConfig = signingConfigs.findByName("release") ?: (if (assinarComDebug) signingConfigs.getByName("debug") else null)
@@ -68,9 +68,9 @@ android {
     lint {
         abortOnError = true
         checkReleaseBuilds = false
-        // commit() é de propósito (o que foi gravado tem de valer se o aparelho for desligado em seguida);
-        // versões fixas de propósito; a tela é de quiosque (não redimensiona); o motor guarda só o contexto do app;
-        // o app tem um idioma só (português), com os textos no código.
+        // commit() Ã© de propÃ³sito (o que foi gravado tem de valer se o aparelho for desligado em seguida);
+        // versÃµes fixas de propÃ³sito; a tela Ã© de quiosque (nÃ£o redimensiona); o motor guarda sÃ³ o contexto do app;
+        // o app tem um idioma sÃ³ (portuguÃªs), com os textos no cÃ³digo.
         disable += setOf("ApplySharedPref", "GradleDependency", "NonResizeableActivity", "DiscouragedApi", "StaticFieldLeak", "SetTextI18n")
     }
 }
@@ -79,10 +79,10 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer:1.4.1")
     implementation("androidx.media3:media3-exoplayer-hls:1.4.1")
     implementation("com.google.zxing:core:3.5.3")
-    // instala o perfil de compilação (src/main/baseline-prof.txt) no aparelho: o Android compila antes o que a tela usa
+    // instala o perfil de compilaÃ§Ã£o (src/main/baseline-prof.txt) no aparelho: o Android compila antes o que a tela usa
     implementation("androidx.profileinstaller:profileinstaller:1.3.1")
 
     testImplementation("junit:junit:4.13.2")
-    // org.json de verdade nos testes da JVM (o do android.jar é só casca)
+    // org.json de verdade nos testes da JVM (o do android.jar Ã© sÃ³ casca)
     testImplementation("org.json:json:20240303")
 }

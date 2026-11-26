@@ -123,6 +123,8 @@ export function cleanZone(z, i = 0) {
   const out = { id, kind, x, y, w, h };
   // DIGITAL ISP: o vídeo ao vivo fica proporcional (com faixas pretas) por padrão; fit 'cover' preenche a zona cortando as bordas
   if (kind === 'video' && z.fit === 'cover') out.fit = 'cover';
+  // DIGITAL ISP: o canal ao vivo (aba Ao vivo (HLS)) escolhido no próprio layout; o da tela vence, e sem ele vale o da unidade
+  if (kind === 'video' && z.channel != null && z.channel !== '') out.channel = idOf(z.channel, `${what}, canal ao vivo`);
   const params = TVC_ZONE[kind].params || [];
   if (params.includes('title')) { const t = line(z.title, L.label); if (t) out.title = t; }
   if (params.includes('text')) { const t = line(z.text, L.zoneText); if (t) out.text = t; }
