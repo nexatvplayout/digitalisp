@@ -26,8 +26,10 @@ export function codigos(ctx) {
     put(grid, data.catalog.map((c) => paintColor(el('button', { type: 'button', class: 'r-code-btn', title: c.meaning, onclick: run(async () => {
       const where = place.value.trim();
       if (!confirm(`Disparar ${c.label}${where ? ` em ${where}` : ''}? Vai às telas internas e aos celulares da equipe.`)) return;
-      await api('/codes', { method: 'POST', body: { code: c.key, place: where } });
-      ok(`${c.label} disparado.`);
+      const r = await api('/codes', { method: 'POST', body: { code: c.key, place: where } });
+      // quantas TVs recebem: só as telas internas desta repartição mostram o código
+      if (r && r.reach === 0) alert(`${c.label} disparado, mas NENHUMA TV desta repartição está marcada como tela interna: o código só aparece nas telas internas e nos celulares da equipe. Marque a TV como interna (painel → Telas → Editar → Tela interna).`);
+      ok(r && r.reach ? `${c.label} disparado: vai a ${r.reach} tela(s) interna(s) em segundos.` : `${c.label} disparado.`);
     }) }, el('b', { text: c.label }), el('small', { text: c.meaning })), c.color)));
     put(active, data.active.length ? data.active.map((c) => paintColor(el('article', { class: 'r-code-on' },
       el('b', { text: `${c.label.toUpperCase()}${c.place ? ` · ${c.place}` : ''}` }),

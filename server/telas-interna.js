@@ -155,7 +155,9 @@ export function createInterna({ available, audit = async () => {}, ipOf = (req) 
       [tenantId, o.id, def.key, def.label, def.color, def.meaning, place, line(by, 120), via, t, minutes ? t + minutes * 60_000 : null]);
     await publish(tenantId, o.id);
     const row = await db.get('SELECT * FROM telas_int_codes WHERE id = ?', [id]);
-    return { code: codeDto(row), log: `prefeitura: ${def.label.toUpperCase()} disparado em "${o.name}"${place ? ` (${place})` : ''} (#${id}, ${via})` };
+    // DIGITAL ISP: quantas TVs recebem (só as internas da repartição, com o módulo ligado): zero = quem disparou fica sabendo
+    const reach = internaOn(o) ? Number((await db.get('SELECT COUNT(*) AS n FROM telas_devices WHERE tenant_id = ? AND office_id = ? AND internal = 1 AND revoked_at IS NULL', [tenantId, o.id]))?.n || 0) : 0;
+    return { code: { ...codeDto(row), reach }, log: `prefeitura: ${def.label.toUpperCase()} disparado em "${o.name}"${place ? ` (${place})` : ''} (#${id}, ${via})` };
   }
   async function close(o, id, { by }) {
     const tenantId = Number(o.tenant_id); const cid = idOf(id, 'Código');

@@ -171,6 +171,8 @@ function editDevice(d, reload) {
   const sch = cfg.schedule;
   const on = el('input', { type: 'time', value: sch?.tvOn || '' }); const offT = el('input', { type: 'time', value: sch?.tvOff || '' });
   const days = new Set(sch ? sch.days : [1, 2, 3, 4, 5]);
+  // a tela interna (só funcionários): recebe os códigos de emergência e os avisos internos da unidade
+  const interna = el('input', { type: 'checkbox', checked: Boolean(d.internal) });
   const layout = el('select', {}, opt('', 'Não define (segue a unidade e o padrão)', !cfg.layout), ...LAYOUTS.filter((l) => LAYOUT_KEYS.includes(l.key)).map((l) => opt(l.key, `${l.label}: ${l.desc}`, cfg.layout === l.key)));
   dialog(`Editar a tela · ${d.name}`, el('div', {},
     el('div', { class: 'pf-grid' }, f('Nome da tela', name), f('Unidade', office)),
@@ -182,12 +184,15 @@ function editDevice(d, reload) {
     label('Horário liga e desliga (vazio = segue o padrão; sem padrão, fica sempre ligada)'),
     el('div', { class: 'pf-grid two' }, f('Ligar às', on), f('Desligar às', offT)),
     el('div', { class: 'pf-checks row' }, ...[1, 2, 3, 4, 5, 6, 0].map((n) => el('label', { class: 'pf-check' }, el('input', { type: 'checkbox', checked: days.has(n), onchange: (e) => { if (e.target.checked) days.add(n); else days.delete(n); } }), el('span', { text: WEEK_SHORT[n] })))),
+    label('Comunicação interna'),
+    el('label', { class: 'pf-check' }, interna, el('span', { text: 'Tela interna (só funcionários): mostra os códigos de emergência em tela cheia e os avisos internos da unidade. Precisa do módulo Comunicação interna ligado na unidade.' })),
     label('Layout de reserva'),
     f('Quando nenhuma grade vale', layout, 'A grade da TV Corporativa vence este layout. Sem grade no horário, a tela usa este formato.')), {
     wide: true,
     save: async () => {
       const config = { layout: layout.value || null, volume: vol.value === '' ? null : Number(vol.value), muted: muted.checked || null, schedule: on.value && offT.value ? { tvOn: on.value, tvOff: offT.value, days: [...days] } : null };
       await tapi(`/api/tvcorp/rede/devices/${d.id}`, { method: 'PATCH', body: { name: name.value, officeId: Number(office.value), groups: [...picks], config } });
+      if (interna.checked !== Boolean(d.internal)) await tapi(`/api/tvcorp/rede/devices/${d.id}/internal`, { method: 'PATCH', body: { internal: interna.checked, sectorId: null } });
       toast('Tela salva. Ela troca em até 10 segundos.');
       await reload();
     },

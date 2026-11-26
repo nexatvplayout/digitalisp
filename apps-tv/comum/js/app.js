@@ -251,6 +251,7 @@
         if (lote) { est.log = N.baixarLote(est.log, lote); A.gravar('exibicao', est.log); }
         var j = res.json || {};
         alertas(j.alerts);
+    codigos(j.codes); // só a tela interna recebe (a pública não tem a chave)
         comandos(a, j.commands);
         var revServidor = typeof j.rev === 'string' ? j.rev : null;
         var revTem = est.nova ? est.nova.rev : (est.atual ? est.atual.rev : '');
@@ -471,6 +472,37 @@
     if (N.nivelAlerta(a.level) === 2) somAlerta.timer = setInterval(bipe, 30000);
   }
 
+  // ---- o código de emergência (só a tela interna, §17): o mais novo em vigor, em tela cheia na cor dele, com o bipe
+  // repetindo por até 90 s; sai quando some da lista ou passa do prazo. Chega no sinal de vida (a cada 10 s)
+  var somCodigo = { id: null, timer: null, ate: 0 };
+  function codigos(lista) {
+    var t = agora();
+    var v = (Array.isArray(lista) ? lista : []).filter(function (c) { return c && c.label && (!c.until || c.until > t); });
+    v.sort(function (x, y) { return (y.firedAt || 0) - (x.firedAt || 0); });
+    est.codigo = v[0] || null;
+    mostrarCodigo();
+  }
+  function mostrarCodigo() {
+    var c = est.codigo, box = $('codigo');
+    if (c && c.until && c.until <= agora()) c = est.codigo = null;
+    box.hidden = !c;
+    calarPrograma(!!c || !!est.alerta);
+    var id = c ? String(c.id) : null;
+    if (id !== somCodigo.id) {
+      if (somCodigo.timer) { clearInterval(somCodigo.timer); somCodigo.timer = null; }
+      somCodigo.id = id;
+      if (id) { bipe(); somCodigo.ate = Date.now() + 90000; somCodigo.timer = setInterval(function () { if (Date.now() > somCodigo.ate) { clearInterval(somCodigo.timer); somCodigo.timer = null; return; } bipe(); }, 4000); }
+    }
+    if (!c) return;
+    box.style.background = /^#[0-9a-f]{6}$/i.test(c.color || '') ? c.color : '#b3261e';
+    box.style.color = /^#[0-9a-f]{6}$/i.test(c.textColor || '') ? c.textColor : '#ffffff';
+    var h = new Date(c.firedAt || agora());
+    $('codigo-cabeca').textContent = 'CÓDIGO DE EMERGÊNCIA · ' + ('0' + h.getHours()).slice(-2) + ':' + ('0' + h.getMinutes()).slice(-2);
+    $('codigo-titulo').textContent = String(c.label || '').slice(0, 40);
+    $('codigo-texto').textContent = String(c.meaning || '').slice(0, 160);
+    $('codigo-local').textContent = String(c.place || '').slice(0, 80);
+  }
+
   /** Alerta na tela: o som do programa (ao vivo, rádio de fundo, vídeos da playlist) fica calado até ele sair. */
   function calarPrograma(sim) {
     if (ctxTela.aoVivo && ctxTela.aoVivo.calar) ctxTela.aoVivo.calar(sim);
@@ -482,7 +514,7 @@
     var a = est.alerta, c = $('alerta');
     if (a && a.until && a.until <= agora()) a = est.alerta = null;
     c.hidden = !a;
-    calarPrograma(!!a);
+    calarPrograma(!!a || !!est.codigo);
     somDoAlerta(a);
     if (!a) return;
     // o nível chega como 'info' | 'warn' | 'critical': sem a conversão a classe virava nivel-NaN (sem fundo, o texto
@@ -755,7 +787,7 @@
     });
 
     // grade e horário pelo relógio, sem depender da rede
-    setInterval(function () { desenhar(false); mostrarAlerta(); }, 15000);
+    setInterval(function () { desenhar(false); mostrarAlerta(); if (est.codigo) mostrarCodigo(); }, 15000);
   }
 
   raiz.TelasApp = { iniciar: iniciar, _estado: est };

@@ -66,6 +66,13 @@ video.midia { object-fit: contain; }
 #alerta { position: absolute; left: 0; top: 0; right: 0; bottom: 0; z-index: 30; display: flex; flex-direction: column;
   justify-content: center; padding: 6vw; box-sizing: border-box; background: #b3261e; color: #fff; text-align: left; }
 #alerta.nivel-0 { background: #1f5fbf; }
+/* o código de emergência da tela interna (§17): a cor vem do código (posta pelo app); acima até do alerta */
+#codigo { position: absolute; left: 0; top: 0; right: 0; bottom: 0; z-index: 32; display: flex; flex-direction: column;
+  justify-content: center; align-items: center; text-align: center; padding: 5vw; box-sizing: border-box; background: #b3261e; color: #fff; }
+#codigo-cabeca { font: 600 2.4vw/1 Consolas, "Courier New", monospace; letter-spacing: .12em; margin-bottom: 2vw; }
+#codigo-titulo { font-weight: 900; font-size: 10vw; line-height: 1; margin-bottom: 2vw; text-transform: uppercase; }
+#codigo-texto { font-size: 4vw; line-height: 1.2; margin-bottom: 1.5vw; }
+#codigo-local { font-size: 5vw; font-weight: 800; }
 #alerta.nivel-1 { background: #b7791f; }
 #alerta.nivel-2 { background: #b3261e; }
 #alerta-cabeca { font: 600 2.2vw/1 Consolas, "Courier New", monospace; letter-spacing: .1em; margin-bottom: 2vw; }

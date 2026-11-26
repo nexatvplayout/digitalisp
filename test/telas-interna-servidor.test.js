@@ -153,6 +153,7 @@ async function roteiro(s) {
   assert.equal(az.status, 201, JSON.stringify(az.data));
   assert.deepEqual([az.data.label, az.data.meaning, az.data.place, az.data.color, az.data.textColor], ['Código Azul', 'Parada cardiorrespiratória', 'Observação, leito 4', '#1565c0', '#ffffff']);
   assert.ok(az.data.until - az.data.firedAt === 30 * 60_000, '30 min de fábrica');
+  assert.equal(az.data.reach, 1, 'quantas TVs recebem: só a tela interna da repartição');
   const ev = await st1.wait((e) => e.event === 'codes' && e.data.codes.length === 1, 3000);
   assert.ok(ev, 'a tela interna recebe no tempo real'); assert.ok(Date.now() - t0 < 2000, 'em menos de 2 s');
   assert.ok(await phone.wait((e) => e.event === 'codes' && e.data.codes.some((c) => c.id === az.data.id), 3000), 'o celular do setor também');

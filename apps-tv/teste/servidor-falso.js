@@ -360,7 +360,7 @@ async function api(req, res, url) {
     tela.sinais++;
     const cmds = est.comandos.filter((c) => c.deviceId === tela.deviceId);
     est.comandos = est.comandos.filter((c) => c.deviceId !== tela.deviceId);
-    return json(res, 200, { rev: montarConfig(tela).rev, commands: cmds.map((c) => ({ id: c.id, type: c.type })), alerts: est.alertas });
+    return json(res, 200, { rev: montarConfig(tela).rev, commands: cmds.map((c) => ({ id: c.id, type: c.type })), alerts: est.alertas, ...(est.codigos ? { codes: est.codigos } : {}) });
   }
   m = /^\/api\/telas\/commands\/(\d+)\/done$/.exec(p);
   if (m && req.method === 'POST') {
@@ -427,6 +427,8 @@ function controle(req, res, url) {
   }
   if (p === '/teste/sem-par') { est.semPar = q.get('on') !== '0'; registrar('pareamento ' + (est.semPar ? 'desligado (chave digitada)' : 'ligado')); return volta(); }
   if (p === '/teste/chave') { const k = codigo(); est.chaves.set(k, false); registrar('chave ' + k); return volta({ key: k }); }
+  // o código de emergência da tela interna (§17): /teste/codigo?on=1 dispara o Código Azul; on=0 encerra
+  if (p === '/teste/codigo') { est.codigos = q.get('on') === '0' ? [] : [{ id: Date.now(), code: 'azul', label: 'Código Azul', meaning: 'Parada cardiorrespiratória', color: '#1565c0', textColor: '#ffffff', place: 'Observação, leito 4', firedAt: Date.now(), until: Date.now() + 30 * 60000 }]; registrar('código ' + (est.codigos.length ? 'disparado' : 'encerrado')); return volta(); }
   if (p === '/teste/rede') { est.rede = q.get('on') !== '0'; registrar('rede ' + (est.rede ? 'ligada' : 'desligada')); return volta(); }
   if (p === '/teste/nova-imagem') {
     est.versao++;
