@@ -38,6 +38,8 @@ export async function abrirPreviaViva(layout, { zonePlaylists = null, titulo = '
   const wf = listOf(feeds, 'feeds').find((f) => f.kind === 'weather' && f.enabled !== false && f.preview?.tempC != null)?.preview || null;
   const clima = wf ? { now: { temp: wf.tempC, cond: wf.cond, text: wf.text }, place: { city: wf.city } } : null;
   const listaCanais = (Array.isArray(canais) ? canais : []).filter((c) => c.ativo !== false);
+  // fiel à TV: sem o canal da tela, vale o canal escolhido na zona de vídeo do próprio layout
+  if (!canalUrl) { const ch = (layout.zones || []).find((z) => z.kind === 'video' && z.channel != null)?.channel; canalUrl = listaCanais.find((c) => Number(c.id) === Number(ch))?.url || null; }
   const canal = el('select', { 'aria-label': 'Canal ao vivo' }, ...listaCanais.map((c, i) => opt(c.url, c.name || `Canal ${i + 1}`, canalUrl ? c.url === canalUrl : i === 0)));
   const aviso = el('p', { class: 'small dim', 'aria-live': 'polite' });
   const palco = el('div', { class: `tc-live-palco${layout.orientation === 'port' ? ' port' : ''}` });

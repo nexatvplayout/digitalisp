@@ -130,7 +130,8 @@ const verAgora = (d) => guard(async () => {
   const grade = D().schedules.find((x) => x.id === r.block.id);
   const porTela = await tapi('/api/hls/telas').catch(() => ({}));
   const canais = await tapi('/api/hls').catch(() => []);
-  const hid = porTela?.[d.id] ?? officeOf(d.officeId)?.channelId ?? null;
+  // a mesma ordem da TV: o canal da tela, depois o da zona de vídeo do layout, depois o da unidade
+  const hid = porTela?.[d.id] ?? (lay.zones || []).find((z) => z.kind === 'video' && z.channel != null)?.channel ?? officeOf(d.officeId)?.channelId ?? null;
   const canalUrl = (Array.isArray(canais) ? canais : []).find((c) => c.id === Number(hid))?.url || null;
   const { abrirPreviaViva } = await import('./tvcorp-previa-viva.js');
   await abrirPreviaViva(lay, { zonePlaylists: grade?.zonePlaylists || null, zoneItems: r.zones || null, canalUrl, titulo: `Agora na tela · ${d.name}` });
