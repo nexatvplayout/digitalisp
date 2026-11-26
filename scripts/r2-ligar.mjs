@@ -25,7 +25,9 @@ try {
   if (!h) throw new Error('o arquivo de teste não apareceu no bucket');
   if (cfg.publicBaseUrl) {
     const r = await fetch(`${cfg.publicBaseUrl}/graphics/${nome}`).catch((e) => ({ ok: false, status: e.message }));
-    console.log(r.ok ? `Endereço público ok: ${cfg.publicBaseUrl}` : `Atenção: o endereço público ${cfg.publicBaseUrl} não abriu o arquivo de teste (${r.status}). Confira o domínio do bucket.`);
+    // as TVs baixam por este endereço: se ele não abre, não liga (senão as imagens param de chegar às telas)
+    if (!r.ok) throw new Error(`o endereço público ${cfg.publicBaseUrl} não abriu o arquivo de teste (${r.status}). Confira o domínio do bucket, ou deixe o endereço vazio`);
+    console.log(`Endereço público ok: ${cfg.publicBaseUrl}`);
   }
   await st.remove('graphics', nome);
   fs.rmSync(path.join(KINDS.graphics, nome), { force: true });

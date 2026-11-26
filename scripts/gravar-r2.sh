@@ -10,7 +10,8 @@ read -r -p "Account ID (32 letras e números): " ACC
 read -r -p "Nome do bucket [digitalisp]: " BUCKET; BUCKET=${BUCKET:-digitalisp}
 read -r -p "Access Key ID: " KEY
 read -r -s -p "Secret Access Key (não aparece ao digitar): " SECRET; echo
-read -r -p "Endereço público do bucket [https://arquivos.digitalisp.com.br]: " PUB; PUB=${PUB:-https://arquivos.digitalisp.com.br}
+# o endereço público é opcional: vazio = o próprio servidor entrega os arquivos (buscando no R2)
+read -r -p "Endereço público do bucket (Enter = nenhum, o servidor entrega): " PUB; PUB=${PUB%/}
 [[ "$ACC" =~ ^[a-f0-9]{32}$ ]] || { echo "Account ID inválido. Nada foi gravado."; exit 1; }
 [ -n "$KEY" ] && [ -n "$SECRET" ] || { echo "Faltou a chave. Nada foi gravado."; exit 1; }
 cd "$APP"
@@ -20,7 +21,7 @@ if ! env $(grep -v '^#' "$ENV" | grep -v '^R2_\|^STORAGE_DRIVER' | xargs) R2_ACC
 fi
 cp "$ENV" "$ENV.antes-do-r2"
 grep -v '^R2_\|^STORAGE_DRIVER' "$ENV.antes-do-r2" > "$ENV"
-{ echo "STORAGE_DRIVER=r2"; echo "R2_ACCOUNT_ID=$ACC"; echo "R2_BUCKET=$BUCKET"; echo "R2_ACCESS_KEY_ID=$KEY"; echo "R2_SECRET_ACCESS_KEY=$SECRET"; echo "R2_PUBLIC_URL=$PUB"; } >> "$ENV"
+{ echo "STORAGE_DRIVER=r2"; echo "R2_ACCOUNT_ID=$ACC"; echo "R2_BUCKET=$BUCKET"; echo "R2_ACCESS_KEY_ID=$KEY"; echo "R2_SECRET_ACCESS_KEY=$SECRET"; [ -n "$PUB" ] && echo "R2_PUBLIC_URL=$PUB"; } >> "$ENV"
 chmod 600 "$ENV" "$ENV.antes-do-r2"
 export XDG_RUNTIME_DIR=/run/user/$(id -u)
 systemctl --user restart digitalisp
