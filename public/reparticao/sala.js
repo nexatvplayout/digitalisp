@@ -150,19 +150,23 @@ async function gravar(id) {
       const blob = new Blob(partes, { type: rec.mimeType || 'audio/webm' });
       try {
         const res = await fetch(`/api/sala/panic/${id}/audio`, { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'audio/webm' }, body: blob });
-        nota.textContent = res.ok ? 'Gravação de 2 minutos enviada ao painel da unidade.' : 'Não foi possível enviar a gravação.';
-      } catch { nota.textContent = 'Não foi possível enviar a gravação (sem rede).'; }
+        nota.textContent = res.ok ? 'Enviado.' : 'Enviado (sem a gravação).';
+      } catch { nota.textContent = 'Enviado (sem a gravação).'; }
       gravando = false;
     };
     rec.start(5000);
     let resta = 120;
-    nota.textContent = 'Gravando o som da sala: 2:00';
-    const t = setInterval(() => { resta -= 1; nota.textContent = `Gravando o som da sala: ${Math.floor(resta / 60)}:${String(resta % 60).padStart(2, '0')}`; if (resta <= 0) { clearInterval(t); rec.stop(); } }, 1000);
-  } catch { nota.textContent = 'O alerta foi enviado. Sem permissão do microfone, a gravação não foi feita.'; gravando = false; }
+    // nada na tela que denuncie a gravação
+    const t = setInterval(() => { resta -= 1; if (resta <= 0) { clearInterval(t); rec.stop(); } }, 1000);
+  } catch { nota.textContent = 'Enviado.'; gravando = false; }
 }
+// dois toques no mesmo botão (sem janela de confirmação, que chama a atenção); nenhum som nem faixa nesta sala
+let armado = null;
 $('panic').addEventListener('click', async () => {
-  if (!confirm('Acionar o PÂNICO? As outras salas, o guichê e a recepção recebem o alerta agora.')) return;
-  try { const r = await api('/panic', {}); ok('Pânico acionado: a equipe foi avisada.'); await load(); gravar(r.id); } catch (x) { err(x.message); }
+  const b = $('panic');
+  if (!armado) { b.textContent = 'Toque de novo para enviar'; armado = setTimeout(() => { armado = null; b.textContent = 'Pedir socorro (silencioso)'; }, 4000); return; }
+  clearTimeout(armado); armado = null; b.textContent = 'Pedir socorro (silencioso)';
+  try { const r = await api('/panic', {}); $('panicNote').textContent = 'Enviado.'; gravar(r.id); } catch (x) { err(x.message); }
 });
 $('requeue').addEventListener('click', run(() => api('/requeue', {}), 'A senha voltou para a fila, no lugar de antes.'));
 $('next').addEventListener('click', run(() => api('/forward', { next: true }), (r) => `Encaminhada para ${r.stage}. A sala está disponível.`));

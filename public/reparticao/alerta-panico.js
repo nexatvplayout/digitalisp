@@ -24,7 +24,8 @@ function bipe() {
 export function mostrarPanicos(lista, { fechar, minhaSala = null } = {}) {
   let box = document.getElementById('pzBox');
   if (!box) { box = document.createElement('div'); box.id = 'pzBox'; box.className = 'pz-box'; box.setAttribute('role', 'alert'); document.body.prepend(box); }
-  const abertos = Array.isArray(lista) ? lista : [];
+  // silencioso em quem aciona: o pânico desta sala não aparece nem toca aqui (o agressor pode estar na sala)
+  const abertos = (Array.isArray(lista) ? lista : []).filter((p) => !(minhaSala && p.room === minhaSala));
   box.hidden = !abertos.length;
   box.replaceChildren(...abertos.map((p) => {
     const d = document.createElement('div'); d.className = 'pz-item';
