@@ -1811,6 +1811,14 @@ class SignPlaylistView(
  * recorte da zona), inteiro (`contain`, com fundo preto). [onEnd] é chamado no fim e no erro.
  */
 class SignVideo(ctx: Context, file: java.io.File, sound: Boolean, volume: Float, contain: Boolean, private val onEnd: () -> Unit) {
+    companion object {
+        /** Os vídeos da playlist tocando agora: a chamada da senha abaixa o som de todos (90% mais baixo) e depois volta. */
+        private val live = java.util.Collections.newSetFromMap(java.util.WeakHashMap<SignVideo, Boolean>())
+        @Volatile private var ducked = false
+        fun duckAll(on: Boolean) { ducked = on; synchronized(live) { live.toList() }.forEach { it.applyVolume() } }
+    }
+    private val baseVolume = if (sound) volume.coerceIn(0f, 1f) else 0f
+    private fun applyVolume() = try { player.volume = if (ducked) baseVolume * 0.1f else baseVolume } catch (_: Exception) { }
     private val player: androidx.media3.exoplayer.ExoPlayer = androidx.media3.exoplayer.ExoPlayer.Builder(ctx).build()
     private val texture = android.view.TextureView(ctx)
     val view: FrameLayout = object : FrameLayout(ctx) {
@@ -1829,7 +1837,8 @@ class SignVideo(ctx: Context, file: java.io.File, sound: Boolean, volume: Float,
 
     init {
         player.setVideoTextureView(texture)
-        player.volume = if (sound) volume.coerceIn(0f, 1f) else 0f
+        synchronized(live) { live.add(this) }
+        applyVolume()
         player.addListener(object : androidx.media3.common.Player.Listener {
             override fun onPlaybackStateChanged(state: Int) {
                 if (state == androidx.media3.common.Player.STATE_ENDED) end()

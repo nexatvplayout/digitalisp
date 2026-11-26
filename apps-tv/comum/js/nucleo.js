@@ -12,7 +12,7 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  var VERSAO = '1.0.33';
+  var VERSAO = '1.0.34';
   var TZ_PADRAO = 'America/Sao_Paulo';
   var SHA = /^[0-9a-f]{64}$/;
   var DIA = /^\d{4}-\d{2}-\d{2}$/;
@@ -458,7 +458,8 @@
   }
 
   // as zonas que só mostram o que vier nos itens (sem item, ficam vazias)
-  var SO_COM_ITENS = ['playlist', 'widget', 'news', 'quotes', 'countdown', 'safety', 'worldclock', 'queue'];
+  // (a zona de senha não: ela mostra a chamada de senha da unidade, que vem à parte em /api/telas/queue)
+  var SO_COM_ITENS = ['playlist', 'widget', 'news', 'quotes', 'countdown', 'safety', 'worldclock'];
 
   /**
    * As zonas como vão para a tela: a zona que só mostra itens e está sem nenhum (um gadget sem widget escolhido, uma

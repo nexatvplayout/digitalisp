@@ -128,3 +128,6 @@ img.kenburns { animation: kenburns 10s linear both; transform-origin: 50% 50%; }
 #menu .menu-item.ativo { color: #fff; }
 #menu .menu-senha { font-size: 4vh; letter-spacing: .2em; min-height: 5vh; margin-bottom: 1.4vh; }
 #menu .menu-msg { margin-top: 1vh; font-size: 2.4vh; color: #fbbf24; }
+/* a zona de senha: as anteriores embaixo da senha chamada */
+.tvc-z-qlasts { display: flex; flex-wrap: wrap; justify-content: center; gap: 1vw; margin-top: 1vh; }
+.tvc-z-queue span.tvc-z-qlast { font-size: 2.4vh; opacity: .8; padding: .3vh .8vw; border-radius: 1vh; background: rgba(255, 255, 255, .1); }

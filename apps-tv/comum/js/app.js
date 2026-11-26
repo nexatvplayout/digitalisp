@@ -503,6 +503,46 @@
     $('codigo-local').textContent = String(c.place || '').slice(0, 80);
   }
 
+  // ---- a chamada de senha (§10): com uma zona de senha na tela, busca a fila a cada 2,5 s; senha nova (ou repetida):
+  // mostra, toca o bipe (e fala, se a TV tiver voz e a unidade pedir) e abaixa o som do programa em 90% enquanto chama
+  var senhaFila = { chave: null, primeira: true, timer: null, abaixarAte: 0 };
+  function abaixarPrograma(sim) {
+    if (ctxTela.radio && ctxTela.radio.abaixar) ctxTela.radio.abaixar(sim);
+    if (telaObj && telaObj.abaixar) telaObj.abaixar(sim);
+  }
+  function falarSenha(c) {
+    try {
+      var cfg = est.atual && est.atual.fila;
+      if (!window.speechSynthesis || !window.SpeechSynthesisUtterance || (cfg && cfg.voice === false)) return false;
+      var letras = String(c.ticket || '').split('').join(' ');
+      var u = new SpeechSynthesisUtterance('Senha ' + letras + (c.desk ? ', ' + c.desk : ''));
+      u.lang = 'pt-BR';
+      window.speechSynthesis.speak(u);
+      return true;
+    } catch (e) { return false; }
+  }
+  function chamarSenha(c) {
+    abaixarPrograma(true);
+    bipe();
+    setTimeout(function () { falarSenha(c); }, 1200); // a voz depois do bipe (se a TV tiver)
+    senhaFila.abaixarAte = Date.now() + 8000;
+    setTimeout(function () { if (Date.now() >= senhaFila.abaixarAte) abaixarPrograma(false); }, 8100);
+  }
+  function vigiarFila() {
+    if (senhaFila.timer) return;
+    senhaFila.timer = setInterval(function () {
+      if (!telaObj || !telaObj.temSenha || !telaObj.temSenha() || !est.token || document.hidden) { senhaFila.primeira = true; return; }
+      api().fila().then(function (r) {
+        var j = (r && r.json) || {};
+        telaObj.senha(j);
+        var c = j.current;
+        var chave = c ? c.id + ':' + c.at : null;
+        if (chave && chave !== senhaFila.chave && !senhaFila.primeira) chamarSenha(c);
+        senhaFila.chave = chave; senhaFila.primeira = false;
+      }).catch(function () { /* sem rede: tenta na próxima */ });
+    }, 2500);
+  }
+
   /** Alerta na tela: o som do programa (ao vivo, rádio de fundo, vídeos da playlist) fica calado até ele sair. */
   function calarPrograma(sim) {
     if (ctxTela.aoVivo && ctxTela.aoVivo.calar) ctxTela.aoVivo.calar(sim);
@@ -788,6 +828,7 @@
 
     // grade e horário pelo relógio, sem depender da rede
     setInterval(function () { desenhar(false); mostrarAlerta(); if (est.codigo) mostrarCodigo(); }, 15000);
+    vigiarFila();
   }
 
   raiz.TelasApp = { iniciar: iniciar, _estado: est };

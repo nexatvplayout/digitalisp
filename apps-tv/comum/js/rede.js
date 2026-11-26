@@ -62,6 +62,8 @@
           return exigir(r, [200]);
         });
       },
+      /** A chamada de senha da unidade (§10): { current, last, waiting, serving, byService }. */
+      fila: function () { return chamar('GET', '/api/telas/queue').then(function (r) { return exigir(r, [200]); }); },
       sinal: function (corpo) { return chamar('POST', '/api/telas/heartbeat', corpo).then(function (r) { return exigir(r, [200]); }); },
       comandoFeito: function (id, okk, detalhe) {
         return chamar('POST', '/api/telas/commands/' + encodeURIComponent(id) + '/done', { ok: !!okk, detail: String(detalhe || '').slice(0, 200) })

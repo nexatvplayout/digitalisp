@@ -39,7 +39,23 @@ function paint() {
   $('forwardTo').replaceChildren(...G.services.filter((s) => !t || s.id !== t.serviceId).map((s) => option(s.id, s.name, String(s.id) === keep)));
   $('forward').disabled = !t || !$('forwardTo').options.length;
   $('call').disabled = !G.services.length;
+  // as salas e consultórios cadastrados viram sugestões para o nome do guichê
+  $('rooms').replaceChildren(...(G.rooms || []).map((n) => option(n, n)));
+  paintRisk(t);
   paintQueue();
+}
+const RISKS = ['vermelho', 'laranja', 'amarelo', 'verde', 'azul'];
+/** A cor da senha em atendimento (só quando a repartição usa a classificação de risco). */
+function paintRisk(t) {
+  $('riskRow').hidden = !G.risk || !t;
+  if (!G.risk || !t) return;
+  $('riskBtns').replaceChildren(...RISKS.map((k) => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = `r-btn small g-rk${t.risk === k ? ' on' : ''}`;
+    const dot = document.createElement('span'); dot.className = `r-risk rk-${k}`; dot.setAttribute('aria-hidden', 'true');
+    b.append(dot, RISK_WORD[k]); b.setAttribute('aria-pressed', t.risk === k ? 'true' : 'false');
+    b.addEventListener('click', run(() => api(`/tickets/${t.id}/risk`, { risk: t.risk === k ? null : k }), `Classificação: ${RISK_WORD[k]}.`));
+    return b;
+  }));
 }
 const RISK_WORD = { vermelho: 'Vermelho', laranja: 'Laranja', amarelo: 'Amarelo', verde: 'Verde', azul: 'Azul' };
 /** Quem espera, na ordem de chamada, com o motivo de cada posição e o "Chamar esta" (sem nomes). */
@@ -63,7 +79,14 @@ function paintQueue() {
       if (!desk()) { $('deskName').focus(); throw new Error('Escreva o nome deste guichê antes de chamar.'); }
       return api('/call', { desk: desk(), ticketId: t.id });
     }, (r) => `Chamando ${r.ticket.code} para ${r.call.desk} (fora da ordem, registrado).`));
-    li.append(tag, mid, btn);
+    li.append(tag, mid);
+    if (G.risk) {
+      const sel = document.createElement('select'); sel.className = 'g-rk-sel'; sel.setAttribute('aria-label', `Classificação de risco da senha ${t.code}`);
+      sel.append(option('', 'Sem cor', !t.risk), ...RISKS.map((k) => option(k, RISK_WORD[k], t.risk === k)));
+      sel.addEventListener('change', run(() => api(`/tickets/${t.id}/risk`, { risk: sel.value || null }), `Senha ${t.code} classificada.`));
+      li.append(sel);
+    }
+    li.append(btn);
     return li;
   }));
 }
@@ -71,7 +94,10 @@ async function load() { G = await api(''); $('desk').hidden = false; paint(); }
 const run = (fn, msg) => async () => { try { const r = await fn(); if (msg) ok(typeof msg === 'function' ? msg(r) : msg); await load(); } catch (x) { err(x.message); } };
 const onMine = (path, body, msg) => run(async () => { const t = mine(); if (!t) throw new Error('Nenhuma senha em atendimento neste guichê.'); return api(`/tickets/${t.id}/${path}`, body ? body() : {}); }, msg);
 
-$('deskName').addEventListener('change', () => { try { sessionStorage.setItem(KEY, desk()); } catch { /* sem armazenamento */ } if (G) paint(); });
+// o nome do guichê fica guardado neste aparelho (antes só na aba aberta: fechou, tinha de digitar de novo)
+const guardar = () => { try { localStorage.setItem(KEY, desk()); } catch { /* sem armazenamento */ } };
+$('deskName').addEventListener('input', guardar);
+$('deskName').addEventListener('change', () => { guardar(); if (G) paint(); });
 $('call').addEventListener('click', run(async () => {
   if (!desk()) { $('deskName').focus(); throw new Error('Escreva o nome deste guichê (ex.: Guichê 3).'); }
   return api('/call', { desk: desk(), serviceId: $('from').value ? Number($('from').value) : null });
@@ -84,7 +110,7 @@ $('forward').addEventListener('click', onMine('forward', () => ({ serviceId: Num
 
 const clock = () => { $('clock').textContent = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); };
 clock(); setInterval(clock, 20000);
-try { $('deskName').value = sessionStorage.getItem(KEY) || ''; } catch { /* sem armazenamento */ }
+try { $('deskName').value = localStorage.getItem(KEY) || sessionStorage.getItem(KEY) || ''; } catch { /* sem armazenamento */ }
 if (!/^[A-Za-z0-9_-]{32,64}$/.test(token)) err('Endereço incompleto. Peça o endereço do guichê ao responsável da repartição.');
 else {
   load().catch((x) => err(x.message));

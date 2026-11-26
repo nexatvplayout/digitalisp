@@ -43,7 +43,8 @@ class PlayerHost(
     private val onError: (ErrorKind, String) -> Unit,
 ) {
     private companion object {
-        const val DUCK = 0.2f
+        // DIGITAL ISP (26/11/2026): na chamada da senha (voz ou bipe) e no código, o som do programa cai 90% (antes 80%)
+        const val DUCK = 0.1f
     }
 
     /**

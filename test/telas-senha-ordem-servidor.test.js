@@ -97,6 +97,12 @@ test('senha: ordem com motivo, tempos-alvo, "Chamar esta" e mudar a prioridade (
     const gc = await GU('POST', '/api/guiche/call', { desk: 'Guichê 3', ticketId: last.id });
     assert.equal(gc.status, 200, JSON.stringify(gc.data)); assert.equal(gc.data.manual, true); assert.equal(gc.data.ticket.code, last.code);
     assert.equal((await GU('POST', '/api/guiche/tickets/1/priority', { priority: 1 })).status, 404, 'o guichê não muda prioridade');
+    // DIGITAL ISP: a classificação de risco pelo guichê (só a cor) e as salas para o nome do guichê
+    assert.ok(Array.isArray(gv.rooms), 'as salas vão ao guichê (para escolher o nome)');
+    const cor = await GU('POST', `/api/guiche/tickets/${gc.data.ticket.id}/risk`, { risk: 'amarelo', name: 'Outro Nome' });
+    assert.equal(cor.status, 200, JSON.stringify(cor.data)); assert.equal(cor.data.ticket.risk, 'amarelo');
+    assert.notEqual(cor.data.ticket.name, 'Outro Nome', 'o guichê não troca o nome');
+    assert.equal((await GU('POST', `/api/guiche/tickets/${gc.data.ticket.id}/risk`, { risk: 'roxo' })).status, 400);
 
     /* ---------------------------------------------------------------- o log da repartição */
     const audit = JSON.stringify(await auditoria(s, A.id));

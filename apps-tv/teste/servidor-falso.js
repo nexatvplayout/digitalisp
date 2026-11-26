@@ -124,6 +124,14 @@ function blocoTipos() {
       { id: 'bar', kind: 'ticker', x: 0, y: 88, w: 100, h: 12 }] }, days: [], from: 0, to: 1440,
       zones: { lado: tipos.filter((t) => t.kind === 'slide').slice(0, 3) } };
   }
+  if (est.tipos === 'senha') {
+    // a chamada de senha: a zona de senha ao lado da playlist (consultório)
+    const tipos = itensTipos(arquivo, Math.floor(Date.now() / 3600000) * 3600000);
+    return { id: 'grade-tipos', layout: { orientation: 'land', background: '#0b1220', zones: [
+      { id: 'queue', kind: 'queue', x: 0, y: 0, w: 40, h: 100 },
+      { id: 'main', kind: 'playlist', x: 40, y: 0, w: 60, h: 100 }] }, days: [], from: 0, to: 1440,
+      zones: { main: tipos.filter((t) => t.kind === 'slide').slice(0, 3) } };
+  }
   if (est.tipos === 'clima') {
     // a zona de clima (o clima da tela, sem itens) ao lado do vídeo
     return { id: 'grade-tipos', layout: { orientation: 'land', background: '#0b1220', zones: [
@@ -354,6 +362,8 @@ async function api(req, res, url) {
     if (inm && inm === cfg.rev) { res.writeHead(304, { ETag: `"${cfg.rev}"` }); return res.end(); }
     return json(res, 200, cfg, { ETag: `"${cfg.rev}"` });
   }
+  // a chamada de senha (§10): /teste/chamar?senha=A002&guiche=Consult%C3%B3rio%203 chama; GET /api/telas/queue devolve o estado
+  if (p === '/api/telas/queue') return json(res, 200, est.fila || { current: null, last: [] });
   if (p === '/api/telas/heartbeat' && req.method === 'POST') {
     const b = (await lerCorpo(req)) || {};
     tela.ultimo = Object.assign({ em: Date.now() }, b);
@@ -418,7 +428,7 @@ function controle(req, res, url) {
     registrar('ao vivo: ' + (est.aoVivo || 'nenhum'));
     return volta();
   }
-  if (p === '/teste/tipos') { est.tipos = ['lateral', 'cheia', 'sobre', 'formas', 'provedor', 'clima', 'hdmi'].includes(q.get('modo')) ? q.get('modo') : null; est.versao++; registrar('todos os tipos: ' + (est.tipos || 'desligado')); return volta(); }
+  if (p === '/teste/tipos') { est.tipos = ['lateral', 'cheia', 'sobre', 'formas', 'provedor', 'clima', 'hdmi', 'senha'].includes(q.get('modo')) ? q.get('modo') : null; est.versao++; registrar('todos os tipos: ' + (est.tipos || 'desligado')); return volta(); }
   if (p === '/teste/tema') { est.tema = { color: q.get('cor') || '#6d28d9', mode: q.get('modo') === 'light' ? 'light' : 'dark' }; est.versao++; return volta(); }
   if (p === '/teste/itens.json') return json(res, 200, { itens: itensTipos(arquivo, Date.now()), tema: est.tema, tz: tzLocal() });
   if (p === '/teste/previa-painel' || p === '/teste/previa-tv' || p === '/teste/comparar') {
@@ -429,6 +439,7 @@ function controle(req, res, url) {
   if (p === '/teste/chave') { const k = codigo(); est.chaves.set(k, false); registrar('chave ' + k); return volta({ key: k }); }
   // o código de emergência da tela interna (§17): /teste/codigo?on=1 dispara o Código Azul; on=0 encerra
   if (p === '/teste/codigo') { est.codigos = q.get('on') === '0' ? [] : [{ id: Date.now(), code: 'azul', label: 'Código Azul', meaning: 'Parada cardiorrespiratória', color: '#1565c0', textColor: '#ffffff', place: 'Observação, leito 4', firedAt: Date.now(), until: Date.now() + 30 * 60000 }]; registrar('código ' + (est.codigos.length ? 'disparado' : 'encerrado')); return volta(); }
+  if (p === '/teste/chamar') { const ant = est.fila && est.fila.current; est.fila = { current: { id: Date.now(), ticket: q.get('senha') || 'A001', desk: q.get('guiche') || 'Guichê 1', at: Date.now() }, last: ant ? [ant, ...((est.fila && est.fila.last) || [])].slice(0, 12) : [] }; registrar('senha ' + est.fila.current.ticket); return volta(); }
   if (p === '/teste/rede') { est.rede = q.get('on') !== '0'; registrar('rede ' + (est.rede ? 'ligada' : 'desligada')); return volta(); }
   if (p === '/teste/nova-imagem') {
     est.versao++;

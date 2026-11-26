@@ -2,3 +2,10 @@
 .g { max-width: 620px; }
 .g .r-now-code { font-size: clamp(3.4rem, 16vw, 6rem); }
 .g #hDesk { font-size: 1.2rem; }
+/* DIGITAL ISP: a classificação de risco no guichê (a senha em atendimento e cada senha da fila) */
+.g-risk-row { align-items: center; gap: 10px; flex-wrap: wrap; }
+.g-risk-lbl { font-weight: 600; }
+.g-risk { display: flex; flex-wrap: wrap; gap: 6px; }
+.g-rk { display: inline-flex; align-items: center; gap: 6px; }
+.g-rk.on { outline: 3px solid currentColor; outline-offset: 1px; font-weight: 700; }
+.g-rk-sel { margin: 0 8px; padding: 6px 8px; border-radius: 8px; }

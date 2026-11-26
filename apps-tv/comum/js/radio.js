@@ -17,7 +17,8 @@
     function aplicarVolume() {
       if (!el || !atual) return;
       var tela = Math.max(0, Math.min(100, Number(op.volume()) || 0));
-      el.volume = Math.max(0, Math.min(1, (tela / 100) * (atual.volume / 100)));
+      // na chamada da senha, 90% mais baixa (abaixada)
+      el.volume = Math.max(0, Math.min(1, (tela / 100) * (atual.volume / 100) * (abaixada ? 0.1 : 1)));
       el.muted = !!op.mudo() || tela === 0 || abafada || calada;
     }
 
@@ -81,10 +82,14 @@
     /** Abafa a rádio enquanto um vídeo da playlist toca com som (os dois juntos embolam). */
     function abafar(sim) { abafada = !!sim; aplicarVolume(); }
 
+    var abaixada = false;
+    /** A chamada da senha (voz ou bipe): a rádio cai 90% e depois volta. */
+    function abaixar(sim) { abaixada = !!sim; aplicarVolume(); }
+
     /** Alerta na tela: a rádio fica muda até ele sair. */
     function calar(sim) { calada = !!sim; aplicarVolume(); }
 
-    return { tocar: tocar, parar: parar, abafar: abafar, calar: calar, volume: aplicarVolume, atual: function () { return atual; } };
+    return { tocar: tocar, parar: parar, abafar: abafar, abaixar: abaixar, calar: calar, volume: aplicarVolume, atual: function () { return atual; } };
   }
 
   raiz.TelasRadio = { criar: criar };

@@ -642,7 +642,9 @@ export function createSenha({ available, audit = async () => {}, ipOf = (req) =>
         // a fila na ordem de chamada, com o motivo, para o "Chamar esta" (sem nomes: o guichê não lê a fila com nomes)
         queue: v.waiting.slice(0, 40).map((t) => ({ id: t.id, code: t.code, serviceId: t.serviceId, service: n.get(t.serviceId) || '', priority: t.priority, risk: t.risk, queuedAt: t.queuedAt, reason: t.reason })),
         services: v.services.filter((s) => s.active).map((s) => ({ id: s.id, name: s.name })),
-        serving: v.serving.map((t) => ({ id: t.id, code: t.code, desk: t.desk, serviceId: t.serviceId, service: n.get(t.serviceId) || '', priority: t.priority, name: t.name, calledAt: t.calledAt })),
+        serving: v.serving.map((t) => ({ id: t.id, code: t.code, desk: t.desk, serviceId: t.serviceId, service: n.get(t.serviceId) || '', priority: t.priority, name: t.name, calledAt: t.calledAt, risk: t.risk || null })),
+        // DIGITAL ISP: as salas e consultórios da repartição, para o guichê escolher o nome dele sem digitar
+        rooms: (await db.all('SELECT name FROM telas_rooms WHERE tenant_id = ? AND office_id = ? AND active = 1 ORDER BY sort, id', [o.tenant_id, o.id]).catch(() => [])).map((r) => r.name).filter(Boolean).slice(0, 60),
       });
     }));
     app.post('/api/guiche/call', guiche, ah(async (req, res) => {
@@ -656,6 +658,8 @@ export function createSenha({ available, audit = async () => {}, ipOf = (req) =>
     onTicket('noshow', (o, id) => close(o, id, 'noshow'));
     onTicket('requeue', (o, id) => requeue(o, id));
     onTicket('forward', (o, id, b) => forward(o, id, b));
+    // DIGITAL ISP: a classificação de risco pelo guichê (a cor só; o nome continua fora do alcance do guichê)
+    onTicket('risk', (o, id, b) => triage(o, id, { risk: b?.risk ?? null }));
   }
 
   /* ---------------------------------------------------------------- limpeza: 90 dias de histórico; senhas de ontem saem da fila */

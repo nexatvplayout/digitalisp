@@ -205,3 +205,8 @@
 .pf-pvslot.small:focus-visible { outline: 2px solid var(--accent, #f5b301); }
 .pf-reach { display: grid; gap: 10px; max-width: 640px; }
 .pf-reach .pf-checks { display: grid; gap: 6px; }
+/* o link gerado (totem, guichê, sala) com o QR code ao lado */
+.pf-link { display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; }
+.pf-link-qr { width: 140px; height: 140px; flex: none; background: #fff; padding: 6px; border-radius: 8px; }
+.pf-link-b { flex: 1; min-width: 220px; display: grid; gap: 6px; }
+.pf-link-b .pf-url { word-break: break-all; }

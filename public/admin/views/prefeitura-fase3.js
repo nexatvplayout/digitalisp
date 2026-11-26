@@ -5,6 +5,18 @@
 // views/prefeitura.js, que passa os ajudantes dela em `ui`.
 import { el, api, guard, toast, copyText, state, bytes } from '../lib.js';
 import { UFS } from '../../shared/br-docs.js';
+import { qrSvg } from '../../shared/telas-previa.js';
+
+/** Um link gerado (totem, guichê ou sala): o texto, o endereço, o QR code para abrir no celular, copiar e abrir. */
+function mostrarLink(b, text, url) {
+  b.hidden = false;
+  b.replaceChildren(el('div', { class: 'pf-link' },
+    qrSvg(url, 'pf-link-qr'),
+    el('div', { class: 'pf-link-b' }, el('p', { class: 'dim small', text }), el('div', { class: 'pf-url', text: url }),
+      el('div', { class: 'pf-btns left' }, el('button', { class: 'btn small', type: 'button', onclick: () => copyText(url) }, 'Copiar o link'),
+        el('a', { class: 'btn small', href: url, target: '_blank', rel: 'noopener noreferrer', text: 'Abrir' })),
+      el('p', { class: 'dim small', text: 'Leia o QR code com a câmera do celular para abrir lá. O link aparece só agora: copie ou fotografe o QR code.' }))));
+}
 import { ROOM_KINDS, roomKindLabel, roomStateLabel } from '../../shared/telas-salas.js';
 import {
   OFFICE_TYPE, typeShort, LIMITS, CARD_KINDS, CARD_KIND, officeCardKinds, WEEKDAYS, CONTENT_CLASSES, classLabel, RISKS,
@@ -79,8 +91,8 @@ export async function paintQueueOffice(box, ui, o, prefix = '/api/prefeitura') {
         const r = await api(`${base}/totem`, { method: 'POST', body: {} });
         await again();
         const b = box.querySelector('.pf-keybox'); b.hidden = false;
-        put(b, el('p', { class: 'dim small', text: 'O endereço aparece só agora. Abra-o no aparelho da entrada:' }), el('div', { class: 'pf-url', text: r.url }), el('button', { class: 'btn small', type: 'button', onclick: () => copyText(r.url) }, 'Copiar o endereço'));
-      }) }, q.totem.on ? 'Gerar outro endereço' : 'Gerar o endereço do totem'),
+        mostrarLink(b, 'O link do totem: abra no tablet ou computador da entrada (é ali que o cliente tira a senha).', r.url);
+      }) }, q.totem.on ? 'Gerar outro link e QR code do totem' : 'Gerar o link e QR code do totem'),
       q.totem.on ? el('button', { class: 'btn danger', type: 'button', onclick: guard(async () => { if (!confirm('Desligar o totem?')) return; await api(`${base}/totem`, { method: 'DELETE' }); toast('Totem desligado.'); await again(); }) }, 'Desligar o totem') : null),
     urlBox,
     // o endereço do guichê: só chama e dá andamento à senha (sem usuário nem senha; não emite e não abre o painel da repartição)
@@ -92,8 +104,8 @@ export async function paintQueueOffice(box, ui, o, prefix = '/api/prefeitura') {
         const r = await api(`${base}/guiche`, { method: 'POST', body: {} });
         await again();
         const b = box.querySelector('.pf-keybox'); b.hidden = false;
-        put(b, el('p', { class: 'dim small', text: 'O endereço do guichê aparece só agora. Abra-o no computador de cada guichê:' }), el('div', { class: 'pf-url', text: r.url }), el('button', { class: 'btn small', type: 'button', onclick: () => copyText(r.url) }, 'Copiar o endereço'));
-      }) }, q.guiche?.on ? 'Gerar outro endereço do guichê' : 'Gerar o endereço do guichê'),
+        mostrarLink(b, 'O link do guichê: abra no computador de cada atendente (é ali que ele chama a senha).', r.url);
+      }) }, q.guiche?.on ? 'Gerar outro link e QR code do guichê' : 'Gerar o link e QR code do guichê'),
       q.guiche?.on ? el('button', { class: 'btn danger', type: 'button', onclick: guard(async () => { if (!confirm('Desligar o endereço do guichê?')) return; await api(`${base}/guiche`, { method: 'DELETE' }); toast('Endereço do guichê desligado.'); await again(); }) }, 'Desligar') : null),
     el('p', { class: 'dim small', text: 'Emitir pela recepção, chamar, repetir, encaminhar e finalizar são feitos na página de controle da repartição (o link de controle, em Repartições).' }));
   await paintRooms(roomsBox, ui, o, base);
@@ -110,7 +122,7 @@ async function paintRooms(box, ui, o, base) {
   const gName = el('input', { type: 'text', maxlength: '40', placeholder: 'Ex.: Clínico geral', 'aria-label': 'Nome do grupo' });
   const gChecks = r.services.filter((x) => x.active).map((x) => el('label', { class: 'pf-check' }, el('input', { type: 'checkbox', value: String(x.id) }), el('span', { text: x.name })));
   const gAuto = el('input', { type: 'checkbox' });
-  const showUrl = (text, url) => { keyBox.hidden = false; put(keyBox, el('p', { class: 'dim small', text }), el('div', { class: 'pf-url', text: url }), el('button', { class: 'btn small', type: 'button', onclick: () => copyText(url) }, 'Copiar o endereço')); };
+  const showUrl = (text, url) => { const b = box.querySelector('.pf-keybox') || keyBox; mostrarLink(b, text, url); b.scrollIntoView?.({ block: 'center', behavior: 'smooth' }); };
   const csv = guard(async () => {
     const res = await fetch(`${base}/indicators?format=csv&by=day`, { headers: { 'x-admin-token': state.token || '' }, cache: 'no-store' });
     if (!res.ok) throw new Error('Não foi possível gerar o CSV.');
@@ -131,11 +143,12 @@ async function paintRooms(box, ui, o, base) {
         if (!gChecks.some((l) => l.querySelector('input').checked)) throw new Error('Marque ao menos uma fila que o grupo atende (as caixinhas ao lado do nome).');
         await api(`${base}/room-groups`, { method: 'POST', body: { name: gName.value, serviceIds: gChecks.map((l) => l.querySelector('input')).filter((i) => i.checked).map((i) => Number(i.value)), auto: gAuto.checked } }); toast('Grupo criado.'); await again(); }) }, '+ Adicionar grupo')),
     el('div', { class: 'label', text: '3. Salas e consultórios (o nome da sala vai à tela: "Consultório 3")' }),
+    el('p', { class: 'dim small', text: 'Cada sala tem o seu link (botão "Gerar link e QR code da sala" na linha dela): o profissional abre no celular ou computador do consultório e, ali, chama o paciente, finaliza o atendimento (a senha sai) e chama o próximo.' }),
     r.rooms.length ? ui.table(['Sala', 'Tipo', 'Grupo', 'Situação', ''], r.rooms.map((x) => el('tr', { class: x.active ? '' : 'pf-gone' },
       el('td', { text: x.name }), el('td', { text: roomKindLabel(x.kind) }), el('td', { text: r.groups.find((g) => g.id === x.groupId)?.name || '—' }),
       el('td', { text: x.active ? `${roomStateLabel(x.state)}${x.ticket ? ` · ${x.ticket.code}` : ''}` : 'desativada' }),
       el('td', { class: 'pf-actions' },
-        el('button', { class: 'btn small', type: 'button', onclick: guard(async () => { if (x.link.on && !confirm(`Gerar outro endereço para "${x.name}"? O de antes deixa de valer.`)) return; const u = await api(`${base}/rooms/${x.id}/link`, { method: 'POST', body: {} }); await again(); showUrl(`O endereço de "${x.name}" aparece só agora. Abra no celular da sala:`, u.url); }) }, x.link.on ? 'Novo endereço' : 'Endereço da sala'),
+        el('button', { class: 'btn small', type: 'button', onclick: guard(async () => { if (x.link.on && !confirm(`Gerar outro endereço para "${x.name}"? O de antes deixa de valer.`)) return; const u = await api(`${base}/rooms/${x.id}/link`, { method: 'POST', body: {} }); await again(); showUrl(`O link de "${x.name}": o profissional abre no celular ou computador da sala para chamar o paciente, finalizar o atendimento e chamar o próximo.`, u.url); }) }, x.link.on ? 'Gerar outro link e QR code' : 'Gerar link e QR code da sala'),
         x.link.on ? el('button', { class: 'btn small', type: 'button', onclick: guard(async () => { if (!confirm(`Revogar o endereço de "${x.name}"?`)) return; await api(`${base}/rooms/${x.id}/link`, { method: 'DELETE' }); await again(); }) }, 'Revogar') : null,
         el('button', { class: 'btn small', type: 'button', onclick: guard(async () => { await api(`${base}/rooms/${x.id}`, { method: 'PATCH', body: { active: !x.active } }); await again(); }) }, x.active ? 'Desativar' : 'Reativar'),
         el('button', { class: 'btn small danger', type: 'button', onclick: guard(async () => { if (!confirm(`Remover a sala "${x.name}"?`)) return; await api(`${base}/rooms/${x.id}`, { method: 'DELETE' }); await again(); }) }, 'Remover'))))) : el('p', { class: 'dim small', text: 'Nenhuma sala ainda.' }),

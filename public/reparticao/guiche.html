@@ -23,7 +23,8 @@
     <section class="r-card" id="desk" aria-labelledby="hDesk" hidden>
       <h1 id="hDesk">Este guichê</h1>
       <div class="r-row">
-        <label class="r-field"><span>Este guichê</span><input type="text" id="deskName" maxlength="30" placeholder="Ex.: Guichê 3" autocomplete="off"></label>
+        <label class="r-field"><span>Este guichê</span><input type="text" id="deskName" maxlength="30" placeholder="Ex.: Guichê 3" autocomplete="off" list="rooms"></label>
+        <datalist id="rooms"></datalist>
         <label class="r-field"><span>Chamar de</span><select id="from"></select></label>
       </div>
       <div class="r-now"><p class="r-now-code" id="code" aria-live="polite">—</p><p class="r-now-info" id="info"></p></div>
@@ -33,6 +34,11 @@
         <button type="button" class="r-btn" id="requeue">Voltar à fila</button>
         <button type="button" class="r-btn" id="noshow">Não compareceu</button>
         <button type="button" class="r-btn primary" id="finish">Finalizar</button>
+      </div>
+      <!-- a classificação de risco da senha em atendimento (quando a repartição usa a cor) -->
+      <div class="r-row g-risk-row" id="riskRow" hidden>
+        <span class="g-risk-lbl">Classificação de risco</span>
+        <div class="g-risk" id="riskBtns"></div>
       </div>
       <div class="r-row end">
         <label class="r-field"><span>Encaminhar para</span><select id="forwardTo"></select></label>

@@ -872,6 +872,15 @@ class MainActivity : Activity(), Engine.Ui {
     private var radioGen = 0
 
     /** Toca a rádio do bloco no ar (sem zona de vídeo), no volume da tela × o da rádio; para quando o bloco muda. */
+    /** O som do programa abaixado (90%): na chamada da senha (voz ou bipe) e no código de emergência. */
+    private var programDucked = false
+    private fun duckProgram(on: Boolean) {
+        programDucked = on
+        player.duck(on) // o vídeo do canal
+        SignVideo.duckAll(on) // os vídeos da playlist com som
+        updateRadio() // a rádio de fundo do layout
+    }
+
     private fun updateRadio() {
         val c = cfg
         val a = if (c != null && scheduleOn) signBlock?.layout?.audio else null
@@ -881,7 +890,7 @@ class MainActivity : Activity(), Engine.Ui {
             radioUrl = url
             if (url.isNotEmpty()) startRadio(url)
         }
-        radio?.volume = if (c == null || a == null || c.stream.muted) 0f else (c.stream.volume / 100f) * (a.volume / 100f)
+        radio?.volume = (if (c == null || a == null || c.stream.muted) 0f else (c.stream.volume / 100f) * (a.volume / 100f)) * (if (programDucked) 0.1f else 1f)
     }
 
     private fun startRadio(url: String) {
@@ -1100,7 +1109,7 @@ class MainActivity : Activity(), Engine.Ui {
             codeStream = soundPool?.play(soundId, 1f, 1f, 3, -1, 1f) ?: 0
         } catch (_: Exception) {
         }
-        player.duck(true)
+        duckProgram(true)
         val token = ++codeAlarmToken
         handler.postDelayed({ if (token == codeAlarmToken) stopCodeAlarm() }, 90_000L)
     }
@@ -1109,7 +1118,7 @@ class MainActivity : Activity(), Engine.Ui {
         codeAlarmToken++
         if (codeStream != 0) try { soundPool?.stop(codeStream) } catch (_: Exception) { }
         codeStream = 0
-        player.duck(false)
+        duckProgram(false)
     }
 
     /** O som da chamada que vale agora e de onde veio (painel > aparelho > bipe + falada). */
@@ -1601,7 +1610,7 @@ class MainActivity : Activity(), Engine.Ui {
         if (call == null || c == null || !visible) {
             announceQueue.clear()
             announcing = false
-            if (shownCode == null) player.duck(false)
+            if (shownCode == null) duckProgram(false)
             return
         }
         announcing = true
@@ -1620,7 +1629,7 @@ class MainActivity : Activity(), Engine.Ui {
             soundPool?.play(chimeId, 1f, 1f, 2, 0, 1f)
         } catch (_: Exception) {
         }
-        player.duck(true)
+        duckProgram(true)
         if (voice) {
             handler.postDelayed({
                 if (token == announceToken && !sayCall(call, c.queue.showName, snd.volume / 100f) { finish() }) finish()

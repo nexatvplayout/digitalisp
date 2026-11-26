@@ -29,7 +29,37 @@
   function criar(raizEl, ctx) {
     var atual = null, timers = [], videos = [];
 
+    // ---- a zona de senha (§10): a senha chamada agora, o guichê e as anteriores; o app atualiza (senha(estado))
+    var filaEls = [], filaAtual = null;
+    function pintarSenha(z) {
+      var c = filaAtual && filaAtual.current;
+      z.code.textContent = c ? c.ticket : '—';
+      z.desk.textContent = c ? (c.name ? c.name + ' · ' : '') + (c.desk || '') : 'Aguarde a chamada';
+      z.last.innerHTML = '';
+      ((filaAtual && filaAtual.last) || []).slice(0, 3).forEach(function (x) { z.last.appendChild(el('span', 'tvc-z-qlast', x.ticket + (x.desk ? ' · ' + x.desk : ''))); });
+    }
+    function zonaSenha(c, prog) {
+      // o desenho da prévia (as cores do tema), com o conteúdo de verdade no lugar do exemplo
+      var n = raiz.TelasPrevia ? zonaPrevia('queue', null, prog) : null;
+      if (!n) { n = el('div', 'tvc-z-queue'); n.appendChild(el('span', '', 'SENHA')); n.appendChild(el('b', '')); n.appendChild(el('span', '')); }
+      var sp = n.querySelectorAll('span');
+      var z = { code: n.querySelector('b'), desk: sp[sp.length - 1], last: el('div', 'tvc-z-qlasts') };
+      n.appendChild(z.last);
+      var box = el('div', 'tvc-z' + (c._ov || ''));
+      box.appendChild(n);
+      c.appendChild(box);
+      filaEls.push(z); pintarSenha(z);
+      medidas(c);
+    }
+    var abaixado = false;
+    /** A chamada da senha: os vídeos da playlist com som caem 90% e depois voltam. */
+    function abaixar(sim) {
+      abaixado = !!sim;
+      videos.forEach(function (v) { if (v._vol === undefined) v._vol = v.volume; v.volume = Math.max(0, Math.min(1, v._vol * (abaixado ? 0.1 : 1))); });
+    }
+
     function limpar() {
+      filaEls = [];
       timers.forEach(function (t) { clearTimeout(t); clearInterval(t); });
       timers = [];
       videos.forEach(function (v) { try { v.pause(); v.removeAttribute('src'); v.load(); } catch (e) { /* nada */ } });
@@ -861,6 +891,7 @@
         if (zona.kind === 'video') { var rv = N.retanguloNaTela(zona, jan); rv.cobrir = zona.preencher; /* proporcional por padrão; cover só com zone.fit 'cover' */ if (recorteCss) rv.recorte = recorteCss; zonaVideo(c, prog, rv); }
         else if (zona.kind === 'hdmi') zonaHdmi(c, zona, prog, jan, alvo, bloco);
         else if (zona.kind === 'playlist') playlist(c, itens, prog);
+        else if (zona.kind === 'queue') zonaSenha(c, prog);
         else if (zona.kind === 'ticker') faixa(c, avisosDa(prog).concat(itens.filter(function (i) { return i.kind === 'text'; }).map(function (i) { return { texto: i.title || i.text }; })), prog);
         else if (raiz.TelasPrevia && !itens.length && ['clock', 'logo', 'weather', 'qr', 'text'].indexOf(zona.kind) >= 0) zonaFixa(c, zona, prog);
         else if (zona.kind === 'clock') relogio(c, prog);
@@ -873,6 +904,9 @@
     return {
       mostrar: mostrar,
       calar: calar,
+      abaixar: abaixar,
+      temSenha: function () { return filaEls.length > 0; },
+      senha: function (estado) { filaAtual = estado || null; filaEls.forEach(pintarSenha); },
       // limpar por fora (tela revogada, TV desligada pelo horário, conteúdo apagado) para também o ao vivo
       limpar: function () { limpar(); if (ctx.aoVivo) ctx.aoVivo.parar(); if (ctx.radio) ctx.radio.parar(); semHdmi(atual && atual.prog); },
       atual: function () { return atual; }
