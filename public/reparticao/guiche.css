@@ -9,3 +9,6 @@
 .g-rk { display: inline-flex; align-items: center; gap: 6px; }
 .g-rk.on { outline: 3px solid currentColor; outline-offset: 1px; font-weight: 700; }
 .g-rk-sel { margin: 0 8px; padding: 6px 8px; border-radius: 8px; }
+/* a senha na cor da classificação (rkt: o texto; rkb: a etiqueta da fila) */
+.r-now-code.rkt-vermelho { color: #ff4d3f; } .r-now-code.rkt-laranja { color: #f08c00; } .r-now-code.rkt-amarelo { color: #e6b800; } .r-now-code.rkt-verde { color: #2f9e44; } .r-now-code.rkt-azul { color: #1c7ed6; }
+.r-tag.rkb-vermelho { background: #d92d20; color: #fff; } .r-tag.rkb-laranja { background: #f08c00; color: #fff; } .r-tag.rkb-amarelo { background: #e6b800; color: #111; } .r-tag.rkb-verde { background: #2f9e44; color: #fff; } .r-tag.rkb-azul { background: #1c7ed6; color: #fff; }

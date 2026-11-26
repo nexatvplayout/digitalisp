@@ -210,3 +210,7 @@
 .pf-link-qr { width: 140px; height: 140px; flex: none; background: #fff; padding: 6px; border-radius: 8px; }
 .pf-link-b { flex: 1; min-width: 220px; display: grid; gap: 6px; }
 .pf-link-b .pf-url { word-break: break-all; }
+/* os links de todas as salas juntos */
+.pf-salas-links { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-top: 10px; }
+.pf-sala-link { display: grid; gap: 6px; justify-items: center; text-align: center; padding: 10px; border: 1px solid var(--c-line); border-radius: 8px; }
+.pf-sala-link .pf-url { word-break: break-all; }

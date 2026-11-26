@@ -31,19 +31,29 @@
 
     // ---- a zona de senha (§10): a senha chamada agora, o guichê e as anteriores; o app atualiza (senha(estado))
     var filaEls = [], filaAtual = null;
+    // as cores da classificação de risco (as mesmas da página da repartição)
+    var COR_RISCO = { vermelho: '#d92d20', laranja: '#f08c00', amarelo: '#e6b800', verde: '#2f9e44', azul: '#1c7ed6' };
     function pintarSenha(z) {
       var c = filaAtual && filaAtual.current;
+      var cor = c && COR_RISCO[c.risk];
+      z.box.style.background = cor || '';
+      z.box.style.color = cor ? (c.risk === 'amarelo' ? '#111111' : '#ffffff') : '';
+      z.code.style.color = cor ? 'inherit' : '';
       z.code.textContent = c ? c.ticket : '—';
       z.desk.textContent = c ? (c.name ? c.name + ' · ' : '') + (c.desk || '') : 'Aguarde a chamada';
       z.last.innerHTML = '';
-      ((filaAtual && filaAtual.last) || []).slice(0, 3).forEach(function (x) { z.last.appendChild(el('span', 'tvc-z-qlast', x.ticket + (x.desk ? ' · ' + x.desk : ''))); });
+      ((filaAtual && filaAtual.last) || []).slice(0, 3).forEach(function (x) {
+        var s = el('span', 'tvc-z-qlast', x.ticket + (x.desk ? ' · ' + x.desk : ''));
+        if (COR_RISCO[x.risk]) { s.style.background = COR_RISCO[x.risk]; s.style.color = x.risk === 'amarelo' ? '#111111' : '#ffffff'; s.style.opacity = '1'; }
+        z.last.appendChild(s);
+      });
     }
     function zonaSenha(c, prog) {
       // o desenho da prévia (as cores do tema), com o conteúdo de verdade no lugar do exemplo
       var n = raiz.TelasPrevia ? zonaPrevia('queue', null, prog) : null;
       if (!n) { n = el('div', 'tvc-z-queue'); n.appendChild(el('span', '', 'SENHA')); n.appendChild(el('b', '')); n.appendChild(el('span', '')); }
       var sp = n.querySelectorAll('span');
-      var z = { code: n.querySelector('b'), desk: sp[sp.length - 1], last: el('div', 'tvc-z-qlasts') };
+      var z = { box: n, code: n.querySelector('b'), desk: sp[sp.length - 1], last: el('div', 'tvc-z-qlasts') };
       n.appendChild(z.last);
       var box = el('div', 'tvc-z' + (c._ov || ''));
       box.appendChild(n);

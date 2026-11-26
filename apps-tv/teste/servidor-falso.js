@@ -439,7 +439,7 @@ function controle(req, res, url) {
   if (p === '/teste/chave') { const k = codigo(); est.chaves.set(k, false); registrar('chave ' + k); return volta({ key: k }); }
   // o código de emergência da tela interna (§17): /teste/codigo?on=1 dispara o Código Azul; on=0 encerra
   if (p === '/teste/codigo') { est.codigos = q.get('on') === '0' ? [] : [{ id: Date.now(), code: 'azul', label: 'Código Azul', meaning: 'Parada cardiorrespiratória', color: '#1565c0', textColor: '#ffffff', place: 'Observação, leito 4', firedAt: Date.now(), until: Date.now() + 30 * 60000 }]; registrar('código ' + (est.codigos.length ? 'disparado' : 'encerrado')); return volta(); }
-  if (p === '/teste/chamar') { const ant = est.fila && est.fila.current; est.fila = { current: { id: Date.now(), ticket: q.get('senha') || 'A001', desk: q.get('guiche') || 'Guichê 1', at: Date.now() }, last: ant ? [ant, ...((est.fila && est.fila.last) || [])].slice(0, 12) : [] }; registrar('senha ' + est.fila.current.ticket); return volta(); }
+  if (p === '/teste/chamar') { const ant = est.fila && est.fila.current; est.fila = { current: { id: Date.now(), ticket: q.get('senha') || 'A001', desk: q.get('guiche') || 'Guichê 1', risk: q.get('risco') || null, at: Date.now() }, last: ant ? [ant, ...((est.fila && est.fila.last) || [])].slice(0, 12) : [] }; registrar('senha ' + est.fila.current.ticket); return volta(); }
   if (p === '/teste/rede') { est.rede = q.get('on') !== '0'; registrar('rede ' + (est.rede ? 'ligada' : 'desligada')); return volta(); }
   if (p === '/teste/nova-imagem') {
     est.versao++;

@@ -7,6 +7,30 @@ import { el, api, guard, toast, copyText, state, bytes } from '../lib.js';
 import { UFS } from '../../shared/br-docs.js';
 import { qrSvg } from '../../shared/telas-previa.js';
 
+/** Os links de todas as salas juntos: um cartão por sala (nome, QR code, link) e a folha para imprimir e colar em cada porta. */
+function todasAsSalas(b, links) {
+  b.hidden = false;
+  const cards = links.map((l) => el('div', { class: 'pf-sala-link' }, el('b', { text: l.name }), qrSvg(l.url, 'pf-link-qr'), el('div', { class: 'pf-url small', text: l.url }),
+    el('div', { class: 'pf-btns left' }, el('button', { class: 'btn small', type: 'button', onclick: () => copyText(l.url) }, 'Copiar'), el('a', { class: 'btn small', href: l.url, target: '_blank', rel: 'noopener noreferrer', text: 'Abrir' }))));
+  const imprimir = () => {
+    const w = window.open('', '_blank'); if (!w) return;
+    const doc = w.document;
+    doc.title = 'Links das salas';
+    const st = doc.createElement('style');
+    st.textContent = 'body{font-family:system-ui,sans-serif;margin:16px}.g{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}.c{border:1px solid #999;border-radius:8px;padding:14px;text-align:center;break-inside:avoid}.c b{font-size:22px;display:block;margin-bottom:8px}.c svg{width:220px;height:220px}.c p{font-size:11px;word-break:break-all}';
+    doc.head.append(st);
+    const g = doc.createElement('div'); g.className = 'g';
+    for (const l of links) { const c = doc.createElement('div'); c.className = 'c'; const t = doc.createElement('b'); t.textContent = l.name; const p = doc.createElement('p'); p.textContent = l.url; c.append(t, qrSvg(l.url, 'q'), p); g.append(c); }
+    const h = doc.createElement('h2'); h.textContent = 'Links das salas: o profissional lê o QR code com o celular para chamar e finalizar';
+    doc.body.append(h, g);
+    setTimeout(() => w.print(), 300);
+  };
+  b.replaceChildren(el('p', { class: 'dim small', text: 'Os links de todas as salas (aparecem só agora: copie, abra ou imprima a folha e cole o QR code na porta de cada consultório).' }),
+    el('div', { class: 'pf-btns left' }, el('button', { class: 'btn primary', type: 'button', onclick: imprimir }, 'Imprimir a folha com os QR codes')),
+    el('div', { class: 'pf-salas-links' }, ...cards));
+  b.scrollIntoView?.({ block: 'start', behavior: 'smooth' });
+}
+
 /** Um link gerado (totem, guichê ou sala): o texto, o endereço, o QR code para abrir no celular, copiar e abrir. */
 function mostrarLink(b, text, url) {
   b.hidden = false;
@@ -153,6 +177,14 @@ async function paintRooms(box, ui, o, base) {
         el('button', { class: 'btn small', type: 'button', onclick: guard(async () => { await api(`${base}/rooms/${x.id}`, { method: 'PATCH', body: { active: !x.active } }); await again(); }) }, x.active ? 'Desativar' : 'Reativar'),
         el('button', { class: 'btn small danger', type: 'button', onclick: guard(async () => { if (!confirm(`Remover a sala "${x.name}"?`)) return; await api(`${base}/rooms/${x.id}`, { method: 'DELETE' }); await again(); }) }, 'Remover'))))) : el('p', { class: 'dim small', text: 'Nenhuma sala ainda.' }),
     el('div', { class: 'pf-bar' }, rName, rKind, rGroup, el('button', { class: 'btn primary', type: 'button', onclick: guard(async () => { await api(`${base}/rooms`, { method: 'POST', body: { name: rName.value, kind: rKind.value, groupId: rGroup.value ? Number(rGroup.value) : null } }); toast('Sala criada.'); await again(); }) }, '+ Adicionar sala')),
+    r.rooms.some((x) => x.active) ? el('div', { class: 'pf-btns left' }, el('button', { class: 'btn primary', type: 'button', onclick: guard(async () => {
+      const salas = r.rooms.filter((x) => x.active);
+      if (salas.some((x) => x.link.on) && !confirm('Gerar os links de todas as salas? Os links de antes deixam de valer (abra os novos em cada consultório).')) return;
+      const links = [];
+      for (const x of salas) links.push({ name: x.name, url: (await api(`${base}/rooms/${x.id}/link`, { method: 'POST', body: {} })).url });
+      await again();
+      todasAsSalas(box.querySelector('.pf-keybox') || keyBox, links);
+    }) }, 'Gerar os links de todas as salas (com QR code)')) : null,
     keyBox,
     el('p', { class: 'dim small', text: `Etapas do atendimento: ${r.upa.flow.length ? r.upa.flow.map((x) => x.name || r.services.find((y) => y.id === x.serviceId)?.name).join(' → ') : 'não configuradas'}. QR do acompanhante: ${r.upa.follow ? 'ligado' : 'desligado'}. As etapas, o QR, a espera estimada e os pedidos de apoio se configuram na página da repartição, aba Salas e consultórios.` }),
     el('div', { class: 'pf-btns left' }, el('button', { class: 'btn', type: 'button', onclick: csv }, 'Indicadores dos últimos 7 dias (CSV)')));

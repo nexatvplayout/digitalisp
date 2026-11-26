@@ -33,6 +33,8 @@ function paint() {
   $('from').replaceChildren(option('', 'Todas as filas', !from), ...G.services.map((s) => option(s.id, s.name, String(s.id) === from)));
   const t = mine();
   $('code').textContent = t ? t.code : '—';
+  // a senha na cor da classificação de risco (a mesma da TV)
+  $('code').className = `r-now-code${t && t.risk ? ` rkt-${t.risk}` : ''}`;
   $('info').textContent = t ? `${t.service}${t.priority === 2 ? ' · 80 anos ou mais' : t.priority ? ' · preferencial' : ' · normal'}${t.name ? ` · ${t.name}` : ''} · chamada há ${waited(G.serverTime - t.calledAt)}` : (desk() ? 'Nenhuma senha em atendimento aqui. Toque em Chamar próxima.' : 'Escreva o nome deste guichê.');
   for (const id of ['repeat', 'requeue', 'noshow', 'finish']) $(id).disabled = !t;
   const keep = $('forwardTo').value;
@@ -47,8 +49,9 @@ function paint() {
 const RISKS = ['vermelho', 'laranja', 'amarelo', 'verde', 'azul'];
 /** A cor da senha em atendimento (só quando a repartição usa a classificação de risco). */
 function paintRisk(t) {
-  $('riskRow').hidden = !G.risk || !t;
-  if (!G.risk || !t) return;
+  $('riskRow').hidden = false;
+  if (!G.risk) { $('riskBtns').replaceChildren(Object.assign(document.createElement('span'), { className: 'r-dim', textContent: 'Desligada nesta unidade. Para usar, o responsável liga "Classificação de risco por cor" no painel: Unidades e grupos → Chamada de senha → 4.' })); return; }
+  if (!t) { $('riskBtns').replaceChildren(Object.assign(document.createElement('span'), { className: 'r-dim', textContent: 'Chame uma senha para classificar (ou escolha a cor de cada senha na fila, abaixo).' })); return; }
   $('riskBtns').replaceChildren(...RISKS.map((k) => {
     const b = document.createElement('button'); b.type = 'button'; b.className = `r-btn small g-rk${t.risk === k ? ' on' : ''}`;
     const dot = document.createElement('span'); dot.className = `r-risk rk-${k}`; dot.setAttribute('aria-hidden', 'true');
@@ -64,7 +67,7 @@ function paintQueue() {
   $('queueBox').hidden = false; $('queueEmpty').hidden = list.length > 0;
   $('queue').replaceChildren(...list.map((t) => {
     const li = document.createElement('li');
-    const tag = document.createElement('span'); tag.className = `r-tag${t.priority ? ' live' : ''}`; tag.textContent = t.code;
+    const tag = document.createElement('span'); tag.className = `r-tag${t.priority ? ' live' : ''}${t.risk ? ` rkb-${t.risk}` : ''}`; tag.textContent = t.code;
     const mid = document.createElement('span');
     const b = document.createElement('b');
     if (t.risk) { const dot = document.createElement('span'); dot.className = `r-risk rk-${t.risk}`; dot.setAttribute('role', 'img'); dot.setAttribute('aria-label', RISK_WORD[t.risk] || t.risk); b.append(dot); }
