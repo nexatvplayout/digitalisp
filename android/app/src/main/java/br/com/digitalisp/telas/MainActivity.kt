@@ -778,7 +778,9 @@ class MainActivity : Activity(), Engine.Ui {
         }
         frame.addView(fallbackView)
         paintFallback()
-        c?.stream?.youtube?.let { page -> buildYoutube(frame, page, c) }
+        // só no layout com zona de vídeo: no layout sem ela (o da rádio, o só de avisos) a moldura fica escondida e o som
+        // do YouTube tocaria por baixo (dono, 26/11)
+        if (!mute) c?.stream?.youtube?.let { page -> buildYoutube(frame, page, c) }
         // legenda (contrato §14): dentro da área do vídeo, por cima dele e longe das bordas (margem do overscan); a faixa
         // de avisos e o cartão da chamada ficam fora da moldura do vídeo ou por cima, então ela nunca os cobre
         // 1.2.6 (dono, 15/11): igual à legenda da TV Samsung e da web (core/CaptionLook): uma caixa escura translúcida
