@@ -544,46 +544,94 @@
 
   var seq = [];
   // ------------------------------------------------------------------ menu do app (tecla verde ou ↑ ↑ ↓ ↓ ←)
-  // Hoje: a entrada HDMI que aparece nos layouts com a zona HDMI (HDMI 1 a 4; só as que a TV tem, quando ela diz)
-  var menu = { aberto: false, ops: [], foco: 0 };
+  // Pede a senha do menu (a mesma em todos os aparelhos). Depois: a entrada HDMI dos layouts com HDMI e o tamanho da imagem
+  // (a margem nas bordas, para a TV que corta a imagem).
+  var TECLADO = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '⌫', 'OK'];
+  var menu = { aberto: false, etapa: 'senha', senha: '', tecla: 0, linha: 0, ops: [], foco: 0, msg: '' };
   function abrirMenu() {
-    var m = $('menu');
+    menu.aberto = true; menu.etapa = 'senha'; menu.senha = ''; menu.tecla = 0; menu.msg = '';
+    desenharMenu();
+    $('menu').hidden = false;
+  }
+  function abrirAjustes() {
     ctxTela.hdmi = ctxTela.hdmi || (raiz.TelasHdmi ? raiz.TelasHdmi.criar() : null);
     var listar = ctxTela.hdmi ? ctxTela.hdmi.entradas : function (cb) { cb(N.entradasHdmi(null)); };
     listar(function (lista) {
       var atualN = ctxTela.hdmiEntrada();
       menu.ops = lista;
       menu.foco = Math.max(0, lista.map(function (o) { return o.n; }).indexOf(atualN));
-      menu.aberto = true;
+      menu.etapa = 'ajustes'; menu.linha = 0;
       desenharMenu();
-      m.hidden = false;
     });
   }
+  function el2(tag, cls, txt) { var n = document.createElement(tag); if (cls) n.className = cls; if (txt != null) n.textContent = txt; return n; }
   function desenharMenu() {
     var m = $('menu');
-    var atualN = ctxTela.hdmiEntrada();
     m.innerHTML = '';
-    var t = document.createElement('h2'); t.textContent = 'Configurações'; m.appendChild(t);
-    var it = document.createElement('div'); it.className = 'menu-item'; it.textContent = 'Entrada HDMI nos layouts com HDMI'; m.appendChild(it);
-    var ops = document.createElement('div'); ops.className = 'menu-opcoes';
+    m.appendChild(el2('h2', '', 'Configurações'));
+    if (menu.etapa === 'senha') {
+      m.appendChild(el2('div', 'menu-item', 'Digite a senha do menu'));
+      m.appendChild(el2('div', 'menu-senha', menu.senha.replace(/./g, '● ') || ' '));
+      var tk = el2('div', 'menu-opcoes');
+      TECLADO.forEach(function (t, i) { tk.appendChild(el2('div', 'menu-op' + (i === menu.tecla ? ' foco' : ''), t)); });
+      m.appendChild(tk);
+      if (menu.msg) m.appendChild(el2('div', 'menu-msg', menu.msg));
+      m.appendChild(el2('div', 'menu-dica', 'Números do controle ou ◀ ▶ e OK · Voltar fecha'));
+      return;
+    }
+    var atualN = ctxTela.hdmiEntrada();
+    m.appendChild(el2('div', 'menu-item' + (menu.linha === 0 ? ' ativo' : ''), 'Entrada HDMI nos layouts com HDMI'));
+    var ops = el2('div', 'menu-opcoes');
     menu.ops.forEach(function (o, i) {
-      var b = document.createElement('div');
-      b.className = 'menu-op' + (o.n === atualN ? ' sel' : '') + (i === menu.foco ? ' foco' : '');
-      b.textContent = 'HDMI ' + o.n + (o.conectada === true ? ' ●' : o.conectada === false ? ' (sem cabo)' : '');
-      ops.appendChild(b);
+      ops.appendChild(el2('div', 'menu-op' + (o.n === atualN ? ' sel' : '') + (menu.linha === 0 && i === menu.foco ? ' foco' : ''),
+        'HDMI ' + o.n + (o.conectada === true ? ' ●' : o.conectada === false ? ' (sem cabo)' : '')));
     });
     m.appendChild(ops);
-    var d = document.createElement('div'); d.className = 'menu-dica';
-    d.textContent = (ctxTela.hdmi && ctxTela.hdmi.disponivel() ? '' : 'Esta TV não mostra a entrada HDMI pelo app. ') + '◀ ▶ escolhe · OK salva · Voltar fecha';
-    m.appendChild(d);
+    var mg = ctxTela.margem();
+    m.appendChild(el2('div', 'menu-item' + (menu.linha === 1 ? ' ativo' : ''), 'Tamanho da imagem (margem nas bordas)'));
+    var mgs = el2('div', 'menu-opcoes');
+    N.MARGENS.forEach(function (v) { mgs.appendChild(el2('div', 'menu-op' + (v === mg ? ' sel' : '') + (menu.linha === 1 && v === mg ? ' foco' : ''), v + '%')); });
+    m.appendChild(mgs);
+    m.appendChild(el2('div', 'menu-dica', (ctxTela.hdmi && ctxTela.hdmi.disponivel() ? '' : 'Esta TV não mostra a entrada HDMI pelo app. ') +
+      '▲ ▼ escolhe o ajuste · ◀ ▶ muda · OK salva a entrada · Voltar fecha. Aumente a margem se a TV cortar as bordas.'));
   }
-  function fecharMenu() { menu.aberto = false; $('menu').hidden = true; }
-  function teclaMenu(k) {
+  function fecharMenu() { menu.aberto = false; menu.senha = ''; $('menu').hidden = true; }
+  function digitoMenu(d) {
+    if (d === '⌫') menu.senha = menu.senha.slice(0, -1);
+    else if (d === 'OK') {
+      if (N.senhaMenuOk(menu.senha, raiz.TelasSha256)) { menu.senha = ''; abrirAjustes(); return; }
+      menu.msg = 'Senha errada.'; menu.senha = '';
+    } else if (menu.senha.length < 8) { menu.senha += d; menu.msg = ''; }
+    desenharMenu();
+  }
+  function teclaMenu(k, ev) {
     if (k === 'BACK' || k === 'GREEN') { fecharMenu(); return; }
+    if (menu.etapa === 'senha') {
+      var c = ev && ev.keyCode;
+      if (c >= 48 && c <= 57) { digitoMenu(String(c - 48)); return; }
+      if (c >= 96 && c <= 105) { digitoMenu(String(c - 96)); return; }
+      if (k === 'LEFT') menu.tecla = (menu.tecla - 1 + TECLADO.length) % TECLADO.length;
+      else if (k === 'RIGHT') menu.tecla = (menu.tecla + 1) % TECLADO.length;
+      else if (k === 'OK') { digitoMenu(TECLADO[menu.tecla]); return; }
+      desenharMenu();
+      return;
+    }
+    if (k === 'UP' || k === 'DOWN') { menu.linha = menu.linha === 0 ? 1 : 0; desenharMenu(); return; }
+    if (menu.linha === 1) {
+      // o tamanho da imagem: muda e redesenha na hora (fica gravado no aparelho)
+      var i = N.MARGENS.indexOf(ctxTela.margem());
+      if (k === 'LEFT') i = Math.max(0, i - 1);
+      else if (k === 'RIGHT') i = Math.min(N.MARGENS.length - 1, i + 1);
+      else if (k === 'OK') { fecharMenu(); return; }
+      A.gravar('margem', N.MARGENS[i]);
+      desenhar(true);
+      desenharMenu();
+      return;
+    }
     var n = menu.ops.length;
     if (!n) return;
-    if (k === 'LEFT' || k === 'UP') menu.foco = (menu.foco - 1 + n) % n;
-    else if (k === 'RIGHT' || k === 'DOWN') menu.foco = (menu.foco + 1) % n;
+    if (k === 'LEFT') menu.foco = (menu.foco - 1 + n) % n;
+    else if (k === 'RIGHT') menu.foco = (menu.foco + 1) % n;
     else if (k === 'OK') {
       A.gravar('hdmiEntrada', menu.ops[menu.foco].n);
       fecharMenu();
@@ -596,7 +644,8 @@
 
   function teclas(ev) {
     var k = P.tecla(ev);
-    if (menu.aberto && k) { ev.preventDefault(); teclaMenu(k); return; }
+    // com o menu aberto, os números do controle também contam (a senha)
+    if (menu.aberto && (k || (ev.keyCode >= 48 && ev.keyCode <= 57) || (ev.keyCode >= 96 && ev.keyCode <= 105))) { ev.preventDefault(); teclaMenu(k, ev); return; }
     // dentro do campo da chave, Backspace/Esc são do campo (apagar), não o "Voltar" do app
     if (ev.target && ev.target.tagName === 'INPUT' && (ev.keyCode === 8 || ev.keyCode === 27 || ev.keyCode === 13 || ev.keyCode === 65376)) return;
     if (k === 'BACK') { ev.preventDefault(); if (!$('diag').hidden) $('diag').hidden = true; return; } // não sai do app
@@ -627,7 +676,8 @@
         ['Espaço', esp ? Math.round(esp.used / 1048576) + ' MB usados, ' + Math.round(esp.free / 1048576) + ' MB livres' : 'a TV não informa'],
         ['Hora', new Date(agora()).toLocaleString('pt-BR')],
         ['Entrada HDMI', 'HDMI ' + ctxTela.hdmiEntrada() + (ctxTela.hdmi && ctxTela.hdmi.disponivel() ? '' : ' (esta TV não mostra pelo app)')],
-        ['Menu', 'tecla verde ou ↑ ↑ ↓ ↓ ←'],
+        ['Menu', 'tecla verde ou ↑ ↑ ↓ ↓ ← (pede a senha)'],
+        ['Margem da tela', ctxTela.margem() + '%'],
         ['Último erro', est.erro || '—']
       ];
       $('diag-lista').innerHTML = '';
@@ -666,6 +716,8 @@
     // a entrada HDMI da TV nas zonas 'hdmi' (só Samsung); a escolhida no menu fica no aparelho (padrão: HDMI 1)
     ctxTela.hdmi = raiz.TelasHdmi ? raiz.TelasHdmi.criar() : null;
     ctxTela.hdmiEntrada = function () { var n = Number(A.ler('hdmiEntrada', 1)); return n >= 1 && n <= 8 ? n : 1; };
+    // a margem da tela (menu → Tamanho da imagem), de 0 a 8%; padrão 0: a imagem inteira
+    ctxTela.margem = function () { return N.limparMargem(A.ler('margem', 0)); };
     ctxTela.radio = raiz.TelasRadio.criar({
       mudo: function () { return ctxTela.mudo; },
       volume: function () { return ctxTela.volume; },

@@ -427,10 +427,15 @@ class SignItemView(
             weather(r) // o clima da configuração, do jeito de sempre
             return
         }
+        val hasDays = wx.days.isNotEmpty() && r.height() > r.width() * 0.45f
+        val mainH = if (hasDays) r.height() * 0.62f else r.height()
+        // a frase do tempo ("muitas nuvens com pancadas de chuva"): inteira, em até 2 linhas, nunca cortada com reticências
+        val condL = if (wx.text.isEmpty()) null else {
+            val px = minOf(r.width(), mainH) * 0.07f
+            SignText.fit(wx.text, r.width().toInt(), (px * 2.4f).toInt(), px, px * 0.5f, look.text, false, 2, TextLayout.Alignment.ALIGN_CENTER)
+        }
         dynamic = draw@{ c ->
             if (wx.at > 0 && env.now() - wx.at >= br.com.digitalisp.telas.core.WeatherCfg.MAX_AGE_MS) return@draw
-            val hasDays = wx.days.isNotEmpty() && r.height() > r.width() * 0.45f
-            val mainH = if (hasDays) r.height() * 0.62f else r.height()
             val titleTxt = item.title.ifEmpty { wx.city }
             var top = r.top
             if (titleTxt.isNotEmpty()) {
@@ -441,7 +446,8 @@ class SignItemView(
                 top += tp.textSize * 1.4f
             }
             val temp = wx.tempC?.let { "$it°" } ?: listOfNotNull(wx.min?.let { "$it°" }, wx.max?.let { "$it°" }).joinToString(" / ")
-            val avail = r.top + mainH - top
+            val condH = condL?.let { it.height + minOf(r.width(), mainH) * 0.02f } ?: 0f
+            val avail = r.top + mainH - top - condH
             val vertical = r.width() < avail * 1.3f
             val ico = if (vertical) minOf(r.width() * 0.55f, avail * 0.45f) else minOf(avail * 0.85f, r.width() * 0.4f)
             tp.typeface = Typeface.DEFAULT_BOLD
@@ -460,12 +466,7 @@ class SignItemView(
                 weatherIcon(c, wx.cond, x0, top + (avail - ico) / 2, ico)
                 c.drawText(temp, x0 + ico * 1.1f, top + avail / 2 + tp.textSize * 0.36f, tp)
             }
-            if (wx.text.isNotEmpty()) {
-                tp.typeface = Typeface.DEFAULT
-                tp.textSize = minOf(r.width(), mainH) * 0.06f
-                val ww = minOf(tp.measureText(wx.text), r.width())
-                SignText.line(c, wx.text, r.centerX() - ww / 2, r.top + mainH - tp.textSize * 0.2f, r.width(), tp)
-            }
+            if (condL != null) SignText.draw(c, condL, r.left, r.top + mainH - condL.height)
             if (hasDays) {
                 val n = wx.days.size
                 val cw = r.width() / n
@@ -1496,9 +1497,10 @@ class SignItemView(
                 tp.typeface = Typeface.DEFAULT
                 val px = tp.textSize * 0.3f
                 tp.textSize = px
-                SignText.line(c, wt.condition, r.left, r.top + px * 5f, r.width(), tp)
+                val cl = SignText.fit(wt.condition, r.width().toInt(), (px * 2.4f).toInt(), px, px * 0.6f, look.text, false, 2)
+                SignText.draw(c, cl, r.left, r.top + px * 4.1f)
                 tp.color = look.dim
-                SignText.line(c, wt.city, r.left, r.top + px * 6.4f, r.width(), tp)
+                SignText.line(c, wt.city, r.left, r.top + px * 4.6f + cl.height, r.width(), tp)
             }
         }
     }

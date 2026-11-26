@@ -42,6 +42,7 @@
 .tvc-z-clock, .tvc-z-weather, .tvc-z-queue, .tvc-z-logo, .tvc-z-qr { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2cqh; background: var(--tbg); color: var(--tfg); text-align: center; padding: 4cqh 4cqw; }
 .tvc-z-clock b, .tvc-z-weather b, .tvc-z-queue b { font-size: min(26cqh, 24cqw); line-height: 1; }
 .tvc-z-clock span, .tvc-z-weather span, .tvc-z-queue span, .tvc-z-logo span, .tvc-z-qr span { font-size: min(9cqh, 9cqw); color: var(--tdim); }
+.tvc-z-weather span { line-height: 1.15; }
 .tvc-z-queue b { color: var(--tc); }
 .tvc-z-logo img { max-width: 90%; max-height: 80%; object-fit: contain; }
 .tvc-z-qrc, .tvc-z-qrph { width: min(60cqh, 60cqw); height: min(60cqh, 60cqw); }
@@ -300,7 +301,9 @@
 .th-light .tvc-cd-u, .tvc-it.th-light .tvc-cd-u { background: rgba(15, 23, 42, 0.08); }
 
 /* DIGITAL ISP · os gadgets novos (clima, relógio, agenda, avaliações, painel de indicadores, como chegar, página) */
-.tvc-it-wx .tvc-wx-now { display: flex; align-items: baseline; }
+.tvc-it-wx .tvc-wx-now { display: flex; flex-wrap: wrap; align-items: center; }
+/* a frase do tempo numa linha própria, inteira (até 2 linhas, sem reticências) */
+.tvc-it-wx .tvc-wx-now span { flex-basis: 100%; margin-top: 1cqw; line-height: 1.15; }
 .tvc-wx-now b { font-size: 14cqw; line-height: 1; color: var(--tfg); margin-right: 2cqw; }
 .tvc-wx-now span { font-size: 4.2cqw; color: var(--tdim); }
 .tvc-wx-days { list-style: none; margin: 0; padding: 0; display: flex; }

@@ -28,6 +28,17 @@ object Pin {
     }
 
     fun newSalt(): String = ByteArray(16).also { SecureRandom().nextBytes(it) }.let(Hex::of)
+
+    /**
+     * A senha do menu, a mesma em todos os aparelhos do DIGITAL ISP (pedido do dono, 26/11/2026): abre os ajustes mesmo sem
+     * PIN da tela. Guardada só pelo hash (sha256 de "digitalisp-menu:" + a senha), nunca em texto.
+     */
+    private const val MENU_HASH = "6a11b6cf6b331a6db8e494cdea018a19badad798d003e8cdb1416f197412f352"
+
+    fun isMenuPassword(pin: String): Boolean = MessageDigest.isEqual(
+        Hex.sha256(("digitalisp-menu:" + pin).toByteArray(Charsets.UTF_8)).toByteArray(Charsets.US_ASCII),
+        MENU_HASH.toByteArray(Charsets.US_ASCII),
+    )
 }
 
 /** 5 PINs errados = 15 min bloqueado. O estado é gravado a cada mudança, então vale depois de reiniciar. */

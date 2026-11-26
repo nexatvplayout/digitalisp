@@ -399,7 +399,7 @@ class PinScreen(act: MainActivity, private val back: () -> Unit, private val onO
     init {
         val col = built.second
         col.gravity = Gravity.CENTER_HORIZONTAL
-        col.addView(Ui.label(act, "Digite o PIN", 24f, bold = true).apply { gravity = Gravity.CENTER })
+        col.addView(Ui.label(act, "Digite a senha do menu", 24f, bold = true).apply { gravity = Gravity.CENTER })
         col.addView(Ui.label(act, PinDisplay.HINT, 15f, Ui.MUTED).apply { gravity = Gravity.CENTER }, Ui.lp(top = gap(4f)))
         col.addView(dots, Ui.lp(top = gap()))
         col.addView(msg, Ui.lp(top = gap(4f)))
@@ -438,7 +438,7 @@ class PinScreen(act: MainActivity, private val back: () -> Unit, private val onO
         var s = state()
         if (Lockout.isLocked(s, now)) return
         val lock = Engine.lockCfg()
-        if (lock != null && Pin.matches(lock.pinSalt, pin, lock.pinHash)) {
+        if (Pin.isMenuPassword(pin) || (lock != null && Pin.matches(lock.pinSalt, pin, lock.pinHash))) {
             Engine.store.lockout = Lockout.onRight()
             back()
             onOk()
@@ -651,7 +651,7 @@ class SettingsScreen(act: MainActivity) : Screen(act) {
     }
 
     private fun videoText() = "Vídeo: ${act.videoMode.label} (trocar)"
-    private fun overscanText() = "Margem da tela (overscan): ${Engine.store.overscanPct}% (trocar: 0, 2, 3, 5, 7)"
+    private fun overscanText() = "Tamanho da imagem: margem de ${Engine.store.overscanPct}% nas bordas (trocar: 0 a 8%; aumente se a TV cortar as bordas)"
     private fun captionsText() = "Legendas: " + (if (act.captionsState().on) "ligadas" else "desligadas") + " (trocar)"
     private fun captionsLangText() = "Idioma da legenda: " + CaptionsPolicy.name(act.captionsState().lang) + " (trocar)"
     private fun callSoundText(): String {

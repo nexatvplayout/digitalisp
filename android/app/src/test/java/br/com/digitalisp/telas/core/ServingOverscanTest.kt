@@ -48,7 +48,7 @@ class QueueServingTest {
     }
 }
 
-/** Margem de segurança (overscan): 0, 2, 3, 5 ou 7% de cada borda. */
+/** Margem de segurança (overscan): de 0 a 8% de cada borda, padrão 0 (a imagem inteira). */
 class OverscanTest {
     @Test fun margensPorBorda() {
         assertEquals(Insets(58, 32, 58, 32), Overscan.insets(1920, 1080, 3))
@@ -61,11 +61,11 @@ class OverscanTest {
     }
 
     @Test fun valoresPermitidosEOCiclo() {
-        assertEquals(3, Overscan.DEFAULT)
-        assertEquals(3, Overscan.clean(4))
-        assertEquals(3, Overscan.clean(-1))
-        assertEquals(Insets(58, 32, 58, 32), Overscan.insets(1920, 1080, 50))
-        assertEquals(listOf(2, 3, 5, 7, 0), listOf(0, 2, 3, 5, 7).map { Overscan.next(it) })
-        assertEquals(5, Overscan.next(4)) // desconhecido conta como o padrão
+        assertEquals(0, Overscan.DEFAULT)
+        assertEquals(4, Overscan.clean(4))
+        assertEquals(0, Overscan.clean(-1))
+        assertEquals(Insets(0, 0, 0, 0), Overscan.insets(1920, 1080, 50)) // fora da lista = o padrão (0)
+        assertEquals(listOf(1, 3, 8, 0), listOf(0, 2, 7, 8).map { Overscan.next(it) })
+        assertEquals(1, Overscan.next(50)) // desconhecido conta como o padrão
     }
 }

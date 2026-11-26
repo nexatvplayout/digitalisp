@@ -118,3 +118,6 @@ img.kenburns { animation: kenburns 10s linear both; transform-origin: 50% 50%; }
 #menu .menu-op.sel { border-color: var(--cor, #0ea5e9); background: rgba(14, 165, 233, 0.18); color: #fff; }
 #menu .menu-op.foco { outline: 3px solid #fff; }
 #menu .menu-dica { margin-top: 2vh; font-size: 2.2vh; color: #64748b; }
+#menu .menu-item.ativo { color: #fff; }
+#menu .menu-senha { font-size: 4vh; letter-spacing: .2em; min-height: 5vh; margin-bottom: 1.4vh; }
+#menu .menu-msg { margin-top: 1vh; font-size: 2.4vh; color: #fbbf24; }

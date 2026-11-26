@@ -835,6 +835,16 @@
         alvo.style.left = jan.offsetX + '%'; alvo.style.top = jan.offsetY + '%';
         alvo.style.width = jan.scaleX + '%'; alvo.style.height = jan.scaleY + '%';
         raizEl.appendChild(alvo);
+      } else if (ctx.margem && N.janelaMargem(ctx.margem())) {
+        // a margem da tela (menu → Tamanho da imagem): o layout inteiro menor, no meio de uma moldura preta; o ao vivo e a
+        // entrada HDMI acompanham pela mesma janela
+        jan = N.janelaMargem(ctx.margem());
+        alvo = el('div', 'quadro-conjunto');
+        alvo.style.left = jan.offsetX + '%'; alvo.style.top = jan.offsetY + '%';
+        alvo.style.width = jan.scaleX + '%'; alvo.style.height = jan.scaleY + '%';
+        alvo.style.background = raizEl.style.background;
+        raizEl.style.background = '#000';
+        raizEl.appendChild(alvo);
       }
       N.zonasParaTela(bloco.layout.zonas, bloco.itens).forEach(function (zona) {
         var c = el('div', 'zona zona-' + zona.kind);

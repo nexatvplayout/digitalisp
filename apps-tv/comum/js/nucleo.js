@@ -12,7 +12,7 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  var VERSAO = '1.0.28';
+  var VERSAO = '1.0.29';
   var TZ_PADRAO = 'America/Sao_Paulo';
   var SHA = /^[0-9a-f]{64}$/;
   var DIA = /^\d{4}-\d{2}-\d{2}$/;
@@ -911,7 +911,27 @@
   /** Espera da próxima tentativa (s): 5, 10, 20… até 300. */
   function espera(tentativa) { return Math.min(300, 5 * Math.pow(2, Math.max(0, tentativa))); }
 
+  // ------------------------------------------------------------------ menu: a senha e o tamanho da imagem
+  // A margem da tela (de 0 a 8% em cada borda): a TV que corta as bordas mostra o layout inteiro menor, numa moldura preta.
+  var MARGENS = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+  function limparMargem(v) { var n = Number(v); return MARGENS.indexOf(n) >= 0 ? n : 0; }
+  /** A janela do layout com a margem (o mesmo formato da janela do videowall), ou null sem margem. */
+  function janelaMargem(m) { m = limparMargem(m); return m ? { offsetX: m, offsetY: m, scaleX: 100 - 2 * m, scaleY: 100 - 2 * m } : null; }
+  // A senha do menu, a mesma em todos os aparelhos do DIGITAL ISP: guardada só pelo hash (sha256 de "digitalisp-menu:" + a senha)
+  var MENU_HASH = '6a11b6cf6b331a6db8e494cdea018a19badad798d003e8cdb1416f197412f352';
+  /** A senha digitada abre o menu? sha: o TelasSha256 (criar/update/hex). */
+  function senhaMenuOk(pin, sha) {
+    var s = String(pin == null ? '' : pin);
+    if (!/^[0-9]{4,8}$/.test(s) || !sha) return false;
+    s = 'digitalisp-menu:' + s;
+    var b = new Uint8Array(s.length);
+    for (var i = 0; i < s.length; i++) b[i] = s.charCodeAt(i);
+    var h = sha.criar(); h.update(b);
+    return h.hex() === MENU_HASH;
+  }
+
   return {
+    MARGENS: MARGENS, limparMargem: limparMargem, janelaMargem: janelaMargem, senhaMenuOk: senhaMenuOk,
     VERSAO: VERSAO, TETO: TETO, ZONAS: ZONAS, ITENS: ITENS,
     urlPermitida: urlPermitida, origem: origem, arquivo: arquivo, lerMarca: lerMarca, lerConfig: lerConfig,
     arquivosDoPacote: arquivosDoPacote, faltando: faltando, decidirTroca: decidirTroca, paraApagar: paraApagar,

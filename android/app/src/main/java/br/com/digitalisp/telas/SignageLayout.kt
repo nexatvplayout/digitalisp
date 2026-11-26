@@ -77,16 +77,25 @@ object SignageLayout {
         // videowall: o layout no tamanho do conjunto inteiro; esta TV mostra só a janela dela (o resto fica cortado)
         val wall = s.wall
         val win = if (wall != null && wall.videowall) Wall.window(wall) else null
-        val cw = if (win != null) Math.round(sw * win.scaleX / 100f) else sw
-        val ch = if (win != null) Math.round(sh * win.scaleY / 100f) else sh
-        val root = if (win == null) outer else FrameLayout(ctx).also {
+        // DIGITAL ISP (26/11/2026): a margem da tela (Ajustes → Tamanho da imagem) encolhe o layout INTEIRO dentro de uma moldura
+        // preta. Antes ela recuava o conteúdo de cada zona da borda, e o fundo do slide aparecia na sobra como uma faixa colorida.
+        val margin = win == null && (ins.left + ins.top + ins.right + ins.bottom) > 0
+        val cw = if (win != null) Math.round(sw * win.scaleX / 100f) else if (margin) sw - ins.left - ins.right else sw
+        val ch = if (win != null) Math.round(sh * win.scaleY / 100f) else if (margin) sh - ins.top - ins.bottom else sh
+        val root = if (win != null) FrameLayout(ctx).also {
             outer.addView(it, FrameLayout.LayoutParams(cw, ch).apply {
                 leftMargin = Math.round(sw * win.offsetX / 100f)
                 topMargin = Math.round(sh * win.offsetY / 100f)
             })
-        }
+        } else if (margin) FrameLayout(ctx).also {
+            outer.setBackgroundColor(android.graphics.Color.BLACK)
+            outer.addView(it, FrameLayout.LayoutParams(cw, ch).apply {
+                leftMargin = ins.left
+                topMargin = ins.top
+            })
+        } else outer
         val syncEpoch = wall?.takeIf { it.sync }?.epoch
-        val ins0 = if (win != null) Insets(0, 0, 0, 0) else ins
+        val ins0 = Insets(0, 0, 0, 0) // a margem já está na moldura (ou o videowall não usa margem)
         if (!block.layout.hasVideo) {
             // sem zona de vídeo: a moldura continua existindo (o player é o mesmo), embaixo de um fundo que a cobre
             root.addView(frame, FrameLayout.LayoutParams(cw, ch))

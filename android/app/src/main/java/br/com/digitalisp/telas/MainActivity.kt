@@ -2116,11 +2116,8 @@ class MainActivity : Activity(), Engine.Ui {
     }
 
     /** Roda `then` depois do PIN (ou direto, se nenhum PIN foi definido). */
+    /** O menu e as saídas pedem sempre a senha: a do menu (a mesma em todos os aparelhos) ou o PIN da tela, se houver. */
     fun requirePin(then: () -> Unit) {
-        if (Engine.lockCfg()?.hasPin != true) {
-            then()
-            return
-        }
         val prev = screen
         showScreen(PinScreen(this, { if (prev != null) showScreen(prev) else closeScreen() }, then))
     }

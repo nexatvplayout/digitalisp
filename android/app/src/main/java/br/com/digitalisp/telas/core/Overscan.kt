@@ -9,8 +9,9 @@ data class Insets(val left: Int, val top: Int, val right: Int, val bottom: Int)
  * Ajustada no aparelho (Ajustes e diagnóstico → "Margem da tela (overscan)"); o contrato não tem campo para isso.
  */
 object Overscan {
-    val CHOICES = listOf(0, 2, 3, 5, 7)
-    const val DEFAULT = 3
+    // DIGITAL ISP (26/11/2026): a TV de hoje (e o Fire TV) mostra a imagem inteira: o padrão é 0, e o ajuste vai de 1 em 1
+    val CHOICES = listOf(0, 1, 2, 3, 4, 5, 6, 7, 8)
+    const val DEFAULT = 0
 
     /** Valor guardado → um dos permitidos (desconhecido = o padrão). */
     fun clean(pct: Int): Int = if (pct in CHOICES) pct else DEFAULT
