@@ -543,7 +543,7 @@
   // ------------------------------------------------------------------ ajustes escondidos (↑ ↑ ↓ ↓ OK)
 
   var seq = [];
-  // ------------------------------------------------------------------ menu do app (tecla verde ou ↑ ↑ ↓ ↓ ←)
+  // ------------------------------------------------------------------ menu do app (tecla verde ou ↑ ↑ ↓ ↓ OK)
   // Pede a senha do menu (a mesma em todos os aparelhos). Depois: a entrada HDMI dos layouts com HDMI e o tamanho da imagem
   // (a margem nas bordas, para a TV que corta a imagem).
   var TECLADO = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '⌫', 'OK'];
@@ -592,6 +592,7 @@
     var mgs = el2('div', 'menu-opcoes');
     N.MARGENS.forEach(function (v) { mgs.appendChild(el2('div', 'menu-op' + (v === mg ? ' sel' : '') + (menu.linha === 1 && v === mg ? ' foco' : ''), v + '%')); });
     m.appendChild(mgs);
+    m.appendChild(el2('div', 'menu-item' + (menu.linha === 2 ? ' ativo' : ''), (menu.linha === 2 ? '▶ ' : '') + 'Ver o diagnóstico (OK)'));
     m.appendChild(el2('div', 'menu-dica', (ctxTela.hdmi && ctxTela.hdmi.disponivel() ? '' : 'Esta TV não mostra a entrada HDMI pelo app. ') +
       '▲ ▼ escolhe o ajuste · ◀ ▶ muda · OK salva a entrada · Voltar fecha. Aumente a margem se a TV cortar as bordas.'));
   }
@@ -616,7 +617,9 @@
       desenharMenu();
       return;
     }
-    if (k === 'UP' || k === 'DOWN') { menu.linha = menu.linha === 0 ? 1 : 0; desenharMenu(); return; }
+    if (k === 'UP') { menu.linha = (menu.linha + 2) % 3; desenharMenu(); return; }
+    if (k === 'DOWN') { menu.linha = (menu.linha + 1) % 3; desenharMenu(); return; }
+    if (menu.linha === 2) { if (k === 'OK') { fecharMenu(); diagnostico(); } return; }
     if (menu.linha === 1) {
       // o tamanho da imagem: muda e redesenha na hora (fica gravado no aparelho)
       var i = N.MARGENS.indexOf(ctxTela.margem());
@@ -654,8 +657,9 @@
     var campo = $('cad-chave');
     if (k === 'OK' && !$('cadastro').hidden && !campo.hidden && document.activeElement !== campo) { campo.focus(); return; }
     seq.push(k); seq = seq.slice(-5);
-    if (seq.join(' ') === 'UP UP DOWN DOWN OK' || k === 'INFO') { seq = []; diagnostico(); }
-    else if (seq.slice(-5).join(' ') === 'UP UP DOWN DOWN LEFT' || k === 'GREEN') { seq = []; $('diag').hidden = true; abrirMenu(); }
+    // ↑ ↑ ↓ ↓ OK (a mesma de todos os apps) ou a tecla verde: o menu, que pede a senha; INFO: o diagnóstico
+    if (seq.join(' ') === 'UP UP DOWN DOWN OK' || k === 'GREEN') { seq = []; $('diag').hidden = true; abrirMenu(); }
+    else if (k === 'INFO') { seq = []; diagnostico(); }
   }
 
   function diagnostico() {
@@ -676,7 +680,7 @@
         ['Espaço', esp ? Math.round(esp.used / 1048576) + ' MB usados, ' + Math.round(esp.free / 1048576) + ' MB livres' : 'a TV não informa'],
         ['Hora', new Date(agora()).toLocaleString('pt-BR')],
         ['Entrada HDMI', 'HDMI ' + ctxTela.hdmiEntrada() + (ctxTela.hdmi && ctxTela.hdmi.disponivel() ? '' : ' (esta TV não mostra pelo app)')],
-        ['Menu', 'tecla verde ou ↑ ↑ ↓ ↓ ← (pede a senha)'],
+        ['Menu', 'tecla verde ou ↑ ↑ ↓ ↓ OK (pede a senha)'],
         ['Margem da tela', ctxTela.margem() + '%'],
         ['Último erro', est.erro || '—']
       ];

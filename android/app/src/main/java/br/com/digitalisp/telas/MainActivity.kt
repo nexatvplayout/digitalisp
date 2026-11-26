@@ -1736,7 +1736,8 @@ class MainActivity : Activity(), Engine.Ui {
             wasConfigured = true
             if (screen is SetupScreen || screen is WizardScreen) closeScreen()
         }
-        exitSeq = ExitSequence(c.lock.exitSeq)
+        // DIGITAL ISP (26/11/2026): a mesma sequência em todos os apps, ↑ ↑ ↓ ↓ OK, que abre a senha do menu
+        exitSeq = ExitSequence(ConfigParser.DEFAULT_SEQ)
         loadFallbackImage()
         applyCaptions()
         player.setVolume(c.stream.volume, c.stream.muted || signMuted)
