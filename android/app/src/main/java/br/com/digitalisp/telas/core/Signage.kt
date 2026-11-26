@@ -40,6 +40,8 @@ data class SignageZone(
 
 data class SignageLayoutCfg(val portrait: Boolean, val background: Int?, val zones: List<SignageZone>, val audio: SignAudio? = null) {
     val hasVideo: Boolean get() = zones.any { it.kind == Signage.ZONE_VIDEO }
+    /** Tem a zona de senha? Sem ela a chamada de senha não aparece nem toca (dono, 26/11: o layout trocou e seguia chamando). */
+    val hasQueue: Boolean get() = zones.any { it.kind == Signage.ZONE_QUEUE }
 }
 
 /** Rádio de fundo do bloco sem zona de vídeo (`layout.audio`): o stream (http ou https) e o volume (10 a 100). */

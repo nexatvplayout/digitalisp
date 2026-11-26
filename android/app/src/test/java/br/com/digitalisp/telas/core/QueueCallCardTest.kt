@@ -19,6 +19,16 @@ class QueueCallCardTest {
 
     private val hot = QueueReducer.onCall(QueueState(), call(), 1000).state
 
+    // 26/11 (dono): na TV Corporativa, o layout sem a zona de senha não chama (trocou do consultório para o do vídeo)
+    @Test fun layoutSemZonaDeSenhaNaoChama() {
+        fun bloco(vararg kinds: String) = SignageBlock("b", SignageLayoutCfg(false, null, kinds.mapIndexed { i, k -> SignageZone("z$i", 0, 0, 100, 100, k) }), emptySet(), 0, 0, null, null, emptyMap())
+        val c = cfg("full")
+        assertFalse(QueueCallCard.show(c, hot, 1000, true, bloco("video", "ticker")))
+        assertFalse(QueueCallCard.callsHere(c, bloco("video")))
+        assertTrue(QueueCallCard.show(c, hot, 1000, true, bloco("video", "queue")))
+        assertTrue(QueueCallCard.callsHere(c, null))
+    }
+
     @Test fun semPainelMostraOCartao() {
         // o caso da TV box de 14/11: "Vídeo + avisos" (ticker), Chamar próxima, nada na tela
         for (l in listOf("full", "ticker", "lbar", "portrait")) {

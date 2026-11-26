@@ -93,8 +93,11 @@ object RiskColors {
  */
 object QueueCallCard {
     /** Mostrar o cartão agora? Com a chamada de senha ligada, uma chamada em destaque e a tela dentro do horário. */
-    fun show(c: TelaConfig?, state: QueueState, now: Long, scheduleOn: Boolean): Boolean =
-        c != null && c.queue.enabled && scheduleOn && QueueReducer.highlighted(state, now)
+    fun show(c: TelaConfig?, state: QueueState, now: Long, scheduleOn: Boolean, block: SignageBlock? = null): Boolean =
+        c != null && callsHere(c, block) && scheduleOn && QueueReducer.highlighted(state, now)
+
+    /** A chamada de senha vale no layout no ar? Ligada na tela e, na TV Corporativa, só no layout com a zona de senha. */
+    fun callsHere(c: TelaConfig, block: SignageBlock?): Boolean = c.queue.enabled && (block == null || block.layout.hasQueue)
 
     /** Mesmas regras de texto do painel de senha: guichê, "preferencial" e o nome (só com `showName` e nome). */
     fun text(call: QueueCall, showName: Boolean): CallCardText = CallCardText(

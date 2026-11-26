@@ -1051,7 +1051,7 @@ class MainActivity : Activity(), Engine.Ui {
         val c = cfg
         val s = Engine.queueState
         val cur = s.current
-        val on = cur != null && c != null && QueueCallCard.show(c, s, SystemClock.uptimeMillis(), scheduleOn)
+        val on = cur != null && c != null && QueueCallCard.show(c, s, SystemClock.uptimeMillis(), scheduleOn, signBlock)
         callCardOn = on
         if (!on) {
             callCard.visibility = View.GONE
@@ -1638,7 +1638,7 @@ class MainActivity : Activity(), Engine.Ui {
         refreshQueue()
         refreshCallCard()
         val c = cfg ?: return
-        if (announce == null || !scheduleOn || !c.queue.enabled || !visible) return
+        if (announce == null || !scheduleOn || !QueueCallCard.callsHere(c, signBlock) || !visible) return
         // 20/11, do dono: uma chamada não atropela a outra. Entra na fila e é anunciada depois que a anterior terminar
         // de tocar, com 2 s de intervalo. A mesma senha já esperando não entra de novo (salvo "Chamar de novo").
         if (announceQueue.none { it.id == announce.id && !announce.repeat }) announceQueue.addLast(announce)
@@ -1654,7 +1654,7 @@ class MainActivity : Activity(), Engine.Ui {
     private fun nextAnnounce() {
         val c = cfg
         val call = announceQueue.removeFirstOrNull()
-        if (call == null || c == null || !visible) {
+        if (call == null || c == null || !visible || !QueueCallCard.callsHere(c, signBlock)) {
             announceQueue.clear()
             announcing = false
             if (shownCode == null) duckProgram(false)
@@ -2007,7 +2007,7 @@ class MainActivity : Activity(), Engine.Ui {
         }
         // o destaque de 10 s da chamada acabou (ou começou)? redesenha a senha
         if (queueViews != null && queueHighlight != QueueReducer.highlighted(Engine.queueState, now)) refreshQueue()
-        if (callCardOn != QueueCallCard.show(c, Engine.queueState, now, scheduleOn)) refreshCallCard()
+        if (callCardOn != QueueCallCard.show(c, Engine.queueState, now, scheduleOn, signBlock)) refreshCallCard()
 
         Engine.noteClock()
         wd.internetDown = internetDown()
