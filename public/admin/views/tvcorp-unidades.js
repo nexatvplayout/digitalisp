@@ -10,6 +10,7 @@ import { ufCityPicker } from '../../shared/uf-city.js';
 import { OFFICE_TYPES, MODULE, OFFICE_ROLES } from '../../shared/telas-tipos.js';
 import { corpTypes } from './tvcorp-catalogo.js';
 import { newKey } from './tvcorp-telas.js';
+import { paintQueueOffice } from './prefeitura-fase3.js'; // a chamada de senha: filas, totem e o endereço do guichê
 
 const TYPES = () => corpTypes(OFFICE_TYPES);
 const typeName = (k) => TYPES().find((t) => t.key === k)?.label || OFFICE_TYPES.find((t) => t.key === k)?.label || k;
@@ -208,6 +209,8 @@ export default async function paintUnidades(box, ctx) {
       el('td', { class: 'pf-actions' },
         btn('Editar', () => editOffice(o, reload), 'small'),
         btn('Usuários e link', () => officeAccess(o), 'small'),
+        // a chamada de senha da unidade (consultório, recepção): as filas, o endereço do totem e o do guichê
+        o.modules?.senha ? btn('Chamada de senha', () => senhaDialog(o), 'small primary') : null,
         btn('+ TV box', () => newKey(reload, o.id), 'small'),
         btn('PIN novo', guard(async () => { if (!confirm(`Gerar um PIN de saída novo para as TV box de "${o.name}"? O de antes deixa de valer em até 10 segundos.`)) return; const r = await tapi(`/api/tvcorp/rede/offices/${o.id}/pin`, { method: 'POST', body: {} }); showOnce(`PIN de saída · ${o.name}`, 'O PIN aparece só agora. Anote e passe ao responsável pela unidade.', String(r.pin)); }), 'small'),
         btn('Excluir', guard(async () => { if (devs.length) { toast('Esta unidade ainda tem telas. Revogue ou mude as telas de unidade antes.', true); return; } if (!confirm(`Excluir a unidade "${o.name}"?`)) return; await tapi(`/api/tvcorp/rede/offices/${o.id}`, { method: 'DELETE' }); await reload(); }), 'small danger')));
@@ -231,4 +234,14 @@ export default async function paintUnidades(box, ctx) {
     btns(btn('+ Novo grupo', () => editGroup(null, reload), 'primary'),
       btn('Criar os grupos automáticos por tipo', guard(async () => { const r = await tapi('/api/tvcorp/rede/groups/auto', { method: 'POST', body: {} }); toast(r.created?.length ? `${r.created.length} grupo(s) automático(s) criado(s).` : 'Todos os tipos em uso já têm o grupo automático.'); await reload(); }))),
     groupRows.length ? table(['Grupo', 'Tipo', 'Telas', ''], groupRows) : empty('Nenhum grupo ainda.'));
+}
+
+/** A chamada de senha da unidade: as filas, a ordem de chamada, o endereço do totem (tirar a senha) e o do guichê (chamar). */
+function senhaDialog(o) {
+  const box = el('div', {}, note('Carregando…'));
+  dialog(`Chamada de senha · ${o.name}`, el('div', {},
+    note('1) Crie uma fila (a letra começa a senha: A001). 2) Gere o endereço do totem e abra no tablet ou computador da entrada: ali o cliente tira a senha. 3) Gere o endereço do guichê e abra no computador de cada atendente: ali ele chama a próxima senha, que aparece na TV com layout de senha.', 'small'),
+    box), { wide: true });
+  const ui = { data: D, table, f, opt, dialog, when: (ms) => (ms ? new Date(ms).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'), reload: async () => {}, refreshBadge: () => {} };
+  paintQueueOffice(box, ui, o, '/api/tvcorp/rede').catch((e) => put(box, note(`Não foi possível abrir a chamada de senha: ${e.message}`)));
 }

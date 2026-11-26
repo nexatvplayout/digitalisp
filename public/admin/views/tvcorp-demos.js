@@ -59,7 +59,7 @@ export function demosView(reload) {
       const b = e?.currentTarget; if (b) { b.disabled = true; b.textContent = 'Criando…'; }
       try {
         const l = await usarDemo(d);
-        toast(`Pronto: o layout "${l?.name || d.label}" foi criado com as playlists${d.video ? ' e o canal ao vivo' : ''}. Escolha-o na tela (Telas → O que passa nesta tela)${d.senha ? '; a senha aparece nas telas de unidade com a chamada de senha ligada' : ''}.`);
+        toast(`Pronto: o layout "${l?.name || d.label}" foi criado com as playlists${d.video ? ' e o canal ao vivo' : ''}. Escolha-o na tela (Telas → O que passa nesta tela)${d.senha ? '. Para a senha: em Unidades e grupos, ligue a Chamada de senha na unidade e use o botão Chamada de senha (fila, totem e guichê)' : ''}.`);
         await reload?.();
       } finally { if (b) { b.disabled = false; b.textContent = 'Usar esta demonstração'; } }
     }), 'small primary');

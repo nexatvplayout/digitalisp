@@ -27,10 +27,12 @@ export function electoralBanner(d) {
 }
 
 /* ================================================================== Senhas */
-async function paintQueueOffice(box, ui, o) {
-  const q = await api(`/api/prefeitura/offices/${o.id}/queue`);
-  const base = `/api/prefeitura/offices/${o.id}/queue`;
-  const again = () => paintQueueOffice(box, ui, o);
+/** A chamada de senha de uma repartição (ou unidade). prefix: /api/prefeitura (Painel da Prefeitura) ou /api/tvcorp/rede (as
+ * unidades da TV corporativa, as mesmas rotas com tvcorp.manage). */
+export async function paintQueueOffice(box, ui, o, prefix = '/api/prefeitura') {
+  const q = await api(`${prefix}/offices/${o.id}/queue`);
+  const base = `${prefix}/offices/${o.id}/queue`;
+  const again = () => paintQueueOffice(box, ui, o, prefix);
   const c = q.config;
   const title = el('input', { type: 'text', maxlength: String(LIMITS.queueTitle), value: c.title });
   const chk = (v) => el('input', { type: 'checkbox', checked: v });
