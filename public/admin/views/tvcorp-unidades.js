@@ -241,7 +241,12 @@ function senhaDialog(o, reload) {
   const box = el('div', {}, note('Carregando…'));
   dialog(`Chamada de senha · ${o.name}`, el('div', {},
     note('Siga a ordem: 1) as filas; 2) os grupos de salas (opcional: as salas que atendem as mesmas filas); 3) as salas e consultórios (opcional: o nome vai à tela); 4) o que a tela mostra e a ordem de chamada; 5) o endereço do totem, onde o cliente tira a senha; 6) o endereço do guichê, onde o atendente chama. A senha chamada aparece na TV com um layout de senha.', 'small'),
-    box), { wide: true });
+    box,
+    // 7) a página completa do atendimento (a da Prefeitura, com as abas): emitir na recepção, triagem e classificação, filas,
+    // chamar, salas e consultórios, etapas, códigos; cada atendente entra com o usuário dele
+    label('7. Página completa do atendimento (com as abas)'),
+    note('Para a recepção emitir senhas, fazer a triagem e a classificação de risco, ver as filas, as salas e as etapas do atendimento, use a página de controle da unidade: crie o link e um usuário para cada atendente (papel Atendimento ou Recepção). O link do guichê (etapa 6) só chama.', 'small'),
+    btns(btn('Abrir Usuários e link da unidade', () => officeAccess(o), 'primary'))), { wide: true });
   const ui = { data: D, table, f, opt, dialog, when: (ms) => (ms ? new Date(ms).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'), reload: async () => {}, refreshBadge: () => {} };
   const abrir = () => paintQueueOffice(box, ui, o, '/api/tvcorp/rede').catch((e) => put(box, note(`Não foi possível abrir a chamada de senha: ${e.message}`)));
   // a unidade sem a chamada de senha: liga aqui mesmo (o módulo da unidade) e já abre as filas
