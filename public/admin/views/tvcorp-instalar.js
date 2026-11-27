@@ -54,6 +54,22 @@ export default async function paintInstalar(box, ctx) {
       ],
     }),
     categoria({
+      titulo: 'TV Philips (Android TV / Google TV)',
+      versao: app?.versionName || app?.versionCode || null,
+      arquivos: [
+        { nome: 'Kit do pendrive para Philips (ZIP)', url: `${B}/telas/app/philips-pendrive.zip`, desc: `O app mais novo e o passo a passo, para instalar pela entrada USB da TV. Android 9 até 14. ${mb(app?.bytes)}`.trim() },
+        { nome: 'Aplicativo DIGITAL ISP (APK)', url: apkUrl(), desc: 'O mesmo app, para baixar direto na TV pelo navegador ou pelo app Downloader.', qr: true },
+      ],
+      passos: [
+        'No computador, extraia o ZIP e copie DIGITAL-ISP-Telas.apk para a raiz do pendrive (FAT32 ou exFAT).',
+        'Na TV, uma vez só: Configurações → Sistema → Sobre, clique 7 vezes em "Build do SO Android TV" para ligar o modo desenvolvedor.',
+        'Na Google Play da TV, instale um gerenciador de arquivos (por exemplo File Commander ou X-plore) e libere para ele: Configurações → Apps → Segurança e restrições → Fontes desconhecidas.',
+        'Ligue o pendrive na USB da TV, abra o gerenciador, escolha DIGITAL-ISP-Telas.apk e instale. Se o Play Protect avisar, use "Mais detalhes" → "Instalar mesmo assim".',
+        'Abra o app, digite a chave da tela e pronto. Para abrir sozinho ao ligar, no menu do app (↑ ↑ ↓ ↓ OK) escolha o app como tela inicial e libere "Sobrepor a outros apps".',
+      ],
+      aviso: 'Só nas Philips com Android TV ou Google TV (com a Google Play). As Philips com Titan OS ou Saphi não aceitam apps de fora da loja.',
+    }),
+    categoria({
       titulo: 'TV Samsung (Tizen)',
       versao: tv?.tizen?.version || null,
       arquivos: [

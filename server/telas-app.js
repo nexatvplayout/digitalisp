@@ -11,6 +11,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { config } from './config.js';
+import { zipSimples } from './zip-simples.js';
 
 export const APP_DIR = process.env.TELAS_APP_DIR || path.join(config.root, 'server', 'assets', 'telas-app'); // TELAS_APP_DIR: nos testes
 export const APK_NAME = 'Telas.apk';
@@ -20,7 +21,10 @@ const MAX_BYTES = 200 * 1024 * 1024;
  * Lê o latest.json e confere o APK (tamanho e SHA-256, uma vez por mtime). null se faltar algo ou não conferir.
  * { versionCode, versionName, sha256, bytes, file }
  */
-export function createAppStore({ dir = APP_DIR } = {}) {
+/** O passo a passo que vai no kit do pendrive das TVs Philips (GET /telas/app/philips-pendrive.zip). */
+export const LEIA_ME_PHILIPS = path.join(config.root, 'server', 'assets', 'instaladores', 'LEIA-ME-Philips.txt');
+
+export function createAppStore({ dir = APP_DIR, leiaMe = LEIA_ME_PHILIPS } = {}) {
   let cache = null; // { key, value }
   function latest() {
     try {
@@ -72,6 +76,34 @@ export function createAppStore({ dir = APP_DIR } = {}) {
       res.set('ETag', `"${l.sha256}"`);
       res.sendFile(l.file);
     });
+    // o kit do pendrive para TV Philips (Android TV / Google TV): o APK mais novo + o passo a passo, num ZIP montado na hora
+    app.get('/telas/app/philips-pendrive.zip', (req, res) => {
+      const z = kitPhilips();
+      if (!z) return res.status(404).json({ error: 'Nenhum APK do app das telas neste servidor.' });
+      res.set('Content-Type', 'application/zip');
+      res.set('Content-Disposition', `attachment; filename="DIGITAL-ISP-Philips-pendrive-${z.versionName || z.versionCode}.zip"`);
+      res.set('Cache-Control', 'public, max-age=300');
+      res.set('ETag', `"${z.etag}"`);
+      res.send(z.buf);
+    });
+  }
+  let kit = null; // { key, value }: o ZIP guardado enquanto o APK e o leia-me não mudam
+  function kitPhilips() {
+    const l = latest();
+    if (!l) return null;
+    try {
+      const txt = fs.readFileSync(leiaMe, 'utf8');
+      const key = `${l.sha256.slice(0, 20)}-${createHash('sha256').update(txt).digest('hex').slice(0, 12)}`;
+      if (kit?.key === key) return kit.value;
+      const buf = zipSimples([
+        { name: 'DIGITAL-ISP-Telas.apk', data: fs.readFileSync(l.file) },
+        { name: 'LEIA-ME.txt', data: Buffer.from(`﻿${txt.replace(/\r?\n/g, '\r\n')}`, 'utf8') },
+      ]);
+      kit = { key, value: { buf, versionCode: l.versionCode, versionName: l.versionName, etag: key } };
+      return kit.value;
+    } catch {
+      return null;
+    }
   }
   return { latest, update, info, mount };
 }

@@ -1,0 +1,38 @@
+DIGITAL ISP - instalar na TV Philips pelo pendrive (Android TV / Google TV, Android 14)
+=====================================================================================
+
+Serve para as TVs Philips com Android TV ou Google TV (Android 9 até 14).
+As Philips com Titan OS ou Saphi (sem a Google Play) não aceitam apps de fora da loja.
+
+NO COMPUTADOR
+ 1. Extraia este ZIP.
+ 2. Copie o arquivo DIGITAL-ISP-Telas.apk para a raiz do pendrive
+    (pendrive em FAT32 ou exFAT; não precisa apagar o que já tem nele).
+
+NA TV, UMA VEZ SÓ
+ 1. Ligue o modo desenvolvedor:
+    Configurações > Sistema > Sobre > clique 7 vezes em "Build do SO Android TV"
+    (ou "Versão do software"), até aparecer "Você agora é um desenvolvedor".
+ 2. Na Google Play da TV, instale um gerenciador de arquivos que instale apps,
+    por exemplo "File Commander" ou "X-plore File Manager".
+ 3. Libere a instalação de fora da loja para esse gerenciador:
+    Configurações > Apps > Segurança e restrições > Fontes desconhecidas
+    (em algumas Philips: Configurações > Privacidade > Segurança e restrições)
+    e ligue a chave do gerenciador que você instalou.
+
+INSTALAR
+ 1. Ligue o pendrive numa entrada USB da TV. Se a TV abrir o navegador de mídia dela, feche.
+ 2. Abra o gerenciador de arquivos, entre no pendrive e escolha DIGITAL-ISP-Telas.apk > Instalar.
+ 3. Se o Google Play Protect avisar, escolha "Mais detalhes" > "Instalar mesmo assim"
+    (o app é do DIGITAL ISP e vem de fora da loja).
+ 4. Abra o app e digite a chave da tela (gerada no painel em Telas > + TV box; vale 24 horas).
+
+PARA ABRIR SOZINHO AO LIGAR A TV
+ No app, abra o menu (↑ ↑ ↓ ↓ OK e a senha do menu) e:
+  - use "tela inicial" e escolha DIGITAL ISP > Sempre;
+  - libere "Sobrepor a outros apps" quando a TV pedir.
+ Na TV, desligue também o desligamento automático e a economia de energia que apaga a tela.
+
+As atualizações seguintes chegam sozinhas pelo próprio app: não precisa do pendrive de novo.
+Sem pendrive? No navegador ou no app "Downloader" da TV, abra
+ www.digitalisp.com.br/telas/app/latest.apk

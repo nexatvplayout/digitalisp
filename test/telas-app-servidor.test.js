@@ -30,6 +30,17 @@ test('Prefeitura: APK do app pelo servidor (latest.json, latest.apk, update de f
     assert.equal(r.headers.get('content-type'), 'application/vnd.android.package-archive');
     const got = Buffer.from(await r.arrayBuffer());
     assert.equal(sha(got), sha(apk), 'o arquivo servido é o do latest.json');
+    // o kit do pendrive da Philips: ZIP com o mesmo APK e o leia-me
+    const z = await fetch(`${s.base}/telas/app/philips-pendrive.zip`);
+    assert.equal(z.status, 200);
+    assert.equal(z.headers.get('content-type'), 'application/zip');
+    assert.match(z.headers.get('content-disposition'), /DIGITAL-ISP-Philips-pendrive-1\.2\.4\.zip/);
+    const zb = Buffer.from(await z.arrayBuffer());
+    assert.equal(zb.readUInt32LE(0), 0x04034b50);
+    const n1 = zb.readUInt16LE(26);
+    assert.equal(zb.subarray(30, 30 + n1).toString(), 'DIGITAL-ISP-Telas.apk');
+    assert.equal(sha(zb.subarray(30 + n1, 30 + n1 + apk.length)), sha(apk), 'o APK dentro do ZIP é o do latest.json');
+    assert.ok(zb.includes(Buffer.from('LEIA-ME.txt')) && zb.includes(Buffer.from('Fontes desconhecidas')));
 
     // a tela recebe o update de fábrica (o APK deste servidor)
     const P = api(s.base, await platformLogin(s.base));
