@@ -359,3 +359,4 @@ iframe.tc-yt { display: block; width: 100%; height: 100%; border: 0; background:
 .av-prev iframe.tc-yt { aspect-ratio: 16 / 9; height: auto; }
 .tc-demo-grupo { margin-top: 8px; }
 .tc-demo-grupo > .tc-demo-grupo-cab { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-weight: 600; font-size: var(--text-sm); color: var(--c-fg); }
+.tc-permuta { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; font-size: var(--text-xs, 12px); font-weight: 600; background: #5b3a0a; color: #ffd28a; vertical-align: middle; }

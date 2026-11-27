@@ -36,6 +36,7 @@ import * as K from './tvcorp-core.js';
 import { prepareMediaImage, prepareLogo } from './tvcorp-midia.js';
 import { VIDEO, convertVideo, receiveUpload, enqueue } from './tvcorp-video.js';
 import { cleanPage } from '../public/shared/pagina.js';
+import { intercalar, zonaDaPermuta } from './tvcorp-permuta.js';
 
 const { fail, line, idOf, parseJson: j } = K;
 const ah = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -77,6 +78,7 @@ export function createTvcorp({
   originOf = null, // (req) -> https://site: completa os endereços relativos dos itens (a foto da notícia)
   widgetFallback = null, // (tenantId, sample) -> id de um gadget do cliente: a zona de gadget sem gadget escolhido não fica vazia na TV
   rodizio = null, // DIGITAL ISP: o rodízio de DEMONSTRAÇÃO (server/tvcorp-demo-rodizio.js): { layoutDe, ler, salvar, ligada }
+  permuta = null, // DIGITAL ISP: a PERMUTA (server/tvcorp-permuta.js): async (tenantId, deviceId) -> { revendaId, items } | null
 }) {
   if (!db) throw new Error('createTvcorp: falta o banco');
   const noStore = (res) => res.set('Cache-Control', 'no-store');
@@ -454,6 +456,7 @@ export function createTvcorp({
     let fb = null;
     if (fallback) { fb = await blockOf(tid, at.officeId, fallback, data, req, { fallback: true, seed: at.deviceId, at }); if (fb) out.push(fb); }
     if (!out.length) { remember(tid, at.deviceId, null); return null; }
+    await comPropaganda(tid, at, out, req);
     K.applyCaps(out);
     const st = K.settingsDto(data.settings);
     const logo = data.settings.logo && LOGO_RE.test(String(data.settings.logo.file || '')) ? K.fileContract(fileUrl(data.settings.logo.file, req), data.settings.logo.sha256, data.settings.logo.bytes, L.logoBytes) : null;
@@ -462,6 +465,43 @@ export function createTvcorp({
     const signage = { tz, brand: { logo, color: st.theme.color, mode: st.theme.mode }, blocks: out, fallback: fb ? fb.id : null, ...(wall ? { wall } : {}) };
     remember(tid, at.deviceId, signage);
     return signage;
+  }
+
+  /**
+   * DIGITAL ISP · a PERMUTA: a propaganda obrigatória da revenda (mídias e playlists da biblioteca dela) na zona de playlist
+   * maior de cada bloco, intercalada com a programação do cliente. Os ids levam a revenda (r<id>-m12): não se confundem
+   * com os itens do cliente. Qualquer falha deixa a programação do cliente como está.
+   */
+  async function comPropaganda(tid, at, blocks, req) {
+    if (!permuta) return;
+    let p = null; try { p = await permuta(tid, at.deviceId); } catch { p = null; }
+    if (!p?.revendaId || !p.items?.length) return;
+    const rid = Number(p.revendaId);
+    const rdata = await load(rid);
+    const today = K.localParts(now(), tzOf(rdata.settings)).day;
+    const ads = [];
+    for (const x of p.items) {
+      if (x.kind === 'media') {
+        const m = rdata.media.get(Number(x.id));
+        if (m) ads.push(...await itemsOf(rid, null, { refKind: 'media', refId: Number(x.id), seconds: Number(m.seconds) || L.secondsDefault, params: {} }, rdata, req));
+      } else {
+        const pl = rdata.playlists.get(Number(x.id));
+        for (const it of pl?.items || []) {
+          if (it.refKind !== 'media' || !K.itemInWindow(it, today)) continue; // da revenda vão só as mídias (imagem, vídeo, slide)
+          ads.push(...await itemsOf(rid, null, it, rdata, req));
+        }
+      }
+    }
+    const seen = new Set();
+    const lista = ads.map((a) => ({ ...a, id: `r${rid}-${a.id}` })).filter((a) => (seen.has(a.id) ? false : seen.add(a.id)));
+    if (!lista.length) return;
+    for (const b of blocks) {
+      const z = zonaDaPermuta(b.layout.zones);
+      if (!z) continue;
+      const orient = slideOrientOf(z, b.layout.orientation);
+      const meus = lista.map((it) => (it.kind === 'slide' && it.fields && it.fields.orient !== orient ? { ...it, fields: { ...it.fields, orient } } : it));
+      b.zones[z.id] = intercalar(b.zones[z.id] || [], meus, L.itemsPerZone);
+    }
   }
 
   /* ================================================================ sinal de vida: plays e horas em exibição */

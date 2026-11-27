@@ -9,6 +9,7 @@
 //   GET|POST|PATCH|DELETE /planos      os planos da revenda para os clientes (telas, módulos, preço)
 //   GET    /faturas  POST /faturas  POST /faturas/gerar-mes  POST /faturas/:id/pagar|cancelar
 //   GET    /telas                      todas as telas dos clientes (e as da revenda), com a situação e o ponto
+//   GET|PUT /clientes/:id/permuta      a PERMUTA: telas do cliente marcadas e a propaganda obrigatória da revenda
 //   GET    /marca  (público: /api/marca/:slug)   o nome e a logo da revenda para a entrada do cliente
 import express from 'express';
 import { randomBytes } from 'node:crypto';
@@ -21,6 +22,7 @@ import * as CAT from '../public/shared/funcionalidades.js';
 import { contaOf, forgetConta, ehDaRevenda, clientesDe, planoClienteDto, usoRevenda } from './contas.js';
 import { saveExtras, loadExtras, extrasDto } from './revendas.js';
 import { storage, isUrl } from './storage.js';
+import { lerPermuta, salvarPermuta } from './tvcorp-permuta.js';
 
 const { fail } = T;
 const ah = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -81,7 +83,7 @@ async function emailEmUso(email, { excetoTenant = null, excetoUser = null } = {}
   return Boolean(t);
 }
 
-export function mountRevenda(app, { needs, signedIn }) {
+export function mountRevenda(app, { needs, signedIn, onPermuta = () => {} }) {
   const r = express.Router();
   const R = [needs('users.manage'), soRevenda];
 
@@ -334,6 +336,46 @@ export function mountRevenda(app, { needs, signedIn }) {
     res.json({ ok: true });
   }));
 
+  /* ------------------------------------------------------------------ a PERMUTA do cliente final */
+  // as telas do cliente (para marcar), a biblioteca da revenda (mídias prontas e playlists) e o que está guardado
+  async function permutaDto(rid, t) {
+    const [p, devs, offs, media, pls] = await Promise.all([
+      lerPermuta(t.id),
+      db.all('SELECT id, office_id, name FROM telas_devices WHERE revoked_at IS NULL AND tenant_id = ? ORDER BY name', [t.id]),
+      db.all('SELECT id, name FROM telas_offices WHERE tenant_id = ?', [t.id]),
+      db.all("SELECT id, kind, title FROM tvcorp_media WHERE tenant_id = ? AND status = 'ok' ORDER BY id DESC", [rid]),
+      db.all('SELECT id, name FROM tvcorp_playlists WHERE tenant_id = ? ORDER BY name', [rid]),
+    ]);
+    const om = new Map(offs.map((o) => [Number(o.id), o.name]));
+    return {
+      ...p,
+      telas: devs.map((d) => ({ id: Number(d.id), name: d.name, unidade: om.get(Number(d.office_id)) || null })),
+      midias: media.map((m) => ({ id: Number(m.id), kind: m.kind, title: m.title || `Mídia ${m.id}` })),
+      playlists: pls.map((x) => ({ id: Number(x.id), name: x.name })),
+    };
+  }
+  r.get('/clientes/:id/permuta', ...R, ah(async (req, res) => {
+    const t = await clienteDaRevenda(req);
+    res.set('Cache-Control', 'no-store').json(await permutaDto(req.tenantId, t));
+  }));
+  r.put('/clientes/:id/permuta', ...R, ah(async (req, res) => {
+    const t = await clienteDaRevenda(req); const b = req.body || {};
+    const devs = new Set((await db.all('SELECT id FROM telas_devices WHERE revoked_at IS NULL AND tenant_id = ?', [t.id])).map((d) => Number(d.id)));
+    const media = new Set((await db.all("SELECT id FROM tvcorp_media WHERE tenant_id = ? AND status = 'ok'", [req.tenantId])).map((x) => Number(x.id)));
+    const pls = new Set((await db.all('SELECT id FROM tvcorp_playlists WHERE tenant_id = ?', [req.tenantId])).map((x) => Number(x.id)));
+    const body = {
+      on: Boolean(b.on), scope: b.scope,
+      devices: (Array.isArray(b.devices) ? b.devices : []).map(Number).filter((id) => devs.has(id)),
+      items: (Array.isArray(b.items) ? b.items : []).filter((x) => (x?.kind === 'playlist' ? pls : media).has(Number(x?.id))),
+    };
+    if (body.on && !body.items.length) throw fail(400, 'Escolha pelo menos uma mídia ou playlist da propaganda.');
+    if (body.on && body.scope !== 'all' && !body.devices.length) throw fail(400, 'Marque pelo menos uma tela como permuta (ou escolha Todas as telas).');
+    await salvarPermuta(t.id, body);
+    try { onPermuta(t.id); } catch { /* as telas pegam na próxima leitura */ }
+    res.locals.audit = `${body.on ? 'ligou' : 'desligou'} a permuta do cliente ${t.name}`;
+    res.json(await permutaDto(req.tenantId, t));
+  }));
+
   /* ------------------------------------------------------------------ telas de todos os clientes */
   r.get('/telas', ...R, ah(async (req, res) => {
     const rid = req.tenantId; const ids = [rid, ...(await clientesDe(rid))]; const q = ids.map(() => '?').join(',');
@@ -359,7 +401,11 @@ export function mountRevenda(app, { needs, signedIn }) {
     if (req.user.tenantId == null) return res.json({ tipo: 'plataforma' });
     const c = await contaOf(req.user.tenantId);
     const out = { tipo: c.tipo, pessoa: c.pessoa, impersonador: req.user.impersonator?.username || null };
-    if (c.tipo === 'cliente' && c.revendaId) { const rev = await T.getTenant(c.revendaId); out.revenda = rev ? { id: Number(rev.id), name: rev.name, slug: rev.slug, marca: await marcaDe(rev) } : null; }
+    if (c.tipo === 'cliente' && c.revendaId) { const rev = await T.getTenant(c.revendaId); out.revenda = rev ? { id: Number(rev.id), name: rev.name, slug: rev.slug, marca: await marcaDe(rev) } : null;
+      // a PERMUTA (só leitura para o cliente): as telas com a propaganda obrigatória do parceiro
+      const p = await lerPermuta(req.user.tenantId);
+      if (p.on && p.items.length) out.permuta = { scope: p.scope, devices: p.devices, itens: p.items.length };
+    }
     else { const rev = await T.getTenant(req.user.tenantId); out.marca = rev ? await marcaDe(rev) : null; out.link = null; }
     res.set('Cache-Control', 'no-store').json(out);
   }));

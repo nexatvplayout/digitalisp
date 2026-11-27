@@ -228,11 +228,14 @@ export default async function paintTelas(box, ctx) {
   const d = D();
   try { const r = await tapi('/api/tvcorp/rede/availability'); V.avail = new Map((r.devices || []).map((x) => [x.id, x])); } catch { /* fica a de antes */ }
   const reload = ctx.reload;
+  // DIGITAL ISP · a PERMUTA (cliente final): as telas com a propaganda obrigatória do parceiro (só leitura aqui)
+  const pm = T.demo ? null : (await api('/api/conta').catch(() => null))?.permuta || null;
+  const naPermuta = (x) => Boolean(pm && !x.revokedAt && (pm.scope === 'all' || pm.devices.includes(x.id)));
   const rows = d.devices.map((x) => {
     const o = officeOf(x.officeId); const st = statusOf(x); const av = V.avail.get(x.id);
     const nowCell = el('td', {}, btn('Ver', guard(async (e) => { const b = e.target; b.disabled = true; try { put(nowCell, el('span', { class: 'small', text: await nowText(x) })); } catch { put(nowCell, el('span', { class: 'dim small', text: 'sem informação' })); } }), 'small'));
     return el('tr', { class: x.revokedAt ? 'pf-gone' : '' },
-      el('td', {}, dot(st), ' ', el('b', { text: x.name }), el('div', { class: 'dim small', text: `#${x.id}${x.config?.volume != null ? ` · volume ${x.config.volume}` : ''}${x.config?.muted ? ' · sem som' : ''}` })),
+      el('td', {}, dot(st), ' ', el('b', { text: x.name }), naPermuta(x) ? el('span', { class: 'tc-permuta', title: 'Propaganda obrigatória do parceiro: entra intercalada na playlist desta tela e não pode ser removida aqui.', text: 'Permuta' }) : null, el('div', { class: 'dim small', text: `#${x.id}${x.config?.volume != null ? ` · volume ${x.config.volume}` : ''}${x.config?.muted ? ' · sem som' : ''}` })),
       el('td', {}, STATUS[st] || st, el('div', { class: 'dim small', text: x.lastSeen ? ago(now() - x.lastSeen) : 'nunca' })),
       el('td', {}, o?.name || '—', el('div', { class: 'dim small', text: o ? typeLabel(o.type) : '' })),
       el('td', {}, ...groupsOf(x).map((g) => chip(g.name))),
@@ -255,6 +258,7 @@ export default async function paintTelas(box, ctx) {
   const toggle = btn(V.mode === 'mapa' ? 'Ver a lista' : 'Ver no mapa', () => { V.mode = V.mode === 'mapa' ? 'lista' : 'mapa'; ctx.repaint(); }, 'small');
   put(box,
     counterRow(counters(active()), active().length),
+    pm ? note(`Permuta com o seu parceiro: ${pm.scope === 'all' ? 'em todas as telas' : `nas telas marcadas com "Permuta" (${pm.devices.length})`} passa a propaganda obrigatória dele (${pm.itens} item(ns)), intercalada com a sua programação. Ela faz parte do acordo e não pode ser removida aqui; para mudar, fale com o parceiro.`, 'pf-banner') : null,
     d.rede ? null : note('A rede de telas ainda não respondeu (rotas /api/tvcorp/rede). A lista aparece quando o servidor for atualizado.', 'pf-banner'),
     btns(btn('+ TV box', () => newKey(reload), 'primary'), toggle, btn('Aplicativos', () => ctx.go('instalar'), 'small'),
       state.me?.demoLayouts && !T.demo ? botaoDemonstracao(ctx) : null,

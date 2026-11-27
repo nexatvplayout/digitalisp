@@ -19,7 +19,8 @@ import { clock } from './ntp.js';
 import { mountPlataforma } from './plataforma.js';
 import { mountGuia } from './guia.js';
 import { mountEnderecos } from './enderecos.js';
-import { bindContas, assertNovaTela } from './contas.js';
+import { bindContas, assertNovaTela, contaOf, clientesDe } from './contas.js';
+import { lerPermuta, telaNaPermuta } from './tvcorp-permuta.js'; // a PERMUTA: a propaganda obrigatória da revenda nas telas do cliente final
 import { mountRevenda } from './revenda.js';
 import { mountIntegracoes } from './integracoes.js';
 import { mountDominios, entradaDoDominio } from './dominios.js';
@@ -177,7 +178,7 @@ mountQrcodes(app, {
 });
 app.use('/qpagina', express.static(pub('q'), { setHeaders: (res) => res.setHeader('Cache-Control', 'no-cache') })); // domínio próprio da revenda e do cliente (server/dominios.js) // superadmin: de onde vêm clima, cotações, notícias, CEP, mapa e rádios (server/integracoes.js)
 mountGuia(app, { needs, signedIn, needsPlatform, ah }); // configuração guiada (server/guia.js)
-mountRevenda(app, { needs, signedIn });
+mountRevenda(app, { needs, signedIn, onPermuta: (tid) => telas?.forget(tid) });
 mountHls(app, { needs, ah, onChange: (tid) => telas?.forget(tid) }); // canais ao vivo (HLS) (server/hls.js)
 mountRadios(app, { needs, signedIn, ah, onChange: (tid) => telas?.forget(tid) }); // rádio de fundo dos layouts sem vídeo (server/radios.js)
 await loadRadios();
@@ -271,10 +272,18 @@ const tvcorp = createTvcorp({
   refExists: async (tenantId, kind, id) => Boolean(await tvcorpLabel(tenantId, kind, id)),
   hasFeature: (tid, key) => tenancy.hasFeature(tid, key),
   pendingOther: async (tenantId) => { const p = await tvcorpDados.pending(tenantId); return (p.posts || 0) + (p.suggestions || 0); },
-  forget: (tenantId) => telas?.forget(tenantId),
+  // a revenda mudou a biblioteca dela: as telas dos clientes finais com a propaganda da permuta também recebem de novo
+  forget: (tenantId) => { telas?.forget(tenantId); clientesDe(tenantId).then((ids) => ids.forEach((c) => telas?.forget(c))).catch(() => {}); },
   audit: access.audit, ipOf: clientIp,
   // o rodízio de DEMONSTRAÇÃO da aba Telas (só nas contas com a demonstração ligada)
   rodizio: { layoutDe: layoutDoRodizio, ler: lerRodizio, salvar: salvarRodizio, ligada: demoLigada },
+  // a PERMUTA: só no cliente final, nas telas marcadas (ou em todas), com os itens que a revenda vinculou
+  permuta: async (tenantId, deviceId) => {
+    const p = await lerPermuta(tenantId);
+    if (!telaNaPermuta(p, deviceId)) return null;
+    const c = await contaOf(tenantId);
+    return c.tipo === 'cliente' && c.revendaId ? { revendaId: c.revendaId, items: p.items } : null;
+  },
 });
 telas = createTelas({
   weatherArt: climaArtOf, // a foto de fundo de cada tempo (config.weather.art/artPort)

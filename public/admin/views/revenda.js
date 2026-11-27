@@ -6,6 +6,7 @@ import { ufCityPicker } from '../../shared/uf-city.js';
 import { createMap } from '../telas-mapa.js';
 import { ligarCep } from '../cep.js';
 import { municipioCard } from './prefeitura-municipio.js';
+import { permutaCard } from './revenda-permuta.js';
 
 const brl = (c) => (c == null ? '—' : (Number(c) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
 const toCents = (v) => { const s = String(v ?? '').trim().replace(/\./g, '').replace(',', '.'); if (!s) return null; const n = Math.round(Number(s) * 100); return Number.isFinite(n) ? n : NaN; };
@@ -99,7 +100,7 @@ function clienteForm(c, planos, done, box) {
           const d = await api(`/api/revenda/clientes/${c.id}`);
           mostrarAcesso(box, 'Nova senha do cliente', { link: d.acesso.link, login: r.login, senha: r.senha });
         }) }) : null,
-        el('button', { type: 'button', class: 'small', text: 'Fechar', onclick: () => f.remove() }))),
+        el('button', { type: 'button', class: 'small', text: 'Fechar', onclick: () => { f.remove(); box.querySelector('.rv-pm')?.remove(); } }))),
     editando ? el('div', { class: 'rv-link' },
       field('Endereço de entrada deste cliente', el('div', { class: 'rv-slug' }, el('span', { class: 'dim', text: `${location.origin}/c/` }),
         inp('slug', c.slug, { pattern: '[a-z0-9-]{1,40}', maxlength: 40, autocomplete: 'off', oninput: (e) => { e.target.value = e.target.value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9-]+/g, '-'); } }),
@@ -130,6 +131,9 @@ function clienteForm(c, planos, done, box) {
     // prefeitura (modo órgão público no plano do cliente): o município travado, que só a revenda e a plataforma trocam
     editando && (c.prefeitura || c.plano?.prefeitura) ? municipioCard(`/api/revenda/clientes/${c.id}/telas-municipio`, { idPrefix: 'rcm' }) : null,
     el('div', { class: 'rv-actions' }, el('button', { class: 'primary', type: 'submit', text: editando ? 'Salvar' : 'Cadastrar cliente' })));
+  // a PERMUTA: fora do formulário (tem o próprio botão de salvar)
+  const pm = permutaCard(editando ? c.id : null);
+  queueMicrotask(() => f.after(pm));
   ligarCep({ cep: f.elements.zip, rua: f.elements.street, bairro: f.elements.district, numero: f.elements.number, place });
   f.addEventListener('submit', guard(async (e) => {
     e.preventDefault();

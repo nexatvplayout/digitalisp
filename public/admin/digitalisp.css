@@ -184,3 +184,10 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
 .versao { margin: 8px 0 0; font-size: .72rem; }
 
 .pl-novo { margin: 4px 0 16px; }
+/* a PERMUTA no cadastro do cliente (views/revenda-permuta.js) */
+.rv-pm { display: grid; gap: 10px; margin-top: 12px; }
+.rv-pm-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 2px 14px; max-height: 260px; overflow: auto; padding: 4px 0; }
+.rv-pm-lista[hidden] { display: none; }
+.rv-pm-op { display: flex; align-items: center; gap: 8px; min-height: 32px; cursor: pointer; text-transform: none; letter-spacing: 0; font-family: var(--font-sans); font-size: var(--text-sm); color: var(--c-fg); font-weight: 400; }
+.rv-pm-op input { width: auto; flex: none; margin: 0; }
+.rv-pm-sub { font-weight: 600; color: var(--c-fg-2); margin-top: 4px; }

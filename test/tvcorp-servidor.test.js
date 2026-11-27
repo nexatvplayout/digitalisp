@@ -79,7 +79,8 @@ async function roteiro(db, label) {
   };
   let dataCalls = 0; let postMedia = null; let postCtx = null;
   const features = new Map([[1, new Set(['tvcorp', 'api'])], [2, new Set(['tvcorp'])]]);
-  const make = () => createTvcorp({
+  const make = (extra = {}) => createTvcorp({
+    ...extra,
     db, storage, ffmpeg: FFMPEG, now: () => clock, timers: false,
     // a foto de fundo do slide (DIGITAL ISP): o servidor de verdade lê public/tvcorp/arte/foto-*.jpg
     artFile: (key) => ({ url: `https://cdn.exemplo.test/arte/${key}.jpg`, sha256: 'a'.repeat(64), bytes: 1000 }),
@@ -265,6 +266,16 @@ async function roteiro(db, label) {
     assert.deepEqual((await signage(S.dRec)).blocks.map((b) => b.id), [`s${padrao.id}`]);
     assert.equal(await signage(S.dEsc), null, 'tela da prefeitura sem signage');
     assert.equal(await signage(S.dB), null, 'outro cliente, sem grade');
+    // DIGITAL ISP · a PERMUTA: a imagem do cliente 2 (a "revenda") entra como propaganda na tela do refeitório do cliente 1
+    const tvP = make({ permuta: async (tid, did) => (Number(tid) === 1 && Number(did) === S.dFab ? { revendaId: 2, items: [{ kind: 'media', id: imgB.id }, { kind: 'playlist', id: 999999 }] } : null) });
+    const sgP = await signage(S.dFab, tvP);
+    const comAd = sgP.blocks.filter((b) => Object.values(b.zones).some((l) => l.some((x) => x.id === `r2-m${imgB.id}`)));
+    assert.ok(comAd.length >= 1, 'a propaganda entra na zona de playlist');
+    for (const b of comAd) {
+      const zp = b.layout.zones.filter((z) => z.kind === 'playlist').sort((a, c) => c.w * c.h - a.w * a.h)[0];
+      assert.ok(b.zones[zp.id].some((x) => x.id === `r2-m${imgB.id}` && x.kind === 'image' && x.sha256), 'na zona de playlist maior, com o arquivo');
+    }
+    assert.equal(JSON.stringify(await signage(S.dRec, tvP)).includes('r2-m'), false, 'a tela fora da permuta não recebe');
 
     /* ---------------------------------------------------------------- conjuntos de telas (DIGITAL ISP) */
     const wall = await ok('POST', '/api/tvcorp/walls', { body: { name: 'Cardápio da praça', mode: 'menu', cols: 2, rows: 1, bezel: { x: 1.2, y: 2 }, cells: [{ pos: 2, deviceId: S.dFab }, { pos: 1, deviceId: S.dRec }] } }, 201);
