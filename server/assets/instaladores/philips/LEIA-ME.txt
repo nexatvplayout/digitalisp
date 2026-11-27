@@ -4,9 +4,13 @@ DIGITAL ISP - instalar na TV Philips pelo pendrive (Android TV / Google TV, Andr
 Serve para as TVs Philips com Android TV ou Google TV (Android 9 até 14).
 As Philips com Titan OS ou Saphi (sem a Google Play) não aceitam apps de fora da loja.
 
-NO COMPUTADOR
- 1. Extraia este ZIP.
- 2. Copie o arquivo DIGITAL-ISP-Telas.apk para a raiz do pendrive
+NO COMPUTADOR (Windows)
+ 1. Extraia este ZIP numa pasta.
+ 2. Clique duas vezes em INSTALAR.bat e escolha:
+    1 - Pelo pendrive: ele baixa a versão mais nova do app e copia para o pendrive ligado no computador.
+    2 - Pela rede: ele instala direto na TV (computador e TV na mesma rede, com a depuração ligada
+        na TV em Opções do desenvolvedor), já deixa o app abrir sozinho ao ligar e abre o app.
+    Sem Windows? Copie o arquivo DIGITAL-ISP-Telas.apk para a raiz do pendrive
     (pendrive em FAT32 ou exFAT; não precisa apagar o que já tem nele).
 
 NA TV, UMA VEZ SÓ

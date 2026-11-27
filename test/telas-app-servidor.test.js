@@ -41,6 +41,8 @@ test('Prefeitura: APK do app pelo servidor (latest.json, latest.apk, update de f
     assert.equal(zb.subarray(30, 30 + n1).toString(), 'DIGITAL-ISP-Telas.apk');
     assert.equal(sha(zb.subarray(30 + n1, 30 + n1 + apk.length)), sha(apk), 'o APK dentro do ZIP é o do latest.json');
     assert.ok(zb.includes(Buffer.from('LEIA-ME.txt')) && zb.includes(Buffer.from('Fontes desconhecidas')));
+    assert.ok(zb.includes(Buffer.from('INSTALAR.bat')) && zb.includes(Buffer.from('instalar-philips.ps1')), 'o instalador .bat vai no kit');
+    assert.ok(zb.includes(Buffer.from('%~dp0instalar-philips.ps1"\r\n')), 'o .bat com fim de linha do Windows');
 
     // a tela recebe o update de fábrica (o APK deste servidor)
     const P = api(s.base, await platformLogin(s.base));

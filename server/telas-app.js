@@ -21,10 +21,11 @@ const MAX_BYTES = 200 * 1024 * 1024;
  * Lê o latest.json e confere o APK (tamanho e SHA-256, uma vez por mtime). null se faltar algo ou não conferir.
  * { versionCode, versionName, sha256, bytes, file }
  */
-/** O passo a passo que vai no kit do pendrive das TVs Philips (GET /telas/app/philips-pendrive.zip). */
-export const LEIA_ME_PHILIPS = path.join(config.root, 'server', 'assets', 'instaladores', 'LEIA-ME-Philips.txt');
+/** O kit do pendrive das TVs Philips (GET /telas/app/philips-pendrive.zip): INSTALAR.bat, o script e o LEIA-ME, mais o APK. */
+export const KIT_PHILIPS = path.join(config.root, 'server', 'assets', 'instaladores', 'philips');
+const KIT_ARQS = ['INSTALAR.bat', 'instalar-philips.ps1', 'LEIA-ME.txt'];
 
-export function createAppStore({ dir = APP_DIR, leiaMe = LEIA_ME_PHILIPS } = {}) {
+export function createAppStore({ dir = APP_DIR, kitDir = KIT_PHILIPS } = {}) {
   let cache = null; // { key, value }
   function latest() {
     try {
@@ -92,12 +93,13 @@ export function createAppStore({ dir = APP_DIR, leiaMe = LEIA_ME_PHILIPS } = {})
     const l = latest();
     if (!l) return null;
     try {
-      const txt = fs.readFileSync(leiaMe, 'utf8');
-      const key = `${l.sha256.slice(0, 20)}-${createHash('sha256').update(txt).digest('hex').slice(0, 12)}`;
+      // os textos vão com fim de linha do Windows; o LEIA-ME com BOM (acentos certos no Bloco de Notas)
+      const txts = KIT_ARQS.map((n) => [n, fs.readFileSync(path.join(kitDir, n), 'utf8').replace(/^\ufeff/, '').replace(/\r?\n/g, '\r\n')]);
+      const key = `${l.sha256.slice(0, 20)}-${createHash('sha256').update(txts.map((x) => x[1]).join('\0')).digest('hex').slice(0, 12)}`;
       if (kit?.key === key) return kit.value;
       const buf = zipSimples([
         { name: 'DIGITAL-ISP-Telas.apk', data: fs.readFileSync(l.file) },
-        { name: 'LEIA-ME.txt', data: Buffer.from(`﻿${txt.replace(/\r?\n/g, '\r\n')}`, 'utf8') },
+        ...txts.map(([name, t]) => ({ name, data: Buffer.from(name.endsWith('.txt') ? `﻿${t}` : t, 'utf8') })),
       ]);
       kit = { key, value: { buf, versionCode: l.versionCode, versionName: l.versionName, etag: key } };
       return kit.value;
