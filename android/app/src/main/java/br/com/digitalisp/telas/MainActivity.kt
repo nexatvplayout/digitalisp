@@ -42,6 +42,9 @@ import br.com.digitalisp.telas.core.Alerts
 import br.com.digitalisp.telas.core.Brands
 import br.com.digitalisp.telas.core.CardRotation
 import br.com.digitalisp.telas.core.ScreenTurn
+import br.com.digitalisp.telas.core.Guide
+import br.com.digitalisp.telas.core.GuideCaptions
+import br.com.digitalisp.telas.core.Cue
 import br.com.digitalisp.telas.core.ClockCheck
 import br.com.digitalisp.telas.core.DiagReport
 import br.com.digitalisp.telas.core.Missing
@@ -186,6 +189,111 @@ class MainActivity : Activity(), Engine.Ui {
     private var callCardOn = false
     private var captionView: TextView? = null
 
+    // ---- a legenda TRADUZIDA do canal do NEXA (core/GuideCaptions): o guia do canal lista um WebVTT por idioma, com os
+    // tempos da original; o app desenha o do idioma escolhido, pelo horário da imagem na tela (EXT-X-PROGRAM-DATE-TIME).
+    // Sem guia (outro canal, YouTube) ou no idioma do próprio vídeo, fica a legenda que o canal entrega.
+    private var guide: Guide? = null
+    private var guideUrlNow: String? = null
+    private var guideFetchedAt = 0L
+    private var guideFetching = false
+    private var guideNextTry = 0L
+    private var guideCues: List<Cue> = emptyList()
+    private var guideCuesUrl: String? = null
+    private var guideCuesLoading: String? = null
+    private var guideCuesFailAt = 0L
+    private var guideActive = false
+    private var guideShown = ""
+    private val guideTick = object : Runnable {
+        override fun run() {
+            try { tickGuide() } catch (_: Throwable) { }
+            handler.postDelayed(this, 250)
+        }
+    }
+
+    /** O horário da imagem na tela: o do HLS; sem ele, o do guia (servidor − atraso do ar) andando pelo relógio. */
+    private fun airNow(g: Guide): Long = player.programTimeMs() ?: (g.serverTime - g.airLagMs + (System.currentTimeMillis() - guideFetchedAt))
+
+    private fun tickGuide() {
+        val gUrl = if (ytView == null && cfg != null) GuideCaptions.guideUrl(player.liveUrl) else null
+        if (gUrl != guideUrlNow) {
+            guideUrlNow = gUrl; guide = null; guideFetchedAt = 0L; guideNextTry = 0L
+            guideCues = emptyList(); guideCuesUrl = null
+        }
+        if (gUrl == null) { stopGuide(); return }
+        val now = System.currentTimeMillis()
+        // o guia é lido mesmo com a legenda desligada: o botão do idioma mostra os idiomas dele
+        if (!guideFetching && now >= guideNextTry && (guide == null || now - guideFetchedAt > GuideCaptions.REFRESH_MS)) fetchGuide(gUrl)
+        val g = guide
+        val cap = captionsNow()
+        if (!cap.on || cap.lang == null || g == null || g.blocked) { stopGuide(); return }
+        val air = airNow(g)
+        val item = g.itemAt(air)
+        if (item == null) { if (now - guideFetchedAt > 5_000) guideNextTry = 0L.also { guideFetchedAt = 0L }; stopGuide(); return }
+        val file = item.captionFor(cap.lang)
+        if (file == null) { stopGuide(); return } // o idioma do próprio vídeo (ou sem tradução): a legenda do canal
+        if (file.url != guideCuesUrl) {
+            loadCues(file.url)
+            guideActive = true
+            showGuide("")
+            return
+        }
+        guideActive = true
+        showGuide(GuideCaptions.textAt(guideCues, GuideCaptions.position(item, air)))
+    }
+
+    private fun showGuide(text: String) {
+        if (text == guideShown) return
+        guideShown = text
+        showCues(text)
+    }
+
+    private fun stopGuide() {
+        if (!guideActive) return
+        guideActive = false
+        guideShown = ""
+        showCues("")
+    }
+
+    private fun fetchGuide(url: String) {
+        guideFetching = true
+        Thread({
+            val g = try { GuideCaptions.parseGuide(httpText(url), GuideCaptions.siteOf(url)) } catch (_: Throwable) { null }
+            runOnUiThread {
+                guideFetching = false
+                if (url != guideUrlNow) return@runOnUiThread
+                val now = System.currentTimeMillis()
+                if (g != null) { guide = g; guideFetchedAt = now; guideNextTry = now + GuideCaptions.REFRESH_MS } else guideNextTry = now + 15_000
+            }
+        }, "guia-legenda").start()
+    }
+
+    private fun loadCues(url: String) {
+        if (guideCuesLoading == url) return
+        if (System.currentTimeMillis() - guideCuesFailAt < 10_000) return
+        guideCuesLoading = url
+        Thread({
+            val cues = try { GuideCaptions.parseVtt(httpText(url)) } catch (_: Throwable) { null }
+            runOnUiThread {
+                guideCuesLoading = null
+                if (cues == null) { guideCuesFailAt = System.currentTimeMillis(); return@runOnUiThread }
+                guideCues = cues; guideCuesUrl = url
+            }
+        }, "legenda-vtt").start()
+    }
+
+    private fun httpText(url: String): String {
+        val c = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+        c.connectTimeout = 8_000; c.readTimeout = 15_000
+        c.setRequestProperty("Accept", "application/json, text/vtt, */*")
+        try {
+            if (c.responseCode !in 200..299) throw java.io.IOException("HTTP ${c.responseCode}")
+            return c.inputStream.use { it.readBytes().toString(Charsets.UTF_8) }
+        } finally { c.disconnect() }
+    }
+
+    /** Os idiomas do guia do canal no ar (vazio = o canal não tem guia, ou o item não tem legenda). */
+    fun guideLanguages(): List<String> { val g = guide ?: return emptyList(); return g.languagesAt(airNow(g)) }
+
     /** As falas da legenda, numa caixa escura translúcida só (como na TV Samsung e na web; core/CaptionLook). */
     private fun showCues(text: String) {
         val v = captionView ?: return
@@ -239,7 +347,15 @@ class MainActivity : Activity(), Engine.Ui {
     fun captionsState(): CaptionsCfg = captionsNow()
 
     /** Os idiomas do botão: no YouTube, todos os da lista (o YouTube traduz); no canal HLS, os que o fluxo traz. */
-    fun captionLanguages(): List<String?> = if (ytView != null) CaptionsPolicy.LANGS else player.textLanguages()
+    /** No canal do NEXA, os idiomas do guia dele (a original e as traduções). */
+    fun captionLanguages(): List<String?> = when {
+        ytView != null -> CaptionsPolicy.LANGS
+        guideLanguages().isNotEmpty() -> guideLanguages()
+        else -> player.textLanguages()
+    }
+
+    /** As legendas vêm do guia do canal (as traduções do NEXA)? */
+    fun captionsFromGuide(): Boolean = ytView == null && guideLanguages().isNotEmpty()
 
     fun captionsSummary(): String {
         val c = captionsNow()
@@ -247,6 +363,8 @@ class MainActivity : Activity(), Engine.Ui {
         val from = if (c == panel) "pelo painel" else "escolhida neste aparelho, até a próxima mudança do painel"
         val head = (if (c.on) "ligadas, idioma ${CaptionsPolicy.name(c.lang)}" else "desligadas") + " ($from)"
         if (ytView != null) return "$head; YouTube: a legenda do vídeo, traduzida pelo YouTube para o idioma escolhido (quando o vídeo tem legenda)"
+        if (captionsFromGuide()) return "$head; do guia do canal: ${guideLanguages().joinToString(", ") { CaptionsPolicy.name(it) }}" +
+            (if (guideActive) " (mostrando a tradução)" else "")
         val langs = player.textLanguages().map { CaptionsPolicy.name(it) }.distinct()
         return head + if (langs.isEmpty()) "; o fluxo não traz legenda agora" else "; no fluxo: ${langs.joinToString(", ")}"
     }
@@ -346,7 +464,9 @@ class MainActivity : Activity(), Engine.Ui {
                 if (auto) Engine.noteError("O decodificador de vídeo falhou de novo; o vídeo passou para: ${mode.label}.")
             },
         ) { kind, code -> onPlayerError(kind, code) }
-        player.onCues = { text -> showCues(text) }
+        // a legenda do próprio vídeo (o 608 do canal); com a tradução do guia no ar, vale a do guia (tickGuide)
+        player.onCues = { text -> if (!guideActive) showCues(text) }
+        handler.post(guideTick)
         loadSound()
         speaker = Speaker(this)
         clips = VoiceClips(this)
@@ -2335,6 +2455,8 @@ class MainActivity : Activity(), Engine.Ui {
         line("Device Owner (nível 2)", if (Kiosk.isOwner(this)) "sim" else "não (nível 1)")
         kioskIssues().takeIf { it.isNotEmpty() }?.let { line("Travas recusadas", it) }
         line("Sobrepor a outros apps", if (Settings.canDrawOverlays(this)) "concedida" else "não concedida")
+        line("Girar a tela", "escolhido ${ScreenTurn.label(Engine.store.giro, Engine.store.rotation)}; aplicado ${stage.rotation.toInt()}° (área ${stage.width}×${stage.height} na saída ${root.width}×${root.height})")
+        line("Legenda", captionsSummary())
         line("Volta sozinho para a frente", if (Kiosk.canBringToFront(this)) "sim" else "não (só pelo Home ou ao religar)")
         line("Instalar atualização", if (Kiosk.canInstall(this)) "permitido" else "o Android vai perguntar (fontes desconhecidas não liberadas)")
         line("Economia de bateria", Kiosk.batteryStatus(this))

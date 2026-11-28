@@ -585,6 +585,7 @@ class SettingsScreen(act: MainActivity) : Screen(act) {
                 act.setLocalCaptions(true, CaptionsPolicy.nextLang(c.lang, act.captionLanguages()))
                 b.text = captionsLangText()
                 note.text = if (act.captionsOnYoutube()) "No YouTube, a legenda do vídeo é traduzida pelo próprio YouTube para o idioma escolhido (quando o vídeo tem legenda). Vale até a próxima mudança no painel."
+                else if (act.captionsFromGuide()) "Os idiomas do programa no ar (a original e as traduções do canal). \"Do canal\" é a legenda que vem no vídeo. Vale até a próxima mudança no painel."
                 else if (act.captionLanguages().isEmpty()) "O canal ao vivo não traz legenda agora: não há idioma para escolher."
                 else "Os idiomas que o canal ao vivo traz. Vale até a próxima mudança no painel."
             },

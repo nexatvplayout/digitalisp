@@ -192,6 +192,25 @@ class PlayerHost(
         if (!on) onCues?.invoke("")
     }
 
+    /** O endereço do ao vivo tocando agora (null = vídeos guardados ou nada). */
+    var liveUrl: String? = null
+        private set
+
+    /**
+     * O horário (ms de época) da imagem que está na tela, pelo EXT-X-PROGRAM-DATE-TIME do HLS; null se o fluxo não traz.
+     * É ele que sincroniza a legenda traduzida do guia (core/GuideCaptions).
+     */
+    fun programTimeMs(): Long? = try {
+        val tl = player.currentTimeline
+        if (tl.isEmpty) null else {
+            val w = androidx.media3.common.Timeline.Window()
+            tl.getWindow(player.currentMediaItemIndex, w)
+            if (w.windowStartTimeMs == C.TIME_UNSET) null else w.windowStartTimeMs + player.currentPosition
+        }
+    } catch (_: Throwable) {
+        null
+    }
+
     /** Os idiomas das faixas de legenda do que está tocando (null/"und" = sem idioma declarado: o CC do ar). */
     fun textLanguages(): List<String?> = player.currentTracks.groups
         .filter { it.type == C.TRACK_TYPE_TEXT }
@@ -227,7 +246,12 @@ class PlayerHost(
         val path = url.substringBefore('?').substringBefore('#').lowercase()
         val progressive = listOf(".mp4", ".m4v", ".webm", ".mkv", ".mov", ".mp3", ".aac").any { path.endsWith(it) }
         val b = MediaItem.Builder().setUri(url)
-        if (!progressive) b.setMimeType(MimeTypes.APPLICATION_M3U8)
+        if (!progressive) {
+            b.setMimeType(MimeTypes.APPLICATION_M3U8)
+            // ao vivo uns 12 s atrás da ponta (o padrão é 3 pedaços, ~6 s): mais reserva para a rede que oscila, sem
+            // cair do começo da lista (o canal do NEXA guarda 30 s); dono, 27/11: "o hls está caindo e voltando"
+            b.setLiveConfiguration(MediaItem.LiveConfiguration.Builder().setTargetOffsetMs(12_000).setMinOffsetMs(6_000).setMaxOffsetMs(20_000).build())
+        }
         return b.build()
     }
 
@@ -263,6 +287,7 @@ class PlayerHost(
 
     /** Ao vivo (ou reserva): um endereço só, sem repetir. */
     fun playLive(url: String) {
+        liveUrl = url
         player.repeatMode = Player.REPEAT_MODE_OFF
         val it = item(url)
         if (it.localConfiguration?.mimeType == MimeTypes.APPLICATION_M3U8) player.setMediaSource(hlsFactory.createMediaSource(it)) else player.setMediaItem(it)
@@ -272,6 +297,7 @@ class PlayerHost(
 
     /** Vídeos guardados, em laço, começando pelo de número `startIndex`. */
     fun playFiles(files: List<File>, startIndex: Int) {
+        liveUrl = null
         if (files.isEmpty()) {
             stop()
             return
