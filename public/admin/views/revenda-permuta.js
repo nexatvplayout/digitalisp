@@ -4,7 +4,7 @@
 // Rotas GET/PUT /api/revenda/clientes/:id/permuta (server/revenda.js); a montagem em server/tvcorp.js (comPropaganda).
 import { el, api, toast, guard } from '../lib.js';
 
-const TIPO = { image: 'imagem', video: 'vídeo', slide: 'slide' };
+const TIPO = { image: 'imagem', video: 'vídeo', slide: 'template' };
 const caixa = (checked, texto, extra = null) => {
   const i = el('input', { type: 'checkbox', checked });
   return { i, l: el('label', { class: 'rv-pm-op' }, i, el('span', { text: texto }), extra) };
@@ -22,6 +22,31 @@ export function permutaCard(clienteId) {
   return box;
 }
 
+/**
+ * A escolha da propaganda em grupos: as playlists e os conteúdos carregados (imagens e vídeos) sempre à vista; os
+ * templates (os slides feitos nos Templates) atrás de um botão, para mostrar ou não esse tipo de conteúdo. Com algum
+ * template já escolhido, o grupo abre sozinho.
+ */
+function propaganda(pls, midias) {
+  const grupo = (titulo, itens, vazio) => el('div', { class: 'rv-pm-grupo' },
+    el('div', { class: 'rv-pm-gtit', text: `${titulo} (${itens.length})` }),
+    itens.length ? el('div', { class: 'rv-pm-lista' }, ...itens.map((x) => x.l)) : el('p', { class: 'dim small', text: vazio }));
+  const carregados = midias.filter((m) => m.tipo !== 'slide');
+  const templates = midias.filter((m) => m.tipo === 'slide');
+  const out = el('div', {},
+    grupo('Playlists', pls, 'Nenhuma playlist na sua biblioteca.'),
+    grupo('Conteúdos carregados (imagens e vídeos)', carregados, 'Nenhuma imagem ou vídeo carregado na sua biblioteca.'));
+  if (templates.length) {
+    const tpl = grupo('Templates', templates, '');
+    tpl.hidden = !templates.some((x) => x.i.checked);
+    const ver = el('button', { type: 'button', class: 'small', onclick: () => { tpl.hidden = !tpl.hidden; pintaVer(); } });
+    const pintaVer = () => { ver.textContent = tpl.hidden ? `Mostrar os templates (${templates.length})` : 'Esconder os templates'; };
+    pintaVer();
+    out.append(el('div', { class: 'rv-actions' }, ver), tpl);
+  }
+  return out;
+}
+
 function pintar(box, clienteId, p) {
   const ligada = caixa(p.on, 'Permuta ligada para este cliente');
   const onde = el('select', {},
@@ -34,7 +59,7 @@ function pintar(box, clienteId, p) {
   onde.addEventListener('change', pintaOnde); pintaOnde();
   // a propaganda: mídias e playlists da biblioteca da revenda
   const tem = (kind, id) => p.items.some((x) => x.kind === kind && x.id === id);
-  const midias = p.midias.map((m) => ({ kind: 'media', id: m.id, ...caixa(tem('media', m.id), m.title, el('small', { class: 'dim', text: ` · ${TIPO[m.kind] || m.kind}` })) }));
+  const midias = p.midias.map((m) => ({ kind: 'media', id: m.id, tipo: m.kind, ...caixa(tem('media', m.id), m.title, el('small', { class: 'dim', text: ` · ${TIPO[m.kind] || m.kind}` })) }));
   const pls = p.playlists.map((x) => ({ kind: 'playlist', id: x.id, ...caixa(tem('playlist', x.id), x.name, el('small', { class: 'dim', text: ' · playlist' })) }));
   const vazio = !midias.length && !pls.length;
   const salvar = el('button', { type: 'button', class: 'primary small', text: 'Salvar a permuta', onclick: guard(async () => {
@@ -53,6 +78,6 @@ function pintar(box, clienteId, p) {
     telasBox,
     el('div', { class: 'rv-pm-sub', text: 'A sua propaganda (da sua biblioteca da TV Corporativa)' }),
     vazio ? el('p', { class: 'gd-falta', text: 'A sua biblioteca ainda não tem mídias nem playlists. Cadastre a propaganda em TV Corporativa (Mídias ou Playlists) e volte aqui.' })
-      : el('div', { class: 'rv-pm-lista' }, ...pls.map((x) => x.l), ...midias.map((x) => x.l)),
+      : propaganda(pls, midias),
     el('div', { class: 'rv-actions' }, salvar));
 }
