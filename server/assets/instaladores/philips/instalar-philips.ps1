@@ -141,10 +141,45 @@ $sdk    = [int]((& $adb -s $alvo shell getprop ro.build.version.sdk) -join '')
 Write-Host "TV encontrada: $marca $modelo (Android SDK $sdk)"
 if ($sdk -lt 24) { Fim 'Esta TV e antiga demais (precisa de Android 7 ou mais novo).' $false }
 
-Passo 'Instalando o DIGITAL ISP (leva uns 30 segundos)'
-$saida = (& $adb -s $alvo install -r -g $apk 2>&1) -join "`n"
+Passo 'Instalando o DIGITAL ISP (leva de 30 segundos a 2 minutos)'
+# No Google TV o Play Protect confere cada app instalado pelo adb e pode parar esperando uma resposta na TV.
+# Desliga essa conferencia so durante a instalacao (e volta como estava no fim).
+function Ajuste($nome) { ((& $adb -s $alvo shell settings get global $nome 2>$null) -join '').Trim() }
+$jaTinha = ((& $adb -s $alvo shell pm list packages $pacote 2>$null) -join "") -match [regex]::Escape($pacote)
+$antes = @{}
+foreach ($n in 'verifier_verify_adb_installs', 'package_verifier_enable') {
+  $antes[$n] = Ajuste $n
+  & $adb -s $alvo shell settings put global $n 0 2>&1 | Out-Null
+}
+$out = Join-Path $env:TEMP 'digitalisp-adb-install.txt'
+$err = Join-Path $env:TEMP 'digitalisp-adb-install-erro.txt'
+$p = Start-Process -FilePath $adb -ArgumentList @('-s', $alvo, 'install', '-r', '-g', "`"$apk`"") -NoNewWindow -PassThru -RedirectStandardOutput $out -RedirectStandardError $err
+$seg = 0; $avisou = $false
+while (-not $p.HasExited -and $seg -lt 300) {
+  Start-Sleep -Seconds 5; $seg += 5
+  Write-Host -NoNewline '.'
+  if ($seg -ge 25 -and -not $avisou) {
+    $avisou = $true
+    Write-Host ''
+    Aviso 'OLHE A TELA DA TV: se apareceu um aviso do Google Play Protect, escolha "Instalar mesmo assim"'
+    Aviso '(ou "Nao enviar" / "Permitir") com o controle remoto. A instalacao continua sozinha depois disso.'
+  }
+}
+if (-not $p.HasExited) { try { $p.Kill() } catch { } }
+foreach ($n in $antes.Keys) {
+  $v = $antes[$n]
+  if ($v -and $v -ne 'null') { & $adb -s $alvo shell settings put global $n $v 2>&1 | Out-Null } else { & $adb -s $alvo shell settings delete global $n 2>&1 | Out-Null }
+}
+Write-Host ''
+$saida = ((Get-Content $out -ErrorAction SilentlyContinue) + (Get-Content $err -ErrorAction SilentlyContinue)) -join "`n"
 Write-Host $saida
-if ($saida -notmatch 'Success') { Fim 'A instalacao falhou (veja a mensagem acima).' $false }
+if ($seg -ge 300) { Fim 'A instalacao passou de 5 minutos sem terminar. Confira se ha algum aviso na TV e rode de novo (ou use o pendrive).' $false }
+if ($saida -notmatch 'Success') {
+  # a saida do adb as vezes some; se o app nao existia antes e agora existe, deu certo
+  $tem = ((& $adb -s $alvo shell pm list packages $pacote 2>$null) -join '') -match [regex]::Escape($pacote)
+  if ($jaTinha -or -not $tem) { Fim 'A instalacao falhou (veja a mensagem acima).' $false }
+}
+Write-Host 'Instalado.' -ForegroundColor Green
 
 Passo 'Liberando para abrir sozinho ao ligar a TV'
 & $adb -s $alvo shell appops set $pacote SYSTEM_ALERT_WINDOW allow 2>&1 | Out-Null
