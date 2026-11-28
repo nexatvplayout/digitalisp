@@ -7,6 +7,7 @@ import { createMap } from '../telas-mapa.js';
 import { ligarCep } from '../cep.js';
 import { municipioCard } from './prefeitura-municipio.js';
 import { permutaCard } from './revenda-permuta.js';
+import { telasCard } from './revenda-telas.js';
 
 const brl = (c) => (c == null ? '—' : (Number(c) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
 const toCents = (v) => { const s = String(v ?? '').trim().replace(/\./g, '').replace(',', '.'); if (!s) return null; const n = Math.round(Number(s) * 100); return Number.isFinite(n) ? n : NaN; };
@@ -58,6 +59,19 @@ function painelDe(c) {
     el('a', { href: u, target: '_blank', rel: 'noopener', text: u.replace(/^https?:\/\//, ''), title: 'Abrir a tela de entrada do cliente' }),
     el('button', { type: 'button', class: 'small', text: 'Copiar', onclick: () => navigator.clipboard?.writeText(u).then(() => toast('Endereço copiado.'), () => toast(u)) }));
 }
+/** Abre o painel do cliente noutra aba, com a sessão de 1 h (a revenda segue logada aqui). */
+async function entrarNoCliente(c) {
+  const r = await api(`/api/revenda/clientes/${c.id}/entrar`, { method: 'POST' });
+  localStorage.setItem('disp.token.entrar', r.token); // entregue uma vez à aba nova, que guarda só nela
+  window.open(`${location.origin}/c/${c.slug}#entrar`, '_blank', 'noopener');
+}
+/** Os botões de cada cliente na lista: Telas (as telas dele e a tela nova) e Permuta (o quadro no cadastro). */
+function acoesDe(c, { telas, permuta }) {
+  const parar = (e) => e.stopPropagation();
+  return el('div', { class: 'rv-link-in', onclick: parar, onkeydown: parar },
+    el('button', { type: 'button', class: 'small primary', text: 'Telas', onclick: () => telas(c) }),
+    el('button', { type: 'button', class: 'small', text: 'Permuta', onclick: () => permuta(c) }));
+}
 export async function paintClientes(root) {
   loading(root);
   const [lista, pl] = await Promise.all([api('/api/revenda/clientes'), api('/api/revenda/planos')]);
@@ -66,6 +80,9 @@ export async function paintClientes(root) {
   const tbody = el('tbody');
   const box = el('div', { id: 'rcForm' });
   const abrir = (c) => { box.replaceChildren(clienteForm(c, planos, () => paintClientes(root), box)); box.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+  const verTelas = (c) => { box.replaceChildren(telasCard(c, { fechar: () => box.replaceChildren(), entrar: guard(() => entrarNoCliente(c)) })); box.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+  // a permuta fica no cadastro do cliente: abre o cadastro e vai direto ao quadro
+  const verPermuta = (c) => { abrir(c); setTimeout(() => box.querySelector('.rv-pm')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 350); };
   const draw = () => {
     const s = q.value.trim().toLowerCase();
     const rows = lista.filter((c) => !s || [c.name, c.fantasia, c.document, c.municipio, c.contactEmail].some((x) => String(x || '').toLowerCase().includes(s)));
@@ -76,7 +93,8 @@ export async function paintClientes(root) {
       el('td', {}, el('span', { class: `rv-st ${c.status}`, text: ST[c.status] || c.status })),
       el('td', { class: 'num', text: `${c.uso?.noAr ?? 0}/${c.uso?.telas ?? 0}` }),
       el('td', { text: c.cobranca?.modo === 'sistema' ? 'Pelo sistema' : 'Por fora' }),
-      el('td', { class: 'rv-link' }, painelDe(c)))) : [el('tr', {}, el('td', { colspan: 7, class: 'dim', text: s ? 'Nada encontrado.' : 'Nenhum cliente ainda. Cadastre o primeiro.' }))]));
+      el('td', { class: 'rv-link' }, painelDe(c)),
+      el('td', {}, acoesDe(c, { telas: verTelas, permuta: verPermuta })))) : [el('tr', {}, el('td', { colspan: 8, class: 'dim', text: s ? 'Nada encontrado.' : 'Nenhum cliente ainda. Cadastre o primeiro.' }))]));
   };
   q.addEventListener('input', draw);
   root.replaceChildren(...[
@@ -84,7 +102,7 @@ export async function paintClientes(root) {
     el('div', { class: 'card' },
       el('div', { class: 'rv-bar' }, q, el('button', { class: 'primary', type: 'button', text: '+ Novo cliente', onclick: () => abrir(null) })),
       el('div', { class: 'rv-scroll' }, el('table', { class: 'rv-table' },
-        el('thead', {}, el('tr', {}, ...['Cliente', 'Cidade', 'Plano', 'Situação', 'Telas no ar', 'Cobrança', 'Endereço do painel'].map((h) => el('th', { text: h })))), tbody))),
+        el('thead', {}, el('tr', {}, ...['Cliente', 'Cidade', 'Plano', 'Situação', 'Telas no ar', 'Cobrança', 'Endereço do painel', ''].map((h) => el('th', { text: h })))), tbody))),
     box].filter(Boolean));
   draw();
 }
@@ -99,12 +117,7 @@ function clienteForm(c, planos, done, box) {
   f.append(
     el('div', { class: 'rv-form-head' }, el('h3', { text: editando ? `Cliente: ${c.fantasia || c.name}` : 'Novo cliente final' }),
       el('div', { class: 'rv-btns' },
-        editando ? el('button', { type: 'button', class: 'small primary', text: 'Abrir o painel do cliente', onclick: guard(async () => {
-          const r = await api(`/api/revenda/clientes/${c.id}/entrar`, { method: 'POST' });
-          // o painel do cliente abre noutra aba, com a sessão de 1 h (a revenda segue logada aqui)
-          localStorage.setItem('disp.token.entrar', r.token); // entregue uma vez à aba nova, que guarda só nela
-          window.open(`${location.origin}/c/${c.slug}#entrar`, '_blank', 'noopener');
-        }) }) : null,
+        editando ? el('button', { type: 'button', class: 'small primary', text: 'Abrir o painel do cliente', onclick: guard(() => entrarNoCliente(c)) }) : null,
         editando ? el('button', { type: 'button', class: 'small', text: 'Nova senha', onclick: guard(async () => {
           if (!confirm('Gerar uma senha nova para o cliente? A senha atual deixa de valer.')) return;
           const r = await api(`/api/revenda/clientes/${c.id}/senha`, { method: 'POST' });

@@ -178,7 +178,7 @@ mountQrcodes(app, {
 });
 app.use('/qpagina', express.static(pub('q'), { setHeaders: (res) => res.setHeader('Cache-Control', 'no-cache') })); // domínio próprio da revenda e do cliente (server/dominios.js) // superadmin: de onde vêm clima, cotações, notícias, CEP, mapa e rádios (server/integracoes.js)
 mountGuia(app, { needs, signedIn, needsPlatform, ah }); // configuração guiada (server/guia.js)
-mountRevenda(app, { needs, signedIn, onPermuta: (tid) => telas?.forget(tid) });
+mountRevenda(app, { needs, signedIn, onPermuta: (tid) => telas?.forget(tid), novaChave: (...a) => telas.novaChave(...a) }); // as telas sobem depois: a chave chega por função
 mountHls(app, { needs, ah, onChange: (tid) => telas?.forget(tid) }); // canais ao vivo (HLS) (server/hls.js)
 mountRadios(app, { needs, signedIn, ah, onChange: (tid) => telas?.forget(tid) }); // rádio de fundo dos layouts sem vídeo (server/radios.js)
 await loadRadios();

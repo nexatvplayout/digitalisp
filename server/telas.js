@@ -1616,6 +1616,8 @@ export function createTelas({
       if (tvcorp) mountPanel(redeApp(app), { ...deps, needs: (p) => deps.needs(p === 'prefeitura.manage' ? 'tvcorp.manage' : p) });
     },
     forget, prune, preview, targets, configFor, senha, conteudo, desap, offImg,
+    /** A chave de acesso de uma tela nova (a revenda gera para o cliente dela: server/revenda.js). */
+    novaChave: (tenantId, office, name, by) => newAccessKey(tenantId, office, name, by),
     /** O município de uma conta, para a revenda ou a plataforma trocar ou tirar (o painel do cliente só define na primeira vez). */
     get municipio() { return municipioApi; },
     interna,

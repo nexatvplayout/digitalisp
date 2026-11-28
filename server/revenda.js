@@ -19,7 +19,7 @@ import * as access from './auth.js';
 import { config } from './config.js';
 import { checkPasswordPolicy, USERNAME_RE, hashPassword } from './authcore.js';
 import * as CAT from '../public/shared/funcionalidades.js';
-import { contaOf, forgetConta, ehDaRevenda, clientesDe, planoClienteDto, usoRevenda } from './contas.js';
+import { contaOf, forgetConta, ehDaRevenda, clientesDe, planoClienteDto, usoRevenda, assertNovaTela } from './contas.js';
 import { saveExtras, loadExtras, extrasDto } from './revendas.js';
 import { storage, isUrl } from './storage.js';
 import { lerPermuta, salvarPermuta } from './tvcorp-permuta.js';
@@ -83,7 +83,7 @@ async function emailEmUso(email, { excetoTenant = null, excetoUser = null } = {}
   return Boolean(t);
 }
 
-export function mountRevenda(app, { needs, signedIn, onPermuta = () => {} }) {
+export function mountRevenda(app, { needs, signedIn, onPermuta = () => {}, novaChave = null }) {
   const r = express.Router();
   const R = [needs('users.manage'), soRevenda];
 
@@ -374,6 +374,39 @@ export function mountRevenda(app, { needs, signedIn, onPermuta = () => {} }) {
     try { onPermuta(t.id); } catch { /* as telas pegam na próxima leitura */ }
     res.locals.audit = `${body.on ? 'ligou' : 'desligou'} a permuta do cliente ${t.name}`;
     res.json(await permutaDto(req.tenantId, t));
+  }));
+
+  /* ------------------------------------------------------------------ as TELAS de um cliente (botão Telas na lista) */
+  // as telas dele, uma a uma, as unidades e as chaves ainda não usadas; e a chave de uma tela nova, no limite do plano
+  async function telasDto(t) {
+    const now = Date.now();
+    const [devs, offs, keys] = await Promise.all([
+      db.all('SELECT id, office_id, name, model, app_version, last_seen, created_at FROM telas_devices WHERE revoked_at IS NULL AND tenant_id = ? ORDER BY name', [t.id]),
+      db.all('SELECT id, name FROM telas_offices WHERE tenant_id = ? ORDER BY name', [t.id]),
+      db.all('SELECT id, office_id, device_name, expires_at FROM telas_keys WHERE tenant_id = ? AND used_at IS NULL AND expires_at > ? ORDER BY id DESC', [t.id, now]),
+    ]);
+    const om = new Map(offs.map((o) => [Number(o.id), o.name]));
+    const num = (v) => (v == null ? null : Number(v));
+    return {
+      serverTime: now,
+      telas: devs.map((d) => ({ id: Number(d.id), name: d.name, unidade: om.get(Number(d.office_id)) || null, modelo: d.model || null, versao: d.app_version || null, lastSeen: num(d.last_seen), status: situacao(d.last_seen, now), desde: num(d.created_at) })),
+      unidades: offs.map((o) => ({ id: Number(o.id), name: o.name })),
+      chaves: keys.map((k) => ({ id: Number(k.id), unidade: om.get(Number(k.office_id)) || null, nome: k.device_name || '', expiresAt: Number(k.expires_at) })),
+    };
+  }
+  r.get('/clientes/:id/telas', ...R, ah(async (req, res) => {
+    const t = await clienteDaRevenda(req);
+    res.set('Cache-Control', 'no-store').json(await telasDto(t));
+  }));
+  r.post('/clientes/:id/telas/chave', ...R, ah(async (req, res) => {
+    const t = await clienteDaRevenda(req); const b = req.body || {};
+    const office = await db.get('SELECT id, name FROM telas_offices WHERE id = ? AND tenant_id = ?', [Number(b.officeId), t.id]);
+    if (!office) throw fail(400, 'Escolha a unidade do cliente onde fica a tela.');
+    if (!novaChave) throw fail(503, 'As telas não estão ligadas neste servidor.');
+    await assertNovaTela(t.id); // o limite do plano do cliente e o da revenda
+    const k = await novaChave(t.id, office, b.name, `revenda:${req.user?.username || req.tenantId}`);
+    res.locals.audit = `gerou a chave de uma tela nova do cliente ${t.name} (unidade ${office.name}${k.deviceName ? `, ${k.deviceName}` : ''})`;
+    res.set('Cache-Control', 'no-store').status(201).json({ ...k, unidade: office.name });
   }));
 
   /* ------------------------------------------------------------------ telas de todos os clientes */
