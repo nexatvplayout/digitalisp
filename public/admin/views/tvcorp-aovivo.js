@@ -58,16 +58,36 @@ export default async function paintAoVivo(box) {
   const url = el('input', { type: 'url', maxlength: '500', placeholder: 'https://…/playlist.m3u8' });
   // de onde vem o ao vivo: o endereço HLS ou um vídeo ao vivo do YouTube (cola o link do vídeo ou do canal)
   const urlCampo = f('Endereço HLS (.m3u8)', url);
-  const tipo = el('select', { 'aria-label': 'Tipo do canal', onchange: () => {
+  const pintaTipo = () => {
     const yt = tipo.value === 'youtube';
     urlCampo.querySelector('span').textContent = yt ? 'Link do YouTube (o vídeo ao vivo ou o canal)' : 'Endereço HLS (.m3u8)';
     url.placeholder = yt ? 'youtube.com/watch?v=…  ou  youtube.com/@canal' : 'https://…/playlist.m3u8';
-    if (yt && !nome.value) nome.value = 'YouTube ao vivo';
+  };
+  const tipo = el('select', { 'aria-label': 'Tipo do canal', onchange: () => {
+    pintaTipo();
+    if (tipo.value === 'youtube' && !nome.value) nome.value = 'YouTube ao vivo';
   } }, el('option', { value: 'hls', text: 'Link HLS (.m3u8)' }), el('option', { value: 'youtube', text: 'YouTube (colar o link)' }));
+  // editar um canal já cadastrado: o mesmo formulário, preenchido, e o Salvar troca o nome e o link do canal
+  let editando = null;
+  const titulo = label('Novo canal ao vivo');
+  const cancelar = btn('Cancelar a edição', () => editar(null), 'small');
+  cancelar.hidden = true;
+  function editar(c) {
+    editando = c;
+    titulo.textContent = c ? `Editando o canal "${c.name}"` : 'Novo canal ao vivo';
+    nome.value = c ? c.name : '';
+    url.value = c ? c.url : '';
+    tipo.value = c && ehYoutube(c.url) ? 'youtube' : 'hls';
+    pintaTipo();
+    cancelar.hidden = !c;
+    titulo.closest('.card')?.classList.toggle('av-editando', Boolean(c));
+    if (c) { titulo.closest('.card')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); url.focus(); }
+  }
   const linha = (c) => el('div', { class: 'av-row' },
     el('div', { class: 'av-info' }, el('b', { text: c.name }), c.ativo ? null : el('span', { class: 'dim small', text: ' (desligado)' }), c.youtube ? el('span', { class: 'pf-chip', text: 'YouTube' }) : null, el('div', { class: 'dim small av-url', text: c.url })),
     el('div', { class: 'av-btns' },
       btn('Prévia', () => previa(prev, c.url), 'small'),
+      btn('Editar', () => editar(c), 'small'),
       btn(c.ativo ? 'Desligar' : 'Ligar', guard(async () => { await api(`/api/hls/${c.id}`, { method: 'PATCH', body: { ativo: !c.ativo } }); await paintAoVivo(box); }), 'small'),
       btn('Apagar', guard(async () => {
         if (!confirm(`Apagar o canal "${c.name}"? As unidades que usavam ficam sem ao vivo.`)) return;
@@ -77,11 +97,22 @@ export default async function paintAoVivo(box) {
     note('Cadastre quantos canais ao vivo quiser: um canal do NEXA Broadcast, a TV do provedor (IPTV), uma câmera, qualquer endereço .m3u8 ou um vídeo ao vivo do YouTube (o link do vídeo, ou o do canal para tocar a live que estiver no ar). Em "Unidades e grupos", escolha qual canal passa na zona de vídeo das telas de cada unidade (o layout precisa ter uma zona de vídeo).', 'dim'),
     el('div', { class: 'av-grid' },
       el('div', { class: 'card' },
-        label('Novo canal ao vivo'),
+        titulo,
         el('div', { class: 'pf-grid' }, f('De onde vem', tipo), f('Nome do canal', nome), urlCampo),
         el('div', { class: 'av-btns' },
           btn('Prévia', () => { if (!url.value.trim()) { toast('Cole o endereço .m3u8 ou o link do YouTube.', true); return; } previa(prev, url.value.trim()); }, 'small'),
-          btn('Salvar canal', guard(async () => { if (tipo.value === 'youtube' && !ehYoutube(url.value)) { toast('Cole um link do YouTube (youtube.com ou youtu.be).', true); return; } await api('/api/hls', { method: 'POST', body: { nome: nome.value, url: url.value } }); toast('Canal salvo.'); await paintAoVivo(box); }), 'primary')),
+          btn('Salvar canal', guard(async () => {
+            if (tipo.value === 'youtube' && !ehYoutube(url.value)) { toast('Cole um link do YouTube (youtube.com ou youtu.be).', true); return; }
+            if (editando) {
+              await api(`/api/hls/${editando.id}`, { method: 'PATCH', body: { nome: nome.value, url: url.value } });
+              toast('Canal alterado. As telas que usam este canal pegam o link novo em até 1 minuto.');
+            } else {
+              await api('/api/hls', { method: 'POST', body: { nome: nome.value, url: url.value } });
+              toast('Canal salvo.');
+            }
+            await paintAoVivo(box);
+          }), 'primary'),
+          cancelar),
         label(`Canais cadastrados (${lista.length})`),
         lista.length ? el('div', { class: 'av-list' }, ...lista.map(linha)) : note('Nenhum canal ainda.', 'dim')),
       el('div', { class: 'card' }, label('Prévia'), prev)));

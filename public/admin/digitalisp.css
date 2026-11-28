@@ -136,6 +136,7 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
 .av-info { min-width: 0; }
 .av-url { overflow-wrap: anywhere; }
 .av-btns { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
+.card.av-editando { outline: 2px solid var(--c-accent, #f59e0b); outline-offset: 2px; }
 .av-video { width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: 8px; }
 .pl-card.dirty { border-color: #f5b31c; }
 .pl-dirty { align-self: center; color: #f5c55c; font-weight: 600; font-size: .86rem; }
