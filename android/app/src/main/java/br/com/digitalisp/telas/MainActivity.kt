@@ -211,7 +211,25 @@ class MainActivity : Activity(), Engine.Ui {
     }
 
     /** O horário da imagem na tela: o do HLS; sem ele, o do guia (servidor − atraso do ar) andando pelo relógio. */
-    private fun airNow(g: Guide): Long = player.programTimeMs() ?: (g.serverTime - g.airLagMs + (System.currentTimeMillis() - guideFetchedAt))
+    private fun airNow(g: Guide): Long {
+        val est = g.serverTime - g.airLagMs + (System.currentTimeMillis() - guideFetchedAt)
+        val pdt = player.programTimeMs()
+        // o horário do HLS só vale se estiver perto do do guia (até 2 min): um PDT torto não pode sumir com a legenda
+        guideAirFromHls = pdt != null && kotlin.math.abs(pdt - est) < 120_000
+        return if (guideAirFromHls) pdt!! else est
+    }
+    private var guideAirFromHls = false
+    private var guideError = ""
+
+    /** O estado do guia para o diagnóstico. */
+    fun guideSummary(): String {
+        val u = guideUrlNow ?: return "sem guia (o canal não é do NEXA, ou é YouTube)"
+        val g = guide ?: return "lendo $u${if (guideError.isNotEmpty()) " (último erro: $guideError)" else ""}"
+        val air = airNow(g)
+        val it = g.itemAt(air)
+        return "${g.items.size} item(ns); no ar: ${if (it == null) "nenhum" else "${it.kind}, ${it.captions.size} legenda(s)"}; horário ${if (guideAirFromHls) "do HLS" else "do guia"}" +
+            (if (guideCuesUrl != null) "; arquivo com ${guideCues.size} fala(s)" else "")
+    }
 
     private fun tickGuide() {
         val gUrl = if (ytView == null && cfg != null) GuideCaptions.guideUrl(player.liveUrl) else null
@@ -257,9 +275,11 @@ class MainActivity : Activity(), Engine.Ui {
     private fun fetchGuide(url: String) {
         guideFetching = true
         Thread({
-            val g = try { GuideCaptions.parseGuide(httpText(url), GuideCaptions.siteOf(url)) } catch (_: Throwable) { null }
+            var err = ""
+            val g = try { GuideCaptions.parseGuide(httpText(url), GuideCaptions.siteOf(url)).also { if (it == null) err = "resposta inválida" } } catch (e: Throwable) { err = e.javaClass.simpleName + (e.message?.let { ": $it" } ?: ""); null }
             runOnUiThread {
                 guideFetching = false
+                guideError = err.take(80)
                 if (url != guideUrlNow) return@runOnUiThread
                 val now = System.currentTimeMillis()
                 if (g != null) { guide = g; guideFetchedAt = now; guideNextTry = now + GuideCaptions.REFRESH_MS } else guideNextTry = now + 15_000
@@ -2457,6 +2477,7 @@ class MainActivity : Activity(), Engine.Ui {
         line("Sobrepor a outros apps", if (Settings.canDrawOverlays(this)) "concedida" else "não concedida")
         line("Girar a tela", "escolhido ${ScreenTurn.label(Engine.store.giro, Engine.store.rotation)}; aplicado ${stage.rotation.toInt()}° (área ${stage.width}×${stage.height} na saída ${root.width}×${root.height})")
         line("Legenda", captionsSummary())
+        line("Guia das legendas", guideSummary())
         line("Volta sozinho para a frente", if (Kiosk.canBringToFront(this)) "sim" else "não (só pelo Home ou ao religar)")
         line("Instalar atualização", if (Kiosk.canInstall(this)) "permitido" else "o Android vai perguntar (fontes desconhecidas não liberadas)")
         line("Economia de bateria", Kiosk.batteryStatus(this))
