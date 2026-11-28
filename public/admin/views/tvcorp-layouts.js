@@ -6,6 +6,10 @@ import { el, guard, toast, tapi, put, f, opt, table, label, note, empty, btn, bt
 import { layoutPreview, frameOf } from '../../shared/tvcorp-previa.js';
 import { widgetItem } from './tvcorp-playlists.js';
 import { FACTORY_LAYOUTS, FACTORY_LAYOUT, FACTORY_SETS, LAYOUT_SEGMENTS, ZONE_KINDS, ZONE_KIND, zoneLabel, LIMITS, checkZones, widgetLabel } from './tvcorp-catalogo.js';
+import { liberado } from '../plano-cliente.js';
+// os tipos de zona que o plano do cliente final desliga (a senha, as notícias, as cotações) não aparecem para escolher
+const ZONA_FEATURE = { queue: 'senhas', news: 'dados', quotes: 'dados', video: 'aoVivo' };
+const zonaLiberada = (kind) => liberado(ZONA_FEATURE[kind]);
 import { themeOf } from './tvcorp-midias.js';
 import { radioPicker } from './tvcorp-radio.js';
 import { abrirPreviaViva } from './tvcorp-previa-viva.js';
@@ -226,7 +230,7 @@ export function layoutEditor(lay, reload, factoryKey = null, copyOf = null, { ao
     const dicas = st.zones.filter((z) => z.kind === 'playlist').map((z) => note(`Quadro "${z.id}": ${dicaArte({ px: quadroPx(st, z) })}`, 'small'));
     put(rowsBox, table(['Zona', 'O que mostra', 'Esquerda %', 'Alto %', 'Largura %', 'Altura %', 'Na TV (px)', 'Conteúdo fixo', ''], st.zones.map((z, i) => el('tr', { class: st.sel === i ? 'tc-sel' : '' },
       el('td', {}, el('input', { type: 'text', maxlength: '20', value: z.id, class: 'tc-id-in', 'aria-label': 'Nome da zona', onchange: (e) => { z.id = e.target.value.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 16) || `z${i + 1}`; e.target.value = z.id; canvas.paint(); paintPv(); } })),
-      el('td', {}, el('select', { 'aria-label': `Tipo da zona ${z.id}`, onchange: (e) => { z.kind = e.target.value; canvas.paint(); paintRows(); paintPv(); if (z.kind === 'ticker') tickerDlg(); } }, ...ZONE_KINDS.map((k) => opt(k.key, k.label, k.key === z.kind)))),
+      el('td', {}, el('select', { 'aria-label': `Tipo da zona ${z.id}`, onchange: (e) => { z.kind = e.target.value; canvas.paint(); paintRows(); paintPv(); if (z.kind === 'ticker') tickerDlg(); } }, ...ZONE_KINDS.filter((k) => k.key === z.kind || zonaLiberada(k.key)).map((k) => opt(k.key, k.label, k.key === z.kind)))),
       el('td', {}, num(z, 'x')), el('td', {}, num(z, 'y')), el('td', {}, num(z, 'w')), el('td', {}, num(z, 'h')),
       tam(z),
       el('td', {}, ...params(z)),

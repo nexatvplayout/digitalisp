@@ -21,6 +21,7 @@ import paintBarras from './tvcorp-barras.js';
 import paintGadgets from './tvcorp-gadgets.js';
 import { paintAlertas, paintAprovacoes } from './tvcorp-rede.js';
 import paintCelular from './tvcorp-celular.js';
+import { abaLiberada } from '../plano-cliente.js';
 import paintRelatorios from './tvcorp-relatorios.js';
 import paintComandos from './tvcorp-comandos.js';
 import paintInstalar from './tvcorp-instalar.js';
@@ -53,7 +54,7 @@ export const TABS = [
   { id: 'config', label: 'Configurações', perm: 'tvcorp.manage', paint: paintConfig },
 ];
 /** As abas que quem está logado vê (pela permissão de cada uma). */
-export const tabsFor = (has) => TABS.filter((t) => has(t.perm));
+export const tabsFor = (has) => TABS.filter((t) => has(t.perm) && abaLiberada(t.id)); // e o que o plano do cliente final liga
 
 const P = { tab: 'resumo', timer: null, seq: 0, error: null };
 const POLL_MS = 10000;

@@ -37,9 +37,10 @@ export function compileRoute(spec) {
 const bodyHas = (body, want) => Object.entries(want).some(([k, list]) => body && typeof body === 'object' && list.some((v) => body[k] === v));
 
 /** Todas as regras do catálogo, compiladas: [{ key, spec, methods, re, body, bodyNot }]. */
-export const RULES = CAT.FEATURES.flatMap((f) => (f.routes || []).map((r) => {
+export const RULES = CAT.FEATURES.flatMap((f) => [...(f.routes || []).map((r) => [r, false]), ...(f.clienteRoutes || []).map((r) => [r, true])].map(([r, soCliente]) => {
   const o = typeof r === 'string' ? { r } : r;
-  return { key: f.key, spec: o.r, ...compileRoute(o.r), body: o.body || null, bodyNot: o.bodyNot || null };
+  // soCliente: a regra só vale para o plano do cliente final (clienteRoutes no catálogo)
+  return { key: f.key, spec: o.r, ...compileRoute(o.r), body: o.body || null, bodyNot: o.bodyNot || null, soCliente };
 }));
 /** Primeiro trecho dos caminhos guardados (api, prompter, cg-out…): o resto dos pedidos passa direto. */
 const HEADS = new Set(RULES.map((r) => (r.spec.split(/\s+/)[1].startsWith('[ch]') ? 'api' : r.spec.split(/\s+/)[1].split('/')[1].toLowerCase())));
@@ -56,7 +57,7 @@ export function routeHits(method, path, body) {
     if (r.bodyNot && bodyHas(body, r.bodyNot)) continue;
     let slug = x.groups?.ch || null;
     if (slug) { try { slug = decodeURIComponent(slug); } catch { /* como veio */ } }
-    out.push({ key: r.key, slug });
+    out.push({ key: r.key, slug, soCliente: r.soCliente });
   }
   return out;
 }
@@ -97,6 +98,7 @@ export function createPlanGate({ channelTenant, peekTenantId, resolveTenant }) {
           const t = await T.getTenant(tid);
           if (!t) continue;
           const plan = await T.effectivePlan(t);
+          if (h.soCliente && !String(plan.code || '').startsWith('cliente-')) continue; // só o plano do cliente final
           if (!plan.features[h.key]) {
             const e = T.featureError(plan, h.key);
             return res.status(403).json({ error: e.message, ...e.extra });

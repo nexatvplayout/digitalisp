@@ -17,6 +17,8 @@
 //       "MÉTODOS CAMINHO": MÉTODOS = * ou GET|POST|…; [ch] = /api ou /api/c/<canal> (rotas do canal); {ch} = o canal pelo
 //       endereço (o dono do canal é quem conta); :x = um trecho; * no fim = o caminho e tudo abaixo dele.
 //       Objeto { r: 'MÉTODOS CAMINHO', body: { campo: [valores] } }: só quando o corpo JSON traz um desses valores.
+//   - clienteRoutes: como routes, mas só para o CLIENTE FINAL (o plano dele vem da revenda, server/contas.js): o que o plano
+//       do cliente desliga ele não cria nem altera; a revenda e as contas diretas seguem como antes (os planos delas não citam).
 //   - config: chaves da configuração do canal (PUT /config) que só LIGAM com a funcionalidade (desligar sempre pode).
 //   - panel: seletores CSS dos trechos das telas do painel que somem sem a funcionalidade (o menu some pelo views).
 //   - app: as chaves de "features" que os apps (site, celular, TVs) recebem desligadas sem a funcionalidade.
@@ -40,20 +42,20 @@ export const SECTIONS = [
     menus: [
       { key: 'tvcorp', label: 'Telas e conteúdo', views: ['tvcorp'], core: true, desc: 'A base: cadastro das telas, mídias, playlists, layouts, grade, comandos remotos, funcionamento sem internet e relatórios de exibição.' },
       { key: 'mapa', label: 'Mapa das telas', desc: 'Todas as telas no mapa com o estado de cada uma (no ar, fora do ar, desatualizada), para a revenda e para o cliente final.' },
-      { key: 'alertas', label: 'Alerta em tela cheia', desc: 'Aviso de emergência (evacuação, falta de energia) por tela, grupo ou raio no mapa, por cima de tudo.' },
-      { key: 'aprovacao', label: 'Aprovação de conteúdo', desc: 'O que o cliente final sobe espera a revenda aprovar antes de ir para as telas.' },
+      { key: 'alertas', clienteRoutes: ['POST|PUT|PATCH|DELETE /api/tvcorp/rede/alerts*'], label: 'Alerta em tela cheia', desc: 'Aviso de emergência (evacuação, falta de energia) por tela, grupo ou raio no mapa, por cima de tudo.' },
+      { key: 'aprovacao', clienteRoutes: ['POST|PUT|PATCH|DELETE /api/tvcorp/rede/approvals*'], label: 'Aprovação de conteúdo', desc: 'O que o cliente final sobe espera a revenda aprovar antes de ir para as telas.' },
     ],
   },
   {
     id: 'conteudo', label: 'Conteúdo',
     menus: [
       { key: 'templates', label: 'Templates prontos', desc: 'A biblioteca de templates por segmento (varejo, alimentação, saúde, serviços, indústria), editáveis no navegador.' },
-      { key: 'aoVivo', label: 'Ao vivo (HLS)', desc: 'Um canal ao vivo numa zona da tela: NEXA Broadcast, IPTV do provedor, câmera ou qualquer endereço HLS.' },
+      { key: 'aoVivo', clienteRoutes: ['POST|PUT|PATCH|DELETE /api/hls*'], label: 'Ao vivo (HLS)', desc: 'Um canal ao vivo numa zona da tela: NEXA Broadcast, IPTV do provedor, câmera ou qualquer endereço HLS.' },
       { key: 'paginas', label: 'Páginas e painéis', desc: 'Página da internet ou painel (Power BI, Looker Studio, Grafana) numa zona da tela.' },
-      { key: 'dados', label: 'Notícias, clima e cotações', desc: 'Dados automáticos: notícias com crédito, clima, cotações, RSS da empresa e planilha publicada.' },
-      { key: 'indicadores', label: 'Indicadores e metas', desc: 'Números da empresa na tela, atualizados à mão ou pela API.' },
-      { key: 'rh', label: 'Comunicação interna e RH', desc: 'Comunicados, aniversariantes, dias sem acidente e cardápio da semana.' },
-      { key: 'celular', label: 'Envio pelo celular', desc: 'Link para o colaborador ou o cliente final mandar foto e aviso pelo celular, com aprovação.' },
+      { key: 'dados', clienteRoutes: ['POST|PUT|PATCH|DELETE /api/tvcorp/feeds*', 'POST|PUT|PATCH|DELETE /api/tvcorp/widgets*'], label: 'Notícias, clima e cotações', desc: 'Dados automáticos: notícias com crédito, clima, cotações, RSS da empresa e planilha publicada.' },
+      { key: 'indicadores', clienteRoutes: ['POST|PUT|PATCH|DELETE /api/tvcorp/kpis*'], label: 'Indicadores e metas', desc: 'Números da empresa na tela, atualizados à mão ou pela API.' },
+      { key: 'rh', clienteRoutes: ['POST|PUT|PATCH|DELETE /api/tvcorp/people*'], label: 'Comunicação interna e RH', desc: 'Comunicados, aniversariantes, dias sem acidente e cardápio da semana.' },
+      { key: 'celular', clienteRoutes: ['POST|PUT|PATCH|DELETE /api/tvcorp/mobile*', 'POST|PUT|PATCH|DELETE /api/tvcorp/suggestions*'], label: 'Envio pelo celular', desc: 'Link para o colaborador ou o cliente final mandar foto e aviso pelo celular, com aprovação.' },
     ],
   },
   {

@@ -10,6 +10,7 @@ import { ufCityPicker } from '../../shared/uf-city.js';
 import { OFFICE_TYPES, MODULE, OFFICE_ROLES } from '../../shared/telas-tipos.js';
 import { corpTypes } from './tvcorp-catalogo.js';
 import { newKey } from './tvcorp-telas.js';
+import { liberado } from '../plano-cliente.js'; // a chamada de senha só no plano que tem
 import { paintQueueOffice } from './prefeitura-fase3.js'; // a chamada de senha: filas, totem e o endereço do guichê
 
 const TYPES = () => corpTypes(OFFICE_TYPES);
@@ -210,7 +211,7 @@ export default async function paintUnidades(box, ctx) {
         btn('Editar', () => editOffice(o, reload), 'small'),
         btn('Usuários e link', () => officeAccess(o), 'small'),
         // a chamada de senha da unidade (consultório, recepção): as filas, o endereço do totem e o do guichê
-        btn('Chamada de senha', () => senhaDialog(o, reload), 'small primary'),
+        liberado('senhas') ? btn('Chamada de senha', () => senhaDialog(o, reload), 'small primary') : null,
         btn('+ TV box', () => newKey(reload, o.id), 'small'),
         btn('PIN novo', guard(async () => { if (!confirm(`Gerar um PIN de saída novo para as TV box de "${o.name}"? O de antes deixa de valer em até 10 segundos.`)) return; const r = await tapi(`/api/tvcorp/rede/offices/${o.id}/pin`, { method: 'POST', body: {} }); showOnce(`PIN de saída · ${o.name}`, 'O PIN aparece só agora. Anote e passe ao responsável pela unidade.', String(r.pin)); }), 'small'),
         btn('Excluir', guard(async () => { if (devs.length) { toast('Esta unidade ainda tem telas. Revogue ou mude as telas de unidade antes.', true); return; } if (!confirm(`Excluir a unidade "${o.name}"?`)) return; await tapi(`/api/tvcorp/rede/offices/${o.id}`, { method: 'DELETE' }); await reload(); }), 'small danger')));

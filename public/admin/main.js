@@ -4,6 +4,7 @@
 // A revenda vê "Telas e conteúdo" (views/tvcorp.js, herdada da TV Corporativa do NEXA); a equipe da plataforma vê as revendas.
 import { $, $$, el, state, api, toast, guard, on, store } from './lib.js';
 import { ligarMascaras } from './mascaras.js';
+import { abaLiberada } from './plano-cliente.js';
 ligarMascaras(); // CPF, CNPJ, telefone e CEP com a pontuação padrão em todo o painel
 // as telas e o conteúdo (uns 40 arquivos) só carregam depois da entrada: a tela de login abre na hora
 let tvcorpMod = null;
@@ -182,6 +183,8 @@ async function start() {
     S.area = S.conta.tipo === 'cliente' ? 'cliente' : 'revenda';
   }
   for (const n of $$('[data-area]')) n.hidden = !n.dataset.area.split(' ').includes(S.area) || (n.hasAttribute('data-pref') && !temPrefeitura());
+  // o que o plano do cliente final desliga some do menu (public/admin/plano-cliente.js)
+  for (const n of $$('a[data-view="tvcorp"][data-sub]')) if (!abaLiberada(n.dataset.sub)) n.hidden = true;
   pollPrefeitura();
   const aviso = $('#entrouComo');
   aviso.hidden = !S.conta?.impersonador;
