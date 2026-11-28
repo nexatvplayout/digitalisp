@@ -41,6 +41,7 @@ import br.com.digitalisp.telas.core.Alert
 import br.com.digitalisp.telas.core.Alerts
 import br.com.digitalisp.telas.core.Brands
 import br.com.digitalisp.telas.core.CardRotation
+import br.com.digitalisp.telas.core.ScreenTurn
 import br.com.digitalisp.telas.core.ClockCheck
 import br.com.digitalisp.telas.core.DiagReport
 import br.com.digitalisp.telas.core.Missing
@@ -208,7 +209,26 @@ class MainActivity : Activity(), Engine.Ui {
     fun applyCaptions() {
         val c = captionsNow()
         player.setCaptions(c.on, c.lang)
+        youtubeCaptions()
     }
+
+    /** O YouTube não passa pelo player: a página liga a legenda e pede ao YouTube a tradução (public/tvcorp/youtube.js). */
+    private fun youtubeCaptions() {
+        val wv = ytView ?: return
+        val c = captionsNow()
+        val lang = c.lang?.takeIf { it in CaptionsPolicy.LANGS }
+        try { wv.evaluateJavascript("window.telasLegenda&&telasLegenda(${c.on},${if (lang != null) "'$lang'" else "null"})", null) } catch (_: Throwable) { }
+    }
+
+    /** Os parâmetros da legenda na página do YouTube (cc=1&cclang=en). */
+    private fun youtubeCaptionsQuery(): String {
+        val c = captionsNow()
+        val lang = c.lang?.takeIf { it in CaptionsPolicy.LANGS }
+        return "&cc=" + (if (c.on) 1 else 0) + (if (lang != null) "&cclang=$lang" else "")
+    }
+
+    /** O YouTube está na zona de vídeo agora? (aí a legenda pode ser traduzida para qualquer idioma da lista). */
+    fun captionsOnYoutube(): Boolean = ytView != null
 
     /** Ajustes: liga/desliga ou troca o idioma neste aparelho (vale até a próxima mudança do painel). */
     fun setLocalCaptions(on: Boolean, lang: String?) {
@@ -218,15 +238,17 @@ class MainActivity : Activity(), Engine.Ui {
 
     fun captionsState(): CaptionsCfg = captionsNow()
 
-    fun captionLanguages(): List<String?> = player.textLanguages()
+    /** Os idiomas do botão: no YouTube, todos os da lista (o YouTube traduz); no canal HLS, os que o fluxo traz. */
+    fun captionLanguages(): List<String?> = if (ytView != null) CaptionsPolicy.LANGS else player.textLanguages()
 
     fun captionsSummary(): String {
         val c = captionsNow()
         val panel = cfg?.captions ?: CaptionsCfg()
         val from = if (c == panel) "pelo painel" else "escolhida neste aparelho, até a próxima mudança do painel"
-        val langs = captionLanguages().map { CaptionsPolicy.name(it) }.distinct()
-        return (if (c.on) "ligadas, idioma ${CaptionsPolicy.name(c.lang)}" else "desligadas") + " ($from)" +
-            if (langs.isEmpty()) "; o fluxo não traz legenda agora" else "; no fluxo: ${langs.joinToString(", ")}"
+        val head = (if (c.on) "ligadas, idioma ${CaptionsPolicy.name(c.lang)}" else "desligadas") + " ($from)"
+        if (ytView != null) return "$head; YouTube: a legenda do vídeo, traduzida pelo YouTube para o idioma escolhido (quando o vídeo tem legenda)"
+        val langs = player.textLanguages().map { CaptionsPolicy.name(it) }.distinct()
+        return head + if (langs.isEmpty()) "; o fluxo não traz legenda agora" else "; no fluxo: ${langs.joinToString(", ")}"
     }
     private var callLabelPx = 0f
     private var lastWall = 0L
@@ -632,8 +654,9 @@ class MainActivity : Activity(), Engine.Ui {
         // TV Corporativa: o bloco de agora (sem `signage`, null e nada muda)
         val block = pickBlock(c)
         // TV em pé com a saída do aparelho deitada: gira a composição inteira
-        val rotate = (if (block != null) block.layout.portrait else layout == Layout.PORTRAIT) && !displayPortrait
-        val angle = if (rotate) Engine.store.rotation else 0
+        // e o "Girar a tela" dos ajustes: 0/90/180/270 para qualquer layout (core/ScreenTurn)
+        val angle = ScreenTurn.angle(Engine.store.giro, Engine.store.rotation, if (block != null) block.layout.portrait else layout == Layout.PORTRAIT, displayPortrait)
+        val rotate = ScreenTurn.swaps(angle)
         val key = listOf(w, h, layout, angle, c?.ticker, c?.side, c?.weather, c?.cards, c?.queue, Engine.store.overscanPct, c?.layoutRaw, c?.theme, c?.stream?.youtube).joinToString("|") +
             (if (block != null) "|signage:" + System.identityHashCode(block) else "")
         if (key == compKey) return
@@ -762,7 +785,7 @@ class MainActivity : Activity(), Engine.Ui {
             if (wantTicker) col.addView(buildTicker(c, ins), LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, tickerH))
             compHost.addView(col, match())
         }
-        player.attach(frame, useTexture = rotate || frame.forceTexture)
+        player.attach(frame, useTexture = angle != 0 || frame.forceTexture)
         val mute = block != null && !block.layout.hasVideo
         if (c != null && mute != signMuted) {
             signMuted = mute
@@ -911,7 +934,7 @@ class MainActivity : Activity(), Engine.Ui {
         } ?: return
         val (vol, mudo) = youtubeLevel(c)
         frame.addView(wv, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-        wv.loadUrl(page + (if (page.contains("?")) "&" else "?") + "vol=" + vol + "&mute=" + (if (mudo) 1 else 0))
+        wv.loadUrl(page + (if (page.contains("?")) "&" else "?") + "vol=" + vol + "&mute=" + (if (mudo) 1 else 0) + youtubeCaptionsQuery())
         ytView = wv
     }
 

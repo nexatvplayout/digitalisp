@@ -19,6 +19,7 @@ import android.graphics.Typeface
 import br.com.digitalisp.telas.core.ClockCheck
 import br.com.digitalisp.telas.core.Overscan
 import br.com.digitalisp.telas.core.CaptionsPolicy
+import br.com.digitalisp.telas.core.ScreenTurn
 import br.com.digitalisp.telas.core.CallSound
 import br.com.digitalisp.telas.core.CallSoundMode
 import br.com.digitalisp.telas.core.PinDisplay
@@ -583,7 +584,9 @@ class SettingsScreen(act: MainActivity) : Screen(act) {
                 val c = act.captionsState()
                 act.setLocalCaptions(true, CaptionsPolicy.nextLang(c.lang, act.captionLanguages()))
                 b.text = captionsLangText()
-                note.text = "Hoje o ar traz a legenda em português (a do canal). Vale até a próxima mudança no painel."
+                note.text = if (act.captionsOnYoutube()) "No YouTube, a legenda do vídeo é traduzida pelo próprio YouTube para o idioma escolhido (quando o vídeo tem legenda). Vale até a próxima mudança no painel."
+                else if (act.captionLanguages().isEmpty()) "O canal ao vivo não traz legenda agora: não há idioma para escolher."
+                else "Os idiomas que o canal ao vivo traz. Vale até a próxima mudança no painel."
             },
             Ui.lp(top = gap(8f)),
         )
@@ -601,6 +604,16 @@ class SettingsScreen(act: MainActivity) : Screen(act) {
                 b.text = callSoundText()
                 note.text = if (act.callSound().source == CallSound.FROM_PANEL) "O painel definiu o som desta tela: vale o do painel. A escolha daqui vale quando o painel não definir."
                 else "Vale neste aparelho enquanto o painel não definir o som da chamada."
+            },
+            Ui.lp(top = gap(8f)),
+        )
+        col.addView(
+            Ui.button(act, giroText()) { b ->
+                store.giro = ScreenTurn.next(store.giro)
+                b.text = giroText()
+                note.text = if (store.giro == ScreenTurn.AUTO) "Automático: só o layout em pé gira (para o lado do botão abaixo)."
+                else "A tela gira ${store.giro}° em qualquer layout. Vale neste aparelho."
+                act.applyConfig()
             },
             Ui.lp(top = gap(8f)),
         )
@@ -660,7 +673,8 @@ class SettingsScreen(act: MainActivity) : Screen(act) {
         return "Som da chamada no aparelho: ${local.label} (trocar)" + if (now.source == CallSound.FROM_PANEL) " · o painel definiu: ${now.mode.label}" else ""
     }
     private fun callVoiceText() = "Voz da chamada: ${VoiceClips.label(Engine.store.callVoice)} (trocar e ouvir)"
-    private fun rotationText() = "TV em pé: girar ${Engine.store.rotation}° (trocar o lado)"
+    private fun rotationText() = "Automático, TV em pé: girar ${Engine.store.rotation}° (trocar o lado)"
+    private fun giroText() = "Girar a tela: " + ScreenTurn.label(Engine.store.giro, Engine.store.rotation) + " (trocar)"
     private fun standbyText() = "Espera fora do horário (experimental): " + if (Engine.store.standbyOffHours) "ligada" else "desligada"
 
     private fun ownerHelp() =

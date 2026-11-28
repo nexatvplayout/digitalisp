@@ -29,8 +29,8 @@ android {
         applicationId = "br.com.digitalisp.telas"
         minSdk = 24
         targetSdk = 35
-        versionCode = 16
-        versionName = "0.3.13"
+        versionCode = 17
+        versionName = "0.3.14"
         buildConfigField("String", "SERVIDOR_PADRAO", "\"" + servidorPadrao.replace("\"", "") + "\"")
     }
 

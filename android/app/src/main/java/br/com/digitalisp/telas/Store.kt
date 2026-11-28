@@ -224,9 +224,15 @@ class Store(ctx: Context) {
         get() = br.com.digitalisp.telas.core.Overscan.clean(p.getInt("overscan", br.com.digitalisp.telas.core.Overscan.DEFAULT))
         set(v) { p.edit().putInt("overscan", br.com.digitalisp.telas.core.Overscan.clean(v)).apply() }
 
+    /** Para que lado a tela em pé gira no modo automático (layout em pé na TV deitada): 90 ou 270. */
     var rotation: Int
         get() = p.getInt("rotation", 90)
         set(v) { p.edit().putInt("rotation", v).apply() }
+
+    /** Girar a tela (core/ScreenTurn): -1 = automático (só o layout em pé gira); 0, 90, 180 ou 270 = sempre esse giro. */
+    var giro: Int
+        get() = br.com.digitalisp.telas.core.ScreenTurn.clean(p.getInt("giro", br.com.digitalisp.telas.core.ScreenTurn.AUTO))
+        set(v) { p.edit().putInt("giro", br.com.digitalisp.telas.core.ScreenTurn.clean(v)).apply() }
 
     /** Modo do vídeo (core/VideoMode): "auto", "fixed" ou "fixed720". Desce sozinho se o decodificador falhar; sobe nos ajustes. */
     var videoMode: String
