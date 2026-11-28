@@ -48,6 +48,16 @@ export async function paintResumo(root) {
 }
 
 /* ================================================================== clientes */
+/** O endereço do painel do cliente (/c/<endereço>), para abrir ou copiar e mandar a ele (sem abrir o cadastro). */
+const painelUrl = (c) => `${location.origin}/c/${c.slug}`;
+function painelDe(c) {
+  if (!c.slug) return el('span', { class: 'dim', text: '—' });
+  const u = painelUrl(c);
+  const parar = (e) => e.stopPropagation();
+  return el('div', { class: 'rv-link-in', onclick: parar, onkeydown: parar },
+    el('a', { href: u, target: '_blank', rel: 'noopener', text: u.replace(/^https?:\/\//, ''), title: 'Abrir a tela de entrada do cliente' }),
+    el('button', { type: 'button', class: 'small', text: 'Copiar', onclick: () => navigator.clipboard?.writeText(u).then(() => toast('Endereço copiado.'), () => toast(u)) }));
+}
 export async function paintClientes(root) {
   loading(root);
   const [lista, pl] = await Promise.all([api('/api/revenda/clientes'), api('/api/revenda/planos')]);
@@ -65,7 +75,8 @@ export async function paintClientes(root) {
       el('td', { text: c.plano?.nome || 'sem plano' }),
       el('td', {}, el('span', { class: `rv-st ${c.status}`, text: ST[c.status] || c.status })),
       el('td', { class: 'num', text: `${c.uso?.noAr ?? 0}/${c.uso?.telas ?? 0}` }),
-      el('td', { text: c.cobranca?.modo === 'sistema' ? 'Pelo sistema' : 'Por fora' }))) : [el('tr', {}, el('td', { colspan: 6, class: 'dim', text: s ? 'Nada encontrado.' : 'Nenhum cliente ainda. Cadastre o primeiro.' }))]));
+      el('td', { text: c.cobranca?.modo === 'sistema' ? 'Pelo sistema' : 'Por fora' }),
+      el('td', { class: 'rv-link' }, painelDe(c)))) : [el('tr', {}, el('td', { colspan: 7, class: 'dim', text: s ? 'Nada encontrado.' : 'Nenhum cliente ainda. Cadastre o primeiro.' }))]));
   };
   q.addEventListener('input', draw);
   root.replaceChildren(...[
@@ -73,7 +84,7 @@ export async function paintClientes(root) {
     el('div', { class: 'card' },
       el('div', { class: 'rv-bar' }, q, el('button', { class: 'primary', type: 'button', text: '+ Novo cliente', onclick: () => abrir(null) })),
       el('div', { class: 'rv-scroll' }, el('table', { class: 'rv-table' },
-        el('thead', {}, el('tr', {}, ...['Cliente', 'Cidade', 'Plano', 'Situação', 'Telas no ar', 'Cobrança'].map((h) => el('th', { text: h })))), tbody))),
+        el('thead', {}, el('tr', {}, ...['Cliente', 'Cidade', 'Plano', 'Situação', 'Telas no ar', 'Cobrança', 'Endereço do painel'].map((h) => el('th', { text: h })))), tbody))),
     box].filter(Boolean));
   draw();
 }

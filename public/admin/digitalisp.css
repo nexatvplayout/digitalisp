@@ -65,6 +65,8 @@ button.primary:hover { background: var(--c-accent-hover); }
 .rv-scroll { overflow-x: auto; }
 .rv-table td.num, .rv-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .rv-row { cursor: pointer; }
+.rv-link-in { display: flex; gap: 6px; align-items: center; white-space: nowrap; }
+.rv-link-in a { font-size: .8rem; overflow: hidden; text-overflow: ellipsis; max-width: 240px; }
 .rv-row:hover td, .rv-row:focus-visible td { background: var(--c-panel-2); }
 .rv-row:focus-visible { outline: var(--focus-ring); }
 .rv-st { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: .76rem; font-weight: 600; background: var(--c-panel-3); color: var(--c-fg-2); }
