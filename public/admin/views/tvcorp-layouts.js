@@ -218,7 +218,7 @@ export function layoutEditor(lay, reload, factoryKey = null, copyOf = null, { ao
       }
       if (sel.value) z.channel = Number(sel.value); else delete z.channel; paintPv();
     } },
-      opt('', CANAIS.length ? 'Canal ao vivo: o da unidade' : 'Nenhum canal cadastrado (aba Ao vivo (HLS))', z.channel == null), ...CANAIS.map((c) => opt(c.id, nomeCanal(c), Number(z.channel) === Number(c.id))), opcaoYoutube()) : null);
+      opt('', CANAIS.length ? 'Canal ao vivo: o da unidade' : 'Nenhum canal cadastrado (aba Canais)', z.channel == null), ...CANAIS.map((c) => opt(c.id, nomeCanal(c), Number(z.channel) === Number(c.id))), opcaoYoutube()) : null);
     // o texto rolante: os textos da faixa (os mesmos da aba Barras e blocos), digitados aqui mesmo, ao escolher a zona
     const tickerDlg = () => dialog('Texto rolante: os textos da faixa', el('div', {}, note('Digite os avisos que passam na faixa. Valem para todas as telas da empresa (os mesmos da aba Barras e blocos).', 'small'), faixaCard(D().defaults?.config || {}, async () => { await reload?.(); })), { wide: true });
     const tickPick = (z) => (z.kind === 'ticker' ? btn('Digitar os textos', tickerDlg, 'small primary') : null);

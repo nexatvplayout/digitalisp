@@ -1,4 +1,4 @@
-// Aba "Ao vivo (HLS)": os canais ao vivo da conta (NEXA Broadcast, IPTV do provedor, câmera, qualquer .m3u8), quantos
+// Aba "Canais" (antes "Ao vivo (HLS)"): os canais ao vivo da conta (NEXA Broadcast, IPTV do provedor, câmera, qualquer .m3u8), quantos
 // quiser, com a prévia tocando aqui mesmo. A unidade escolhe qual canal passa na zona de vídeo do layout.
 // Rotas /api/hls (server/hls.js). A prévia usa o hls.js servido pelo próprio sistema (/vendor/hls.js); no Safari, o nativo.
 import { el, guard, toast, put, f, btn, note, label } from './tvcorp-base.js';

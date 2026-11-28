@@ -94,8 +94,8 @@ function editOffice(o, reload) {
     el('div', { class: 'pf-grid two' }, f('Latitude', lat), f('Longitude', lng)),
     ponto,
     note('Digite o CEP para preencher o endereço. O ponto põe a unidade no mapa e no clima da unidade.'),
-    el('div', { class: 'pf-grid' }, f('Ao vivo (HLS) nesta unidade', canal)),
-    note('O canal toca na zona de vídeo do layout das telas desta unidade. Cadastre os canais na aba "Ao vivo (HLS)".'),
+    el('div', { class: 'pf-grid' }, f('Canal ao vivo nesta unidade', canal)),
+    note('O canal toca na zona de vídeo do layout das telas desta unidade. Cadastre os canais na aba "Canais".'),
     label('Módulos da unidade (os avisos do texto rolante valem sempre)'), modBox), {
     wide: true,
     save: async () => {

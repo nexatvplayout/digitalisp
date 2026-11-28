@@ -36,7 +36,7 @@ export const TABS = [
   { id: 'midias', label: 'Mídias', perm: 'tvcorp.manage', paint: paintMidias },
   { id: 'templates', label: 'Templates', perm: 'tvcorp.manage', paint: paintTemplates },
   { id: 'qrcodes', label: 'QR Codes', perm: 'tvcorp.manage', paint: paintQrcodes },
-  { id: 'aovivo', label: 'Ao vivo (HLS)', perm: 'tvcorp.manage', paint: paintAoVivo },
+  { id: 'aovivo', label: 'Canais', perm: 'tvcorp.manage', paint: paintAoVivo },
   { id: 'playlists', label: 'Playlists', perm: 'tvcorp.manage', paint: paintPlaylists },
   { id: 'layouts', label: 'Layouts', perm: 'tvcorp.manage', paint: paintLayouts },
   { id: 'grade', label: 'Grade', perm: 'tvcorp.manage', paint: paintGrade },

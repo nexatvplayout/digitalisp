@@ -50,7 +50,7 @@ export const SECTIONS = [
     id: 'conteudo', label: 'Conteúdo',
     menus: [
       { key: 'templates', label: 'Templates prontos', desc: 'A biblioteca de templates por segmento (varejo, alimentação, saúde, serviços, indústria), editáveis no navegador.' },
-      { key: 'aoVivo', clienteRoutes: ['POST|PUT|PATCH|DELETE /api/hls*'], label: 'Ao vivo (HLS)', desc: 'Um canal ao vivo numa zona da tela: NEXA Broadcast, IPTV do provedor, câmera ou qualquer endereço HLS.' },
+      { key: 'aoVivo', clienteRoutes: ['POST|PUT|PATCH|DELETE /api/hls*'], label: 'Canais ao vivo', desc: 'Um canal ao vivo numa zona da tela: NEXA Broadcast, IPTV do provedor, câmera ou qualquer endereço HLS.' },
       { key: 'paginas', label: 'Páginas e painéis', desc: 'Página da internet ou painel (Power BI, Looker Studio, Grafana) numa zona da tela.' },
       { key: 'dados', clienteRoutes: ['POST|PUT|PATCH|DELETE /api/tvcorp/feeds*', 'POST|PUT|PATCH|DELETE /api/tvcorp/widgets*'], label: 'Notícias, clima e cotações', desc: 'Dados automáticos: notícias com crédito, clima, cotações, RSS da empresa e planilha publicada.' },
       { key: 'indicadores', clienteRoutes: ['POST|PUT|PATCH|DELETE /api/tvcorp/kpis*'], label: 'Indicadores e metas', desc: 'Números da empresa na tela, atualizados à mão ou pela API.' },
